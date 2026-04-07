@@ -3,7 +3,9 @@
 POSLAはStripeを2つの目的で利用しています。
 
 1. **Stripe Billing** — POSLA自体の月額利用料の課金（テナントがPOSLAに支払う）
-2. **Stripe Connect** — テナントがお客さんから決済を受け取る（カード/オンライン決済）
+2. **テナント決済** — テナントがお客さんから決済を受け取る（カード/オンライン決済）。さらに2方式あります：
+   - **パターンA：自前Stripeキー** — テナントが自分のStripeアカウントを持っている場合
+   - **パターンB：POSLA経由Connect** — テナントが自分のStripeアカウントを持っていない場合
 
 本章ではテナント側でやること・POSLA運営側でやることを、どちらも完全な手順で記載します。
 
@@ -25,9 +27,28 @@ POSLAはStripeを2つの目的で利用しています。
 【Stripe Billing】
 テナント → 月額プラン料金 → Stripe → POSLA運営
 
-【Stripe Connect】
+【テナント決済：パターンA（自前Stripeキー）】
+お客さん → カード決済 → Stripe → テナント売上 − Stripe決済手数料（POSLA手数料なし）
+
+【テナント決済：パターンB（POSLA経由Connect）】
 お客さん → カード決済 → Stripe → テナント売上 − POSLA手数料(1.0%) − Stripe決済手数料
 ```
+
+### パターンAとパターンBの比較
+
+| 項目 | パターンA：自前Stripeキー | パターンB：POSLA経由Connect |
+|------|--------------------------|------------------------------|
+| テナント側の事前準備 | Stripeアカウント開設・審査済 | 不要（POSLAが代行） |
+| Secret Key管理 | テナントが `sk_live_xxx` をPOSLAに登録 | 登録不要（Connect Account ID のみ） |
+| Stripe決済手数料 | Stripe標準（通常3.6%） | Stripe標準（通常3.6%） |
+| POSLA手数料 | なし | 1.0%（`application_fee`） |
+| 入金先 | テナント自身のStripe残高 | テナント自身のStripe Connect残高 |
+| レジカードリーダー | ✅ 利用可能（Stripe Reader S700） | ✅ 利用可能（Stripe Reader S700） |
+| セルフレジ | ✅ 利用可能 | ✅ 利用可能 |
+| テイクアウト決済 | ✅ 利用可能 | ✅ 利用可能 |
+| 切り替え | B解除後にA設定可能 | Aを削除後にConnect接続可能 |
+
+どちらを選んでも、POSLAの決済関連機能はすべて同じように使えます。パターンAとパターンBの両方が設定されている場合は、**パターンB（Connect）が優先**されます。
 
 ---
 
@@ -126,9 +147,49 @@ POSLA管理画面（`/public/posla-admin/dashboard.html`）の「API設定」タ
 
 ---
 
-## 21.3 Stripe Connect（テナントがお客さんから決済を受け取る）
+## 21.3 パターンA：自前Stripeキー
 
-### 21.3.1 テナント側の接続手順
+テナントが自分のStripeアカウントを既に持っている場合に選択します。POSLA手数料はかかりません。
+
+### 21.3.1 事前準備
+
+1. Stripeアカウント開設（[https://dashboard.stripe.com/](https://dashboard.stripe.com/)）
+2. 本人確認・事業者審査の完了
+3. `charges_enabled` になっていること（Stripe Dashboard > 設定 > アカウント で確認）
+4. Stripe Dashboard > 開発者 > APIキー で Secret Key（`sk_live_xxx`）を取得
+
+### 21.3.2 POSLAへの登録手順
+
+1. オーナーダッシュボードの「決済設定」タブを開く
+2. 「使用する決済サービス」で「Stripe」を選択
+3. 「Stripe Secret Key」欄に `sk_live_xxx` を貼り付けて「保存」
+4. 保存後は `sk_live_●●●●1234` のようにマスクされ、キーそのものはPOSLA上で再表示されない
+5. この時点でパターンAが有効になり、レジ・セルフレジ・テイクアウトすべての決済が使えるようになる
+
+### 21.3.3 動作確認
+
+- レジ会計画面でカードリーダー決済を試す（下記21.5を参照）
+- 少額テスト決済後、Stripe Dashboard > 決済 で該当の決済が記録されていることを確認
+- テナント自身のStripe残高に入金されること（`application_fee` は引かれない）
+
+### 21.3.4 キーの更新・削除
+
+- **更新**: 同じ「決済設定」タブで新しいキーを入力して「保存」
+- **削除**: 「削除」ボタンで `stripe_secret_key = NULL` になる。削除後はパターンAが無効化
+
+### 21.3.5 トラブルシューティング
+
+| 問題 | 原因 | 対処 |
+|------|------|------|
+| 「保存」後もカードリーダーが使えない | Secret Keyが無効 | Stripe Dashboardでキー再発行 |
+| Permission エラー | Terminal機能が未有効 | Stripe Dashboard > Terminal を有効化 |
+| 決済失敗 | `charges_enabled=false` | 本人確認・事業者審査を完了 |
+
+---
+
+## 21.4 パターンB：POSLA経由Connect（Stripe Connect）
+
+### 21.4.1 テナント側の接続手順
 
 1. オーナーダッシュボードにログイン
 2. 「決済設定」タブを開く
@@ -143,7 +204,7 @@ POSLA管理画面（`/public/posla-admin/dashboard.html`）の「API設定」タ
 7. Stripeが審査（通常1〜3営業日）
 8. 審査完了後、POSLAの「決済設定」タブで接続状態が「有効」に変わります
 
-### 21.3.2 接続状態の確認
+### 21.4.2 接続状態の確認
 
 「決済設定」タブで以下が確認できます。
 
@@ -155,18 +216,18 @@ POSLA管理画面（`/public/posla-admin/dashboard.html`）の「API設定」タ
 
 すべてがtrueになっている必要があります。いずれかがfalseの場合、Stripeダッシュボードで追加情報の入力が必要です。
 
-### 21.3.3 決済方法の設定
+### 21.4.3 決済方法の設定
 
 テナントは店舗設定で利用する決済方法を選択できます。
 
 | 決済方法 | 説明 | 必要な接続 |
 |---------|------|-----------|
 | 現金 | テンキーで入力 | 不要 |
-| クレジット（対面） | Stripe Reader S700 | Stripe Connect |
+| クレジット（対面） | Stripe Reader S700 | パターンA または パターンB |
 | QR決済（PayPay等） | 外部QR決済アプリで処理 | 不要 |
-| セルフレジ（お客さんスマホ） | Stripe オンライン決済 | Stripe Connect |
+| セルフレジ（お客さんスマホ） | Stripe オンライン決済 | パターンA または パターンB |
 
-### 21.3.4 カードリーダー（Stripe Reader S700）
+### 21.4.4 カードリーダー（Stripe Reader S700）
 
 対面でクレジットカード決済を受ける場合、Stripe Reader S700が必要です。
 
@@ -191,7 +252,11 @@ POSLA管理画面（`/public/posla-admin/dashboard.html`）の「API設定」タ
 5. 決済結果がレジに返される
 6. 成功時：レシートを印刷して完了
 
-### 21.3.5 セルフレジ（お客さんのスマホで決済）
+::: tip パターンA / パターンB 両対応
+Stripe Reader S700 はパターンA（自前キー）・パターンB（Connect）のどちらでも利用できます。POSLAのバックエンドが `terminal_pattern` を自動判定して適切なStripeアカウントでPayment Intentを作成します。
+:::
+
+### 21.4.5 セルフレジ（お客さんのスマホで決済）
 
 セルフオーダー画面からお客さんがカード決済する場合です。
 
@@ -201,7 +266,7 @@ POSLA管理画面（`/public/posla-admin/dashboard.html`）の「API設定」タ
 4. カード情報を入力して「支払う」
 5. 決済完了後、注文が自動送信される
 
-### 21.3.6 手数料の仕組み
+### 21.4.6 手数料の仕組み（パターンBのみ）
 
 ```
 お客さんの支払額 = 注文金額
@@ -216,6 +281,8 @@ Stripe が決済を処理
 | Stripe決済手数料 | 3.6% | Stripe |
 | POSLA手数料 | 1.0% | POSLA運営 |
 
+※パターンA（自前Stripeキー）の場合、POSLA手数料はかかりません。Stripe決済手数料のみです。
+
 **計算例（¥3,000の決済）：**
 
 | 項目 | 金額 |
@@ -227,13 +294,33 @@ Stripe が決済を処理
 
 POSLA手数料は `ceil(決済金額 × 1.0 / 100)` で計算され、最低¥1です。
 
-### 21.3.7 入金サイクル
+### 21.4.7 入金サイクル
 
 - 決済から約7日後にテナント指定の銀行口座に自動入金されます
 - 入金サイクルはStripe Dashboardで確認・変更できます
 - 週次入金、月次入金などの設定が可能
 
-### 21.3.8 POSLA運営側の設定手順
+### 21.4.8 Stripe Connectの解除（パターンAへの切り替え）
+
+パターンBからパターンAに切り替えたい場合は、「決済設定」タブのStripe Connectブロックにある「Stripe Connectを解除」ボタンを使います。
+
+**手順：**
+1. オーナーダッシュボード > 決済設定タブ
+2. 「Stripe Connect：有効」ブロックの「Stripe Connectを解除」ボタンをクリック
+3. 確認ダイアログで「OK」をクリック
+4. 「Stripe Connectを解除しました」と表示され、画面が更新される
+5. Stripe Secret Key の入力欄が活性化し、パターンAの設定が可能になる
+
+**ポイント：**
+- 解除はPOSLA側のDB（`stripe_connect_account_id` 等）を空にするだけで、Stripeダッシュボードのアカウント自体は残ります
+- 必要であれば後で「Stripe Connectに登録して決済を開始する」ボタンから再接続できます
+- Stripeダッシュボード側のアカウントを完全に削除したい場合は、Stripeダッシュボードから直接削除してください
+
+::: warning 解除中の注意
+解除から再接続（またはパターンA設定）までの間は、テナント決済（レジ・セルフレジ・テイクアウト）が一時的に停止します。営業時間外に実施することを推奨します。
+:::
+
+### 21.4.9 POSLA運営側の設定手順
 
 **ステップ1：Stripe Connectプラットフォーム登録**
 1. Stripe Dashboardで「Connect」を有効化
@@ -261,18 +348,22 @@ POSLA管理画面の「API設定」タブで以下を設定します。
 
 ---
 
-## 21.4 データベース構造
+## 21.5 データベース構造
 
 ### テナントテーブルのStripe関連フィールド
 
 | フィールド | 型 | 説明 |
 |-----------|-----|------|
-| stripe_customer_id | VARCHAR(50) | StripeカスタマーID（`cus_xxx`） |
-| stripe_subscription_id | VARCHAR(50) | サブスクリプションID（`sub_xxx`） |
+| payment_gateway | ENUM('none','stripe') | 使用する決済ゲートウェイ |
+| stripe_secret_key | VARCHAR(200) | パターンA用。テナント自前のStripe Secret Key（`sk_live_xxx`） |
+| stripe_customer_id | VARCHAR(50) | Stripe BillingのカスタマーID（`cus_xxx`） |
+| stripe_subscription_id | VARCHAR(50) | Stripe Billingのサブスクリプション（`sub_xxx`） |
 | subscription_status | ENUM | none/trialing/active/past_due/canceled |
 | current_period_end | DATETIME | 現在の課金期間終了日 |
-| stripe_connect_account_id | VARCHAR(100) | Connect アカウントID（`acct_xxx`） |
+| stripe_connect_account_id | VARCHAR(100) | パターンB用。Connect アカウントID（`acct_xxx`） |
 | connect_onboarding_complete | TINYINT(1) | オンボーディング完了フラグ |
+| charges_enabled | TINYINT(1) | Connect：決済受付可能か |
+| payouts_enabled | TINYINT(1) | Connect：入金が有効か |
 
 ### subscription_events テーブル
 
@@ -289,7 +380,7 @@ POSLA管理画面の「API設定」タブで以下を設定します。
 
 ---
 
-## 21.5 トラブルシューティング
+## 21.6 トラブルシューティング
 
 ### Stripe Billing関連
 
@@ -299,7 +390,15 @@ POSLA管理画面の「API設定」タブで以下を設定します。
 | 請求書が発行されない | メールアドレス未登録 | テナント設定でメールアドレスを登録 |
 | カード決済が失敗する | カード与信問題 | Stripe Customer Portalで別カードに変更 |
 
-### Stripe Connect関連
+### パターンA（自前Stripeキー）関連
+
+| 問題 | 原因 | 対処 |
+|------|------|------|
+| 「保存」後もカードリーダーが使えない | Secret Keyが無効 / Stripe Dashboardで失効 | Stripe Dashboardで新しいキーを発行して再保存 |
+| Permission エラー | Stripe DashboardでTerminal機能が未有効 | Stripe Dashboard > Terminal を有効化 |
+| 決済失敗 | Stripeアカウントの `charges_enabled=false` | 本人確認・事業者審査を完了 |
+
+### パターンB（Stripe Connect）関連
 
 | 問題 | 原因 | 対処 |
 |------|------|------|
@@ -307,3 +406,4 @@ POSLA管理画面の「API設定」タブで以下を設定します。
 | `charges_enabled`がfalse | 審査中または書類不備 | Stripe Dashboardでメッセージを確認 |
 | カードリーダー接続できない | Wi-Fi切断・ファームウェア古い | リーダー再起動・ファームウェア更新 |
 | 決済完了するが注文が記録されない | Webhook失敗 | `subscription_events`テーブルと`audit_log`を確認 |
+| 「Stripe Connectを解除」ボタンが表示されない | 未接続状態 | 接続完了後にのみ表示される |

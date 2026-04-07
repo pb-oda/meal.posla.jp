@@ -26,18 +26,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // 決済カラム存在チェック（マイグレーション未適用対応）
     $hasPaymentGw = false;
     try {
-        $pdo->query('SELECT square_access_token FROM tenants LIMIT 0');
+        $pdo->query('SELECT stripe_secret_key FROM tenants LIMIT 0');
         $hasPaymentGw = true;
     } catch (PDOException $e) {}
 
     $selectCols = 'id, slug, name, name_en, ai_api_key, google_places_api_key, created_at';
     if ($hasPaymentGw) {
-        $selectCols .= ', square_access_token, stripe_secret_key, payment_gateway';
-        // square_location_id カラム存在チェック
-        try {
-            $pdo->query('SELECT square_location_id FROM tenants LIMIT 0');
-            $selectCols .= ', square_location_id';
-        } catch (PDOException $e) {}
+        $selectCols .= ', stripe_secret_key, payment_gateway';
     }
 
     $stmt = $pdo->prepare('SELECT ' . $selectCols . ' FROM tenants WHERE id = ?');
@@ -53,16 +48,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // 決済キー
     if ($hasPaymentGw) {
-        $tenant['square_access_token_set'] = !empty($tenant['square_access_token']);
-        $tenant['square_access_token_masked'] = mask_api_key($tenant['square_access_token']);
         $tenant['stripe_secret_key_set'] = !empty($tenant['stripe_secret_key']);
         $tenant['stripe_secret_key_masked'] = mask_api_key($tenant['stripe_secret_key']);
-        unset($tenant['square_access_token']);
         unset($tenant['stripe_secret_key']);
     } else {
         $tenant['payment_gateway'] = 'none';
-        $tenant['square_access_token_set'] = false;
-        $tenant['square_access_token_masked'] = null;
         $tenant['stripe_secret_key_set'] = false;
         $tenant['stripe_secret_key_masked'] = null;
     }
@@ -100,19 +90,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         $params[] = ($val === null || $val === '') ? null : trim($val);
     }
 
-    // 決済ゲートウェイ設定（カラム存在チェック付き）
+    // 決済ゲートウェイ設定（カラム存在チェック付き、P1-2 で Square 削除済み）
     $hasPaymentGw = false;
     try {
-        $pdo->query('SELECT square_access_token FROM tenants LIMIT 0');
+        $pdo->query('SELECT stripe_secret_key FROM tenants LIMIT 0');
         $hasPaymentGw = true;
     } catch (PDOException $e) {}
 
     if ($hasPaymentGw) {
-        if (array_key_exists('square_access_token', $data)) {
-            $fields[] = 'square_access_token = ?';
-            $val = $data['square_access_token'];
-            $params[] = ($val === null || $val === '') ? null : trim($val);
-        }
         if (array_key_exists('stripe_secret_key', $data)) {
             $fields[] = 'stripe_secret_key = ?';
             $val = $data['stripe_secret_key'];
@@ -120,20 +105,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         }
         if (array_key_exists('payment_gateway', $data)) {
             $val = $data['payment_gateway'];
-            if (in_array($val, ['none', 'square', 'stripe'], true)) {
+            if (in_array($val, ['none', 'stripe'], true)) {
                 $fields[] = 'payment_gateway = ?';
                 $params[] = $val;
             }
         }
-        // square_location_id
-        try {
-            $pdo->query('SELECT square_location_id FROM tenants LIMIT 0');
-            if (array_key_exists('square_location_id', $data)) {
-                $fields[] = 'square_location_id = ?';
-                $val = $data['square_location_id'];
-                $params[] = ($val === null || $val === '') ? null : trim($val);
-            }
-        } catch (PDOException $e) {}
     }
 
     if (empty($fields)) json_error('NO_FIELDS', '更新項目がありません', 400);

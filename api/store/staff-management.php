@@ -15,6 +15,7 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/audit-log.php';
+require_once __DIR__ . '/../lib/password-policy.php';
 
 require_method(['GET', 'POST', 'PATCH', 'DELETE']);
 $user = require_role('manager');
@@ -67,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // username必須バリデーション
     if (!$username || !$password) json_error('MISSING_FIELDS', 'ユーザー名とパスワードは必須です', 400);
     if (!preg_match('/^[a-zA-Z0-9_-]{3,50}$/', $username)) json_error('INVALID_USERNAME', 'ユーザー名は半角英数字・ハイフン・アンダースコア（3〜50文字）で入力してください', 400);
-    if (strlen($password) < 6) json_error('WEAK_PASSWORD', 'パスワードは6文字以上にしてください', 400);
+    validate_password_strength($password);
 
     // email任意バリデーション
     if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('INVALID_EMAIL', 'メールアドレスの形式が正しくありません', 400);
@@ -161,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         $params[] = $data['is_active'] ? 1 : 0;
     }
     if (!empty($data['password'])) {
-        if (strlen($data['password']) < 6) json_error('WEAK_PASSWORD', 'パスワードは6文字以上にしてください', 400);
+        validate_password_strength($data['password']);
         $fields[] = 'password_hash = ?';
         $params[] = password_hash($data['password'], PASSWORD_DEFAULT);
     }

@@ -723,29 +723,13 @@
     var gwVal = t.payment_gateway || 'none';
 
     container.innerHTML = ''
-      // 決済ゲートウェイ設定
+      // 決済ゲートウェイ設定（P1-2 で Square 削除済み）
       + '<h4 style="margin:0 0 1rem;font-size:1rem;color:#333;">決済ゲートウェイ設定</h4>'
       + '<div style="margin-bottom:1rem;">'
       +   '<label style="display:block;font-weight:600;margin-bottom:0.5rem;font-size:0.9rem;color:#333;">使用する決済サービス</label>'
       +   '<div style="display:flex;gap:1rem;flex-wrap:wrap;">'
       +     '<label style="cursor:pointer;"><input type="radio" name="payment-gateway" value="none"' + (gwVal === 'none' ? ' checked' : '') + '> なし</label>'
-      +     '<label style="cursor:pointer;"><input type="radio" name="payment-gateway" value="square"' + (gwVal === 'square' ? ' checked' : '') + '> Square</label>'
       +     '<label style="cursor:pointer;"><input type="radio" name="payment-gateway" value="stripe"' + (gwVal === 'stripe' ? ' checked' : '') + '> Stripe</label>'
-      +   '</div>'
-      + '</div>'
-      // Square Access Token
-      + '<div style="margin-bottom:1.5rem;">'
-      +   '<label style="display:block;font-weight:600;margin-bottom:0.5rem;font-size:0.9rem;color:#333;">Square Access Token</label>'
-      +   '<div id="ak-square-current" style="margin-bottom:0.5rem;">'
-      +     (t.square_access_token_set
-              ? '<span style="font-family:monospace;font-size:0.9rem;color:#555;">' + Utils.escapeHtml(t.square_access_token_masked || '') + '</span>'
-                + ' <button class="btn btn-secondary btn-sm" id="ak-square-toggle" style="margin-left:0.5rem;">表示</button>'
-                + ' <button class="btn btn-sm" id="ak-square-delete" style="margin-left:0.25rem;color:#c62828;border-color:#c62828;">削除</button>'
-              : '<span style="color:#999;font-size:0.85rem;">未設定</span>')
-      +   '</div>'
-      +   '<div style="display:flex;gap:0.5rem;align-items:center;">'
-      +     '<input class="form-input" id="ak-square-input" type="password" placeholder="新しいトークンを入力..." style="flex:1;">'
-      +     '<button class="btn btn-primary btn-sm" id="ak-square-save">保存</button>'
       +   '</div>'
       + '</div>'
       // Stripe Secret Key
@@ -761,15 +745,6 @@
       +   '<div style="display:flex;gap:0.5rem;align-items:center;">'
       +     '<input class="form-input" id="ak-stripe-input" type="password" placeholder="新しいキーを入力..." style="flex:1;">'
       +     '<button class="btn btn-primary btn-sm" id="ak-stripe-save">保存</button>'
-      +   '</div>'
-      + '</div>'
-      // Square Location ID（テイクアウトオンライン決済に必要）
-      + '<div style="margin-top:1.5rem;">'
-      +   '<label style="display:block;font-weight:600;margin-bottom:0.5rem;font-size:0.9rem;color:#333;">Square Location ID</label>'
-      +   '<div style="font-size:0.75rem;color:#888;margin-bottom:0.5rem;">テイクアウトのオンライン決済に必要です。Square Developer Dashboard &gt; Locations で確認できます。</div>'
-      +   '<div style="display:flex;gap:0.5rem;align-items:center;">'
-      +     '<input class="form-input" id="ak-square-location-input" type="text" placeholder="例: LXXXXXXXXXXXXXXX" value="' + Utils.escapeHtml(t.square_location_id || '') + '" style="flex:1;">'
-      +     '<button class="btn btn-primary btn-sm" id="ak-square-location-save">保存</button>'
       +   '</div>'
       + '</div>'
       // L-13: Stripe Connect セクション
@@ -794,31 +769,6 @@
       });
     });
 
-    // Square 保存
-    var squareSave = document.getElementById('ak-square-save');
-    if (squareSave) {
-      squareSave.addEventListener('click', function () {
-        var val = document.getElementById('ak-square-input').value.trim();
-        if (!val) { showToast('トークンを入力してください', 'error'); return; }
-        saveApiKey('square_access_token', val);
-      });
-    }
-    // Square 削除
-    var squareDel = document.getElementById('ak-square-delete');
-    if (squareDel) {
-      squareDel.addEventListener('click', function () {
-        if (!confirm('Square Access Tokenを削除しますか？')) return;
-        deleteApiKey('square_access_token');
-      });
-    }
-    // Square 表示トグル
-    var squareToggle = document.getElementById('ak-square-toggle');
-    if (squareToggle) {
-      squareToggle.addEventListener('click', function () {
-        toggleKeyVisibility('ak-square', this);
-      });
-    }
-
     // Stripe 保存
     var stripeSave = document.getElementById('ak-stripe-save');
     if (stripeSave) {
@@ -841,15 +791,6 @@
     if (stripeToggle) {
       stripeToggle.addEventListener('click', function () {
         toggleKeyVisibility('ak-stripe', this);
-      });
-    }
-
-    // Square Location ID 保存
-    var sqLocSave = document.getElementById('ak-square-location-save');
-    if (sqLocSave) {
-      sqLocSave.addEventListener('click', function () {
-        var val = document.getElementById('ak-square-location-input').value.trim();
-        saveApiKey('square_location_id', val || null);
       });
     }
   }
@@ -924,7 +865,7 @@
     var html = '';
 
     // 排他制御: 自前決済が設定済みの場合のinfo表示
-    var hasOwnGateway = (tenantData && (tenantData.square_access_token_set || tenantData.stripe_secret_key_set));
+    var hasOwnGateway = (tenantData && tenantData.stripe_secret_key_set);
 
     if (data.connected && data.charges_enabled) {
       // パターンC: 有効
@@ -932,7 +873,9 @@
         + '<span style="color:#2e7d32;font-weight:600;">&#10003; Stripe Connect: 有効</span><br>'
         + '<span style="font-size:0.85rem;color:#555;">アカウントID: ' + Utils.escapeHtml(data.account_id || '') + '</span><br>'
         + '<span style="font-size:0.85rem;color:#666;">決済・入金状況はStripeダッシュボードで確認できます</span>'
-        + '</div>';
+        + '</div>'
+        + '<button class="btn btn-secondary" id="connect-disconnect-btn" style="margin-top:0.5rem;">Stripe Connectを解除</button>'
+        + '<div style="font-size:0.75rem;color:#888;margin-top:0.25rem;">解除後は自前のStripe Secret Keyで決済できます。Stripeダッシュボード上のアカウント自体は残るため、再接続も可能です。完全に削除する場合はStripeダッシュボードから手動で行ってください。</div>';
       // 自前決済エリアへのinfo（既存エリアにはDOM的にアクセスしにくいのでConnect側に表示）
     } else if (data.connected && !data.charges_enabled) {
       // パターンB: オンボーディング途中
@@ -967,6 +910,7 @@
     // ボタンイベント
     var startBtn = document.getElementById('btn-connect-start');
     var resumeBtn = document.getElementById('btn-connect-resume');
+    var disconnectBtn = document.getElementById('connect-disconnect-btn');
 
     if (startBtn) {
       startBtn.addEventListener('click', function () {
@@ -980,6 +924,34 @@
         resumeBtn.disabled = true;
         resumeBtn.textContent = '処理中...';
         startConnectOnboarding();
+      });
+    }
+    if (disconnectBtn) {
+      disconnectBtn.addEventListener('click', function () {
+        if (!confirm('Stripe Connectを解除します。解除後は自前のStripeキーで決済できます。Stripeダッシュボードのアカウント自体は残るので、再接続も可能です。解除しますか？')) return;
+        disconnectBtn.disabled = true;
+        disconnectBtn.textContent = '解除中...';
+        fetch(CONNECT_API + '/disconnect.php', {
+          method: 'POST',
+          credentials: 'same-origin'
+        }).then(function (res) {
+          return res.text().then(function (text) {
+            var json;
+            try { json = JSON.parse(text); } catch (e) { throw new Error('応答の解析に失敗しました'); }
+            if (!res.ok || !json.ok) {
+              var msg = (json.error && json.error.message) || 'エラーが発生しました';
+              throw new Error(msg);
+            }
+            return json.data;
+          });
+        }).then(function () {
+          showToast('Stripe Connectを解除しました', 'success');
+          loadApiKeyManager();
+        }).catch(function (err) {
+          showToast(err.message || 'Connect解除に失敗しました', 'error');
+          disconnectBtn.disabled = false;
+          disconnectBtn.textContent = 'Stripe Connectを解除';
+        });
       });
     }
   }

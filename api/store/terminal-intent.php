@@ -1,7 +1,9 @@
 <?php
 /**
- * L-13: Stripe Terminal PaymentIntent 作成 API
- * Connect 経由の物理カードリーダー決済で使用
+ * Stripe Terminal PaymentIntent 作成 API
+ * L-13 + P1-1: Pattern B (Connect) と Pattern A (テナント自前 stripe_secret_key) 両対応
+ *
+ * Pattern B 優先 > Pattern A の順で判定する。
  *
  * POST /api/store/terminal-intent.php
  * Body: { amount: int (円) }
@@ -27,28 +29,32 @@ if ($amount <= 0) {
 }
 
 $tenantId = $user['tenant_id'];
-
-// Connect 情報取得
-$connectInfo = get_tenant_connect_info($pdo, $tenantId);
-if (!$connectInfo || !(int)$connectInfo['connect_onboarding_complete']) {
-    json_error('NOT_CONNECTED', 'Stripe Connect が設定されていません', 400);
-}
-
-$accountId = $connectInfo['stripe_connect_account_id'];
-
-// プラットフォーム Stripe 設定取得
-$platformConfig = get_platform_stripe_config($pdo);
-$secretKey = $platformConfig['secret_key'];
-if (!$secretKey) {
-    json_error('STRIPE_NOT_CONFIGURED', 'プラットフォームのStripe APIキーが設定されていません', 500);
-}
-
-// 手数料計算
-$appFee = calculate_application_fee($amount, $platformConfig['fee_percent']);
-
-// PaymentIntent 作成（未確定: Terminal SDK で collectPaymentMethod に使う）
 $referenceId = function_exists('generate_uuid') ? generate_uuid() : bin2hex(random_bytes(16));
-$result = create_stripe_connect_terminal_intent($secretKey, $accountId, $amount, 'jpy', $appFee, $referenceId);
+
+// Pattern B 優先判定: Connect オンボーディング完了済か
+$connectInfo = get_tenant_connect_info($pdo, $tenantId);
+$useConnect = ($connectInfo && (int)$connectInfo['connect_onboarding_complete'] === 1);
+
+$result = null;
+
+if ($useConnect) {
+    // ── Pattern B: プラットフォームキー + Connect Account + application_fee ──
+    $accountId = $connectInfo['stripe_connect_account_id'];
+    $platformConfig = get_platform_stripe_config($pdo);
+    $secretKey = $platformConfig['secret_key'];
+    if (!$secretKey) {
+        json_error('STRIPE_NOT_CONFIGURED', 'プラットフォームのStripe APIキーが設定されていません', 500);
+    }
+    $appFee = calculate_application_fee($amount, $platformConfig['fee_percent']);
+    $result = create_stripe_connect_terminal_intent($secretKey, $accountId, $amount, 'jpy', $appFee, $referenceId);
+} else {
+    // ── Pattern A: テナント自前 stripe_secret_key ──
+    $gwConfig = get_payment_gateway_config($pdo, $tenantId);
+    if (!$gwConfig || $gwConfig['gateway'] !== 'stripe' || empty($gwConfig['token'])) {
+        json_error('NOT_CONNECTED', 'Stripe Terminal が利用できる設定がありません', 400);
+    }
+    $result = create_stripe_terminal_intent($gwConfig['token'], $amount, 'jpy', $referenceId);
+}
 
 if (!$result['success']) {
     json_error('STRIPE_ERROR', $result['error'] ?: 'PaymentIntentの作成に失敗しました', 502);

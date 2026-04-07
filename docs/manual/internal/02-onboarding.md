@@ -101,12 +101,18 @@ POSLA管理画面の「テナント作成」タブで新規テナントを登録
 
 ## 2.9 ステップ8：決済設定（proプラン以上）
 
-Stripe ConnectまたはSquareでの決済を有効にする場合：
+Stripe決済を有効にする場合、以下のいずれかの方式を選択します。
 
-1. テナントのオーナーがオーナーダッシュボードの「決済設定」タブを開きます
-2. Stripe ConnectのOAuth連携フローを開始します
-3. Stripeのオンボーディング画面で必要情報を入力します
-4. 連携完了後、POSレジでカード決済が利用可能になります
+**パターンA：テナントが自前のStripeアカウントを持っている場合**
+1. オーナーダッシュボードの「決済設定」タブを開く
+2. 「Stripe Secret Key」欄にテナントのSecret Keyを入力して保存
+3. レジの Stripe Terminal が直ちに利用可能（`terminal_pattern=A`）
+
+**パターンB：テナントが自前のStripeアカウントを持っていない場合**
+1. オーナーダッシュボードの「決済設定」タブを開く
+2. 「Stripe Connectに登録して決済を開始する」をクリック
+3. Stripeのオンボーディング画面で必要情報を入力
+4. `connect_onboarding_complete=1` になり、レジの Stripe Terminal が利用可能（`terminal_pattern=B`、application_fee 1.0% をPOSLAが取得）
 
 ---
 

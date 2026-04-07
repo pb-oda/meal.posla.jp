@@ -262,7 +262,7 @@ body.quick-mode .nav a[href="#safety"]{display:none}
         </div>
         <div class="cred-item">
           <div class="cred-label">パスワード（共通）</div>
-          <div class="cred-value">password</div>
+          <div class="cred-value">Demo1234</div>
         </div>
       </div>
       <p style="margin-top:12px;font-size:.78rem;opacity:.6">
@@ -270,7 +270,7 @@ body.quick-mode .nav a[href="#safety"]{display:none}
       </p>
     </div>
     <div class="action">
-      上のURLをブラウザで開き、ユーザー名に <strong>test1</strong>〜<strong>test5</strong> のいずれか、パスワードに <strong>password</strong> を入力して「ログイン」をタップしてください。ログインできない場合は別の番号を試します。
+      上のURLをブラウザで開き、ユーザー名に <strong>test1</strong>〜<strong>test5</strong> のいずれか、パスワードに <strong>Demo1234</strong> を入力して「ログイン」をタップしてください。ログインできない場合は別の番号を試します。
     </div>
     <div class="result">
       管理ダッシュボード画面が開きます。画面上部にメニュー管理・テーブル管理・注文/KDS・レポートなどのタブが並んでいます。これがタブ <strong>A</strong> です。
@@ -373,7 +373,7 @@ body.quick-mode .nav a[href="#safety"]{display:none}
         </div>
         <div class="cred-item">
           <div class="cred-label">パスワード</div>
-          <div class="cred-value">password</div>
+          <div class="cred-value">Demo1234</div>
         </div>
       </div>
     </div>
@@ -556,12 +556,12 @@ body.quick-mode .nav a[href="#safety"]{display:none}
     <h3><span class="step-num">11</span>セルフレジ<span class="badge-new">NEW</span></h3>
     <p>スタッフを呼ばずに、スマホからそのままお会計ができます。</p>
     <div class="action">
-      注文送信後、画面下部に表示される「お会計」ボタンをタップしてください。注文内容と合計金額を確認し、「カードで支払う」を押すとStripe決済ページに移動します。
+      注文送信後、画面下部に表示される「お会計」ボタンをタップしてください。注文内容と合計金額を確認し、「お支払いに進む」を押すとStripe決済ページに移動します。クレジットカードのほか、Apple Pay / Google Pay / Link でのお支払いもご利用いただけます（Stripe側で有効化済みの決済手段が自動表示されます）。
     </div>
     <div class="result">
       カード情報を入力して支払いが完了すると、セルフオーダー画面に「お支払い完了」と表示されます。「領収書を表示」ボタンでお会計明細をスマホに表示できます（スクリーンショットで保存可能）。紙の領収書が必要な場合はスタッフにお申し付けください。
     </div>
-    <div class="tip">この機能は管理画面の設定タブで「セルフレジ」をONにし、Stripe決済（自前またはPOSLA決済）が設定済みの店舗でのみ利用できます。Square決済のみの店舗では現在未対応です。</div>
+    <div class="tip">この機能は管理画面の設定タブで「セルフレジ」をONにし、Stripe決済（パターンA：自前Stripeキー または パターンB：POSLA経由Connect）が設定済みの店舗でのみ利用できます。<br><br><strong>パターンA（自前Stripe）をご利用の場合、</strong>表示される決済手段は<strong>店舗様ご自身のStripeダッシュボードで有効化されているもの</strong>に依存します（Apple Pay / Google Pay はデフォルトで有効、Link はアカウントにより異なる）。POSLA側では制御できません。</div>
     <div class="wow">注文から支払いまで完全にスマホで完結。スタッフの会計対応を大幅に削減できます。</div>
   </div>
 
@@ -1125,7 +1125,7 @@ body.quick-mode .nav a[href="#safety"]{display:none}
   <div class="role-owner">
 
   <div class="tip" style="margin-bottom:16px">
-    オーナーダッシュボードは別アカウント（owner@matsunoya.com / password）でログインすると表示されます。ブラウザの新しいタブまたはシークレットウィンドウで開いてください。
+    オーナーダッシュボードは別アカウント（owner@matsunoya.com / Demo1234）でログインすると表示されます。ブラウザの新しいタブまたはシークレットウィンドウで開いてください。
   </div>
 
   <!-- 8. クロス店舗レポート -->
@@ -1190,8 +1190,8 @@ body.quick-mode .nav a[href="#safety"]{display:none}
       「決済設定」タブを開いてください。
     </div>
     <div class="result">
-      <strong>方式1: 自前の決済アカウント</strong> &mdash; お持ちのStripe/SquareアカウントのAPIキーを登録します。決済手数料はお持ちのアカウントの料率のみです。<br><br>
-      <strong>方式2: POSLA経由決済（Stripe Connect）</strong> &mdash; 決済アカウントをお持ちでない場合、「Stripe Connectに登録」ボタンから簡単に開始できます。POSLAが決済を代行し、売上は自動で口座に入金されます。決済金額の一定割合が手数料となります。
+      <strong>パターンA: 自前のStripeアカウント</strong> &mdash; お持ちのStripeアカウントのSecret Keyを登録します。決済手数料はStripeの料率のみで、POSLA手数料はかかりません。<br><br>
+      <strong>パターンB: POSLA経由決済（Stripe Connect）</strong> &mdash; Stripeアカウントをお持ちでない場合、「Stripe Connectに登録して決済を開始する」ボタンから簡単に開始できます。POSLAが決済を代行し、売上は自動で口座に入金されます。決済金額の1.0%が手数料としてPOSLAに支払われます。
     </div>
     <div class="tip">カードリーダー端末をWi-Fiに接続すれば、どちらの方式でもタッチ決済が使えます。</div>
   </div>
@@ -1247,7 +1247,7 @@ body.quick-mode .nav a[href="#safety"]{display:none}
 
     <div class="feature-card">
       <h4>自動ログアウト</h4>
-      <p>30分操作がないと自動でログアウト。端末の置き忘れによる不正操作を防ぎます。</p>
+      <p>25分操作がないと警告モーダルを表示し、30分で自動ログアウト。端末の置き忘れによる不正操作を防ぎます。</p>
     </div>
 
     <div class="feature-card">

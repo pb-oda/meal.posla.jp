@@ -60,7 +60,7 @@ Gemini API/Google Places APIのキーはPOSLA運営が一括負担します。`p
 
 ### テナント個別キー
 
-決済キー（Square/Stripe Connect）のみテナント個別です。`owner-dashboard.html`の「決済設定」タブで管理します。
+決済キー（Stripe自前キー / Stripe Connect）のみテナント個別です。`owner-dashboard.html`の「決済設定」タブで管理します。
 
 ---
 

@@ -521,17 +521,6 @@ var CashierRenderer = (function () {
 
       var d = json.data;
 
-      // コンソールモック出力
-      if (m.paymentMethod === 'cash') {
-        console.log('[Mock] ドロワー開放');
-      }
-      console.log('[Mock] レシート印字', {
-        total: d.totalAmount,
-        method: d.paymentMethod,
-        change: d.changeAmount,
-        partial: d.isPartial
-      });
-
       // レシートモーダル表示
       showReceipt(d, m.tableCode);
       PollingDataSource.forceRefresh();
@@ -587,7 +576,6 @@ var CashierRenderer = (function () {
       closeModal();
     });
     document.getElementById('pos-receipt-print').addEventListener('click', function () {
-      console.log('[Mock] レシート印字（再印刷）');
       window.print();
     });
 

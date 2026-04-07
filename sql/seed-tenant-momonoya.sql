@@ -1,7 +1,7 @@
 -- ============================================================
 -- Seed: 桃の屋���ナント（マルチテナント検証用）
 -- ============================================================
--- パスワード: 全ユー���ー 'password'
+-- パスワード: 全ユーザー 'Demo1234'（P1-5新ポリシー対応）
 -- 松の屋とは完全に独立したデータ
 -- ============================================================
 
@@ -34,16 +34,16 @@ INSERT INTO store_settings (store_id, receipt_store_name) VALUES
 -- ============================================================
 INSERT INTO users (id, tenant_id, email, password_hash, display_name, role) VALUES
 ('u-momo-owner-001', 't-momonoya-001', 'owner@momonoya.com',
- '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+ '$2y$10$A0KbdNz9DAnUMXJjLFOD/eSgzslbQIrkkv3tO4C4Lr4iGA50Inm0a',
  '桃山オーナー', 'owner'),
 ('u-momo-mgr-001', 't-momonoya-001', 'manager-ikebukuro@momonoya.com',
- '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+ '$2y$10$A0KbdNz9DAnUMXJjLFOD/eSgzslbQIrkkv3tO4C4Lr4iGA50Inm0a',
  '池袋マネージャー', 'manager'),
 ('u-momo-mgr-002', 't-momonoya-001', 'manager-yokohama@momonoya.com',
- '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+ '$2y$10$A0KbdNz9DAnUMXJjLFOD/eSgzslbQIrkkv3tO4C4Lr4iGA50Inm0a',
  '横浜マネージャー', 'manager'),
 ('u-momo-staff-001', 't-momonoya-001', 'staff-ikebukuro@momonoya.com',
- '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+ '$2y$10$A0KbdNz9DAnUMXJjLFOD/eSgzslbQIrkkv3tO4C4Lr4iGA50Inm0a',
  '池袋スタッフ', 'staff');
 
 -- ============================================================

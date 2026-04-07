@@ -231,24 +231,17 @@ if ($paymentMethod !== 'cash') {
     // Connect対面決済はTerminal JS SDK経由のみ。非Terminal（現金/通常カード）はC-3にフォールスルー
     $connectUsed = $terminalDone;
 
-    // C-3: 従来の直接決済（Connect 未使用の場合のみ）
+    // C-3 / P1-2: 従来の直接決済（Connect 未使用 + 自前 Stripe キーありの場合のみ）
     if (!$connectUsed) {
         $gwConfig = get_payment_gateway_config($pdo, $user['tenant_id']);
-        if ($gwConfig && $gwConfig['gateway'] !== 'none') {
-            $gatewayName = $gwConfig['gateway'];
-            $gwResult = null;
-            if ($gatewayName === 'square') {
-                $gwResult = execute_square_payment($gwConfig['token'], $totalAmount, 'JPY', generate_uuid());
-            } elseif ($gatewayName === 'stripe') {
-                $gwResult = execute_stripe_payment($gwConfig['token'], $totalAmount, 'jpy', generate_uuid());
+        if ($gwConfig && $gwConfig['gateway'] === 'stripe') {
+            $gatewayName = 'stripe';
+            $gwResult = execute_stripe_payment($gwConfig['token'], $totalAmount, 'jpy', generate_uuid());
+            if (!$gwResult['success']) {
+                json_error('GATEWAY_ERROR', '決済に失敗しました: ' . ($gwResult['error'] ?? '不明なエラー'), 502);
             }
-            if ($gwResult) {
-                if (!$gwResult['success']) {
-                    json_error('GATEWAY_ERROR', '決済に失敗しました: ' . ($gwResult['error'] ?? '不明なエラー'), 502);
-                }
-                $externalPaymentId = $gwResult['external_id'];
-                $gatewayStatus = $gwResult['status'];
-            }
+            $externalPaymentId = $gwResult['external_id'];
+            $gatewayStatus = $gwResult['status'];
         }
     }
 }

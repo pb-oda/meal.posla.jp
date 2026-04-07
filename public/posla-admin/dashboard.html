@@ -83,6 +83,21 @@
       color: var(--text-secondary);
       margin-bottom: 0.5rem;
     }
+    /* P1-5: パスワード変更ボタン */
+    .btn-change-password {
+      background: transparent;
+      border: 1px solid var(--border, #ddd);
+      color: var(--text-secondary, #666);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+    .btn-change-password:hover {
+      background: var(--bg-hover, #f5f5f5);
+      color: var(--text-primary, #333);
+    }
   </style>
 </head>
 <body>
@@ -94,6 +109,7 @@
     </div>
     <div class="admin-header__actions">
       <span class="admin-header__user" id="posla-header-user">-</span>
+      <button class="btn-change-password" id="posla-btn-change-password" type="button" title="パスワード変更">パスワード変更</button>
       <button class="btn-logout" id="posla-btn-logout">ログアウト</button>
     </div>
   </header>
@@ -287,6 +303,144 @@
   <script src="../shared/js/utils.js"></script>
   <script src="js/posla-api.js"></script>
   <script src="js/posla-app.js"></script>
+
+  <!-- パスワード変更モーダル（P1-5） -->
+  <div class="modal-overlay" id="password-change-overlay" style="display:none;opacity:1;visibility:visible;">
+    <div class="modal" style="max-width:420px;">
+      <div class="modal__header">
+        <h3 class="modal__title">パスワード変更</h3>
+        <button class="modal__close" type="button" id="pwd-modal-close">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div class="form-group">
+          <label class="form-label" for="pwd-current">現在のパスワード</label>
+          <input class="form-input" type="password" id="pwd-current" autocomplete="current-password">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pwd-new">新しいパスワード</label>
+          <input class="form-input" type="password" id="pwd-new" autocomplete="new-password">
+          <small style="display:block;margin-top:4px;color:#666;font-size:12px;">8文字以上、英字と数字を両方含めてください</small>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pwd-confirm">新しいパスワード（確認）</label>
+          <input class="form-input" type="password" id="pwd-confirm" autocomplete="new-password">
+        </div>
+        <div id="pwd-error" style="display:none;color:#d32f2f;font-size:13px;margin-top:8px;"></div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn-secondary" type="button" id="pwd-cancel">キャンセル</button>
+        <button class="btn btn-primary" type="button" id="pwd-submit">変更する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- パスワード変更（P1-5 / POSLA管理者） -->
+  <script>
+  (function () {
+    'use strict';
+
+    var API_ENDPOINT = '/api/posla/change-password.php';
+
+    var btnOpen = document.getElementById('posla-btn-change-password');
+    if (!btnOpen) return;
+
+    var overlay   = document.getElementById('password-change-overlay');
+    var inpCur    = document.getElementById('pwd-current');
+    var inpNew    = document.getElementById('pwd-new');
+    var inpConf   = document.getElementById('pwd-confirm');
+    var errBox    = document.getElementById('pwd-error');
+    var btnSubmit = document.getElementById('pwd-submit');
+    var btnCancel = document.getElementById('pwd-cancel');
+    var btnClose  = document.getElementById('pwd-modal-close');
+
+    function openModal() {
+      inpCur.value = '';
+      inpNew.value = '';
+      inpConf.value = '';
+      hideError();
+      overlay.style.display = 'flex';
+      setTimeout(function () { inpCur.focus(); }, 50);
+    }
+
+    function closeModal() {
+      overlay.style.display = 'none';
+      hideError();
+    }
+
+    function showError(msg) {
+      errBox.textContent = msg;
+      errBox.style.display = 'block';
+    }
+    function hideError() {
+      errBox.textContent = '';
+      errBox.style.display = 'none';
+    }
+
+    function validateClient() {
+      if (!inpCur.value) { showError('現在のパスワードを入力してください'); return false; }
+      if (!inpNew.value) { showError('新しいパスワードを入力してください'); return false; }
+      if (inpNew.value.length < 8) { showError('新しいパスワードは8文字以上で入力してください'); return false; }
+      if (!/[A-Za-z]/.test(inpNew.value)) { showError('新しいパスワードには英字を1文字以上含めてください'); return false; }
+      if (!/[0-9]/.test(inpNew.value)) { showError('新しいパスワードには数字を1文字以上含めてください'); return false; }
+      if (inpNew.value !== inpConf.value) { showError('新しいパスワードと確認用パスワードが一致しません'); return false; }
+      if (inpNew.value === inpCur.value) { showError('新しいパスワードは現在のパスワードと異なるものを設定してください'); return false; }
+      return true;
+    }
+
+    function submit() {
+      hideError();
+      if (!validateClient()) return;
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = '変更中...';
+
+      fetch(API_ENDPOINT, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_password: inpCur.value,
+          new_password: inpNew.value
+        })
+      })
+      .then(function (res) { return res.text().then(function (t) { return { status: res.status, text: t }; }); })
+      .then(function (r) {
+        var json;
+        try { json = JSON.parse(r.text); } catch (e) { json = null; }
+        if (r.status === 200 && json && json.ok) {
+          alert('パスワードを変更しました。');
+          closeModal();
+        } else {
+          var msg = (json && json.error && json.error.message) || 'パスワード変更に失敗しました';
+          showError(msg);
+        }
+      })
+      .catch(function () {
+        showError('通信エラーが発生しました');
+      })
+      .then(function () {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = '変更する';
+      });
+    }
+
+    btnOpen.addEventListener('click', openModal);
+    btnCancel.addEventListener('click', closeModal);
+    btnClose.addEventListener('click', closeModal);
+    btnSubmit.addEventListener('click', submit);
+
+    // Enterキーで送信
+    [inpCur, inpNew, inpConf].forEach(function (inp) {
+      inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      });
+    });
+
+    // オーバーレイクリックで閉じる
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeModal();
+    });
+  })();
+  </script>
 
 </body>
 </html>

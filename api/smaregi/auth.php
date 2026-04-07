@@ -10,6 +10,7 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/smaregi-client.php';
+require_once __DIR__ . '/../config/app.php';
 
 $user = require_role('owner');
 require_method(['GET']);
@@ -33,7 +34,7 @@ $params = http_build_query([
     'response_type' => 'code',
     'client_id'     => $config['client_id'],
     'scope'         => 'openid offline_access pos.products:read pos.transactions:read pos.transactions:write pos.stores:read',
-    'redirect_uri'  => 'https://eat.posla.jp/api/smaregi/callback.php',
+    'redirect_uri'  => APP_BASE_URL . '/api/smaregi/callback.php',
     'state'         => $state,
 ]);
 

@@ -82,3 +82,31 @@ INSERT IGNORE INTO ui_translations (lang, msg_key, msg_value) VALUES
 ('ko', 'checkout_view_receipt', '영수증 보기'),
 ('ko', 'checkout_receipt_note', '종이 영수증이 필요하시면 직원에게 말씀해 주세요'),
 ('ko', 'checkout_cancel_msg', '결제가 취소되었습니다');
+
+-- ============================================================
+-- P1-7b (2026-04-07): セルフメニュー決済UI改善
+-- ・checkout_pay_card / checkout_stripe_note の文言を中立的表現に変更
+-- ・新規キー checkout_payment_methods_label を追加（ロゴ列ラベル）
+-- 注: ui_translations の実カラムは msg_key / msg_value（プロンプトの tkey/text ではない）
+-- ============================================================
+
+-- 既存キーの文言更新
+UPDATE ui_translations SET msg_value = 'お支払いに進む'    WHERE lang = 'ja'      AND msg_key = 'checkout_pay_card';
+UPDATE ui_translations SET msg_value = 'Proceed to Payment' WHERE lang = 'en'      AND msg_key = 'checkout_pay_card';
+UPDATE ui_translations SET msg_value = '前往支付'           WHERE lang = 'zh-Hans' AND msg_key = 'checkout_pay_card';
+UPDATE ui_translations SET msg_value = '前往付款'           WHERE lang = 'zh-Hant' AND msg_key = 'checkout_pay_card';
+UPDATE ui_translations SET msg_value = '결제 진행'          WHERE lang = 'ko'      AND msg_key = 'checkout_pay_card';
+
+UPDATE ui_translations SET msg_value = 'Stripeの安全な決済画面でお支払いいただけます' WHERE lang = 'ja'      AND msg_key = 'checkout_stripe_note';
+UPDATE ui_translations SET msg_value = 'Securely powered by Stripe'                  WHERE lang = 'en'      AND msg_key = 'checkout_stripe_note';
+UPDATE ui_translations SET msg_value = '由 Stripe 安全支付'                           WHERE lang = 'zh-Hans' AND msg_key = 'checkout_stripe_note';
+UPDATE ui_translations SET msg_value = '由 Stripe 安全付款'                           WHERE lang = 'zh-Hant' AND msg_key = 'checkout_stripe_note';
+UPDATE ui_translations SET msg_value = 'Stripe 안전 결제'                             WHERE lang = 'ko'      AND msg_key = 'checkout_stripe_note';
+
+-- 新規キー追加（INSERT IGNORE で再実行に強くする）
+INSERT IGNORE INTO ui_translations (lang, msg_key, msg_value) VALUES
+('ja',      'checkout_payment_methods_label', 'ご利用可能'),
+('en',      'checkout_payment_methods_label', 'Available'),
+('zh-Hans', 'checkout_payment_methods_label', '可用支付方式'),
+('zh-Hant', 'checkout_payment_methods_label', '可用付款方式'),
+('ko',      'checkout_payment_methods_label', '사용 가능');

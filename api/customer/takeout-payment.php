@@ -3,7 +3,7 @@
  * テイクアウト オンライン決済確認 API（顧客向け・認証不要）
  *
  * GET ?order_id=xxx&session_id=xxx（Stripe用）
- * GET ?order_id=xxx&transaction_id=xxx（Square用）
+ * P1-2: Square 削除済み
  */
 
 require_once __DIR__ . '/../lib/response.php';
@@ -15,7 +15,6 @@ $pdo = get_db();
 
 $orderId = $_GET['order_id'] ?? null;
 $sessionId = $_GET['session_id'] ?? null;
-$transactionId = $_GET['transaction_id'] ?? null;
 
 if (!$orderId) json_error('MISSING_ORDER', 'order_idが必要です', 400);
 
@@ -77,53 +76,30 @@ try {
     // stripe-connect.php 未存在やカラム未存在時はスキップ（C-3にフォールスルー）
 }
 
-// C-3: 従来の直接決済検証（Connect 未使用の場合のみ）
+// C-3 / P1-2: 従来の直接決済検証（Connect 未使用 + Stripe のみ）
 if (!$connectUsed) {
-    $gwConfig = get_payment_gateway_config_full($pdo, $order['tenant_id']);
-    if (!$gwConfig || $gwConfig['gateway'] === 'none') {
+    $gwConfig = get_payment_gateway_config($pdo, $order['tenant_id']);
+    if (!$gwConfig || $gwConfig['gateway'] !== 'stripe') {
         json_error('NO_GATEWAY', '決済ゲートウェイが設定されていません', 500);
     }
 
     // Stripe: セッションID で確認
-    if ($gwConfig['gateway'] === 'stripe') {
-        // URLパラメータのsession_idが無い場合、注文メモから取得
-        if (!$sessionId) {
-            if (preg_match('/\[stripe_session:([^\]]+)\]/', $order['memo'] ?? '', $m)) {
-                $sessionId = $m[1];
-            }
-        }
-        if (!$sessionId) json_error('MISSING_SESSION', 'session_idが必要です', 400);
-
-        $result = verify_stripe_checkout($gwConfig['token'], $sessionId);
-        if ($result['success']) {
-            $verified = true;
-            $gatewayName = 'stripe';
-            $externalPaymentId = $result['payment_intent_id'] ?: $sessionId;
-            $gatewayStatus = $result['payment_status'] ?: 'paid';
-        } else {
-            json_error('PAYMENT_NOT_CONFIRMED', $result['error'] ?: '決済が確認できませんでした', 402);
+    // URLパラメータのsession_idが無い場合、注文メモから取得
+    if (!$sessionId) {
+        if (preg_match('/\[stripe_session:([^\]]+)\]/', $order['memo'] ?? '', $m)) {
+            $sessionId = $m[1];
         }
     }
+    if (!$sessionId) json_error('MISSING_SESSION', 'session_idが必要です', 400);
 
-    // Square: トランザクションID で確認
-    if ($gwConfig['gateway'] === 'square') {
-        if (!$transactionId) {
-            // 注文メモから取得試行
-            if (preg_match('/\[square_link:([^\]]+)\]/', $order['memo'] ?? '', $m)) {
-                $transactionId = $m[1];
-            }
-        }
-        if (!$transactionId) json_error('MISSING_TRANSACTION', 'transaction_idが必要です', 400);
-
-        $result = verify_square_payment($gwConfig['token'], $transactionId);
-        if ($result['success']) {
-            $verified = true;
-            $gatewayName = 'square';
-            $externalPaymentId = $result['payment_id'] ?: $transactionId;
-            $gatewayStatus = $result['status'] ?: 'COMPLETED';
-        } else {
-            json_error('PAYMENT_NOT_CONFIRMED', $result['error'] ?: '決済が確認できませんでした', 402);
-        }
+    $result = verify_stripe_checkout($gwConfig['token'], $sessionId);
+    if ($result['success']) {
+        $verified = true;
+        $gatewayName = 'stripe';
+        $externalPaymentId = $result['payment_intent_id'] ?: $sessionId;
+        $gatewayStatus = $result['payment_status'] ?: 'paid';
+    } else {
+        json_error('PAYMENT_NOT_CONFIRMED', $result['error'] ?: '決済が確認できませんでした', 402);
     }
 }
 

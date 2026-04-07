@@ -1281,21 +1281,9 @@
 
       var d = json.data;
 
-      // コンソールモック出力
-      if (_paymentMethod === 'cash') {
-        console.log('[Mock] ドロワー開放');
-      }
-      console.log('[Mock] レシート印字', {
-        total: d.totalAmount,
-        method: d.paymentMethod,
-        change: d.changeAmount,
-        partial: d.isPartial
-      });
-
       _playSuccess();
       var toastMsg = '会計完了: ' + Utils.formatYen(d.totalAmount);
-      if (d.gatewayName === 'square') toastMsg += ' (Square決済完了)';
-      else if (d.gatewayName === 'stripe') toastMsg += ' (Stripe決済完了)';
+      if (d.gatewayName === 'stripe') toastMsg += ' (Stripe決済完了)';
       _showToast(toastMsg, 'success');
       _lastPaymentId = d.payment_id;
       _showReceiptPreview();
@@ -2021,7 +2009,7 @@
   }
 
   // ═══════════════════════════════════
-  // L-13: Stripe Terminal（Connect経由カードリーダー）
+  // L-13 + P1-1: Stripe Terminal（Pattern A: 自前キー / Pattern B: Connect 両対応）
   // ═══════════════════════════════════
   var _terminal = null;
   var _terminalConnected = false;
@@ -2034,7 +2022,9 @@
       .then(function (text) {
         var json;
         try { json = JSON.parse(text); } catch (e) { return; }
-        if (!json.ok || !json.data || !json.data.connected || !json.data.charges_enabled) return;
+        if (!json.ok || !json.data) return;
+        // Pattern A or B のいずれかが有効な場合のみ初期化
+        if (!json.data.terminal_pattern) return;
 
         _terminal = StripeTerminal.create({
           onFetchConnectionToken: _fetchConnectionToken,
@@ -2044,7 +2034,7 @@
         _discoverReaders();
       })
       .catch(function (err) {
-        console.log('Terminal init skipped:', err.message || err);
+        console.error('Terminal init skipped:', err.message || err);
       });
   }
 
@@ -2073,14 +2063,14 @@
 
     _terminal.discoverReaders({ simulated: false }).then(function (result) {
       if (result.error) {
-        console.log('リーダー検出エラー:', result.error.message);
+        console.error('リーダー検出エラー:', result.error.message);
         _updateTerminalStatusUI();
         return;
       }
 
       var readers = result.discoveredReaders;
       if (readers.length === 0) {
-        console.log('リーダーが見つかりません');
+        console.warn('リーダーが見つかりません');
         _updateTerminalStatusUI();
         return;
       }

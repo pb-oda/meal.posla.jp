@@ -11,6 +11,7 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/smaregi-client.php';
+require_once __DIR__ . '/../config/app.php';
 
 // セッション開始（auth.phpで保存したstateを読み取る）
 start_auth_session();
@@ -65,7 +66,7 @@ $tokenUrl = 'https://id.smaregi.dev/authorize/token';
 $postFields = http_build_query([
     'grant_type'   => 'authorization_code',
     'code'         => $code,
-    'redirect_uri' => 'https://eat.posla.jp/api/smaregi/callback.php',
+    'redirect_uri' => APP_BASE_URL . '/api/smaregi/callback.php',
 ]);
 
 $authHeader = 'Authorization: Basic ' . base64_encode($config['client_id'] . ':' . $config['client_secret']);

@@ -34,23 +34,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $settings = $stmt->fetch();
     }
 
-    // include_ai_key=1 の場合はテナントからAPIキーを取得（認証済みスタッフ向け、KDS音声コマンド・AI競合調査用）
+    // include_ai_key=1 の場合はPOSLA共通設定からAPIキーを取得（認証済みスタッフ向け、KDS音声コマンド等の旧呼び出し元との互換用）
+    // ※新規実装は api/store/ai-generate.php / places-proxy.php を経由すること（キーをブラウザに渡さない）
     if (!empty($_GET['include_ai_key'])) {
-        $aiStmt = $pdo->prepare('SELECT t.ai_api_key, t.google_places_api_key FROM tenants t JOIN stores s ON s.tenant_id = t.id WHERE s.id = ?');
-        $aiStmt->execute([$storeId]);
-        $aiRow = $aiStmt->fetch();
+        $aiStmt = $pdo->prepare("SELECT setting_key, setting_value FROM posla_settings WHERE setting_key IN ('gemini_api_key', 'google_places_api_key')");
+        $aiStmt->execute();
+        $aiKey = null;
+        $placesKey = null;
+        while ($row = $aiStmt->fetch()) {
+            if ($row['setting_key'] === 'gemini_api_key') $aiKey = $row['setting_value'];
+            if ($row['setting_key'] === 'google_places_api_key') $placesKey = $row['setting_value'];
+        }
         json_response([
             'settings' => $settings,
-            'ai_api_key' => $aiRow ? $aiRow['ai_api_key'] : null,
-            'google_places_api_key' => $aiRow ? $aiRow['google_places_api_key'] : null
+            'ai_api_key' => $aiKey,
+            'google_places_api_key' => $placesKey
         ]);
     }
 
-    // テナントにAIキーが設定済みかフラグを付与
-    $aiStmt = $pdo->prepare('SELECT t.ai_api_key IS NOT NULL AND t.ai_api_key != "" AS ai_key_set FROM tenants t JOIN stores s ON s.tenant_id = t.id WHERE s.id = ?');
-    $aiStmt->execute([$storeId]);
+    // POSLA共通でAIキーが設定済みかフラグを付与
+    $aiStmt = $pdo->prepare("SELECT setting_value FROM posla_settings WHERE setting_key = 'gemini_api_key'");
+    $aiStmt->execute();
     $aiRow = $aiStmt->fetch();
-    $settings['ai_api_key_set'] = $aiRow && $aiRow['ai_key_set'] ? true : false;
+    $aiConfigured = $aiRow && !empty($aiRow['setting_value']);
+    $settings['ai_api_key_set'] = $aiConfigured;
+    $settings['ai_configured'] = $aiConfigured;
 
     // 通常レスポンスではAPIキー本体を含めない
     unset($settings['ai_api_key']);

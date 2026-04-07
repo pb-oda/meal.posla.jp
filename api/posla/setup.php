@@ -11,6 +11,7 @@
 
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/password-policy.php';
 
 require_method(['POST']);
 
@@ -36,6 +37,7 @@ if (empty($email)) {
 if (empty($password)) {
     json_error('MISSING_PASSWORD', 'パスワードは必須です', 400);
 }
+validate_password_strength($password);
 if (empty($displayName)) {
     json_error('MISSING_NAME', '表示名は必須です', 400);
 }

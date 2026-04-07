@@ -28,7 +28,13 @@
   - 飲食店スタッフはメールアドレスを持っていない・教えたくないケースが多い
   - ユーザー名は店舗内で一意であればOK（例：tanaka、suzuki、yamada01）
   - パスワードはオーナー/店長が初期設定し、スタッフに伝える
-  - スタッフは初回ログイン後に自分でパスワードを変更できる
+  - スタッフは初回ログイン後に自分でパスワードを変更できる（`POST /api/auth/change-password.php`）
+- **パスワードポリシー（P1-5）。**
+  - 最低8文字以上
+  - 英字（A-Z / a-z）を1文字以上必須
+  - 数字（0-9）を1文字以上必須
+  - 検証ロジックは `api/lib/password-policy.php` の `validate_password_strength()` に集約
+  - 適用対象: 新規ユーザー作成（owner/manager）、自己パスワード変更（テナント側 + POSLA管理者側）
 - **アカウント作成権限は階層型。**
   - オーナー → マネージャー・スタッフの両方を作成可能（全店舗対象）
   - マネージャー → 自分の所属店舗のスタッフのみ作成可能
@@ -54,6 +60,9 @@
 - 認証ロジック（`api/lib/auth.php`）を無断で変更しない
 - 全SQLはプリペアドステートメントを使用する（例外なし）
 - ユーザー入力は必ず `Utils.escapeHtml()` を通して `innerHTML` に挿入する
+- パスワード検証は `api/lib/password-policy.php` の `validate_password_strength()` を必ず通す（独自実装禁止）
+- パスワードは平文で保存・ログ出力しない。`password_hash(PASSWORD_DEFAULT)` でハッシュ化する
+- AI APIキー（Gemini等）をフロントエンド（JS/HTML）に露出させない。サーバープロキシ経由で呼び出す
 
 ### アーキテクチャ
 - IIFEパターン（`(function() { ... })();`）を崩さない
@@ -93,6 +102,18 @@
 - 取得は `GET /api/posla/settings.php`（POSLA管理者認証必須）
 - 決済キー（Square/Stripe）のみテナント個別。owner-dashboard.htmlの「決済設定」タブで管理
 - Google Places APIはサーバーサイドプロキシ（`api/store/places-proxy.php`）経由で呼び出す（CORS回避 + キー非露出）
+
+### サーバープロキシ経由の呼び出し（P1-6）
+- フロントエンド（admin/AI機能）から Gemini API を直接叩かない。**ブラウザにAPIキーを渡さない**
+- サーバー側プロキシ `api/store/ai-generate.php`（POST、`require_auth()` 必須）経由で呼び出す
+  - リクエスト Body: `{ prompt, temperature?, max_tokens? }`
+  - temperature: 0-2 にクランプ（未指定時は 0.7）
+  - max_tokens: 1-8192 にクランプ（未指定時は 1024）
+  - モデル: `gemini-2.0-flash`（ハードコード）
+  - レスポンス: `{ text }`（生成テキストのみ）
+  - エラー: `AI_NOT_CONFIGURED`(503) — `posla_settings.gemini_api_key` 未設定
+- `api/store/settings.php` の `?include_ai_key=1` 分岐は後方互換のため残しているが、`tenants.ai_api_key` ではなく `posla_settings` から読み出す（既存 voice-commander/shift-calendar/sold-out 用）
+- `public/admin/js/ai-assistant.js` は完全にプロキシ経由に移行済み。`_apiKey` 変数は廃止し `_apiConfigured`（boolean）のみ保持
 
 ### Web Speech API
 - Chrome推奨（continuous モード対応）

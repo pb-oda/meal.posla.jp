@@ -9,8 +9,8 @@ var AiAssistant = (function () {
   'use strict';
 
   var _container = null;
-  var _apiKey = null;
-  var _apiKeyLoaded = false;
+  var _apiConfigured = false;
+  var _settingsLoaded = false;
 
   // SNS用DOM参照
   var _inputStore = null;
@@ -73,10 +73,10 @@ var AiAssistant = (function () {
           _stores = json.data.stores || [];
           _renderOwnerDropdowns();
         }
-        _loadApiKey();
+        _loadSettings();
       })
       .catch(function () {
-        _loadApiKey();
+        _loadSettings();
       });
   }
 
@@ -388,10 +388,11 @@ var AiAssistant = (function () {
 
   }
 
-  // ── APIキー取得 ──
-  function _loadApiKey() {
+  // ── 設定読み込み（AI利用可否フラグ + 店舗情報） ──
+  // ※APIキー本体はサーバー側（api/store/ai-generate.php）に保持。ブラウザには渡さない
+  function _loadSettings() {
     var storeId = AdminApi.getCurrentStore();
-    // ownerの場合は最初の店舗を使用（APIキーはテナント共通）
+    // ownerの場合は最初の店舗を使用
     if (!storeId && _isOwner && _stores.length > 0) {
       storeId = _stores[0].id;
     }
@@ -400,11 +401,11 @@ var AiAssistant = (function () {
       return;
     }
 
-    _apiKeyLoaded = false;
-    _apiKey = null;
+    _settingsLoaded = false;
+    _apiConfigured = false;
     _setButtonsEnabled(false);
 
-    fetch('../../api/store/settings.php?store_id=' + encodeURIComponent(storeId) + '&include_ai_key=1', { credentials: 'same-origin' })
+    fetch('../../api/store/settings.php?store_id=' + encodeURIComponent(storeId), { credentials: 'same-origin' })
       .then(function (r) {
         return r.text().then(function (body) {
           if (!body) return {};
@@ -412,33 +413,30 @@ var AiAssistant = (function () {
         });
       })
       .then(function (json) {
-        _apiKeyLoaded = true;
-        if (json.ok && json.data) {
-          // Gemini APIキー（tenants経由）
-          if (json.data.ai_api_key) {
-            _apiKey = json.data.ai_api_key;
+        _settingsLoaded = true;
+        if (json.ok && json.data && json.data.settings) {
+          // POSLA共通APIキーが設定済みかフラグで判定
+          _apiConfigured = json.data.settings.ai_configured === true
+                        || json.data.settings.ai_api_key_set === true;
+          if (_apiConfigured) {
             _setButtonsEnabled(true);
             _hideMsg();
           } else {
-            _showMsg('オーナー画面でGemini APIキーを設定してください', 'warn');
+            _showMsg('AIサービスは現在利用できません。POSLA運営にお問い合わせください', 'warn');
           }
-          // Google Places APIキー（tenants経由）
-          _placesApiKey = json.data.google_places_api_key || '';
           // 店舗設定から住所・店舗名を取得
-          if (json.data.settings) {
-            _storeAddress = json.data.settings.receipt_address || '';
-            _storeName = json.data.settings.receipt_store_name || '';
-            // SNS店舗名をデフォルト入力（空欄の場合のみ）
-            if (_inputStore && !_inputStore.value && _storeName) {
-              _inputStore.value = _storeName;
-            }
+          _storeAddress = json.data.settings.receipt_address || '';
+          _storeName = json.data.settings.receipt_store_name || '';
+          // SNS店舗名をデフォルト入力（空欄の場合のみ）
+          if (_inputStore && !_inputStore.value && _storeName) {
+            _inputStore.value = _storeName;
           }
         } else {
-          _showMsg('オーナー画面でGemini APIキーを設定してください', 'warn');
+          _showMsg('AIサービスは現在利用できません。POSLA運営にお問い合わせください', 'warn');
         }
       })
       .catch(function () {
-        _apiKeyLoaded = true;
+        _settingsLoaded = true;
         _showMsg('設定の取得に失敗しました', 'error');
       });
   }
@@ -687,8 +685,8 @@ var AiAssistant = (function () {
 
     if (!storeName) { _inputStore.focus(); return; }
     if (!menu) { _inputMenu.focus(); return; }
-    if (!_apiKey) {
-      _showMsg('オーナー画面でGemini APIキーを設定してください', 'warn');
+    if (!_apiConfigured) {
+      _showMsg('AIサービスは現在利用できません。POSLA運営にお問い合わせください', 'warn');
       return;
     }
 
@@ -751,8 +749,8 @@ var AiAssistant = (function () {
       _showMsg('店舗を選択してください', 'warn');
       return;
     }
-    if (!_apiKey) {
-      _showMsg('オーナー画面でGemini APIキーを設定してください', 'warn');
+    if (!_apiConfigured) {
+      _showMsg('AIサービスは現在利用できません。POSLA運営にお問い合わせください', 'warn');
       return;
     }
 
@@ -857,8 +855,8 @@ var AiAssistant = (function () {
       _showMsg('店舗設定で住所を登録してください', 'warn');
       return;
     }
-    if (!_apiKey) {
-      _showMsg('オーナー画面でGemini APIキーを設定してください', 'warn');
+    if (!_apiConfigured) {
+      _showMsg('AIサービスは現在利用できません。POSLA運営にお問い合わせください', 'warn');
       return;
     }
 
@@ -1034,16 +1032,17 @@ var AiAssistant = (function () {
   // 共通ユーティリティ
   // ══════════════════════════════════
 
-  // ── Gemini API呼び出し（共通化）──
+  // ── Gemini API呼び出し（サーバープロキシ経由）──
+  // ※APIキーはサーバー側で保持。ブラウザには露出しない
   function _callGemini(prompt, onSuccess, onError) {
-    var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(_apiKey);
-
-    fetch(url, {
+    fetch('../../api/store/ai-generate.php', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.8, maxOutputTokens: 1024 }
+        prompt: prompt,
+        temperature: 0.8,
+        max_tokens: 1024
       })
     })
     .then(function (r) {
@@ -1053,13 +1052,11 @@ var AiAssistant = (function () {
       });
     })
     .then(function (json) {
-      if (json.error) {
-        throw new Error(json.error.message || 'Gemini APIエラー');
+      if (!json.ok) {
+        var msg = (json.error && json.error.message) || 'AI APIエラー';
+        throw new Error(msg);
       }
-      var text = '';
-      if (json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) {
-        text = json.candidates[0].content.parts[0].text || '';
-      }
+      var text = (json.data && json.data.text) || '';
       onSuccess(text);
     })
     .catch(function (err) {
@@ -1158,8 +1155,8 @@ var AiAssistant = (function () {
       _showMsg('店舗を選択してください', 'warn');
       return;
     }
-    if (!_apiKey) {
-      _showMsg('オーナー画面でGemini APIキーを設定してください', 'warn');
+    if (!_apiConfigured) {
+      _showMsg('AIサービスは現在利用できません。POSLA運営にお問い合わせください', 'warn');
       return;
     }
 
@@ -1291,15 +1288,15 @@ var AiAssistant = (function () {
       + '【重要】上記4セクション（需要予測・食材消費予測・発注が必要な食材・アドバイス）を全て必ず出力すること。\n'
       + '各セクションは簡潔にまとめてください。';
 
-    // 需要予測は温度低め + トークン多め
-    var geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(_apiKey);
-
-    fetch(geminiUrl, {
+    // 需要予測は温度低め + トークン多め（サーバープロキシ経由）
+    fetch('../../api/store/ai-generate.php', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.5, maxOutputTokens: 8192 }
+        prompt: prompt,
+        temperature: 0.5,
+        max_tokens: 8192
       })
     })
     .then(function (r) {
@@ -1309,13 +1306,11 @@ var AiAssistant = (function () {
       });
     })
     .then(function (json) {
-      if (json.error) {
-        throw new Error(json.error.message || 'Gemini APIエラー');
+      if (!json.ok) {
+        var msg = (json.error && json.error.message) || 'AI APIエラー';
+        throw new Error(msg);
       }
-      var text = '';
-      if (json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) {
-        text = json.candidates[0].content.parts[0].text || '';
-      }
+      var text = (json.data && json.data.text) || '';
       var cleaned = _cleanResponse(text);
       _rawResults.demand = cleaned;
       _showResult(_demandArea, cleaned, 'analysis', _demandCardStyle);

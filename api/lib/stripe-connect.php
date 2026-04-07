@@ -141,16 +141,21 @@ function get_connect_account($secretKey, $accountId) {
 }
 
 /**
- * Stripe Terminal Connection Token を Connect Account 用に発行
+ * Stripe Terminal Connection Token を発行
+ * Pattern B (Connect): $connectAccountId に Connect Account ID を渡す
+ * Pattern A (テナント自前): $connectAccountId を null/省略 → Stripe-Account ヘッダなし
+ *
  * @return array ['success' => bool, 'secret' => string|null, 'error' => string|null]
  */
-function create_terminal_connection_token($secretKey, $connectAccountId) {
+function create_terminal_connection_token($secretKey, $connectAccountId = null) {
     $url = 'https://api.stripe.com/v1/terminal/connection_tokens';
 
     $headers = [
         'Authorization: Bearer ' . $secretKey,
-        'Stripe-Account: ' . $connectAccountId,
     ];
+    if ($connectAccountId) {
+        $headers[] = 'Stripe-Account: ' . $connectAccountId;
+    }
 
     $result = _gateway_curl_post($url, '', $headers, true);
     if ($result['curl_error']) {

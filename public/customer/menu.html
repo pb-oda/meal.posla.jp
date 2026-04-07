@@ -142,6 +142,16 @@
     .checkout-summary__row--total { font-size:1.25rem; font-weight:bold; color:#333; padding-top:8px; border-top:2px solid #333; margin-top:8px; }
     .checkout-modal__pay-btn { display:block; width:100%; background:#2d7a4f; color:#fff; border:none; border-radius:8px; padding:14px; font-size:1.05rem; font-weight:bold; cursor:pointer; margin-bottom:8px; }
     .checkout-modal__pay-btn:disabled { background:#bdbdbd; cursor:not-allowed; }
+    .checkout-modal__methods { margin-top:0.75rem; display:flex; flex-direction:column; align-items:center; gap:0.5rem; }
+    .checkout-modal__methods-label { font-size:0.75rem; color:#666; letter-spacing:0.05em; }
+    .checkout-modal__methods-list { display:flex; flex-wrap:wrap; justify-content:center; gap:0.4rem; }
+    .checkout-modal__method-badge { display:inline-block; padding:0.25rem 0.5rem; font-size:0.7rem; font-weight:600; border:1px solid #d0d0d0; border-radius:4px; background:#fff; color:#333; letter-spacing:0.02em; line-height:1; white-space:nowrap; }
+    .checkout-modal__method-badge--visa { color:#1a1f71; border-color:#1a1f71; }
+    .checkout-modal__method-badge--master { color:#eb001b; border-color:#eb001b; }
+    .checkout-modal__method-badge--jcb { color:#0e4c96; border-color:#0e4c96; }
+    .checkout-modal__method-badge--amex { color:#2e77bc; border-color:#2e77bc; }
+    .checkout-modal__method-badge--apple { color:#000; border-color:#000; }
+    .checkout-modal__method-badge--google { color:#4285f4; border-color:#4285f4; }
     .checkout-modal__note { text-align:center; font-size:0.75rem; color:#999; margin:0 0 8px; }
     .checkout-done-modal { position:fixed; inset:0; z-index:2200; display:none; align-items:center; justify-content:center; }
     .checkout-done-modal.open { display:flex; }
@@ -2153,11 +2163,26 @@
       h += '<div class="checkout-summary__row checkout-summary__row--total"><span>' + _t('checkout_total', '合計') + '</span><span>&yen;' + (summary.total || 0).toLocaleString() + '</span></div>';
       h += '</div>';
 
-      // 決済ボタン
-      h += '<button class="checkout-modal__pay-btn" id="btn-pay">'
-        + _t('checkout_pay_card', 'カードで支払う') + ' &yen;' + (summary.total || 0).toLocaleString()
+      // 決済ボタン（data-original-text にラベルを保存。エラー時の復元用）
+      var payBtnLabel = _t('checkout_pay_card', 'お支払いに進む') + ' \xa5' + (summary.total || 0).toLocaleString();
+      h += '<button class="checkout-modal__pay-btn" id="btn-pay" data-original-text="' + Utils.escapeHtml(payBtnLabel) + '">'
+        + Utils.escapeHtml(payBtnLabel)
         + '</button>';
-      h += '<p class="checkout-modal__note">' + _t('checkout_stripe_note', 'Stripeの安全な決済ページに移動します') + '</p>';
+
+      // 決済手段ロゴ列（顧客が事前に対応決済手段を判断できるように明示）
+      h += '<div class="checkout-modal__methods">';
+      h += '<span class="checkout-modal__methods-label">' + _t('checkout_payment_methods_label', 'ご利用可能') + '</span>';
+      h += '<div class="checkout-modal__methods-list">';
+      h += '<span class="checkout-modal__method-badge checkout-modal__method-badge--visa">VISA</span>';
+      h += '<span class="checkout-modal__method-badge checkout-modal__method-badge--master">Mastercard</span>';
+      h += '<span class="checkout-modal__method-badge checkout-modal__method-badge--jcb">JCB</span>';
+      h += '<span class="checkout-modal__method-badge checkout-modal__method-badge--amex">AMEX</span>';
+      h += '<span class="checkout-modal__method-badge checkout-modal__method-badge--apple">Apple&nbsp;Pay</span>';
+      h += '<span class="checkout-modal__method-badge checkout-modal__method-badge--google">G&nbsp;Pay</span>';
+      h += '</div>';
+      h += '</div>';
+
+      h += '<p class="checkout-modal__note">' + _t('checkout_stripe_note', 'Stripeの安全な決済画面でお支払いいただけます') + '</p>';
 
       body.innerHTML = h;
 
@@ -2192,7 +2217,8 @@
       .catch(function (err) {
         alert(err.message || '決済処理に失敗しました');
         btn.disabled = false;
-        btn.textContent = _t('checkout_pay_card', 'カードで支払う');
+        // data-original-text 属性に保存した元ラベル（金額付き）に戻す
+        btn.textContent = btn.getAttribute('data-original-text') || _t('checkout_pay_card', 'お支払いに進む');
       });
     }
 

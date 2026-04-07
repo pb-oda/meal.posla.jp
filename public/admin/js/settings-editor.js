@@ -73,7 +73,7 @@ var SettingsEditor = (function () {
       + '<div class="settings-toggle-group">'
       + '<label class="settings-toggle"><input type="checkbox" class="settings-toggle__input" id="set-takeout-online"' + (parseInt(s.takeout_online_payment, 10) ? ' checked' : '') + '> 有効</label>'
       + '</div>'
-      + '<div style="font-size:0.75rem;color:#888;margin-top:0.25rem">オーナー管理画面で決済ゲートウェイ（Square/Stripe）を設定してから有効にしてください。</div></div>'
+      + '<div style="font-size:0.75rem;color:#888;margin-top:0.25rem">オーナー管理画面で決済ゲートウェイ（Stripe）を設定してから有効にしてください。</div></div>'
       + '<div id="takeout-qr-section" style="display:none;margin-top:1rem;padding:1rem;background:#f5f5f5;border-radius:8px;text-align:center;">'
       + '<p style="font-size:0.875rem;color:#333;margin-bottom:0.5rem;">テイクアウト注文ページ</p>'
       + '<div id="takeout-qr-code" style="display:inline-block;margin-bottom:0.5rem;"></div>'

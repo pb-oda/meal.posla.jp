@@ -956,7 +956,6 @@ var VoiceCommander = (function () {
             }
             // 品目単位ステータス: ファストパス（Gemini不要）
             var itemCmd2 = _detectItemCommandFastPath(transcript);
-            console.log('[VOICE-DEBUG] transcript="' + transcript + '" fastpath=' + (itemCmd2 ? itemCmd2.item.name : 'null') + ' orders=' + _lastOrders.length + ' items=' + (_lastOrders[0] ? (_lastOrders[0].items || []).map(function(it){return it.name+'|id='+(it.item_id?'Y':'N')+'|s='+it.status;}).join(', ') : 'none'));
             if (itemCmd2) {
               _setState('processing');
               var fastLabels2 = { preparing: '調理開始', ready: '完成', served: '提供済み' };

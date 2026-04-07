@@ -1,8 +1,8 @@
 -- ============================================================
 -- Seed Data — デモテナント + 2店舗 + ユーザー + メニュー
 -- ============================================================
--- パスワード: 全ユーザー 'password123'
--- password_hash('password123', PASSWORD_DEFAULT) の結果を使用
+-- パスワード: 全ユーザー 'Demo1234'
+-- password_hash('Demo1234', PASSWORD_DEFAULT) の結果を使用（P1-5新ポリシー: 8文字以上＋英字＋数字）
 
 SET NAMES utf8mb4;
 
@@ -32,16 +32,16 @@ INSERT INTO store_settings (store_id, receipt_store_name) VALUES
 -- ============================================================
 INSERT INTO users (id, tenant_id, email, password_hash, display_name, role) VALUES
 ('u-owner-001', 't-matsunoya-001', 'owner@matsunoya.com',
- '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+ '$2y$10$A0KbdNz9DAnUMXJjLFOD/eSgzslbQIrkkv3tO4C4Lr4iGA50Inm0a',
  'オーナー太郎', 'owner'),
 ('u-manager-001', 't-matsunoya-001', 'manager-shibuya@matsunoya.com',
- '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+ '$2y$10$A0KbdNz9DAnUMXJjLFOD/eSgzslbQIrkkv3tO4C4Lr4iGA50Inm0a',
  '渋谷マネージャー', 'manager'),
 ('u-manager-002', 't-matsunoya-001', 'manager-shinjuku@matsunoya.com',
- '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+ '$2y$10$A0KbdNz9DAnUMXJjLFOD/eSgzslbQIrkkv3tO4C4Lr4iGA50Inm0a',
  '新宿マネージャー', 'manager'),
 ('u-staff-001', 't-matsunoya-001', 'staff-shibuya@matsunoya.com',
- '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+ '$2y$10$A0KbdNz9DAnUMXJjLFOD/eSgzslbQIrkkv3tO4C4Lr4iGA50Inm0a',
  '渋谷スタッフ', 'staff');
 
 -- ============================================================

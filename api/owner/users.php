@@ -14,6 +14,7 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/password-policy.php';
 
 require_method(['GET', 'POST', 'PATCH', 'DELETE']);
 $user = require_role('manager');
@@ -102,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // username必須バリデーション
     if (!$username || !$password) json_error('MISSING_FIELDS', 'ユーザー名とパスワードは必須です', 400);
     if (!preg_match('/^[a-zA-Z0-9_-]{3,50}$/', $username)) json_error('INVALID_USERNAME', 'ユーザー名は半角英数字・ハイフン・アンダースコア（3〜50文字）で入力してください', 400);
-    if (strlen($password) < 6) json_error('WEAK_PASSWORD', 'パスワードは6文字以上にしてください', 400);
+    validate_password_strength($password);
     if (!in_array($role, ['owner', 'manager', 'staff'])) json_error('INVALID_ROLE', '無効なロールです', 400);
 
     // email任意バリデーション
@@ -221,7 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         $params[] = $data['is_active'] ? 1 : 0;
     }
     if (!empty($data['password'])) {
-        if (strlen($data['password']) < 6) json_error('WEAK_PASSWORD', 'パスワードは6文字以上にしてください', 400);
+        validate_password_strength($data['password']);
         $fields[] = 'password_hash = ?';
         $params[] = password_hash($data['password'], PASSWORD_DEFAULT);
     }

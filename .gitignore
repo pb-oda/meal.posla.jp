@@ -28,6 +28,10 @@ _backup_*/
 # Node
 node_modules/
 
+# VitePress build cache (intermediate, not deployed)
+docs/manual/.vitepress/dist/
+docs/manual/.vitepress/cache/
+
 # IDE
 .vscode/
 .idea/

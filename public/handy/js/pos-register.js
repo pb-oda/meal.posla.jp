@@ -664,7 +664,6 @@ var PosRegister = (function () {
   }
 
   function printReceipt() {
-    console.log('Receipt print requested');
     window.print();
   }
 

@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 );
                 $gwStmt->execute([$storeId]);
                 $gwRow = $gwStmt->fetch();
-                if ($gwRow && in_array($gwRow['payment_gateway'], ['square', 'stripe'], true)) {
+                if ($gwRow && $gwRow['payment_gateway'] === 'stripe') {
                     $onlinePaymentAvailable = true;
                 }
             } catch (PDOException $e) {}
@@ -382,50 +382,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // stripe-connect.php 未存在やカラム未存在時はスキップ（C-3にフォールスルー）
         }
 
-        // C-3: 従来の直接決済
-        $gwConfig = get_payment_gateway_config_full($pdo, $store['tenant_id']);
-        if (!$gwConfig || $gwConfig['gateway'] === 'none') {
+        // C-3 / P1-2: 従来の直接決済（Stripe のみ）
+        $gwConfig = get_payment_gateway_config($pdo, $store['tenant_id']);
+        if (!$gwConfig || $gwConfig['gateway'] !== 'stripe') {
             // 決済未設定 → 店頭払いにフォールバック
             $pdo->prepare("UPDATE orders SET status = 'pending' WHERE id = ?")->execute([$orderId]);
             json_response(['order_id' => $orderId, 'status' => 'pending', 'checkout_url' => null]);
         }
 
-        if ($gwConfig['gateway'] === 'stripe') {
-            $result = create_stripe_checkout_session(
-                $gwConfig['token'], $totalAmount, 'JPY', $orderName, $successUrl, $cancelUrl
-            );
-            if ($result['success'] && $result['checkout_url']) {
-                // セッションIDを注文に紐付け（後で決済確認に使用）
-                try {
-                    $pdo->prepare("UPDATE orders SET memo = CONCAT(COALESCE(memo,''), '\n[stripe_session:', ?, ']') WHERE id = ?")
-                        ->execute([$result['session_id'], $orderId]);
-                } catch (PDOException $e) {}
-                json_response(['order_id' => $orderId, 'status' => 'pending_payment', 'checkout_url' => $result['checkout_url']]);
-            }
-            // 決済URL生成失敗 → 店頭払いにフォールバック
-            $pdo->prepare("UPDATE orders SET status = 'pending' WHERE id = ?")->execute([$orderId]);
-            json_response(['order_id' => $orderId, 'status' => 'pending', 'checkout_url' => null, 'payment_error' => $result['error']]);
+        $result = create_stripe_checkout_session(
+            $gwConfig['token'], $totalAmount, 'JPY', $orderName, $successUrl, $cancelUrl
+        );
+        if ($result['success'] && $result['checkout_url']) {
+            // セッションIDを注文に紐付け（後で決済確認に使用）
+            try {
+                $pdo->prepare("UPDATE orders SET memo = CONCAT(COALESCE(memo,''), '\n[stripe_session:', ?, ']') WHERE id = ?")
+                    ->execute([$result['session_id'], $orderId]);
+            } catch (PDOException $e) {}
+            json_response(['order_id' => $orderId, 'status' => 'pending_payment', 'checkout_url' => $result['checkout_url']]);
         }
-
-        if ($gwConfig['gateway'] === 'square') {
-            $locId = $gwConfig['location_id'];
-            if (!$locId) {
-                $pdo->prepare("UPDATE orders SET status = 'pending' WHERE id = ?")->execute([$orderId]);
-                json_response(['order_id' => $orderId, 'status' => 'pending', 'checkout_url' => null, 'payment_error' => 'Square Location ID未設定']);
-            }
-            $result = create_square_payment_link(
-                $gwConfig['token'], $totalAmount, 'JPY', $orderName, $locId, $successUrl
-            );
-            if ($result['success'] && $result['checkout_url']) {
-                try {
-                    $pdo->prepare("UPDATE orders SET memo = CONCAT(COALESCE(memo,''), '\n[square_link:', ?, ']') WHERE id = ?")
-                        ->execute([$result['link_id'], $orderId]);
-                } catch (PDOException $e) {}
-                json_response(['order_id' => $orderId, 'status' => 'pending_payment', 'checkout_url' => $result['checkout_url']]);
-            }
-            $pdo->prepare("UPDATE orders SET status = 'pending' WHERE id = ?")->execute([$orderId]);
-            json_response(['order_id' => $orderId, 'status' => 'pending', 'checkout_url' => null, 'payment_error' => $result['error']]);
-        }
+        // 決済URL生成失敗 → 店頭払いにフォールバック
+        $pdo->prepare("UPDATE orders SET status = 'pending' WHERE id = ?")->execute([$orderId]);
+        json_response(['order_id' => $orderId, 'status' => 'pending', 'checkout_url' => null, 'payment_error' => $result['error']]);
     }
 
     json_response(['order_id' => $orderId, 'status' => 'pending']);

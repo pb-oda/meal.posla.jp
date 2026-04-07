@@ -97,6 +97,10 @@ POSLAは株式会社スマレジが提供するクラウドPOS「スマレジ」
    - スコープ：`pos.products:read`, `pos.stores:read`, `pos.transactions:read` など
 4. クライアントID（`client_id`）とクライアントシークレット（`client_secret`）を取得
 
+::: tip リダイレクトURIの管理（P1-8 で集約済み）
+POSLA側のコールバックURLは `api/config/app.php` の `APP_BASE_URL` 定数で一元管理されています。本番ドメイン切替時はこの1ファイルを書き換えるだけで `api/smaregi/auth.php` / `api/smaregi/callback.php` の両方が自動追随します。スマレジ開発者コンソール側にも本番ドメインのリダイレクトURIを追加で登録してください（既存のテスト環境用URIは残してOK）。
+:::
+
 ### 22.3.2 POSLA管理画面への登録
 
 POSLA管理画面の「API設定」タブで以下を入力：
