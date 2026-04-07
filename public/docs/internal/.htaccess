@@ -1,0 +1,4 @@
+AuthType Basic
+AuthName "POSLA Documentation"
+AuthUserFile /home/odah/www/eat-posla/docs/.htpasswd
+Require valid-user

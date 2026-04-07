@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a237e">
+  <title>ハンディPOS</title>
+  <link rel="stylesheet" href="css/handy.css">
+</head>
+<body>
+
+  <!-- ヘッダー -->
+  <header class="handy-header">
+    <div class="handy-header__left">
+      <span class="handy-header__title">ハンディ</span>
+      <span class="handy-header__store-name" id="handy-store-name">-</span>
+    </div>
+    <div class="handy-header__right">
+      <a href="#" class="handy-header__link" id="handy-change-store" style="display:none">店舗切替</a>
+      <span id="handy-user-name" class="handy-header__user">-</span>
+      <button id="btn-logout" class="handy-header__logout">ログアウト</button>
+    </div>
+  </header>
+
+  <!-- タブナビ -->
+  <nav class="handy-tabs">
+    <button class="handy-tabs__btn active" data-tab="dinein">店内注文</button>
+    <button class="handy-tabs__btn" data-tab="takeout">テイクアウト</button>
+    <button class="handy-tabs__btn" data-tab="tables">テーブル状況</button>
+    <button class="handy-tabs__btn" data-tab="history">注文履歴</button>
+  </nav>
+
+  <!-- 編集中バナー -->
+  <div id="edit-banner" class="edit-banner">
+    <span>修正中</span>
+    <button id="btn-cancel-edit">キャンセル</button>
+  </div>
+
+  <!-- 注文パネル（店内 & テイクアウト共用） -->
+  <div id="panel-order" class="handy-panel">
+    <!-- 店内: テーブル選択 -->
+    <div id="ctx-dinein" class="order-context">
+      <label>テーブル</label>
+      <select id="table-select" class="ctx-select">
+        <option value="">テーブルを選択</option>
+      </select>
+    </div>
+
+    <!-- テイクアウト: 顧客情報 -->
+    <div id="ctx-takeout" class="order-context" style="display:none">
+      <div class="ctx-row">
+        <input type="text" id="to-name" class="ctx-input" placeholder="顧客名">
+        <input type="tel" id="to-phone" class="ctx-input" placeholder="電話番号">
+      </div>
+      <div class="ctx-row">
+        <label>受取時間</label>
+        <input type="datetime-local" id="to-pickup" class="ctx-input">
+      </div>
+    </div>
+
+    <!-- カテゴリタブ -->
+    <div id="category-tabs" class="cat-tabs"></div>
+
+    <!-- メニューグリッド -->
+    <div id="menu-grid" class="menu-grid"></div>
+  </div>
+
+  <!-- テーブル状況パネル -->
+  <div id="panel-tables" class="handy-panel" style="display:none">
+    <div id="table-status-info" class="table-status__info"></div>
+    <div id="table-status-grid" class="table-status__grid"></div>
+  </div>
+
+  <!-- 注文履歴パネル -->
+  <div id="panel-history" class="handy-panel" style="display:none">
+    <div id="order-list" class="order-list"></div>
+  </div>
+
+  <!-- カートバー（固定フッター） -->
+  <div id="cart-bar" class="cart-bar">
+    <div class="cart-bar__summary" id="cart-summary">
+      <span class="cart-bar__badge" id="cart-badge">カート (0品)</span>
+      <span class="cart-bar__total" id="cart-total">¥0</span>
+      <button id="btn-submit" class="cart-bar__submit" disabled>注文送信</button>
+    </div>
+    <div class="cart-bar__detail" id="cart-detail" style="display:none">
+      <div id="cart-items"></div>
+      <div class="handy-memo-row" style="padding:8px 12px">
+        <input type="text" id="handy-order-memo" placeholder="メモ（ネギ抜き等）" maxlength="200" style="width:100%;padding:6px 10px;border:1px solid #444;border-radius:6px;background:#1a1a2e;color:#fff;font-size:0.85rem;box-sizing:border-box">
+      </div>
+      <div class="cart-bar__footer">
+        <button id="btn-clear-cart" class="btn-clear">クリア</button>
+        <span class="cart-bar__footer-total">合計: ¥0</span>
+        <button id="btn-submit2" class="cart-bar__submit" disabled>注文送信</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- オプション選択モーダル -->
+  <div id="option-overlay" class="opt-overlay">
+    <div class="opt-modal">
+      <div class="opt-modal__header">
+        <span id="option-modal-title" class="opt-modal__title"></span>
+        <button id="option-modal-cancel" class="opt-modal__close">&times;</button>
+      </div>
+      <div id="option-modal-body" class="opt-modal__body"></div>
+      <div class="opt-modal__footer">
+        <span id="option-modal-price" class="opt-modal__price">¥0</span>
+        <button id="option-modal-add" class="opt-modal__add">カートに追加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 店舗選択オーバーレイ -->
+  <div class="handy-store-overlay" id="handy-store-overlay" style="display:none">
+    <div class="handy-store-overlay__box">
+      <div class="handy-store-overlay__title">店舗を選択してください</div>
+      <div class="handy-store-overlay__list" id="handy-store-list"></div>
+    </div>
+  </div>
+
+  <!-- トースト -->
+  <div id="toast" class="handy-toast"></div>
+
+  <script src="../shared/js/utils.js"></script>
+  <script src="js/handy-app.js?v=20260405"></script>
+  <script>
+  (function () {
+    'use strict';
+    HandyApp.init();
+  })();
+  </script>
+  <script src="js/handy-alert.js?v=20260404f"></script>
+  <script src="../js/theme-switcher.js"></script>
+  <script>ThemeSwitcher.injectButton(document.querySelector('.handy-header__right'));</script>
+  <script src="../js/offline-detector.js"></script>
+  <script src="../js/session-monitor.js"></script>
+</body>
+</html>

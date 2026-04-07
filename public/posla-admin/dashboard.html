@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#3f51b5">
+  <title>POSLA管理画面</title>
+  <link rel="stylesheet" href="../admin/css/admin.css">
+  <style>
+    /* POSLA管理画面固有スタイル */
+    .posla-tab-panel {
+      display: none;
+    }
+    .posla-tab-panel.active {
+      display: block;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 1.25rem;
+      text-align: center;
+    }
+    .stat-card__value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1.2;
+    }
+    .stat-card__label {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+    .section-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.75rem;
+    }
+    .section-block {
+      margin-bottom: 1.5rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge--active {
+      background: var(--success-light);
+      color: var(--success);
+    }
+    .badge--inactive {
+      background: var(--danger-light);
+      color: var(--danger);
+    }
+    .badge--standard { background: var(--info-light); color: var(--info); }
+    .badge--pro { background: var(--warning-light); color: #e65100; }
+    .badge--enterprise { background: #ede7f6; color: #5e35b1; }
+    .ai-status {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+    .ai-status--set { background: var(--success); }
+    .ai-status--unset { background: #ccc; }
+    .modal-section {
+      margin-bottom: 1rem;
+    }
+    .modal-section__title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ヘッダー -->
+  <header class="admin-header">
+    <div class="admin-header__left">
+      <span class="admin-header__title" id="posla-header-title">POSLA管理画面</span>
+    </div>
+    <div class="admin-header__actions">
+      <span class="admin-header__user" id="posla-header-user">-</span>
+      <button class="btn-logout" id="posla-btn-logout">ログアウト</button>
+    </div>
+  </header>
+
+  <!-- タブナビゲーション -->
+  <nav class="tab-nav" id="posla-tab-nav">
+    <button class="tab-nav__btn" data-tab="overview">ダッシュボード</button>
+    <button class="tab-nav__btn" data-tab="tenants">テナント管理</button>
+    <button class="tab-nav__btn" data-tab="create-tenant">テナント作成</button>
+    <button class="tab-nav__btn" data-tab="api-settings">API設定</button>
+  </nav>
+
+  <!-- メインコンテンツ -->
+  <div class="admin-content">
+
+    <!-- ダッシュボード -->
+    <div class="posla-tab-panel" id="posla-panel-overview">
+      <div class="panel-header"><h2 class="panel-header__title">ダッシュボード</h2></div>
+      <div id="overview-stats" class="stat-grid"></div>
+      <div class="section-block">
+        <h3 class="section-title">プラン別分布</h3>
+        <div id="plan-distribution"></div>
+      </div>
+      <div class="section-block">
+        <h3 class="section-title">最近のテナント</h3>
+        <div id="recent-tenants"></div>
+      </div>
+    </div>
+
+    <!-- テナント管理 -->
+    <div class="posla-tab-panel" id="posla-panel-tenants">
+      <div class="panel-header"><h2 class="panel-header__title">テナント管理</h2></div>
+      <div id="tenants-list"></div>
+    </div>
+
+    <!-- テナント作成 -->
+    <div class="posla-tab-panel" id="posla-panel-create-tenant">
+      <div class="panel-header"><h2 class="panel-header__title">テナント新規作成</h2></div>
+      <div class="card" style="max-width:500px;">
+        <div class="card__body">
+          <div class="form-group">
+            <label class="form-label" for="new-slug">Slug（URL識別子）</label>
+            <input class="form-input" type="text" id="new-slug" placeholder="my-restaurant" pattern="[a-z0-9\-]+">
+            <span class="form-hint">半角英小文字・数字・ハイフンのみ</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="new-name">テナント名</label>
+            <input class="form-input" type="text" id="new-name" placeholder="レストラン名">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="new-plan">プラン</label>
+            <select class="form-input" id="new-plan">
+              <option value="standard" selected>Standard</option>
+              <option value="pro">Pro</option>
+              <option value="enterprise">Enterprise</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btn-create-tenant">テナントを作成</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- API設定 -->
+    <div class="posla-tab-panel" id="posla-panel-api-settings">
+      <div class="panel-header"><h2 class="panel-header__title">API設定（POSLA共通）</h2></div>
+      <div class="card" style="max-width:560px;">
+        <div class="card__body">
+          <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1.25rem;">
+            POSLA運営が管理するAPIキーです。全テナントで共通利用されます。
+          </p>
+          <div id="current-api-status" style="margin-bottom:1.25rem;"></div>
+          <div class="form-group">
+            <label class="form-label" for="posla-ai-key">Gemini APIキー</label>
+            <input class="form-input" type="password" id="posla-ai-key" placeholder="新しいキーを入力...">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="posla-places-key">Google Places APIキー</label>
+            <input class="form-input" type="password" id="posla-places-key" placeholder="新しいキーを入力...">
+          </div>
+          <hr style="margin:1.5rem 0;">
+          <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1.25rem;">
+            Stripe Billing（サブスクリプション課金）
+          </p>
+          <div class="form-group">
+            <label class="form-label" for="posla-stripe-secret">Stripe Secret Key</label>
+            <input class="form-input" type="password" id="posla-stripe-secret" placeholder="sk_test_...">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="posla-stripe-pub">Stripe Publishable Key</label>
+            <input class="form-input" type="password" id="posla-stripe-pub" placeholder="pk_test_...">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="posla-stripe-webhook">Stripe Webhook Secret</label>
+            <input class="form-input" type="password" id="posla-stripe-webhook" placeholder="whsec_...">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="posla-stripe-price-std">Price ID: Standard</label>
+            <input class="form-input" type="text" id="posla-stripe-price-std" placeholder="price_...">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="posla-stripe-price-pro">Price ID: Pro</label>
+            <input class="form-input" type="text" id="posla-stripe-price-pro" placeholder="price_...">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="posla-stripe-price-ent">Price ID: Enterprise</label>
+            <input class="form-input" type="text" id="posla-stripe-price-ent" placeholder="price_...">
+          </div>
+          <hr style="margin:1.5rem 0;">
+          <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1.25rem;">
+            Stripe Connect（決済代行）
+          </p>
+          <div class="form-group">
+            <label class="form-label" for="posla-connect-fee">Application Fee (%)</label>
+            <input class="form-input" type="number" id="posla-connect-fee" step="0.1" min="0" max="10" style="width:120px;" placeholder="1.0">
+            <span class="form-hint">テナント決済時にPOSLAが受け取る手数料率</span>
+          </div>
+          <hr style="margin:1.5rem 0;">
+          <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1.25rem;">
+            スマレジ連携（外部POS）
+          </p>
+          <div class="form-group">
+            <label class="form-label" for="posla-smaregi-client-id">Client ID</label>
+            <input class="form-input" type="text" id="posla-smaregi-client-id" placeholder="スマレジ Client ID">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="posla-smaregi-client-secret">Client Secret</label>
+            <input class="form-input" type="password" id="posla-smaregi-client-secret" placeholder="スマレジ Client Secret">
+          </div>
+          <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
+            <button class="btn btn-primary" id="btn-save-api">保存</button>
+            <button class="btn" id="btn-clear-api" style="color:var(--danger);border:1px solid var(--danger);">キーを削除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- テナント編集モーダル -->
+  <div class="modal-overlay" id="tenant-modal-overlay">
+    <div class="modal" style="max-width:520px;">
+      <div class="modal__header">
+        <h3 class="modal__title" id="modal-tenant-title">テナント編集</h3>
+        <button class="modal__close" id="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal__body">
+        <input type="hidden" id="modal-tenant-id">
+
+        <div class="modal-section">
+          <div class="modal-section__title">基本情報</div>
+          <div class="form-group">
+            <label class="form-label" for="modal-tenant-name">テナント名</label>
+            <input class="form-input" type="text" id="modal-tenant-name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Slug</label>
+            <input class="form-input" type="text" id="modal-tenant-slug" disabled>
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section__title">プラン・状態</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="modal-tenant-plan">プラン（Stripe連動）</label>
+              <input class="form-input" id="modal-tenant-plan" type="text" readonly
+                     style="background:#f0f0f0;cursor:not-allowed;"
+                     title="プランはお客様がStripe経由で変更します">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modal-tenant-active">状態</label>
+              <select class="form-input" id="modal-tenant-active">
+                <option value="1">有効</option>
+                <option value="0">無効</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn-secondary" id="modal-cancel-btn">キャンセル</button>
+        <button class="btn btn-primary" id="modal-save-btn">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- トースト -->
+  <div id="posla-toast" style="position:fixed;bottom:1.5rem;right:1.5rem;background:#333;color:#fff;padding:0.75rem 1.25rem;border-radius:6px;font-size:0.875rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;"></div>
+
+  <script src="../shared/js/utils.js"></script>
+  <script src="js/posla-api.js"></script>
+  <script src="js/posla-app.js"></script>
+
+</body>
+</html>

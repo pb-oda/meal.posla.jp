@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f1923">
+  <title>POSレジ - Cashier</title>
+  <link rel="stylesheet" href="css/cashier.css?v=20260405">
+  <script src="https://js.stripe.com/terminal/v1/"></script>
+</head>
+<body class="ca-body">
+
+  <!-- ヘッダー -->
+  <header class="ca-header">
+    <div class="ca-header__left">
+      <span class="ca-header__title">POSレジ</span>
+      <span class="ca-header__store" id="ca-store-name">-</span>
+    </div>
+    <div class="ca-header__right">
+      <span id="terminal-status" style="display:none;font-size:0.85em;margin-right:8px;"></span>
+      <span class="ca-header__staff" id="ca-staff-name"></span>
+      <span class="ca-header__clock" id="ca-clock">--:--:--</span>
+      <button class="ca-header__btn" id="ca-btn-journal">
+        <span class="ca-header__btn-icon">&#x1F4CB;</span>取引履歴
+      </button>
+      <button class="ca-header__btn" id="ca-btn-register-ctrl">
+        <span class="ca-header__btn-icon">&#x1F4B0;</span>レジ開閉
+      </button>
+      <button class="ca-header__btn" id="ca-btn-sound">
+        <span class="ca-header__btn-icon">&#x1F50A;</span>音声
+      </button>
+    </div>
+  </header>
+
+  <!-- メインレイアウト（2カラム） -->
+  <main class="ca-main">
+    <!-- 左カラム: テーブル一覧 -->
+    <section class="ca-table-list">
+      <div class="ca-table-list__header">
+        <span class="ca-table-list__title">会計待ちテーブル</span>
+        <button class="ca-merge-toggle" id="ca-btn-merge-toggle">合流会計</button>
+        <span class="ca-table-list__count" id="ca-table-count">0</span>
+      </div>
+      <div class="ca-table-list__body" id="ca-table-body"></div>
+    </section>
+
+    <!-- 右カラム: レジ -->
+    <section class="ca-register" id="ca-register"></section>
+  </main>
+
+  <!-- レシートプレビューモーダル -->
+  <div class="ca-modal-overlay" id="ca-receipt-modal">
+    <div class="ca-receipt" id="ca-receipt-body"></div>
+  </div>
+
+  <!-- パネルオーバーレイ -->
+  <div class="ca-panel-overlay" id="ca-panel-overlay"></div>
+
+  <!-- 取引ジャーナルパネル -->
+  <div class="ca-slide-panel" id="ca-journal-panel">
+    <div class="ca-slide-panel__header">
+      <span class="ca-slide-panel__title">取引履歴</span>
+      <button class="ca-slide-panel__close" data-panel="journal">&times;</button>
+    </div>
+    <div class="ca-slide-panel__body" id="ca-journal-body"></div>
+  </div>
+
+  <!-- レジ開閉パネル -->
+  <div class="ca-slide-panel" id="ca-register-ctrl-panel">
+    <div class="ca-slide-panel__header">
+      <span class="ca-slide-panel__title">レジ開閉</span>
+      <button class="ca-slide-panel__close" data-panel="register-ctrl">&times;</button>
+    </div>
+    <div class="ca-slide-panel__body" id="ca-register-ctrl-body"></div>
+  </div>
+
+  <!-- トースト -->
+  <div class="ca-toast" id="ca-toast"></div>
+
+  <script src="../shared/js/utils.js"></script>
+  <script src="js/kds-auth.js"></script>
+  <script src="js/cashier-app.js?v=20260405"></script>
+  <script>
+  (function () {
+    'use strict';
+    CashierApp.init();
+  })();
+  </script>
+  <script src="../js/theme-switcher.js"></script>
+  <script>ThemeSwitcher.injectButton(document.querySelector('.ca-header__right'));</script>
+  <script src="../js/offline-detector.js"></script>
+  <script src="../js/session-monitor.js"></script>
+</body>
+</html>

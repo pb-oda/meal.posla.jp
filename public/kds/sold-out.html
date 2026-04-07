@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#263238">
+  <title>品切れ管理 - KDS</title>
+  <link rel="stylesheet" href="css/kds.css">
+  <style>
+    .so-container { padding: 1rem; max-width: 800px; margin: 0 auto; }
+    .so-category { margin-bottom: 1.5rem; }
+    .so-category__title { font-size: 1rem; font-weight: 700; color: #90caf9; margin-bottom: 0.5rem; padding-bottom: 0.25rem; border-bottom: 1px solid #37474f; }
+    .so-item { display: flex; align-items: center; justify-content: space-between; padding: 0.625rem 0.5rem; border-bottom: 1px solid #2a2a3e; }
+    .so-item:last-child { border-bottom: none; }
+    .so-item__name { flex: 1; font-size: 0.9375rem; }
+    .so-item__price { color: #90caf9; font-size: 0.875rem; margin-right: 1rem; white-space: nowrap; }
+    .so-item__source { font-size: 0.6875rem; color: #666; margin-right: 0.75rem; }
+    .so-toggle { position: relative; width: 50px; height: 28px; flex-shrink: 0; }
+    .so-toggle input { opacity: 0; width: 0; height: 0; }
+    .so-toggle__slider { position: absolute; inset: 0; background: #43a047; border-radius: 28px; cursor: pointer; transition: background 0.3s; }
+    .so-toggle__slider::before { content: ''; position: absolute; width: 22px; height: 22px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: transform 0.3s; }
+    .so-toggle input:checked + .so-toggle__slider { background: #e53935; }
+    .so-toggle input:checked + .so-toggle__slider::before { transform: translateX(22px); }
+    .so-label { font-size: 0.75rem; min-width: 3rem; text-align: center; }
+    .so-label--ok { color: #43a047; }
+    .so-label--out { color: #e53935; }
+    .so-loading { text-align: center; padding: 3rem; color: #999; }
+    /* 音声コマンド: 品切れ一覧ハイライト */
+    .so-item--highlight { background: rgba(229,57,53,0.18); border-left: 3px solid #e53935; animation: so-flash 0.6s ease 2; }
+    @keyframes so-flash { 0%,100% { background: rgba(229,57,53,0.18); } 50% { background: rgba(229,57,53,0.35); } }
+    /* 音声コマンド: 品切れ一覧オーバーレイ */
+    .so-voice-overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #263238; color: #fff; padding: 1.5rem 2rem; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); z-index: 10000; max-width: 90vw; max-height: 70vh; overflow-y: auto; font-size: 1rem; line-height: 1.6; }
+    .so-voice-overlay__title { font-size: 1.1rem; font-weight: 700; color: #e53935; margin-bottom: 0.75rem; }
+    .so-voice-overlay__item { padding: 0.3rem 0; border-bottom: 1px solid #37474f; }
+    .so-voice-overlay__item:last-child { border-bottom: none; }
+    .so-voice-overlay__none { color: #4CAF50; font-weight: 700; font-size: 1.1rem; }
+    @keyframes so-pop-in { 0% { opacity:0; transform:translate(-50%,-50%) scale(0.7); } 100% { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+  </style>
+</head>
+<body>
+
+  <header class="kds-header">
+    <div class="kds-header__left">
+      <span class="kds-header__title">品切れ管理</span>
+      <span class="kds-header__store-name" id="kds-store-name">-</span>
+    </div>
+    <div class="kds-header__right">
+      <a href="#" class="kds-header__link" id="kds-change-store" style="display:none">店舗切替</a>
+      <a href="index.html" class="kds-header__link">KDS画面</a>
+      <span class="kds-header__user" id="kds-user-name">-</span>
+      <button class="kds-header__logout" id="btn-kds-logout">ログアウト</button>
+    </div>
+  </header>
+
+  <div class="so-container" id="so-container">
+    <div class="so-loading">読み込み中...</div>
+  </div>
+
+  <!-- 店舗選択オーバーレイ -->
+  <div class="kds-store-overlay" id="kds-store-overlay" style="display:none">
+    <div class="kds-store-overlay__box">
+      <div class="kds-store-overlay__title">店舗を選択してください</div>
+      <div class="kds-store-overlay__list" id="kds-store-list"></div>
+    </div>
+  </div>
+
+  <script src="../shared/js/utils.js"></script>
+  <script src="js/kds-auth.js"></script>
+  <script src="js/sold-out-renderer.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    function showStoreOverlay(stores, onSelect) {
+      var overlay = document.getElementById('kds-store-overlay');
+      var list = document.getElementById('kds-store-list');
+      var html = '';
+      stores.forEach(function (s) {
+        html += '<button class="kds-store-overlay__btn" data-store-id="' + s.id + '">' + Utils.escapeHtml(s.name) + '</button>';
+      });
+      list.innerHTML = html;
+      overlay.style.display = 'flex';
+
+      list.addEventListener('click', function handler(e) {
+        var btn = e.target.closest('.kds-store-overlay__btn');
+        if (!btn) return;
+        list.removeEventListener('click', handler);
+        overlay.style.display = 'none';
+        onSelect(btn.dataset.storeId);
+      });
+    }
+
+    KdsAuth.init().catch(function () {}).then(function (ctx) {
+      if (!ctx) return;
+      document.getElementById('kds-user-name').textContent = ctx.user.displayName || ctx.user.email;
+
+      // 店舗名テキスト表示
+      var storeNameEl = document.getElementById('kds-store-name');
+      var changeLinkEl = document.getElementById('kds-change-store');
+      var currentStore = ctx.stores.find(function (s) { return s.id === ctx.storeId; });
+      if (currentStore) storeNameEl.textContent = currentStore.name;
+
+      function initSoldOut(storeId) {
+        SoldOutRenderer.init(document.getElementById('so-container'), storeId);
+      }
+
+      // 複数店舗: オーバーレイまたは切替リンク
+      if (ctx.stores.length > 1) {
+        var savedStore = localStorage.getItem('mt_kds_store');
+        if (!savedStore || !ctx.stores.some(function (s) { return s.id === savedStore; })) {
+          // 初回: オーバーレイで選択を強制
+          showStoreOverlay(ctx.stores, function (selectedId) {
+            KdsAuth.setStore(selectedId);
+            var s = ctx.stores.find(function (x) { return x.id === selectedId; });
+            storeNameEl.textContent = s ? s.name : '-';
+            changeLinkEl.style.display = '';
+            initSoldOut(selectedId);
+          });
+          return;
+        }
+        // 2回目以降: 切替リンク表示
+        changeLinkEl.style.display = '';
+        changeLinkEl.addEventListener('click', function (e) {
+          e.preventDefault();
+          showStoreOverlay(ctx.stores, function (selectedId) {
+            KdsAuth.setStore(selectedId);
+            var s = ctx.stores.find(function (x) { return x.id === selectedId; });
+            storeNameEl.textContent = s ? s.name : '-';
+            SoldOutRenderer.load(selectedId);
+          });
+        });
+      }
+
+      initSoldOut(ctx.storeId);
+    });
+
+    document.getElementById('btn-kds-logout').addEventListener('click', function () {
+      fetch('../../api/auth/logout.php', { method: 'DELETE', credentials: 'same-origin' })
+        .finally(function () { window.location.href = '../admin/index.html'; });
+    });
+
+    // ── 品切れ管理 音声コマンド（Gemini連携）──
+    (function () {
+      var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) return;
+
+      var _VOICE_KEY = 'mt_kds_voice_active';
+      var _apiKey = null;
+      var _apiKeyLoaded = false;
+      var _menuItems = [];
+      var _recog = null;
+      var _state = 'off'; // off | standby | processing
+      var _shouldRestart = false;
+      var _interimCmd = null;
+      var _interimTimer = null;
+      var _blinkTimer = null;
+      var _refreshTimer = null;
+      var _REFRESH_INTERVAL = 3 * 60 * 1000; // 3分
+      var _standbyHint = '🎤 音声待機中（例:「○○品切れ」「KDS」「コマンド一覧」）';
+
+      // コマンド検出パターン
+      var _actionWords = [
+        '品切れ', '品切', '売り切れ', '売切',
+        '販売再開', '再開', '解除', '復活',
+        '品切れ確認', '品切れ一覧',
+        'KDS', 'kds', 'ケーディーエス', 'キッチン', '戻る', '戻って'
+      ];
+
+      // KDS遷移のファストパス（Gemini不要）
+      var _navWords = ['KDS', 'kds', 'ケーディーエス'];
+
+      // 品切れ一覧のファストパス（Gemini不要）
+      var _listWords = ['品切れ一覧', '品切れ確認', '今の品切れ', '品切れリスト'];
+
+      // コマンド一覧ファストパス
+      var _helpWords = ['コマンド一覧', 'コマンドリスト', 'ヘルプ', '使い方', '何ができる'];
+
+      // スクロールファストパス
+      var _scrollDownWords = ['下にスクロール', 'スクロールダウン', '下スクロール', '下に移動'];
+      var _scrollUpWords = ['上にスクロール', 'スクロールアップ', '上スクロール', '上に移動'];
+
+      function _isHelpCommand(text) {
+        for (var i = 0; i < _helpWords.length; i++) {
+          if (text.indexOf(_helpWords[i]) !== -1) return true;
+        }
+        return false;
+      }
+
+      function _detectScroll(text) {
+        for (var i = 0; i < _scrollDownWords.length; i++) {
+          if (text.indexOf(_scrollDownWords[i]) !== -1) return 'down';
+        }
+        for (var j = 0; j < _scrollUpWords.length; j++) {
+          if (text.indexOf(_scrollUpWords[j]) !== -1) return 'up';
+        }
+        return null;
+      }
+
+      function _executeHelp() {
+        var existing = document.getElementById('so-help-overlay');
+        if (existing) existing.parentNode.removeChild(existing);
+        var ov = document.createElement('div');
+        ov.id = 'so-help-overlay';
+        ov.className = 'so-voice-overlay';
+        ov.innerHTML = '<div style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;color:#42a5f5;">音声コマンド一覧</div>'
+          + '<div style="margin-bottom:0.75rem;"><span style="color:#4CAF50;font-weight:700;">■ 品切れ操作</span><br>'
+          + '「○○ 品切れ」「○○ 販売再開」</div>'
+          + '<div style="margin-bottom:0.75rem;"><span style="color:#4CAF50;font-weight:700;">■ 品切れ確認</span><br>'
+          + '「品切れ一覧」「品切れ確認」</div>'
+          + '<div style="margin-bottom:0.75rem;"><span style="color:#4CAF50;font-weight:700;">■ 画面操作</span><br>'
+          + '「下にスクロール」「上にスクロール」</div>'
+          + '<div style="margin-bottom:0.75rem;"><span style="color:#4CAF50;font-weight:700;">■ ナビゲーション</span><br>'
+          + '「KDS」「戻る」</div>'
+          + '<div><span style="color:#4CAF50;font-weight:700;">■ システム</span><br>'
+          + '「コマンド一覧」</div>'
+          + '<div style="margin-top:1rem;font-size:0.75rem;color:#999;">タップで閉じる</div>';
+        document.body.appendChild(ov);
+        ov.addEventListener('click', function () { if (ov.parentNode) ov.parentNode.removeChild(ov); });
+        setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 15000);
+        _returnToStandby();
+      }
+
+      function _executeScroll(dir) {
+        var amount = Math.round(window.innerHeight * 0.6);
+        window.scrollBy({ top: dir === 'down' ? amount : -amount, behavior: 'smooth' });
+        _showStatus(dir === 'down' ? '↓ 下にスクロール' : '↑ 上にスクロール', 1500);
+        _returnToStandby();
+      }
+
+      // ── APIキー取得 ──
+      function _loadApiKey() {
+        var storeId = KdsAuth.getStoreId();
+        if (!storeId) { return; } // storeId未取得ならスキップ（_initVoiceDataがリトライ）
+        fetch('../../api/store/settings.php?store_id=' + encodeURIComponent(storeId) + '&include_ai_key=1', { credentials: 'same-origin' })
+          .then(function (r) {
+            return r.text().then(function (body) {
+              if (!body) return {};
+              try { return JSON.parse(body); } catch (e) { return {}; }
+            });
+          })
+          .then(function (json) {
+            _apiKeyLoaded = true;
+            if (json.ok && json.data && json.data.ai_api_key) {
+              _apiKey = json.data.ai_api_key;
+            }
+          })
+          .catch(function () { _apiKeyLoaded = true; });
+      }
+
+      // ── メニュー読み込み ──
+      function _loadMenu() {
+        var storeId = KdsAuth.getStoreId();
+        if (!storeId) return;
+        fetch('../../api/kds/sold-out.php?store_id=' + encodeURIComponent(storeId), { credentials: 'same-origin' })
+          .then(function (r) {
+            return r.text().then(function (body) {
+              if (!body) return {};
+              try { return JSON.parse(body); } catch (e) { return {}; }
+            });
+          })
+          .then(function (json) {
+            if (json.ok && json.data && json.data.categories) {
+              _menuItems = [];
+              json.data.categories.forEach(function (cat) {
+                (cat.items || []).forEach(function (item) {
+                  _menuItems.push({ menuItemId: item.menuItemId, source: item.source, name: item.name, soldOut: !!item.soldOut });
+                });
+              });
+            }
+          })
+          .catch(function () {});
+      }
+
+      // ── UI生成 ──
+      var _btn = document.createElement('button');
+      _btn.className = 'kds-header__link';
+      _btn.style.cssText = 'cursor:pointer;background:none;border:2px solid rgba(255,255,255,0.3);border-radius:4px;color:#fff;padding:0.25rem 0.6rem;font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;transition:border-color 0.3s,background 0.3s;';
+      _btn.innerHTML = '<span style="font-size:1rem">&#x1F3A4;</span> <span id="so-voice-label">音声OFF</span>';
+      _btn.title = 'タップで音声コマンドON/OFF';
+
+      var _statusEl = document.createElement('div');
+      _statusEl.style.cssText = 'display:none;position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#263238;color:#fff;padding:0.6rem 1.2rem;border-radius:8px;font-size:0.85rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.4);max-width:90vw;text-align:center;';
+      document.body.appendChild(_statusEl);
+
+      var headerRight = document.querySelector('.kds-header__right');
+      if (headerRight) headerRight.insertBefore(_btn, headerRight.firstChild);
+
+      _btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (_state === 'off') { _start(); } else { _stop(); }
+      });
+
+      function _showStatus(msg, autoHideMs) {
+        _statusEl.textContent = msg;
+        _statusEl.style.display = '';
+        if (_statusEl._t) clearTimeout(_statusEl._t);
+        if (autoHideMs > 0) { _statusEl._t = setTimeout(function () { _statusEl.style.display = 'none'; }, autoHideMs); }
+      }
+
+      function _hideStatus() { _statusEl.style.display = 'none'; if (_statusEl._t) clearTimeout(_statusEl._t); }
+
+      // ── 状態管理 ──
+      function _setState(s) {
+        _state = s;
+        if (_blinkTimer) { clearInterval(_blinkTimer); _blinkTimer = null; }
+        var label = document.getElementById('so-voice-label');
+        if (s === 'off') {
+          _btn.style.borderColor = 'rgba(255,255,255,0.3)'; _btn.style.background = 'none';
+          if (label) label.textContent = '音声OFF';
+        } else if (s === 'standby') {
+          _btn.style.borderColor = '#4CAF50'; _btn.style.background = 'rgba(76,175,80,0.15)';
+          if (label) label.textContent = '音声ON';
+        } else if (s === 'processing') {
+          if (label) label.textContent = '解析中';
+          var on = true;
+          _blinkTimer = setInterval(function () {
+            _btn.style.borderColor = on ? '#f44336' : 'rgba(255,255,255,0.3)';
+            _btn.style.background = on ? 'rgba(244,67,54,0.25)' : 'none';
+            on = !on;
+          }, 400);
+        }
+      }
+
+      // ── 開始・停止 ──
+      function _start() {
+        if (!_apiKeyLoaded) { _showStatus('APIキー読み込み中...', 2000); return; }
+        if (!_apiKey) { _showStatus('管理画面の設定でGemini APIキーを入力してください', 3000); return; }
+        _shouldRestart = true;
+        _setState('standby');
+        localStorage.setItem(_VOICE_KEY, '1');
+        _showStatus(_standbyHint, 0);
+        _initRecog();
+        _startRefreshTimer();
+      }
+
+      function _stop() {
+        _shouldRestart = false;
+        if (_interimTimer) { clearTimeout(_interimTimer); _interimTimer = null; }
+        _interimCmd = null;
+        _stopRefreshTimer();
+        _setState('off');
+        localStorage.removeItem(_VOICE_KEY);
+        _hideStatus();
+        if (_recog) { try { _recog.abort(); } catch (e) {} _recog = null; }
+      }
+
+      // ── 定期リフレッシュ（認識精度維持） ──
+      function _startRefreshTimer() {
+        _stopRefreshTimer();
+        _refreshTimer = setInterval(function () {
+          if (!_shouldRestart) return;
+          if (_state === 'processing') return;
+          _initRecog();
+          _setState('standby');
+          _showStatus('🔄 音声認識をリフレッシュしました', 2000);
+          setTimeout(function () {
+            if (_state === 'standby') _showStatus(_standbyHint, 0);
+          }, 2500);
+        }, _REFRESH_INTERVAL);
+      }
+
+      function _stopRefreshTimer() {
+        if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
+      }
+
+      // ── 音声認識 ──
+      function _initRecog() {
+        if (_recog) { try { _recog.abort(); } catch (e) {} }
+        _recog = new SR();
+        _recog.lang = 'ja-JP';
+        _recog.continuous = true;
+        _recog.interimResults = true;
+        _recog.maxAlternatives = 1;
+        _recog.onresult = _onResult;
+        _recog.onerror = function (ev) {
+          if (ev.error === 'no-speech' || ev.error === 'aborted') return;
+          if (ev.error === 'not-allowed') { _stop(); return; }
+        };
+        _recog.onend = function () {
+          if (!_shouldRestart) return;
+          setTimeout(function () {
+            if (!_shouldRestart) return;
+            if (_state !== 'processing') { _setState('standby'); _showStatus(_standbyHint, 0); }
+            _initRecog();
+          }, 300);
+        };
+        try { _recog.start(); } catch (e) {}
+      }
+
+      function _isCommand(text) {
+        for (var i = 0; i < _actionWords.length; i++) {
+          if (text.indexOf(_actionWords[i]) !== -1) return true;
+        }
+        return false;
+      }
+
+      function _isNavOnly(text) {
+        for (var i = 0; i < _navWords.length; i++) {
+          if (text.indexOf(_navWords[i]) !== -1) return true;
+        }
+        return false;
+      }
+
+      function _isListCommand(text) {
+        for (var i = 0; i < _listWords.length; i++) {
+          if (text.indexOf(_listWords[i]) !== -1) return true;
+        }
+        return false;
+      }
+
+      function _executeListFastPath() {
+        var soldNames = [];
+        for (var si = 0; si < _menuItems.length; si++) {
+          if (_menuItems[si].soldOut) soldNames.push(_menuItems[si].name);
+        }
+        _highlightSoldOutItems();
+        _showSoldOutOverlay(soldNames);
+        _returnToStandby();
+      }
+
+      // ── ノイズフィルタリング ──
+      var _MIN_CMD_LENGTH = 2;   // 2文字以下はノイズとみなす
+      var _MAX_CMD_LENGTH = 60;  // 60文字超は会話の拾い読みとみなす
+      var _MIN_CONFIDENCE = 0.4; // 信頼度40%未満は除外
+
+      function _isNoise(result) {
+        var text = result[0].transcript;
+        if (text.length <= _MIN_CMD_LENGTH) return true;
+        if (text.length > _MAX_CMD_LENGTH) return true;
+        if (result.isFinal && typeof result[0].confidence === 'number' && result[0].confidence < _MIN_CONFIDENCE) return true;
+        return false;
+      }
+
+      function _onResult(ev) {
+        for (var i = ev.resultIndex; i < ev.results.length; i++) {
+          var result = ev.results[i];
+          var transcript = result[0].transcript;
+          if (_state !== 'standby') continue;
+
+          // ノイズ除外
+          if (_isNoise(result)) {
+            if (result.isFinal) _showStatus(_standbyHint, 0);
+            continue;
+          }
+
+          if (result.isFinal) {
+            if (_interimTimer) { clearTimeout(_interimTimer); _interimTimer = null; }
+            _interimCmd = null;
+            // コマンド一覧: ファストパス（_isCommandの前に判定）
+            if (_isHelpCommand(transcript)) {
+              _executeHelp();
+              return;
+            }
+            // スクロール: ファストパス（_isCommandの前に判定）
+            var scrollDir = _detectScroll(transcript);
+            if (scrollDir) {
+              _executeScroll(scrollDir);
+              return;
+            }
+            if (_isCommand(transcript)) {
+              // KDSナビ: ファストパス（Gemini不要）
+              if (_isNavOnly(transcript)) {
+                localStorage.setItem(_VOICE_KEY, '1');
+                _shouldRestart = false;
+                if (_recog) { try { _recog.abort(); } catch (e) {} }
+                window.location.href = 'index.html';
+                return;
+              }
+              // 品切れ一覧: ファストパス（Gemini不要）
+              if (_isListCommand(transcript)) {
+                _showStatus('認識:「' + Utils.escapeHtml(transcript) + '」', 2000);
+                _executeListFastPath();
+                return;
+              }
+              _setState('processing');
+              _showStatus('認識:「' + Utils.escapeHtml(transcript) + '」— 解析中...', 0);
+              _analyzeWithGemini(transcript);
+            } else {
+              _showStatus(_standbyHint, 0);
+            }
+          } else {
+            if (_isCommand(transcript) || _isHelpCommand(transcript) || _detectScroll(transcript)) {
+              _interimCmd = transcript;
+              if (_interimTimer) clearTimeout(_interimTimer);
+              _interimTimer = setTimeout(function () {
+                var cmd = _interimCmd;
+                _interimCmd = null; _interimTimer = null;
+                if (!cmd || _state !== 'standby') return;
+                if (_isHelpCommand(cmd)) { _executeHelp(); return; }
+                var sc = _detectScroll(cmd);
+                if (sc) { _executeScroll(sc); return; }
+                if (_isNavOnly(cmd)) {
+                  localStorage.setItem(_VOICE_KEY, '1');
+                  _shouldRestart = false;
+                  if (_recog) { try { _recog.abort(); } catch (e) {} }
+                  window.location.href = 'index.html';
+                  return;
+                }
+                if (_isListCommand(cmd)) {
+                  _showStatus('認識:「' + Utils.escapeHtml(cmd) + '」', 2000);
+                  _executeListFastPath();
+                  return;
+                }
+                _setState('processing');
+                _showStatus('認識:「' + Utils.escapeHtml(cmd) + '」— 解析中...', 0);
+                _analyzeWithGemini(cmd);
+              }, 1500);
+              _showStatus('🎤 ' + Utils.escapeHtml(transcript) + ' ...', 0);
+            } else {
+              _showStatus('🎤 聞取中: ' + Utils.escapeHtml(transcript), 0);
+            }
+          }
+        }
+      }
+
+      // ── Gemini API ──
+      function _analyzeWithGemini(transcript) {
+        var menuSummary = _menuItems.map(function (m) {
+          return { id: m.menuItemId, src: m.source, name: m.name, out: m.soldOut };
+        });
+
+        var prompt = 'あなたはキッチンスタッフの音声コマンドを解析するアシスタントです。\n'
+          + '音声テキストから操作内容をJSONのみで返してください。前置き・解説は禁止。\n\n'
+          + '■ コマンド種別と返却JSON:\n\n'
+          + '1. 品切れ設定（「トンカツ品切れ」「サバ味噌売り切れ」等）\n'
+          + '{"action":"toggle_sold_out","menu_item_id":"メニューID","source":"template|local","menu_name":"正式メニュー名","is_sold_out":true,"confidence":"high|low"}\n\n'
+          + '2. 品切れ解除（「トンカツ販売再開」「サバ味噌解除」等）\n'
+          + '{"action":"toggle_sold_out","menu_item_id":"メニューID","source":"template|local","menu_name":"正式メニュー名","is_sold_out":false,"confidence":"high|low"}\n\n'
+          + '3. 品切れ確認（「今の品切れ」「品切れ一覧」等）\n'
+          + '{"action":"list_sold_out","confidence":"high"}\n\n'
+          + '4. KDS画面に戻る（「戻る」「KDS画面」「キッチン」等）\n'
+          + '{"action":"navigate_kds","confidence":"high"}\n\n'
+          + '5. 該当なし → {"action":"unknown"}\n\n'
+          + (menuSummary.length > 0 ? '■ 現在のメニュー:\n' + JSON.stringify(menuSummary) + '\n\n' : '')
+          + '■ 音声:「' + transcript + '」';
+
+        var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(_apiKey);
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0, maxOutputTokens: 256 } })
+        })
+        .then(function (r) {
+          return r.text().then(function (body) {
+            if (!body) throw new Error('空のレスポンス');
+            try { return JSON.parse(body); } catch (e) { throw new Error('JSON解析エラー'); }
+          });
+        })
+        .then(function (json) {
+          if (json.error) throw new Error(json.error.message || 'Gemini APIエラー');
+          var text = '';
+          if (json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) {
+            text = json.candidates[0].content.parts[0].text || '';
+          }
+          _handleResponse(text, transcript);
+        })
+        .catch(function (err) {
+          _showStatus('Geminiエラー: ' + err.message, 4000);
+          _returnToStandby();
+        });
+      }
+
+      // ── レスポンス処理 ──
+      function _handleResponse(text, transcript) {
+        var cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        var parsed;
+        try { parsed = JSON.parse(cleaned); } catch (e) {
+          _showStatus('AI応答の解析に失敗しました', 4000);
+          _returnToStandby();
+          return;
+        }
+
+        if (!parsed.action || parsed.action === 'unknown') {
+          _showStatus('該当するコマンドが見つかりませんでした。「' + Utils.escapeHtml(transcript) + '」', 3000);
+          _returnToStandby();
+          return;
+        }
+
+        if (parsed.action === 'toggle_sold_out') {
+          var menuName = parsed.menu_name || '不明';
+          var soldOutLabel = parsed.is_sold_out ? '品切れ' : '販売再開';
+          if (parsed.confidence === 'low') {
+            _hideStatus();
+            if (!confirm('「' + menuName + '」を「' + soldOutLabel + '」にしますか？\n\n認識:「' + transcript + '」（確信度: 低）')) {
+              _showStatus('キャンセルしました', 2000);
+              _returnToStandby();
+              return;
+            }
+          }
+          _executeSoldOutToggle(parsed.menu_item_id, parsed.source, parsed.is_sold_out, menuName);
+
+        } else if (parsed.action === 'list_sold_out') {
+          var soldNames = [];
+          for (var si = 0; si < _menuItems.length; si++) {
+            if (_menuItems[si].soldOut) soldNames.push(_menuItems[si].name);
+          }
+          // 画面上の品切れ商品をハイライト
+          _highlightSoldOutItems();
+          // 中央オーバーレイで一覧表示
+          _showSoldOutOverlay(soldNames);
+          _returnToStandby();
+
+        } else if (parsed.action === 'navigate_kds') {
+          localStorage.setItem(_VOICE_KEY, '1');
+          _shouldRestart = false;
+          if (_recog) { try { _recog.abort(); } catch (e) {} }
+          window.location.href = 'index.html';
+
+        } else {
+          _showStatus('未対応のアクション: ' + Utils.escapeHtml(parsed.action), 3000);
+          _returnToStandby();
+        }
+      }
+
+      // ── 品切れトグル実行 ──
+      function _executeSoldOutToggle(menuItemId, source, isSoldOut, menuName) {
+        var storeId = KdsAuth.getStoreId();
+        var label = isSoldOut ? '品切れ' : '販売再開';
+        _showStatus(menuName + ' → ' + label + ' 実行中...', 0);
+        fetch('../../api/kds/sold-out.php', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ store_id: storeId, menu_item_id: menuItemId, source: source, is_sold_out: isSoldOut })
+        })
+        .then(function (r) {
+          return r.text().then(function (body) {
+            if (!body) throw new Error('空のレスポンス');
+            var json;
+            try { json = JSON.parse(body); } catch (e) { throw new Error('応答の解析に失敗'); }
+            if (!json.ok) throw new Error((json.error && json.error.message) || 'エラー');
+          });
+        })
+        .then(function () {
+          _showSoldOutConfirm(menuName, isSoldOut);
+          // ローカル状態更新
+          for (var i = 0; i < _menuItems.length; i++) {
+            if (_menuItems[i].menuItemId === menuItemId) { _menuItems[i].soldOut = isSoldOut; break; }
+          }
+          // 画面のトグルUIも更新
+          SoldOutRenderer.load();
+          _returnToStandby();
+        })
+        .catch(function (err) {
+          _showSoldOutConfirm(menuName, isSoldOut, err.message);
+          _returnToStandby();
+        });
+      }
+
+      // ── 品切れハイライト（画面上の.so-itemを赤く光らせる） ──
+      function _highlightSoldOutItems() {
+        var items = document.querySelectorAll('.so-item');
+        for (var hi = 0; hi < items.length; hi++) {
+          items[hi].classList.remove('so-item--highlight');
+          // 品切れトグルがcheckedの行をハイライト
+          var toggle = items[hi].querySelector('.so-toggle input');
+          if (toggle && toggle.checked) {
+            items[hi].classList.add('so-item--highlight');
+          }
+        }
+        // 8秒後にハイライト解除
+        setTimeout(function () {
+          var hl = document.querySelectorAll('.so-item--highlight');
+          for (var ri = 0; ri < hl.length; ri++) { hl[ri].classList.remove('so-item--highlight'); }
+        }, 8000);
+      }
+
+      // ── 品切れ一覧オーバーレイ ──
+      function _showSoldOutOverlay(names) {
+        // 既存オーバーレイを除去
+        var existing = document.getElementById('so-voice-list-overlay');
+        if (existing) existing.parentNode.removeChild(existing);
+
+        var overlay = document.createElement('div');
+        overlay.id = 'so-voice-list-overlay';
+        overlay.className = 'so-voice-overlay';
+        var html = '';
+        if (names.length === 0) {
+          html = '<div class="so-voice-overlay__none">現在品切れの商品はありません</div>';
+        } else {
+          html = '<div class="so-voice-overlay__title">品切れ中（' + names.length + '品）</div>';
+          for (var oi = 0; oi < names.length; oi++) {
+            html += '<div class="so-voice-overlay__item">' + Utils.escapeHtml(names[oi]) + '</div>';
+          }
+        }
+        overlay.innerHTML = html;
+        document.body.appendChild(overlay);
+
+        // タップまたは6秒で閉じる
+        overlay.addEventListener('click', function () {
+          if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        });
+        setTimeout(function () {
+          if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        }, 6000);
+      }
+
+      // ── 品切れトグル結果ポップアップ ──
+      function _showSoldOutConfirm(menuName, isSoldOut, errorMsg) {
+        var existing = document.getElementById('so-voice-confirm');
+        if (existing) existing.parentNode.removeChild(existing);
+
+        var el = document.createElement('div');
+        el.id = 'so-voice-confirm';
+
+        var isError = !!errorMsg;
+        var bg = isError ? '#b71c1c' : (isSoldOut ? '#e53935' : '#43a047');
+        var icon = isError ? '✗' : '✓';
+        var msg = isError
+          ? '品切れ更新に失敗\n' + Utils.escapeHtml(errorMsg)
+          : Utils.escapeHtml(menuName) + '\n' + (isSoldOut ? '品切れにしました' : '販売再開しました');
+
+        el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);'
+          + 'background:' + bg + ';color:#fff;padding:2rem 2.5rem;border-radius:16px;'
+          + 'box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:10000;text-align:center;'
+          + 'font-size:1.2rem;line-height:1.6;min-width:250px;max-width:90vw;'
+          + 'animation:so-pop-in 0.3s ease;';
+        el.innerHTML = '<div style="font-size:2.5rem;margin-bottom:0.5rem;">' + icon + '</div>'
+          + '<div style="white-space:pre-line;">' + msg + '</div>';
+        document.body.appendChild(el);
+
+        el.addEventListener('click', function () {
+          if (el.parentNode) el.parentNode.removeChild(el);
+        });
+        setTimeout(function () {
+          if (el.parentNode) el.parentNode.removeChild(el);
+        }, isError ? 5000 : 3000);
+      }
+
+      function _returnToStandby() {
+        if (!_shouldRestart) return;
+        setTimeout(function () {
+          if (!_shouldRestart) return;
+          _setState('standby');
+          _showStatus(_standbyHint, 0);
+        }, 500);
+      }
+
+      // ── 初期化（KdsAuth完了待ち） ──
+      var _initRetries = 0;
+      function _initVoiceData() {
+        var storeId = KdsAuth.getStoreId();
+        if (!storeId && _initRetries < 30) {
+          _initRetries++;
+          setTimeout(_initVoiceData, 300);
+          return;
+        }
+        if (storeId) {
+          _loadApiKey();
+          _loadMenu();
+        } else {
+          _apiKeyLoaded = true; // タイムアウト: storeId取得不可
+        }
+      }
+      _initVoiceData();
+
+      // 前画面から音声ON状態を引き継ぎ
+      if (localStorage.getItem(_VOICE_KEY) === '1') {
+        var _autoAttempts = 0;
+        var _autoTimer = setInterval(function () {
+          _autoAttempts++;
+          if (_apiKeyLoaded && _apiKey) { clearInterval(_autoTimer); _start(); }
+          else if (_autoAttempts > 50) { clearInterval(_autoTimer); }
+        }, 200);
+      }
+    })();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#3f51b5">
+  <title>本部管理画面</title>
+  <link rel="stylesheet" href="css/admin.css">
+  <style>
+    /* owner-dashboard 固有スタイル（admin.cssは共通流用） */
+    .owner-tab-panel {
+      display: none;
+    }
+    .owner-tab-panel.active {
+      display: block;
+    }
+    /* 店舗管理タブのAI設定欄を非表示（AIアシスタントタブに移動済み） */
+    #store-list .card__body > h4 {
+      display: none;
+    }
+    #store-list .card__body > .form-group {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ヘッダー -->
+  <header class="admin-header">
+    <div class="admin-header__left">
+      <span class="admin-header__title" id="owner-header-title">本部管理画面</span>
+    </div>
+    <div class="admin-header__actions">
+      <span class="admin-header__user" id="owner-header-user">-</span>
+      <button class="btn-logout" id="owner-btn-logout">ログアウト</button>
+    </div>
+  </header>
+
+  <!-- タブナビゲーション -->
+  <nav class="tab-nav" id="owner-tab-nav">
+    <button class="tab-nav__btn" data-tab="cross-store">クロス店舗レポート</button>
+    <button class="tab-nav__btn" data-tab="abc-analytics">ABC分析</button>
+    <button class="tab-nav__btn" data-tab="stores">店舗管理</button>
+    <button class="tab-nav__btn" data-tab="users">ユーザー管理</button>
+    <button class="tab-nav__btn" data-tab="ai-assistant">AIアシスタント</button>
+    <button class="tab-nav__btn" data-tab="subscription">契約・プラン</button>
+    <button class="tab-nav__btn" data-tab="payment">決済設定</button>
+    <button class="tab-nav__btn" data-tab="shift-overview">シフト概況</button>
+    <button class="tab-nav__btn" data-tab="external-pos">外部POS連携</button>
+  </nav>
+
+  <!-- 店舗セレクター（非表示、StoreSelector初期化用） -->
+  <select id="owner-store-select" style="display:none;"></select>
+
+  <!-- メインコンテンツ -->
+  <div class="admin-content">
+
+    <!-- クロス店舗レポート -->
+    <div class="owner-tab-panel" id="owner-panel-cross-store">
+      <div class="panel-header"><h2 class="panel-header__title">全店舗横断分析</h2></div>
+      <div id="cross-store-container"></div>
+    </div>
+
+    <!-- ABC分析 -->
+    <div class="owner-tab-panel" id="owner-panel-abc-analytics">
+      <div class="panel-header"><h2 class="panel-header__title">ABC分析・売上ダッシュボード</h2></div>
+      <div id="abc-analytics-container"></div>
+    </div>
+
+    <!-- 店舗管理 -->
+    <div class="owner-tab-panel" id="owner-panel-stores">
+      <div class="panel-header">
+        <h2 class="panel-header__title">店舗管理</h2>
+        <button class="btn btn-primary" id="btn-add-store">+ 店舗追加</button>
+      </div>
+      <div id="store-list"></div>
+    </div>
+
+    <!-- ユーザー管理（owner/managerのみ表示、staffは非表示） -->
+    <div class="owner-tab-panel" id="owner-panel-users">
+      <div class="panel-header">
+        <h2 class="panel-header__title">ユーザー管理</h2>
+        <button class="btn btn-primary" id="btn-add-user">+ ユーザー追加</button>
+      </div>
+      <div id="user-list"></div>
+    </div>
+
+    <!-- AIアシスタント -->
+    <div class="owner-tab-panel" id="owner-panel-ai-assistant">
+      <div class="panel-header">
+        <h2 class="panel-header__title">AIアシスタント</h2>
+      </div>
+      <div class="card" id="ai-assistant-container">
+        <p style="padding:2rem;color:#888;text-align:center;">準備中</p>
+      </div>
+    </div>
+
+    <!-- 契約・プラン -->
+    <div class="owner-tab-panel" id="owner-panel-subscription">
+      <div class="panel-header"><h2 class="panel-header__title">契約・プラン</h2></div>
+      <div id="subscription-container">
+        <p style="color:var(--text-muted);">読み込み中...</p>
+      </div>
+    </div>
+
+    <!-- 決済設定 -->
+    <div class="owner-tab-panel" id="owner-panel-payment">
+      <div class="panel-header">
+        <h2 class="panel-header__title">決済設定</h2>
+      </div>
+      <div class="card" id="api-key-manager">
+        <div class="card__body">
+          <div id="api-key-manager-content">
+            <p style="color:#888;text-align:center;">読み込み中...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- シフト概況 -->
+    <div class="owner-tab-panel" id="owner-panel-shift-overview">
+      <div class="panel-header">
+        <h2 class="panel-header__title">シフト概況</h2>
+        <div class="panel-header__actions">
+          <label style="font-weight:600;margin-right:8px;">店舗:</label>
+          <select id="shift-store-select" class="form-input" style="max-width:260px;"></select>
+          <label style="font-weight:600;margin-left:16px;margin-right:8px;">期間:</label>
+          <select id="shift-period-select" class="form-input" style="max-width:120px;">
+            <option value="weekly">週次</option>
+            <option value="monthly">月次</option>
+          </select>
+          <input type="date" id="shift-date-input" class="form-input" style="max-width:180px;margin-left:8px;">
+          <button class="btn btn-sm btn-primary" id="shift-load-summary" style="margin-left:8px;">表示</button>
+        </div>
+      </div>
+      <div id="shift-summary-container">
+        <p style="color:#888;text-align:center;padding:2rem;">店舗を選択して「表示」をクリックしてください。</p>
+      </div>
+    </div>
+
+    <!-- 外部POS連携 -->
+    <div class="owner-tab-panel" id="owner-panel-external-pos">
+      <div class="panel-header"><h2 class="panel-header__title">外部POS連携（スマレジ）</h2></div>
+
+      <!-- 接続状態セクション -->
+      <div id="smaregi-connection-status" class="card" style="margin-bottom:20px; padding:20px;">
+        <h3 style="margin:0 0 1rem;font-size:1rem;">接続状態</h3>
+        <div id="smaregi-status-display">読み込み中...</div>
+      </div>
+
+      <!-- 店舗マッピングセクション（接続後のみ表示） -->
+      <div id="smaregi-store-mapping-section" class="card" style="margin-bottom:20px; padding:20px; display:none;">
+        <h3 style="margin:0 0 0.5rem;font-size:1rem;">店舗マッピング</h3>
+        <p style="color:#666; margin-bottom:15px; font-size:0.85rem;">POSLAの店舗とスマレジの店舗を紐づけてください</p>
+        <div id="smaregi-store-mapping-list"></div>
+        <button id="smaregi-save-mapping-btn" class="btn btn-primary" style="margin-top:15px;">マッピングを保存</button>
+      </div>
+
+      <!-- メニューインポートセクション（接続後のみ表示） -->
+      <div id="smaregi-menu-import-section" class="card" style="margin-bottom:20px; padding:20px; display:none;">
+        <h3 style="margin:0 0 0.5rem;font-size:1rem;">メニューインポート</h3>
+        <p style="color:#666; margin-bottom:15px; font-size:0.85rem;">スマレジの商品をPOSLAメニューとしてインポートします（既存メニューは上書きされません）</p>
+        <div style="margin-bottom:15px;">
+          <label for="smaregi-import-store" style="font-weight:600;font-size:0.9rem;">対象店舗：</label>
+          <select id="smaregi-import-store" class="form-input" style="max-width:300px;"></select>
+        </div>
+        <button id="smaregi-import-btn" class="btn btn-primary">インポート実行</button>
+        <div id="smaregi-import-result" style="margin-top:15px;"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 共通モーダル -->
+  <div class="modal-overlay" id="admin-modal-overlay">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 class="modal__title"></h3>
+        <button class="modal__close" data-action="modal-cancel">&times;</button>
+      </div>
+      <div class="modal__body"></div>
+      <div class="modal__footer"></div>
+    </div>
+  </div>
+
+  <!-- トースト -->
+  <div class="admin-toast" id="admin-toast"></div>
+
+  <!-- JS -->
+  <script src="../shared/js/utils.js"></script>
+  <script src="js/admin-api.js"></script>
+  <script src="js/store-selector.js"></script>
+  <script src="js/cross-store-report.js"></script>
+  <script src="js/abc-analytics.js"></script>
+  <script src="js/user-editor.js?v=20260406b"></script>
+  <script src="js/store-editor.js"></script>
+  <script src="js/ai-assistant.js"></script>
+  <script src="../js/shift-manager.js?v=20260406b"></script>
+  <script src="js/owner-app.js?v=20260406c"></script>
+
+  <!-- グローバルトースト（dashboard.htmlと同一パターン） -->
+  <script>
+  var _toastTimer = null;
+  function showToast(message, type) {
+    var el = document.getElementById('admin-toast');
+    el.textContent = message;
+    el.className = 'admin-toast show';
+    if (type === 'success') el.classList.add('admin-toast--success');
+    if (type === 'error') el.classList.add('admin-toast--error');
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2500);
+  }
+  </script>
+  <script src="../js/offline-detector.js"></script>
+  <script src="../js/session-monitor.js"></script>
+</body>
+</html>

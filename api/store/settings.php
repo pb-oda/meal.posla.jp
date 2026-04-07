@@ -1,0 +1,121 @@
+<?php
+/**
+ * 店舗設定 API
+ *
+ * GET   /api/store/settings.php?store_id=xxx
+ * PATCH /api/store/settings.php
+ */
+
+require_once __DIR__ . '/../lib/response.php';
+require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/audit-log.php';
+
+require_method(['GET', 'PATCH']);
+// GETはstaff以上（KDS音声コマンドでAPIキー取得に必要）、PATCHはmanager以上
+if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
+    $user = require_role('manager');
+} else {
+    $user = require_auth();
+}
+$pdo = get_db();
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $storeId = require_store_param();
+    require_store_access($storeId);
+
+    $stmt = $pdo->prepare('SELECT * FROM store_settings WHERE store_id = ?');
+    $stmt->execute([$storeId]);
+    $settings = $stmt->fetch();
+
+    if (!$settings) {
+        $pdo->prepare('INSERT INTO store_settings (store_id) VALUES (?)')->execute([$storeId]);
+        $stmt->execute([$storeId]);
+        $settings = $stmt->fetch();
+    }
+
+    // include_ai_key=1 の場合はテナントからAPIキーを取得（認証済みスタッフ向け、KDS音声コマンド・AI競合調査用）
+    if (!empty($_GET['include_ai_key'])) {
+        $aiStmt = $pdo->prepare('SELECT t.ai_api_key, t.google_places_api_key FROM tenants t JOIN stores s ON s.tenant_id = t.id WHERE s.id = ?');
+        $aiStmt->execute([$storeId]);
+        $aiRow = $aiStmt->fetch();
+        json_response([
+            'settings' => $settings,
+            'ai_api_key' => $aiRow ? $aiRow['ai_api_key'] : null,
+            'google_places_api_key' => $aiRow ? $aiRow['google_places_api_key'] : null
+        ]);
+    }
+
+    // テナントにAIキーが設定済みかフラグを付与
+    $aiStmt = $pdo->prepare('SELECT t.ai_api_key IS NOT NULL AND t.ai_api_key != "" AS ai_key_set FROM tenants t JOIN stores s ON s.tenant_id = t.id WHERE s.id = ?');
+    $aiStmt->execute([$storeId]);
+    $aiRow = $aiStmt->fetch();
+    $settings['ai_api_key_set'] = $aiRow && $aiRow['ai_key_set'] ? true : false;
+
+    // 通常レスポンスではAPIキー本体を含めない
+    unset($settings['ai_api_key']);
+
+    json_response(['settings' => $settings]);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
+    try {
+        $data = get_json_body();
+        $storeId = $data['store_id'] ?? null;
+        if (!$storeId) json_error('MISSING_STORE', 'store_idが必要です', 400);
+        require_store_access($storeId);
+
+        $allowed = [
+            'day_cutoff_time', 'default_open_amount', 'overshort_threshold',
+            'payment_methods_enabled', 'receipt_store_name', 'receipt_address',
+            'receipt_phone', 'tax_rate', 'receipt_footer',
+            'max_items_per_order', 'max_amount_per_order',
+            'welcome_message', 'welcome_message_en',
+            'last_order_time', 'google_place_id',
+            'takeout_enabled', 'takeout_min_prep_minutes', 'takeout_available_from',
+            'takeout_available_to', 'takeout_slot_capacity', 'takeout_online_payment',
+            'brand_color', 'brand_logo_url', 'brand_display_name'
+        ];
+
+        $fields = [];
+        $params = [];
+        foreach ($allowed as $col) {
+            if (array_key_exists($col, $data)) {
+                $fields[] = "$col = ?";
+                $params[] = $data[$col];
+            }
+        }
+
+        // ブランドカラーバリデーション
+        if (isset($data['brand_color']) && $data['brand_color'] !== '' && $data['brand_color'] !== null) {
+            if (!preg_match('/^#[0-9a-fA-F]{6}$/', $data['brand_color'])) {
+                json_error('INVALID_COLOR', 'カラーコードは #RRGGBB 形式で入力してください', 400);
+            }
+        }
+
+        if (empty($fields)) json_error('NO_FIELDS', '更新項目がありません', 400);
+
+        // 監査ログ用: 変更前の値を取得
+        $oldStmt = $pdo->prepare('SELECT * FROM store_settings WHERE store_id = ?');
+        $oldStmt->execute([$storeId]);
+        $oldSettings = $oldStmt->fetch();
+
+        $params[] = $storeId;
+        $pdo->prepare('UPDATE store_settings SET ' . implode(', ', $fields) . ' WHERE store_id = ?')->execute($params);
+
+        // 監査ログ
+        $auditOld = [];
+        $auditNew = [];
+        foreach ($allowed as $col) {
+            if (array_key_exists($col, $data)) {
+                $auditOld[$col] = $oldSettings[$col] ?? null;
+                $auditNew[$col] = $data[$col];
+            }
+        }
+        write_audit_log($pdo, $user, $storeId, 'settings_update', 'store_settings', $storeId, $auditOld, $auditNew, null);
+
+        json_response(['ok' => true]);
+    } catch (Exception $e) {
+        json_error('SERVER_ERROR', $e->getMessage(), 500);
+    }
+}

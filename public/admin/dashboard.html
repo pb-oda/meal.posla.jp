@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#3f51b5">
+  <title>管理ダッシュボード</title>
+  <link rel="stylesheet" href="css/admin.css">
+  <style>
+    /* L-3 Phase 3: ヘルプスタッフ表示 */
+    .shift-help { background: #fff3e0 !important; border-left: 3px solid #e65100; }
+    .help-badge { background: #e65100; color: #fff; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; margin-right: 2px; }
+    .shift-help-swatch { display: inline-block; width: 12px; height: 12px; background: #fff3e0; border: 1px solid #e65100; }
+  </style>
+</head>
+<body>
+
+  <!-- ヘッダー -->
+  <header class="admin-header">
+    <div class="admin-header__left">
+      <span class="admin-header__title" id="header-tenant-name">管理画面</span>
+      <div class="store-selector" id="store-selector-wrap">
+        <span class="store-selector__label">店舗:</span>
+        <span class="store-selector__name" id="store-name">-</span>
+        <a href="#" class="store-selector__change" id="store-change-link" style="display:none">店舗切替</a>
+        <select class="store-selector__select" id="store-select" style="display:none"></select>
+      </div>
+    </div>
+    <div class="admin-header__actions">
+      <div class="header-shortcuts" id="header-shortcuts" data-role-max="manager">
+        <a class="header-shortcut header-shortcut--handy" id="header-tool-handy" href="../handy/index.html" target="_blank" title="ハンディPOS">ハンディ</a>
+        <a class="header-shortcut" id="header-tool-kds" href="../kds/index.html" target="_blank" title="キッチンディスプレイ">KDS</a>
+        <a class="header-shortcut" id="header-tool-register" href="../kds/accounting.html" target="_blank" title="POSレジ（KDS会計ステーション）">レジ</a>
+        <a class="header-shortcut header-shortcut--customer" id="link-customer-menu" href="#" target="_blank" title="顧客メニュー（選択中店舗）">注文画面</a>
+      </div>
+      <span class="admin-header__user" id="header-user-name">-</span>
+      <button class="btn-logout" id="btn-logout">ログアウト</button>
+    </div>
+  </header>
+
+  <!-- タブナビゲーション（グループ化） -->
+  <nav class="tab-nav" id="tab-nav">
+    <!-- グループ親タブ -->
+    <button class="tab-nav__btn tab-nav__btn--group" data-group="menu" data-role-min="manager" data-requires-store>メニュー管理</button>
+    <button class="tab-nav__btn tab-nav__btn--group" data-group="plan" data-role-min="manager" data-requires-store>プラン・コース</button>
+    <button class="tab-nav__btn tab-nav__btn--group" data-group="table" data-role-min="manager" data-requires-store>テーブル・フロア</button>
+    <button class="tab-nav__btn tab-nav__btn--group" data-group="inventory" data-role-min="manager" data-role-max="manager" data-requires-store>在庫・レシピ</button>
+    <button class="tab-nav__btn tab-nav__btn--group" data-group="report" data-role-min="manager" data-requires-store>レポート</button>
+    <button class="tab-nav__btn tab-nav__btn--group" data-group="config" data-role-min="manager" data-requires-store>店舗設定</button>
+    <button class="tab-nav__btn tab-nav__btn--group" data-group="takeout" data-role-min="manager" data-requires-store>テイクアウト</button>
+    <button class="tab-nav__btn tab-nav__btn--group" data-group="ai" data-role-min="manager" data-requires-store>AIアシスタント</button>
+    <button class="tab-nav__btn tab-nav__btn--group" data-group="shift" data-role-min="staff" data-requires-store>シフト管理</button>
+    <!-- owner専用タブは owner-dashboard.html に移動済み -->
+  </nav>
+
+  <!-- サブタブバー -->
+  <div class="sub-tab-wrap">
+    <nav class="sub-tab-nav" id="sub-tab-nav">
+      <!-- メニュー管理 -->
+      <button class="sub-tab-nav__btn" data-tab="hq-categories" data-group="menu" data-role-min="manager">カテゴリ管理</button>
+      <button class="sub-tab-nav__btn" data-tab="option-groups" data-group="menu" data-role-min="manager" data-role-max="manager">オプション管理</button>
+      <button class="sub-tab-nav__btn" data-tab="store-menu" data-group="menu" data-role-min="manager" data-role-max="manager">店舗メニュー</button>
+      <button class="sub-tab-nav__btn" data-tab="local-menu" data-group="menu" data-role-min="manager">限定メニュー</button>
+      <!-- プラン・コース -->
+      <button class="sub-tab-nav__btn" data-tab="time-plans" data-group="plan" data-role-min="manager">食べ放題プラン</button>
+      <button class="sub-tab-nav__btn" data-tab="courses" data-group="plan" data-role-min="manager">コース管理</button>
+      <!-- テーブル・フロア -->
+      <button class="sub-tab-nav__btn" data-tab="tables" data-group="table" data-role-min="manager">テーブル管理</button>
+      <button class="sub-tab-nav__btn" data-tab="floor-map" data-group="table" data-role-min="manager">フロアマップ</button>
+      <!-- 在庫・レシピ -->
+      <button class="sub-tab-nav__btn" data-tab="inventory" data-group="inventory" data-role-min="manager" data-role-max="manager">在庫・レシピ</button>
+      <!-- レポート -->
+      <button class="sub-tab-nav__btn" data-tab="sales" data-group="report" data-role-min="manager">売上レポート</button>
+      <!-- ABC分析は owner-dashboard.html に移動済み -->
+      <button class="sub-tab-nav__btn" data-tab="register" data-group="report" data-role-min="manager">レジ分析</button>
+      <button class="sub-tab-nav__btn" data-tab="orders" data-group="report" data-role-min="manager">注文履歴</button>
+      <button class="sub-tab-nav__btn" data-tab="turnover" data-group="report" data-role-min="manager">回転率・客層</button>
+      <button class="sub-tab-nav__btn" data-tab="staff-report" data-group="report" data-role-min="manager">スタッフ評価</button>
+      <button class="sub-tab-nav__btn" data-tab="basket" data-group="report" data-role-min="manager">併売分析</button>
+      <!-- 店舗設定 -->
+      <button class="sub-tab-nav__btn" data-tab="settings" data-group="config" data-role-min="manager">店舗設定</button>
+      <button class="sub-tab-nav__btn" data-tab="kds-stations" data-group="config" data-role-min="manager">KDSステーション</button>
+      <button class="sub-tab-nav__btn" data-tab="staff-mgmt" data-group="config" data-role-min="manager">スタッフ管理</button>
+      <button class="sub-tab-nav__btn" data-tab="audit-log" data-group="config" data-role-min="manager">監査ログ</button>
+      <button class="sub-tab-nav__btn" data-tab="receipt-settings" data-group="config" data-role-min="manager">領収書設定</button>
+      <!-- テイクアウト -->
+      <button class="sub-tab-nav__btn" data-tab="takeout-orders" data-group="takeout" data-role-min="manager">テイクアウト注文</button>
+      <!-- AIアシスタント -->
+      <button class="sub-tab-nav__btn" data-tab="ai-assistant" data-group="ai" data-role-min="manager">AIアシスタント</button>
+      <!-- シフト管理 -->
+      <button class="sub-tab-nav__btn" data-tab="shift-calendar" data-group="shift" data-role-min="manager">週間カレンダー</button>
+      <button class="sub-tab-nav__btn" data-tab="shift-my" data-group="shift" data-role-min="staff" data-role-max="staff">マイシフト</button>
+      <button class="sub-tab-nav__btn" data-tab="shift-availability" data-group="shift" data-role-min="staff" data-role-max="staff">希望提出</button>
+      <button class="sub-tab-nav__btn" data-tab="shift-attendance" data-group="shift" data-role-min="manager">勤怠一覧</button>
+      <button class="sub-tab-nav__btn" data-tab="shift-templates" data-group="shift" data-role-min="manager">テンプレート</button>
+      <button class="sub-tab-nav__btn" data-tab="shift-settings" data-group="shift" data-role-min="manager">シフト設定</button>
+      <button class="sub-tab-nav__btn" data-tab="shift-summary" data-group="shift" data-role-min="manager">集計サマリー</button>
+      <button class="sub-tab-nav__btn" data-tab="shift-help" data-group="shift" data-role-min="manager">ヘルプ</button>
+      <!-- 表示設定ボタン -->
+      <button class="sub-tab-nav__settings" id="btn-subtab-settings" title="表示設定">&#9881;</button>
+    </nav>
+    <div class="subtab-settings-panel" id="subtab-settings-panel"></div>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <div class="admin-content">
+
+    <!-- カテゴリ管理(HQ) -->
+    <div class="tab-panel" id="panel-hq-categories">
+      <div class="panel-header">
+        <h2 class="panel-header__title">カテゴリ一覧 <span class="panel-header__count" id="category-count"></span></h2>
+        <button class="btn btn-primary" id="btn-add-category">+ カテゴリ追加</button>
+      </div>
+      <div class="card"><div id="category-list"></div></div>
+    </div>
+
+    <!-- オプショングループ -->
+    <div class="tab-panel" id="panel-option-groups">
+      <div class="panel-header">
+        <h2 class="panel-header__title">オプショングループ <span class="panel-header__count" id="og-count"></span></h2>
+        <button class="btn btn-primary" id="btn-add-option-group">+ グループ追加</button>
+      </div>
+      <div id="option-group-list"></div>
+    </div>
+
+    <!-- 店舗メニュー -->
+    <div class="tab-panel" id="panel-store-menu">
+      <div class="panel-header">
+        <h2 class="panel-header__title">メニュー管理</h2>
+        <div class="panel-header__actions">
+          <button class="btn btn-primary" id="btn-add-store-menu">+ メニュー追加</button>
+          <button class="btn btn-sm btn-outline" id="btn-translate-menu" title="メニューを中国語・韓国語に一括翻訳">🌐 一括翻訳</button>
+          <button class="btn btn-sm btn-outline" id="btn-override-csv-export">CSVエクスポート</button>
+          <button class="btn btn-sm btn-outline" id="btn-override-csv-import">CSVインポート</button>
+          <input type="file" accept=".csv" id="override-csv-file" style="display:none">
+        </div>
+      </div>
+      <!-- N-1: 今日のおすすめ設定 -->
+      <details class="recommend-section" style="margin:12px 0;border:1px solid var(--border-color,#ddd);border-radius:8px;padding:0">
+        <summary style="padding:10px 16px;cursor:pointer;font-weight:600;font-size:0.95rem;background:var(--bg-secondary,#f5f5f5);border-radius:8px">今日のおすすめ設定</summary>
+        <div id="recommend-editor-container" style="padding:12px 16px"></div>
+      </details>
+
+      <div id="override-list"></div>
+    </div>
+
+    <!-- 店舗限定メニュー -->
+    <div class="tab-panel" id="panel-local-menu">
+      <div class="panel-header">
+        <h2 class="panel-header__title">店舗限定メニュー</h2>
+        <div class="panel-header__actions">
+          <button class="btn btn-sm btn-outline" id="btn-local-csv-export">CSVエクスポート</button>
+          <button class="btn btn-sm btn-outline" id="btn-local-csv-import">CSVインポート</button>
+          <input type="file" accept=".csv" id="local-csv-import-file" style="display:none">
+          <button class="btn btn-primary" id="btn-add-local">+ 限定メニュー追加</button>
+        </div>
+      </div>
+      <div id="local-list"></div>
+    </div>
+
+    <!-- テーブル管理 -->
+    <div class="tab-panel" id="panel-tables">
+      <div class="panel-header">
+        <h2 class="panel-header__title">テーブル一覧 <span class="panel-header__count" id="table-count"></span></h2>
+        <button class="btn btn-primary" id="btn-add-table">+ テーブル追加</button>
+      </div>
+      <div class="card"><div id="table-list"></div></div>
+    </div>
+
+    <!-- フロアマップ -->
+    <div class="tab-panel" id="panel-floor-map">
+      <div class="panel-header">
+        <h2 class="panel-header__title">フロアマップ</h2>
+      </div>
+      <div id="floor-map-container"></div>
+    </div>
+
+    <!-- 売上レポート -->
+    <div class="tab-panel" id="panel-sales">
+      <div class="panel-header"><h2 class="panel-header__title">売上レポート</h2></div>
+      <div id="sales-report-container"></div>
+    </div>
+
+    <!-- 全店舗横断レポート・ABC分析は owner-dashboard.html に移動済み -->
+
+    <!-- レジ分析 -->
+    <div class="tab-panel" id="panel-register">
+      <div class="panel-header"><h2 class="panel-header__title">レジ分析</h2></div>
+      <div id="register-report-container"></div>
+    </div>
+
+    <!-- 注文履歴 -->
+    <div class="tab-panel" id="panel-orders">
+      <div class="panel-header"><h2 class="panel-header__title">注文履歴</h2></div>
+      <div id="order-history-container"></div>
+    </div>
+
+    <!-- 回転率・客層分析 -->
+    <div class="tab-panel" id="panel-turnover">
+      <div class="panel-header"><h2 class="panel-header__title">回転率・調理時間・客層分析</h2></div>
+      <div id="turnover-report-container"></div>
+    </div>
+
+    <!-- スタッフ別評価・監査 -->
+    <div class="tab-panel" id="panel-staff-report">
+      <div class="panel-header"><h2 class="panel-header__title">スタッフ別評価・監査</h2></div>
+      <div id="staff-report-container"></div>
+    </div>
+
+    <!-- 併売分析（バスケット分析） -->
+    <div class="tab-panel" id="panel-basket">
+      <div class="panel-header"><h2 class="panel-header__title">併売分析（バスケット分析）</h2></div>
+      <div id="basket-analysis-container"></div>
+    </div>
+
+    <!-- 食べ放題プラン -->
+    <div class="tab-panel" id="panel-time-plans">
+      <div class="panel-header">
+        <h2 class="panel-header__title">食べ放題プラン <span class="panel-header__count" id="time-plan-count"></span></h2>
+        <div class="panel-header__actions">
+          <button class="btn btn-sm btn-outline" id="btn-plan-csv-export">プランCSV</button>
+          <button class="btn btn-sm btn-outline" id="btn-plan-csv-import">プランインポート</button>
+          <input type="file" accept=".csv" id="plan-csv-file" style="display:none">
+          <button class="btn btn-sm btn-outline" id="btn-plan-menu-csv-export">メニューCSV</button>
+          <button class="btn btn-sm btn-outline" id="btn-plan-menu-csv-import">メニューインポート</button>
+          <input type="file" accept=".csv" id="plan-menu-csv-file" style="display:none">
+          <button class="btn btn-primary" id="btn-add-time-plan">+ プラン追加</button>
+        </div>
+      </div>
+      <div id="time-plan-list"></div>
+    </div>
+
+    <!-- コース管理 -->
+    <div class="tab-panel" id="panel-courses">
+      <div class="panel-header">
+        <h2 class="panel-header__title">コース料理 <span class="panel-header__count" id="course-count"></span></h2>
+        <div class="panel-header__actions">
+          <button class="btn btn-sm btn-outline" id="btn-course-csv-export">CSVエクスポート</button>
+          <button class="btn btn-sm btn-outline" id="btn-course-csv-import">CSVインポート</button>
+          <input type="file" accept=".csv" id="course-csv-file" style="display:none">
+          <button class="btn btn-primary" id="btn-add-course">+ コース追加</button>
+        </div>
+      </div>
+      <div id="course-list"></div>
+    </div>
+
+    <!-- 在庫・レシピ管理 -->
+    <div class="tab-panel" id="panel-inventory">
+      <div class="panel-header">
+        <h2 class="panel-header__title">在庫・レシピ管理 <span class="panel-header__count" id="ingredient-count"></span></h2>
+        <button class="btn btn-primary" id="btn-add-ingredient">+ 原材料追加</button>
+      </div>
+      <div id="inventory-container"></div>
+    </div>
+
+    <!-- 店舗設定 -->
+    <div class="tab-panel" id="panel-settings">
+      <div class="panel-header"><h2 class="panel-header__title">店舗設定</h2></div>
+      <div id="settings-container"></div>
+    </div>
+
+    <!-- KDSステーション -->
+    <div class="tab-panel" id="panel-kds-stations">
+      <div class="panel-header">
+        <h2 class="panel-header__title">KDSステーション</h2>
+        <button class="btn btn-primary" id="btn-add-station">+ ステーション追加</button>
+      </div>
+      <div id="kds-station-list"></div>
+    </div>
+
+    <!-- スタッフ管理（managerが自店舗スタッフを管理） -->
+    <div class="tab-panel" id="panel-staff-mgmt">
+      <div class="panel-header">
+        <h2 class="panel-header__title">スタッフ管理</h2>
+        <button class="btn btn-primary" id="btn-add-staff">+ スタッフ追加</button>
+      </div>
+      <div id="staff-list"></div>
+    </div>
+
+    <!-- 監査ログ -->
+    <div class="tab-panel" id="panel-audit-log">
+      <div class="panel-header"><h2 class="panel-header__title">監査ログ</h2></div>
+      <div class="card" id="audit-log-container"></div>
+    </div>
+
+    <!-- テイクアウト管理 -->
+    <div class="tab-panel" id="panel-takeout-orders">
+      <div class="panel-header">
+        <h2 class="panel-header__title">テイクアウト注文管理</h2>
+      </div>
+      <div id="takeout-orders-container"></div>
+    </div>
+
+    <!-- AIアシスタント -->
+    <div class="tab-panel" id="panel-ai-assistant">
+      <div class="panel-header">
+        <h2 class="panel-header__title">AIアシスタント</h2>
+      </div>
+      <div class="card" id="ai-assistant-container">
+        <p style="padding:2rem;color:#888;text-align:center;">準備中</p>
+      </div>
+    </div>
+
+    <!-- 領収書設定 -->
+    <div class="tab-panel" id="panel-receipt-settings">
+      <div class="panel-header"><h2 class="panel-header__title">領収書・インボイス</h2></div>
+      <div id="receipt-settings-container"></div>
+    </div>
+
+    <!-- シフト管理 -->
+    <div class="tab-panel" id="panel-shift-calendar">
+      <div id="shift-view-calendar" class="shift-view"></div>
+    </div>
+    <div class="tab-panel" id="panel-shift-my">
+      <div id="shift-view-my-shift" class="shift-view"></div>
+    </div>
+    <div class="tab-panel" id="panel-shift-availability">
+      <div id="shift-view-availability" class="shift-view"></div>
+    </div>
+    <div class="tab-panel" id="panel-shift-attendance">
+      <div id="shift-view-attendance" class="shift-view"></div>
+    </div>
+    <div class="tab-panel" id="panel-shift-templates">
+      <div id="shift-view-templates" class="shift-view"></div>
+    </div>
+    <div class="tab-panel" id="panel-shift-settings">
+      <div id="shift-view-shift-settings" class="shift-view"></div>
+    </div>
+    <div class="tab-panel" id="panel-shift-summary">
+      <div id="shift-view-summary" class="shift-view"></div>
+    </div>
+    <div class="tab-panel" id="panel-shift-help">
+      <div id="shift-view-help" class="shift-view"></div>
+    </div>
+
+    <!-- スタッフ向け案内 -->
+    <div class="tab-panel" id="panel-staff-home" style="display:none;">
+      <div style="text-align:center; padding:3rem 1rem;">
+        <h2 style="margin-bottom:1rem; color:#333;">スタッフ画面</h2>
+        <p style="color:#666; margin-bottom:2rem;">以下の画面をご利用ください。</p>
+        <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
+          <a href="../handy/index.html" id="staff-tool-handy" class="btn btn-primary" style="font-size:1.125rem; padding:1rem 2rem; text-decoration:none; background:#1a237e;">ハンディPOS</a>
+          <a href="../kds/index.html" id="staff-tool-kds" class="btn btn-primary" style="font-size:1.125rem; padding:1rem 2rem; text-decoration:none;">KDS（キッチン）</a>
+          <a href="../kds/accounting.html" id="staff-tool-register" class="btn btn-primary" style="font-size:1.125rem; padding:1rem 2rem; text-decoration:none;">POSレジ</a>
+        </div>
+        <p id="staff-gps-status" style="display:none; margin-top:1rem; color:#666;"></p>
+        <div id="staff-shift-links" style="display:none; margin-top:2rem; padding-top:2rem; border-top:1px solid #e0e0e0;">
+          <p style="color:#666; margin-bottom:1rem;">シフト管理</p>
+          <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
+            <button class="btn btn-primary" id="btn-staff-my-shift" style="font-size:1.125rem; padding:1rem 2rem; background:#00897b;">マイシフト</button>
+            <button class="btn btn-primary" id="btn-staff-availability" style="font-size:1.125rem; padding:1rem 2rem; background:#00897b;">希望シフト提出</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 共通モーダル -->
+  <div class="modal-overlay" id="admin-modal-overlay">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 class="modal__title"></h3>
+        <button class="modal__close" data-action="modal-cancel">&times;</button>
+      </div>
+      <div class="modal__body"></div>
+      <div class="modal__footer"></div>
+    </div>
+  </div>
+
+  <!-- 店舗選択オーバーレイ -->
+  <div class="admin-store-overlay" id="admin-store-overlay" style="display:none">
+    <div class="admin-store-overlay__box">
+      <div class="admin-store-overlay__title">店舗を選択してください</div>
+      <div class="admin-store-overlay__list" id="admin-store-list"></div>
+    </div>
+  </div>
+
+  <!-- トースト -->
+  <div class="admin-toast" id="admin-toast"></div>
+
+  <!-- JS -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="../shared/js/utils.js"></script>
+  <script src="js/admin-api.js?v=20260405b"></script>
+  <script src="js/store-selector.js"></script>
+  <script src="js/category-editor.js"></script>
+  <script src="js/menu-override-editor.js"></script>
+  <script src="js/local-item-editor.js"></script>
+  <script src="js/daily-recommendation-editor.js"></script>
+  <script src="js/table-editor.js"></script>
+  <script src="js/floor-map.js"></script>
+  <script src="js/sales-report.js"></script>
+  <script src="js/register-report.js"></script>
+  <script src="js/order-history.js"></script>
+  <script src="js/turnover-report.js"></script>
+  <script src="js/staff-report.js"></script>
+  <script src="js/basket-analysis.js"></script>
+  <script src="js/time-limit-plan-editor.js"></script>
+  <script src="js/course-editor.js"></script>
+  <script src="js/inventory-manager.js"></script>
+  <script src="js/settings-editor.js"></script>
+  <script src="js/option-group-editor.js"></script>
+  <script src="js/kds-station-editor.js"></script>
+  <script src="js/user-editor.js?v=20260406b"></script>
+  <script src="js/audit-log-viewer.js"></script>
+  <script src="js/receipt-settings.js?v=20260405c"></script>
+  <script src="js/takeout-manager.js"></script>
+  <script src="js/ai-assistant.js"></script>
+  <script src="../js/shift-manager.js?v=20260406b"></script>
+  <script src="../js/shift-calendar.js?v=20260406b"></script>
+  <script src="js/shift-help.js?v=20260406"></script>
+  <script src="../js/attendance-clock.js?v=20260406"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var _role = '';
+    var _activeGroup = '';
+    var _hiddenSubtabs = {};
+    var LS_KEY = 'mt_hidden_subtabs';
+
+    // localStorage読み込み
+    try {
+      var saved = localStorage.getItem(LS_KEY);
+      if (saved) _hiddenSubtabs = JSON.parse(saved);
+    } catch (e) { _hiddenSubtabs = {}; }
+
+    function saveHidden() {
+      try { localStorage.setItem(LS_KEY, JSON.stringify(_hiddenSubtabs)); } catch (e) {}
+    }
+
+    // 認証チェック
+    AdminApi.me().then(function (res) {
+      var user = res.user;
+      var stores = res.stores;
+      _role = user.role;
+
+      // ownerはowner-dashboard.htmlへリダイレクト
+      if (_role === 'owner') {
+        window.location.href = 'owner-dashboard.html';
+        return;
+      }
+
+      // ヘッダー
+      var tenantLabel = (user.tenantName || '管理画面') + (user.tenantName ? ' 管理画面' : '');
+      document.getElementById('header-tenant-name').textContent = tenantLabel;
+      document.title = tenantLabel;
+      document.getElementById('header-user-name').textContent = user.displayName || user.email;
+
+      // ロールに応じたbodyクラス
+      document.body.classList.add('role-' + _role);
+
+      // ロールに応じたタブ表示制御（親タブ＋非グループタブ）
+      var roleLevel = { staff: 1, manager: 2, owner: 3 };
+      var userLevel = roleLevel[_role] || 0;
+
+      function checkRole(el) {
+        var minLevel = roleLevel[el.dataset.roleMin] || 99;
+        var maxLevel = el.dataset.roleMax ? (roleLevel[el.dataset.roleMax] || 99) : 99;
+        return userLevel >= minLevel && userLevel <= maxLevel;
+      }
+
+      document.querySelectorAll('.tab-nav__btn[data-role-min]').forEach(function (btn) {
+        if (!checkRole(btn)) btn.style.display = 'none';
+      });
+
+      // サブタブのロール制御
+      document.querySelectorAll('.sub-tab-nav__btn[data-role-min]').forEach(function (btn) {
+        if (!checkRole(btn)) btn.style.display = 'none';
+      });
+
+      // L-16: プラン機能制限（CSSクラスでopenGroupのdisplayリセットに勝つ）
+      var _planFeatures = res.features || {};
+      (function applyPlanFeatureRestrictions() {
+        // .plan-hidden { display:none!important } をインジェクト
+        var styleEl = document.createElement('style');
+        styleEl.textContent = '.plan-hidden{display:none!important}';
+        document.head.appendChild(styleEl);
+
+        // グループタブ（親）→ feature_key
+        var groupFeatureMap = {
+          'inventory': 'inventory',
+          'takeout': 'takeout',
+          'ai': 'ai_waiter',
+          'shift': 'shift_management'
+        };
+        var gKeys = Object.keys(groupFeatureMap);
+        for (var gi = 0; gi < gKeys.length; gi++) {
+          if (_planFeatures[groupFeatureMap[gKeys[gi]]] === false) {
+            var gBtn = document.querySelector('.tab-nav__btn[data-group="' + gKeys[gi] + '"]');
+            if (gBtn) gBtn.classList.add('plan-hidden');
+          }
+        }
+
+        // サブタブ → feature_key
+        var subTabFeatureMap = {
+          'floor-map': 'floor_map',
+          'turnover': 'advanced_reports',
+          'staff-report': 'advanced_reports',
+          'basket': 'basket_analysis',
+          'audit-log': 'audit_log',
+          'shift-help': 'shift_help_request'
+        };
+        var sKeys = Object.keys(subTabFeatureMap);
+        for (var si = 0; si < sKeys.length; si++) {
+          if (_planFeatures[subTabFeatureMap[sKeys[si]]] === false) {
+            var sBtn = document.querySelector('.sub-tab-nav__btn[data-tab="' + sKeys[si] + '"]');
+            if (sBtn) sBtn.classList.add('plan-hidden');
+          }
+        }
+      })();
+
+      // ロールに応じた要素の表示制御（ショートカット等）
+      document.querySelectorAll('[data-role-max]').forEach(function (el) {
+        if (el.classList.contains('tab-nav__btn') || el.classList.contains('sub-tab-nav__btn')) return;
+        var maxLevel = roleLevel[el.dataset.roleMax] || 99;
+        if (userLevel > maxLevel) el.style.display = 'none';
+      });
+
+      // 店舗セレクター初期化（hidden select を内部で利用）
+      var hiddenSelect = document.getElementById('store-select');
+      StoreSelector.init(hiddenSelect, stores, _role);
+
+      var storeNameEl = document.getElementById('store-name');
+      var changeLinkEl = document.getElementById('store-change-link');
+
+      // 店舗名テキスト表示を更新
+      function updateStoreNameText() {
+        var sid = StoreSelector.getSelectedStoreId();
+        var s = stores.find(function (st) { return st.id === sid; });
+        storeNameEl.textContent = s ? s.name : '-';
+      }
+      updateStoreNameText();
+
+      // 複数店舗: オーバーレイまたは切替リンク
+      function showAdminStoreOverlay(onSelect) {
+        var overlay = document.getElementById('admin-store-overlay');
+        var list = document.getElementById('admin-store-list');
+        var html = '';
+        stores.forEach(function (s) {
+          html += '<button class="admin-store-overlay__btn" data-store-id="' + s.id + '">' + Utils.escapeHtml(s.name) + '</button>';
+        });
+        list.innerHTML = html;
+        overlay.style.display = 'flex';
+
+        list.addEventListener('click', function handler(e) {
+          var btn = e.target.closest('.admin-store-overlay__btn');
+          if (!btn) return;
+          list.removeEventListener('click', handler);
+          overlay.style.display = 'none';
+          onSelect(btn.dataset.storeId);
+        });
+      }
+
+      function selectStoreViaOverlay(selectedId) {
+        hiddenSelect.value = selectedId;
+        // StoreSelector の change コールバックを発火
+        var evt = document.createEvent('HTMLEvents');
+        evt.initEvent('change', true, false);
+        hiddenSelect.dispatchEvent(evt);
+        updateStoreNameText();
+      }
+
+      var _waitingForOverlay = false;
+
+      if (stores.length > 1) {
+        var savedStore = localStorage.getItem('mt_selected_store');
+        if (!savedStore || !stores.some(function (s) { return s.id === savedStore; })) {
+          // 初回: オーバーレイで選択を強制
+          _waitingForOverlay = true;
+          showAdminStoreOverlay(function (selectedId) {
+            _waitingForOverlay = false;
+            selectStoreViaOverlay(selectedId);
+            changeLinkEl.style.display = '';
+            updateStoreRequiredTabs();
+            // managerはメニュー管理グループを初期表示
+            if (_role !== 'staff') openGroup('menu');
+          });
+        } else {
+          changeLinkEl.style.display = '';
+        }
+
+        changeLinkEl.addEventListener('click', function (e) {
+          e.preventDefault();
+          showAdminStoreOverlay(function (selectedId) {
+            selectStoreViaOverlay(selectedId);
+          });
+        });
+      }
+
+      // 顧客メニューリンクを更新
+      function updateCustomerLink() {
+        var sid = StoreSelector.getSelectedStoreId();
+        var link = document.getElementById('link-customer-menu');
+        if (sid) {
+          link.href = '../customer/menu.html?store_id=' + encodeURIComponent(sid);
+        }
+      }
+      updateCustomerLink();
+
+      // 店舗固有タブの表示/非表示制御
+      function updateStoreRequiredTabs() {
+        var hasStore = !!StoreSelector.getSelectedStoreId();
+        // 親グループタブ
+        document.querySelectorAll('.tab-nav__btn[data-requires-store]').forEach(function (btn) {
+          btn.style.display = (hasStore && checkRole(btn)) ? '' : 'none';
+        });
+        // 店舗未選択時はアクティブグループをリセット
+        if (!hasStore) {
+          var activeBtn = document.querySelector('.tab-nav__btn.active');
+          if (activeBtn && activeBtn.hasAttribute('data-requires-store')) {
+            activeBtn.classList.remove('active');
+            document.getElementById('sub-tab-nav').classList.remove('open');
+            _activeGroup = '';
+          }
+        }
+      }
+      updateStoreRequiredTabs();
+
+      // 店舗切替時にデータリロード + タブ表示制御
+      StoreSelector.onChange(function () {
+        updateCustomerLink();
+        updateStoreNameText();
+        updateStoreRequiredTabs();
+        // アクティブなサブタブがあればリロード
+        var activeSub = document.querySelector('.sub-tab-nav__btn.active');
+        if (activeSub && activeSub.style.display !== 'none') {
+          activateTab(activeSub.dataset.tab);
+        } else {
+          var activeParent = document.querySelector('.tab-nav__btn.active');
+          if (activeParent && activeParent.dataset.tab) {
+            activateTab(activeParent.dataset.tab);
+          }
+        }
+      });
+
+      // 各モジュール初期化
+      CategoryEditor.init(
+        document.getElementById('category-list'),
+        document.getElementById('category-count')
+      );
+      MenuOverrideEditor.init(document.getElementById('override-list'));
+      DailyRecommendationEditor.init(document.getElementById('recommend-editor-container'));
+      LocalItemEditor.init(document.getElementById('local-list'));
+      TableEditor.init(
+        document.getElementById('table-list'),
+        document.getElementById('table-count')
+      );
+      FloorMap.init(document.getElementById('floor-map-container'));
+      SalesReport.init(document.getElementById('sales-report-container'));
+      RegisterReport.init(document.getElementById('register-report-container'));
+      OrderHistory.init(document.getElementById('order-history-container'));
+      TurnoverReport.init(document.getElementById('turnover-report-container'));
+      StaffReport.init(document.getElementById('staff-report-container'));
+      BasketAnalysis.init(document.getElementById('basket-analysis-container'));
+      TimeLimitPlanEditor.init(
+        document.getElementById('time-plan-list'),
+        document.getElementById('time-plan-count')
+      );
+      CourseEditor.init(
+        document.getElementById('course-list'),
+        document.getElementById('course-count')
+      );
+      InventoryManager.init(
+        document.getElementById('inventory-container'),
+        document.getElementById('ingredient-count')
+      );
+      SettingsEditor.init(document.getElementById('settings-container'));
+      OptionGroupEditor.init(
+        document.getElementById('option-group-list'),
+        document.getElementById('og-count')
+      );
+      KdsStationEditor.init(document.getElementById('kds-station-list'));
+      UserEditor.init(document.getElementById('staff-list'), _role);
+      AuditLogViewer.init(document.getElementById('audit-log-container'));
+      ReceiptSettings.init(document.getElementById('receipt-settings-container'));
+      AiAssistant.init(document.getElementById('ai-assistant-container'));
+      TakeoutManager.init(document.getElementById('takeout-orders-container'));
+
+      // シフト管理 + 勤怠打刻の初期化
+      if (typeof ShiftManager !== 'undefined') {
+        ShiftManager.init(StoreSelector.getSelectedStoreId(), _role);
+      }
+      // L-3b: 選択中店舗のGPS設定を取得
+      var _currentStoreGps = null;
+      (function() {
+        var sid = StoreSelector.getSelectedStoreId();
+        if (sid) {
+          for (var si = 0; si < stores.length; si++) {
+            if (stores[si].id === sid) {
+              _currentStoreGps = {
+                gpsRequired: stores[si].gpsRequired || 0,
+                storeLat: stores[si].storeLat,
+                storeLng: stores[si].storeLng,
+                gpsRadiusMeters: stores[si].gpsRadiusMeters || 200,
+                staffVisibleTools: stores[si].staffVisibleTools || null,
+                userVisibleTools: stores[si].userVisibleTools !== undefined ? stores[si].userVisibleTools : null
+              };
+              break;
+            }
+          }
+        }
+      })();
+
+      // 出退勤ボタンはスタッフのみ表示（マネージャー/オーナーは不要）
+      if (_role === 'staff' && typeof AttendanceClock !== 'undefined' && StoreSelector.getSelectedStoreId()) {
+        AttendanceClock.init(StoreSelector.getSelectedStoreId(), _currentStoreGps);
+      }
+
+      // スタッフには「注文画面」リンク不要（ハンディで確認可能）
+      if (_role === 'staff') {
+        var _custLink = document.getElementById('link-customer-menu');
+        if (_custLink) _custLink.style.display = 'none';
+      }
+
+      // L-3b: スタッフ向けツール表示制御 + GPS圏内チェック
+      if (_role === 'staff' && _currentStoreGps) {
+        // ツール表示制御（スタッフホーム + ヘッダーショートカット両方）
+        // L-3b2: ユーザー個別設定 > 店舗設定 > 全表示
+        var _visTools = _currentStoreGps.userVisibleTools !== null ? _currentStoreGps.userVisibleTools : _currentStoreGps.staffVisibleTools;
+        if (_visTools) {
+          var _toolPairs = [
+            { key: 'handy',    ids: ['staff-tool-handy',    'header-tool-handy'] },
+            { key: 'kds',      ids: ['staff-tool-kds',      'header-tool-kds'] },
+            { key: 'register', ids: ['staff-tool-register', 'header-tool-register'] }
+          ];
+          var _allowed = _visTools.split(',');
+          for (var ti = 0; ti < _toolPairs.length; ti++) {
+            if (_allowed.indexOf(_toolPairs[ti].key) === -1) {
+              for (var pi = 0; pi < _toolPairs[ti].ids.length; pi++) {
+                var toolEl = document.getElementById(_toolPairs[ti].ids[pi]);
+                if (toolEl) toolEl.style.display = 'none';
+              }
+            }
+          }
+        }
+
+        // GPS圏内チェック（ツールボタンの有効/無効制御）
+        if (_currentStoreGps.gpsRequired === 1
+            && _currentStoreGps.storeLat !== null && _currentStoreGps.storeLng !== null) {
+          // ツールボタンを一時無効化（スタッフホーム + ヘッダー両方）
+          var _toolBtns = document.querySelectorAll('#staff-tool-handy,#staff-tool-kds,#staff-tool-register,#header-tool-handy,#header-tool-kds,#header-tool-register');
+          for (var gi = 0; gi < _toolBtns.length; gi++) {
+            if (_toolBtns[gi].style.display !== 'none') {
+              _toolBtns[gi].style.opacity = '0.4';
+              _toolBtns[gi].style.pointerEvents = 'none';
+            }
+          }
+          var _gpsStatusEl = document.getElementById('staff-gps-status');
+          if (_gpsStatusEl) {
+            _gpsStatusEl.style.display = '';
+            _gpsStatusEl.textContent = '位置情報を確認中...';
+            _gpsStatusEl.style.color = '#666';
+          }
+
+          // Haversine距離計算
+          function _staffHaversine(lat1, lng1, lat2, lng2) {
+            var R = 6371000;
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLng = (lng2 - lng1) * Math.PI / 180;
+            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          }
+
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(pos) {
+              var dist = _staffHaversine(
+                _currentStoreGps.storeLat, _currentStoreGps.storeLng,
+                pos.coords.latitude, pos.coords.longitude
+              );
+              if (dist <= _currentStoreGps.gpsRadiusMeters) {
+                // 圏内: ボタン有効化
+                for (var ei = 0; ei < _toolBtns.length; ei++) {
+                  if (_toolBtns[ei].style.display !== 'none') {
+                    _toolBtns[ei].style.opacity = '';
+                    _toolBtns[ei].style.pointerEvents = '';
+                  }
+                }
+                if (_gpsStatusEl) {
+                  _gpsStatusEl.textContent = '店舗圏内です（' + Math.round(dist) + 'm）';
+                  _gpsStatusEl.style.color = '#27ae60';
+                }
+              } else {
+                // 圏外: エラー表示
+                if (_gpsStatusEl) {
+                  _gpsStatusEl.textContent = '店舗から' + Math.round(dist) + 'm離れています（許容: ' + _currentStoreGps.gpsRadiusMeters + 'm）。店舗圏内でご利用ください。';
+                  _gpsStatusEl.style.color = '#e74c3c';
+                }
+              }
+            }, function(err) {
+              if (_gpsStatusEl) {
+                var errMsg = '位置情報を取得できませんでした';
+                if (err.code === 1) errMsg = '位置情報の取得が拒否されました。ブラウザの設定を確認してください';
+                _gpsStatusEl.textContent = errMsg;
+                _gpsStatusEl.style.color = '#e74c3c';
+              }
+            }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+          } else {
+            if (_gpsStatusEl) {
+              _gpsStatusEl.textContent = 'このブラウザは位置情報に対応していません';
+              _gpsStatusEl.style.color = '#e74c3c';
+            }
+          }
+        }
+      }
+
+      // スタッフ向けシフトリンク表示（shift_management機能が有効な場合）
+      if (_role === 'staff' && _planFeatures.shift_management !== false && StoreSelector.getSelectedStoreId()) {
+        var shiftLinks = document.getElementById('staff-shift-links');
+        if (shiftLinks) shiftLinks.style.display = '';
+      }
+
+      // スタッフ向けシフトボタンのイベント
+      var btnMyShift = document.getElementById('btn-staff-my-shift');
+      if (btnMyShift) {
+        btnMyShift.addEventListener('click', function () {
+          openGroup('shift');
+          // マイシフトサブタブをアクティブに
+          var subNav = document.getElementById('sub-tab-nav');
+          subNav.querySelectorAll('.sub-tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
+          var myBtn = subNav.querySelector('.sub-tab-nav__btn[data-tab="shift-my"]');
+          if (myBtn) { myBtn.classList.add('active'); activateTab('shift-my'); }
+        });
+      }
+      var btnAvail = document.getElementById('btn-staff-availability');
+      if (btnAvail) {
+        btnAvail.addEventListener('click', function () {
+          openGroup('shift');
+          var subNav = document.getElementById('sub-tab-nav');
+          subNav.querySelectorAll('.sub-tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
+          var avBtn = subNav.querySelector('.sub-tab-nav__btn[data-tab="shift-availability"]');
+          if (avBtn) { avBtn.classList.add('active'); activateTab('shift-availability'); }
+        });
+      }
+
+      // デフォルトタブを表示（オーバーレイ待ちの場合はスキップ）
+      if (_role === 'staff') {
+        document.getElementById('panel-staff-home').style.display = '';
+        document.getElementById('panel-staff-home').classList.add('active');
+      } else if (!_waitingForOverlay) {
+        // managerはメニュー管理グループを初期表示
+        openGroup('menu');
+      }
+    }).catch(function () {
+      window.location.href = 'index.html';
+    });
+
+    // グループを開く（サブタブ表示 + 最初のサブタブを選択）
+    function openGroup(groupId) {
+      var tabNav = document.getElementById('tab-nav');
+      var subNav = document.getElementById('sub-tab-nav');
+
+      // 親タブのactive切替
+      tabNav.querySelectorAll('.tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
+      var groupBtn = tabNav.querySelector('.tab-nav__btn[data-group="' + groupId + '"]');
+      if (groupBtn) groupBtn.classList.add('active');
+
+      _activeGroup = groupId;
+
+      // サブタブ表示切替
+      subNav.querySelectorAll('.sub-tab-nav__btn').forEach(function (btn) {
+        var show = btn.dataset.group === groupId && btn.style.display !== 'none';
+        // 非表示設定チェック
+        if (show && _hiddenSubtabs[btn.dataset.tab]) show = false;
+        btn.style.display = (btn.dataset.group === groupId && !_hiddenSubtabs[btn.dataset.tab]) ? '' : 'none';
+        btn.classList.remove('active');
+      });
+      subNav.classList.add('open');
+
+      // ロール制御を再適用（非表示サブタブ）
+      var roleLevel = { staff: 1, manager: 2, owner: 3 };
+      var userLevel = roleLevel[_role] || 0;
+      subNav.querySelectorAll('.sub-tab-nav__btn[data-group="' + groupId + '"]').forEach(function (btn) {
+        if (btn.dataset.roleMin) {
+          var minL = roleLevel[btn.dataset.roleMin] || 99;
+          var maxL = btn.dataset.roleMax ? (roleLevel[btn.dataset.roleMax] || 99) : 99;
+          if (userLevel < minL || userLevel > maxL) btn.style.display = 'none';
+        }
+        if (_hiddenSubtabs[btn.dataset.tab]) btn.style.display = 'none';
+      });
+
+      // 最初の可視サブタブを選択
+      var firstVisible = subNav.querySelector('.sub-tab-nav__btn[data-group="' + groupId + '"][style=""]') ||
+                         subNav.querySelector('.sub-tab-nav__btn[data-group="' + groupId + '"]:not([style*="none"])');
+      if (firstVisible) {
+        firstVisible.classList.add('active');
+        activateTab(firstVisible.dataset.tab);
+      }
+
+      // 設定パネル更新
+      buildSettingsPanel(groupId);
+    }
+
+    // 親タブクリック
+    var tabNav = document.getElementById('tab-nav');
+    tabNav.addEventListener('click', function (e) {
+      var btn = e.target.closest('.tab-nav__btn');
+      if (!btn) return;
+
+      document.getElementById('subtab-settings-panel').classList.remove('open');
+
+      if (btn.dataset.group) {
+        // グループタブ
+        openGroup(btn.dataset.group);
+      } else {
+        // 非グループタブ
+        tabNav.querySelectorAll('.tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        _activeGroup = '';
+        document.getElementById('sub-tab-nav').classList.remove('open');
+        activateTab(btn.dataset.tab);
+      }
+    });
+
+    // サブタブクリック
+    var subNav = document.getElementById('sub-tab-nav');
+    subNav.addEventListener('click', function (e) {
+      var btn = e.target.closest('.sub-tab-nav__btn');
+      if (!btn) return;
+      subNav.querySelectorAll('.sub-tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      activateTab(btn.dataset.tab);
+      document.getElementById('subtab-settings-panel').classList.remove('open');
+    });
+
+    // 表示設定パネル
+    function buildSettingsPanel(groupId) {
+      var panel = document.getElementById('subtab-settings-panel');
+      var html = '<div class="subtab-settings-panel__title">表示するサブタブ</div>';
+      document.querySelectorAll('.sub-tab-nav__btn[data-group="' + groupId + '"]').forEach(function (btn) {
+        // ロールで非表示のものはスキップ
+        var roleLevel = { staff: 1, manager: 2, owner: 3 };
+        var userLevel = roleLevel[_role] || 0;
+        if (btn.dataset.roleMin) {
+          var minL = roleLevel[btn.dataset.roleMin] || 99;
+          var maxL = btn.dataset.roleMax ? (roleLevel[btn.dataset.roleMax] || 99) : 99;
+          if (userLevel < minL || userLevel > maxL) return;
+        }
+        var tabId = btn.dataset.tab;
+        var checked = !_hiddenSubtabs[tabId] ? ' checked' : '';
+        html += '<label class="subtab-settings-panel__item">' +
+          '<input type="checkbox" data-subtab-toggle="' + tabId + '"' + checked + '> ' +
+          btn.textContent + '</label>';
+      });
+      html += '<button class="subtab-settings-panel__reset" id="btn-reset-subtabs">表示設定リセット</button>';
+      panel.innerHTML = html;
+    }
+
+    document.getElementById('btn-subtab-settings').addEventListener('click', function (e) {
+      e.stopPropagation();
+      var panel = document.getElementById('subtab-settings-panel');
+      panel.classList.toggle('open');
+    });
+
+    // 設定パネル内のチェックボックス変更
+    document.getElementById('subtab-settings-panel').addEventListener('change', function (e) {
+      var cb = e.target;
+      if (!cb.dataset.subtabToggle) return;
+      var tabId = cb.dataset.subtabToggle;
+      if (cb.checked) {
+        delete _hiddenSubtabs[tabId];
+      } else {
+        _hiddenSubtabs[tabId] = true;
+      }
+      saveHidden();
+      // サブタブ表示更新
+      if (_activeGroup) openGroup(_activeGroup);
+    });
+
+    // リセットボタン
+    document.getElementById('subtab-settings-panel').addEventListener('click', function (e) {
+      if (e.target.id === 'btn-reset-subtabs') {
+        _hiddenSubtabs = {};
+        saveHidden();
+        if (_activeGroup) openGroup(_activeGroup);
+      }
+    });
+
+    // パネル外クリックで閉じる
+    document.addEventListener('click', function (e) {
+      var panel = document.getElementById('subtab-settings-panel');
+      var settingsBtn = document.getElementById('btn-subtab-settings');
+      if (!panel.contains(e.target) && e.target !== settingsBtn) {
+        panel.classList.remove('open');
+      }
+    });
+
+    function activateTab(tabId) {
+      // フロアマップ・テイクアウトのポーリング停止（他タブに切替時）
+      if (tabId !== 'floor-map') FloorMap.stop();
+      if (tabId !== 'takeout-orders') TakeoutManager.stop();
+
+      document.querySelectorAll('.tab-panel').forEach(function (p) {
+        p.classList.toggle('active', p.id === 'panel-' + tabId);
+      });
+
+      // データ読み込み
+      switch (tabId) {
+        case 'hq-categories': CategoryEditor.load(); break;
+        case 'option-groups': OptionGroupEditor.load(); break;
+        case 'store-menu': MenuOverrideEditor.load(); DailyRecommendationEditor.load(); break;
+        case 'local-menu': LocalItemEditor.load(); break;
+        case 'tables': TableEditor.load(); break;
+        case 'floor-map': FloorMap.load(); break;
+        case 'sales': SalesReport.load(); break;
+        case 'register': RegisterReport.load(); break;
+        case 'orders': OrderHistory.load(); break;
+        case 'turnover': TurnoverReport.load(); break;
+        case 'staff-report': StaffReport.load(); break;
+        case 'basket': BasketAnalysis.load(); break;
+        case 'time-plans': TimeLimitPlanEditor.load(); break;
+        case 'courses': CourseEditor.load(); break;
+        case 'inventory': InventoryManager.load(); break;
+        case 'settings': SettingsEditor.load(); break;
+        case 'kds-stations': KdsStationEditor.load(); break;
+        case 'staff-mgmt': UserEditor.load(); break;
+        case 'audit-log': AuditLogViewer.load(); break;
+        case 'receipt-settings': ReceiptSettings.load(); break;
+        case 'takeout-orders': TakeoutManager.load(); break;
+        case 'ai-assistant': AiAssistant.load(); break;
+        case 'shift-calendar':
+          if (typeof ShiftCalendar !== 'undefined') {
+            ShiftCalendar.init('shift-view-calendar', StoreSelector.getSelectedStoreId());
+          }
+          break;
+        case 'shift-my':
+          if (typeof ShiftManager !== 'undefined') {
+            ShiftManager.storeId = StoreSelector.getSelectedStoreId();
+            ShiftManager.loadMyShift();
+          }
+          break;
+        case 'shift-availability':
+          if (typeof ShiftManager !== 'undefined') {
+            ShiftManager.storeId = StoreSelector.getSelectedStoreId();
+            ShiftManager.loadAvailabilities();
+          }
+          break;
+        case 'shift-attendance':
+          if (typeof ShiftManager !== 'undefined') {
+            ShiftManager.storeId = StoreSelector.getSelectedStoreId();
+            ShiftManager.loadAttendance();
+          }
+          break;
+        case 'shift-templates':
+          if (typeof ShiftManager !== 'undefined') {
+            ShiftManager.storeId = StoreSelector.getSelectedStoreId();
+            ShiftManager.loadTemplates();
+          }
+          break;
+        case 'shift-settings':
+          if (typeof ShiftManager !== 'undefined') {
+            ShiftManager.storeId = StoreSelector.getSelectedStoreId();
+            ShiftManager.loadSettings();
+          }
+          break;
+        case 'shift-summary':
+          if (typeof ShiftManager !== 'undefined') {
+            ShiftManager.storeId = StoreSelector.getSelectedStoreId();
+            ShiftManager.loadSummary();
+          }
+          break;
+        case 'shift-help':
+          if (typeof ShiftHelp !== 'undefined') {
+            ShiftHelp.init('shift-view-help', StoreSelector.getSelectedStoreId());
+          }
+          break;
+      }
+    }
+
+    // ログアウト
+    document.getElementById('btn-logout').addEventListener('click', function () {
+      AdminApi.logout().finally(function () { window.location.href = 'index.html'; });
+    });
+
+    // モーダルキャンセル
+    document.addEventListener('click', function (e) {
+      if (e.target.matches('[data-action="modal-cancel"]')) {
+        document.getElementById('admin-modal-overlay').classList.remove('open');
+      }
+    });
+
+    var modalOverlay = document.getElementById('admin-modal-overlay');
+    modalOverlay.addEventListener('click', function (e) {
+      if (e.target === modalOverlay) modalOverlay.classList.remove('open');
+    });
+
+    // 追加ボタン
+    document.getElementById('btn-add-category').addEventListener('click', function () { CategoryEditor.openAddModal(); });
+    document.getElementById('btn-add-local').addEventListener('click', function () { LocalItemEditor.openAddModal(); });
+    document.getElementById('btn-add-table').addEventListener('click', function () { TableEditor.openAddModal(); });
+    document.getElementById('btn-add-option-group').addEventListener('click', function () { OptionGroupEditor.openAddModal(); });
+    document.getElementById('btn-add-station').addEventListener('click', function () { KdsStationEditor.openAddModal(); });
+    document.getElementById('btn-add-staff').addEventListener('click', function () {
+      UserEditor.openAddModal();
+      // ロールをstaffに固定
+      var roleSelect = document.getElementById('user-role');
+      if (roleSelect) {
+        roleSelect.innerHTML = '<option value="staff" selected>\u30B9\u30BF\u30C3\u30D5</option>';
+      }
+    });
+    document.getElementById('btn-add-time-plan').addEventListener('click', function () { TimeLimitPlanEditor.openAddModal(); });
+    document.getElementById('btn-add-course').addEventListener('click', function () { CourseEditor.openAddModal(); });
+    document.getElementById('btn-add-ingredient').addEventListener('click', function () { InventoryManager.openAddModal(); });
+
+    // 限定メニューCSV
+    document.getElementById('btn-local-csv-export').addEventListener('click', function () {
+      AdminApi.exportLocalItemsCsv();
+    });
+    document.getElementById('btn-local-csv-import').addEventListener('click', function () {
+      document.getElementById('local-csv-import-file').click();
+    });
+    document.getElementById('local-csv-import-file').addEventListener('change', function () {
+      var file = this.files[0];
+      if (!file) return;
+      this.value = '';
+      if (!confirm('CSVファイル「' + file.name + '」をインポートしますか？')) return;
+      AdminApi.importLocalItemsCsv(file).then(function (res) {
+        var msg = '作成: ' + res.created + '件、更新: ' + res.updated + '件';
+        if (res.errors && res.errors.length > 0) msg += '\nエラー:\n' + res.errors.join('\n');
+        showToast(msg, res.errors && res.errors.length > 0 ? 'warning' : 'success');
+        LocalItemEditor.load();
+      }).catch(function (err) { showToast(err.message, 'error'); });
+    });
+
+    // カテゴリリストのイベント委譲
+    document.getElementById('category-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-category') CategoryEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-category') CategoryEditor.confirmDelete(btn.dataset.id);
+    });
+
+    // オーバーライドリストのイベント委譲
+    document.getElementById('override-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-override') MenuOverrideEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'toggle-override-sold-out') MenuOverrideEditor.toggleSoldOut(btn.dataset.id);
+      else if (btn.dataset.action === 'toggle-override-hidden') MenuOverrideEditor.toggleHidden(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-override-template') MenuOverrideEditor.confirmDelete(btn.dataset.id);
+    });
+
+    // 店舗メニュー追加ボタン
+    document.getElementById('btn-add-store-menu').addEventListener('click', function () { MenuOverrideEditor.openAddModal(); });
+
+    // L-4: メニュー一括翻訳ボタン
+    document.getElementById('btn-translate-menu').addEventListener('click', function () {
+      var storeId = document.getElementById('store-select').value;
+      if (!storeId) { showToast('店舗を選択してください', 'error'); return; }
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = '🌐 翻訳中...';
+      fetch('../../api/store/translate-menu.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ store_id: storeId, langs: ['zh-Hans', 'zh-Hant', 'ko'] })
+      })
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        var json = JSON.parse(text);
+        if (json.ok !== false && json.data) {
+          showToast(json.data.message || '翻訳完了', 'success');
+          if (json.data.warnings && json.data.warnings.length > 0) {
+            showToast('警告: ' + json.data.warnings.join(', '), 'warning');
+          }
+        } else {
+          showToast((json.error || '翻訳に失敗しました'), 'error');
+        }
+      })
+      .catch(function (err) {
+        showToast('翻訳エラー: ' + err.message, 'error');
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = '🌐 一括翻訳';
+      });
+    });
+
+    // 店舗メニューオーバーライドCSV
+    document.getElementById('btn-override-csv-export').addEventListener('click', function () {
+      AdminApi.exportOverridesCsv();
+    });
+    document.getElementById('btn-override-csv-import').addEventListener('click', function () {
+      document.getElementById('override-csv-file').click();
+    });
+    document.getElementById('override-csv-file').addEventListener('change', function () {
+      var file = this.files[0];
+      if (!file) return;
+      this.value = '';
+      if (!confirm('CSVファイル「' + file.name + '」をインポートしますか？')) return;
+      AdminApi.importOverridesCsv(file).then(function (res) {
+        var msg = '更新: ' + res.updated + '件';
+        if (res.errors && res.errors.length > 0) msg += '\nエラー:\n' + res.errors.join('\n');
+        showToast(msg, res.errors && res.errors.length > 0 ? 'warning' : 'success');
+        MenuOverrideEditor.load();
+      }).catch(function (err) { showToast(err.message, 'error'); });
+    });
+
+    // 食べ放題プランCSV
+    document.getElementById('btn-plan-csv-export').addEventListener('click', function () {
+      AdminApi.exportTimeLimitPlansCsv();
+    });
+    document.getElementById('btn-plan-csv-import').addEventListener('click', function () {
+      document.getElementById('plan-csv-file').click();
+    });
+    document.getElementById('plan-csv-file').addEventListener('change', function () {
+      var file = this.files[0];
+      if (!file) return;
+      this.value = '';
+      if (!confirm('CSVファイル「' + file.name + '」をインポートしますか？')) return;
+      AdminApi.importTimeLimitPlansCsv(file).then(function (res) {
+        var msg = '作成: ' + res.created + '件、更新: ' + res.updated + '件';
+        if (res.errors && res.errors.length > 0) msg += '\nエラー:\n' + res.errors.join('\n');
+        showToast(msg, res.errors && res.errors.length > 0 ? 'warning' : 'success');
+        TimeLimitPlanEditor.load();
+      }).catch(function (err) { showToast(err.message, 'error'); });
+    });
+
+    // プラン専用メニューCSV
+    document.getElementById('btn-plan-menu-csv-export').addEventListener('click', function () {
+      AdminApi.exportPlanMenuItemsCsv();
+    });
+    document.getElementById('btn-plan-menu-csv-import').addEventListener('click', function () {
+      document.getElementById('plan-menu-csv-file').click();
+    });
+    document.getElementById('plan-menu-csv-file').addEventListener('change', function () {
+      var file = this.files[0];
+      if (!file) return;
+      this.value = '';
+      if (!confirm('CSVファイル「' + file.name + '」をインポートしますか？')) return;
+      AdminApi.importPlanMenuItemsCsv(file).then(function (res) {
+        var msg = '作成: ' + res.created + '件、更新: ' + res.updated + '件';
+        if (res.errors && res.errors.length > 0) msg += '\nエラー:\n' + res.errors.join('\n');
+        showToast(msg, res.errors && res.errors.length > 0 ? 'warning' : 'success');
+        TimeLimitPlanEditor.load();
+      }).catch(function (err) { showToast(err.message, 'error'); });
+    });
+
+    // コース料理CSV
+    document.getElementById('btn-course-csv-export').addEventListener('click', function () {
+      AdminApi.exportCourseCsv();
+    });
+    document.getElementById('btn-course-csv-import').addEventListener('click', function () {
+      document.getElementById('course-csv-file').click();
+    });
+    document.getElementById('course-csv-file').addEventListener('change', function () {
+      var file = this.files[0];
+      if (!file) return;
+      this.value = '';
+      if (!confirm('CSVファイル「' + file.name + '」をインポートしますか？')) return;
+      AdminApi.importCourseCsv(file).then(function (res) {
+        var msg = 'コース: 作成' + res.courses_created + '件/更新' + res.courses_updated + '件、フェーズ: 作成' + res.phases_created + '件/更新' + res.phases_updated + '件';
+        if (res.errors && res.errors.length > 0) msg += '\nエラー:\n' + res.errors.join('\n');
+        showToast(msg, res.errors && res.errors.length > 0 ? 'warning' : 'success');
+        CourseEditor.load();
+      }).catch(function (err) { showToast(err.message, 'error'); });
+    });
+
+    // 限定メニューリストのイベント委譲
+    document.getElementById('local-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-local') LocalItemEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-local') LocalItemEditor.confirmDelete(btn.dataset.id);
+      else if (btn.dataset.action === 'toggle-local-sold-out') LocalItemEditor.toggleSoldOut(btn.dataset.id);
+    });
+
+    // テーブルリストのイベント委譲
+    document.getElementById('table-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-table') TableEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-table') TableEditor.confirmDelete(btn.dataset.id);
+      else if (btn.dataset.action === 'show-qr') TableEditor.showQR(btn.dataset.id, btn.dataset.name);
+    });
+
+    // オプショングループリストのイベント委譲
+    document.getElementById('option-group-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-group') OptionGroupEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-group') OptionGroupEditor.confirmDeleteGroup(btn.dataset.id);
+      else if (btn.dataset.action === 'add-choice') OptionGroupEditor.openAddChoiceModal(btn.dataset.group);
+      else if (btn.dataset.action === 'edit-choice') OptionGroupEditor.openEditChoiceModal(btn.dataset.id, btn.dataset.group);
+      else if (btn.dataset.action === 'delete-choice') OptionGroupEditor.confirmDeleteChoice(btn.dataset.id);
+    });
+
+    // KDSステーションリストのイベント委譲
+    document.getElementById('kds-station-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-station') KdsStationEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-station') KdsStationEditor.confirmDelete(btn.dataset.id);
+    });
+
+    // 食べ放題プランリストのイベント委譲
+    document.getElementById('time-plan-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-plan') TimeLimitPlanEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-plan') TimeLimitPlanEditor.confirmDelete(btn.dataset.id);
+      else if (btn.dataset.action === 'toggle-plan-menu') TimeLimitPlanEditor.togglePlanMenu(btn.dataset.id);
+      else if (btn.dataset.action === 'add-plan-menu') TimeLimitPlanEditor.openAddPlanMenuModal(btn.dataset.plan);
+      else if (btn.dataset.action === 'edit-plan-menu') TimeLimitPlanEditor.openEditPlanMenuModal(btn.dataset.id, btn.dataset.plan);
+      else if (btn.dataset.action === 'delete-plan-menu') TimeLimitPlanEditor.confirmDeletePlanMenu(btn.dataset.id, btn.dataset.plan);
+    });
+
+    // 在庫・レシピコンテナのイベント委譲
+    document.getElementById('inventory-container').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      InventoryManager.handleAction(btn.dataset.action, btn.dataset);
+    });
+
+    // コースリストのイベント委譲
+    document.getElementById('course-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-course') CourseEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-course') CourseEditor.confirmDeleteCourse(btn.dataset.id);
+      else if (btn.dataset.action === 'add-phase') CourseEditor.openAddPhaseModal(btn.dataset.course);
+      else if (btn.dataset.action === 'edit-phase') CourseEditor.openEditPhaseModal(btn.dataset.id, btn.dataset.course);
+      else if (btn.dataset.action === 'delete-phase') CourseEditor.confirmDeletePhase(btn.dataset.id);
+    });
+
+    // スタッフリストのイベント委譲（編集時はロールをstaffに固定）
+    document.getElementById('staff-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-user') {
+        UserEditor.openEditModal(btn.dataset.id);
+        var roleSelect = document.getElementById('user-role');
+        if (roleSelect) {
+          roleSelect.innerHTML = '<option value="staff" selected>\u30B9\u30BF\u30C3\u30D5</option>';
+        }
+      }
+      else if (btn.dataset.action === 'delete-user') UserEditor.confirmDelete(btn.dataset.id);
+    });
+
+  })();
+
+  // グローバルトースト
+  var _toastTimer = null;
+  function showToast(message, type) {
+    var el = document.getElementById('admin-toast');
+    el.textContent = message;
+    el.className = 'admin-toast show';
+    if (type === 'success') el.classList.add('admin-toast--success');
+    if (type === 'error') el.classList.add('admin-toast--error');
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2500);
+  }
+  </script>
+  <script src="../js/offline-detector.js"></script>
+  <script src="../js/session-monitor.js"></script>
+</body>
+</html>

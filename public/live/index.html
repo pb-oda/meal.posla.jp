@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>店舗情報 | POSLA</title>
+<meta name="robots" content="noindex">
+<!-- OGP -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="リアルタイム混雑状況">
+<meta property="og:description" content="現在の混雑状況をリアルタイムでお伝えします">
+<meta property="og:site_name" content="POSLA">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="css/live.css">
+</head>
+<body>
+
+<div class="live-container" id="app">
+  <!-- Loading -->
+  <div class="loading-state" id="loading">
+    <div class="spinner"></div>
+    <p>読み込み中...</p>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ── 設定 ──
+  var REFRESH_INTERVAL = 30000; // 30秒
+  var API_BASE = '../../api/public/store-status.php';
+
+  // ── URLパラメータ取得 ──
+  function getParam(name) {
+    var match = location.search.match(new RegExp('[?&]' + name + '=([^&]*)'));
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+
+  var storeId = getParam('store');
+  var appEl = document.getElementById('app');
+  var timer = null;
+
+  if (!storeId) {
+    showError('店舗が指定されていません。URLをご確認ください。');
+    return;
+  }
+
+  // ── 初回読み込み ──
+  fetchStatus();
+  timer = setInterval(fetchStatus, REFRESH_INTERVAL);
+
+  // ── API呼び出し ──
+  function fetchStatus() {
+    var url = API_BASE + '?store_id=' + encodeURIComponent(storeId) + '&_t=' + Date.now();
+
+    fetch(url)
+      .then(function(res) { return res.text(); })
+      .then(function(text) {
+        var json = JSON.parse(text);
+        if (!json.ok) {
+          showError(json.error ? json.error.message : 'データの取得に失敗しました');
+          return;
+        }
+        render(json.data);
+      })
+      .catch(function() {
+        showError('通信エラーが発生しました。しばらくしてからお試しください。');
+      });
+  }
+
+  // ── 描画 ──
+  function render(data) {
+    var store = data.store || {};
+    var tables = data.tables || {};
+    var congestion = data.congestion || 'empty';
+    var congestionLabel = data.congestion_label || '';
+    var waitMinutes = data.wait_minutes || 0;
+    var popularItems = data.popular_items || [];
+    var soldOutItems = data.sold_out_items || [];
+
+    // OGP動的更新（初回のみ意味がある）
+    updateMeta('og:title', escapeHtml(store.name || '') + ' - 混雑状況');
+    updateMeta('og:description', congestionLabel);
+    document.title = (store.name || '店舗情報') + ' | POSLA';
+
+    // 混雑率
+    var total = tables.total || 0;
+    var occupied = tables.occupied || 0;
+    var pct = total > 0 ? Math.round((occupied / total) * 100) : 0;
+
+    // 混雑アイコン
+    var congestionIcons = { empty: '\uD83D\uDFE2', normal: '\uD83D\uDFE1', busy: '\uD83D\uDFE0', full: '\uD83D\uDD34' };
+    var icon = congestionIcons[congestion] || '\u26AA';
+
+    // 待ち時間テキスト
+    var waitText = waitMinutes > 0 ? ('約' + waitMinutes + '分') : 'なし';
+
+    var html = '';
+
+    // ── Header ──
+    html += '<div class="live-header">';
+    html += '  <div class="store-name">\uD83C\uDFEA ' + escapeHtml(store.name || '') + '</div>';
+    html += '  <span class="status-badge">\u25CF 営業中</span>';
+    html += '</div>';
+
+    // ── Congestion ──
+    html += '<div class="live-section">';
+    html += '  <div class="section-label">混雑状況</div>';
+    html += '  <div class="congestion-display">';
+    html += '    <div class="congestion-icon">' + icon + '</div>';
+    html += '    <div class="congestion-label ' + congestion + '">' + escapeHtml(congestionLabel) + '</div>';
+    html += '    <div class="progress-wrap">';
+    html += '      <div class="progress-bar"><div class="progress-fill ' + congestion + '" style="width:' + pct + '%"></div></div>';
+    html += '      <div class="progress-pct">' + pct + '%</div>';
+    html += '    </div>';
+    html += '    <div class="congestion-detail">';
+    html += '      <span>\uD83E\uDE91 <span class="detail-num">' + total + '</span>\u5353\u4E2D <span class="detail-num">' + occupied + '</span>\u5353\u4F7F\u7528\u4E2D</span>';
+    html += '      <span>\u23F3 \u5F85\u3061\u6642\u9593\uFF1A<span class="detail-num">' + waitText + '</span></span>';
+    html += '    </div>';
+    html += '  </div>';
+    html += '</div>';
+
+    // ── Popular Items ──
+    html += '<div class="live-section">';
+    html += '  <div class="section-label">\u672C\u65E5\u306E\u304A\u3059\u3059\u3081</div>';
+    if (popularItems.length > 0) {
+      html += '  <ul class="popular-list">';
+      var rankIcons = ['\uD83E\uDD47', '\uD83E\uDD48', '\uD83E\uDD49'];
+      for (var i = 0; i < popularItems.length; i++) {
+        var pi = popularItems[i];
+        var nameClass = pi.sold_out ? 'popular-name sold-out' : 'popular-name';
+        html += '  <li class="popular-item">';
+        html += '    <span class="popular-rank">' + (rankIcons[i] || (i + 1)) + '</span>';
+        html += '    <span class="' + nameClass + '">' + escapeHtml(pi.name);
+        if (pi.sold_out) html += ' <span class="sold-out-tag">\u54C1\u5207\u308C</span>';
+        html += '</span>';
+        html += '    <span class="popular-price">\u00A5' + formatNumber(pi.price) + '</span>';
+        html += '  </li>';
+      }
+      html += '  </ul>';
+    } else {
+      html += '  <p class="no-soldout">\u672C\u65E5\u306E\u6CE8\u6587\u30C7\u30FC\u30BF\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093</p>';
+    }
+    html += '</div>';
+
+    // ── Sold Out ──
+    html += '<div class="live-section">';
+    html += '  <div class="section-label">\u26A0\uFE0F \u672C\u65E5\u306E\u54C1\u5207\u308C</div>';
+    if (soldOutItems.length > 0) {
+      html += '  <ul class="soldout-list">';
+      for (var j = 0; j < soldOutItems.length; j++) {
+        html += '  <li class="soldout-item"><span class="soldout-x">\u2716</span> ' + escapeHtml(soldOutItems[j].name) + '</li>';
+      }
+      html += '  </ul>';
+    } else {
+      html += '  <p class="no-soldout">\u54C1\u5207\u308C\u306A\u3057</p>';
+    }
+    html += '</div>';
+
+    // ── Store Info ──
+    if (store.address || store.phone || store.business_hours) {
+      html += '<div class="live-section">';
+      html += '  <div class="section-label">\u5E97\u8217\u60C5\u5831</div>';
+      if (store.address) {
+        html += '  <div class="info-row"><span class="info-icon">\uD83D\uDCCD</span><span class="info-text">' + escapeHtml(store.address) + '</span></div>';
+      }
+      if (store.phone) {
+        html += '  <div class="info-row"><span class="info-icon">\uD83D\uDCDE</span><span class="info-text"><a href="tel:' + escapeHtml(store.phone) + '" style="color:#00a67d;text-decoration:none;">' + escapeHtml(store.phone) + '</a></span></div>';
+      }
+      if (store.business_hours) {
+        html += '  <div class="info-row"><span class="info-icon">\uD83D\uDD50</span><span class="info-text">' + escapeHtml(store.business_hours) + '</span></div>';
+      }
+      html += '</div>';
+    }
+
+    // ── Footer ──
+    var now = new Date();
+    var hh = ('0' + now.getHours()).slice(-2);
+    var mm = ('0' + now.getMinutes()).slice(-2);
+
+    html += '<div class="live-footer">';
+    html += '  <div class="last-updated">\u6700\u7D42\u66F4\u65B0: ' + hh + ':' + mm + '</div>';
+    html += '  <button class="refresh-btn" id="refreshBtn">\uD83D\uDD04 \u66F4\u65B0\u3059\u308B</button>';
+    html += '  <div class="powered">Powered by POSLA</div>';
+    html += '</div>';
+
+    appEl.innerHTML = html;
+
+    // 更新ボタン
+    var btn = document.getElementById('refreshBtn');
+    if (btn) {
+      btn.addEventListener('click', function() {
+        fetchStatus();
+      });
+    }
+  }
+
+  // ── エラー表示 ──
+  function showError(msg) {
+    appEl.innerHTML =
+      '<div class="error-state">' +
+      '  <div class="error-icon">\u26A0\uFE0F</div>' +
+      '  <p>' + escapeHtml(msg) + '</p>' +
+      '</div>';
+  }
+
+  // ── ユーティリティ ──
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function formatNumber(n) {
+    return String(n).replace(/(\d)(?=(\d{3})+$)/g, '$1,');
+  }
+
+  function updateMeta(property, content) {
+    var el = document.querySelector('meta[property="' + property + '"]');
+    if (el) el.setAttribute('content', content);
+  }
+
+})();
+</script>
+
+</body>
+</html>

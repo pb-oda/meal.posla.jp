@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#3f51b5">
+  <title>管理画面ログイン</title>
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="login-page">
+
+  <div class="login-card">
+    <h1 class="login-card__title">管理画面</h1>
+    <p class="login-card__subtitle">ユーザー名とパスワードでログイン</p>
+
+    <div class="login-card__error" id="login-error"></div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label class="form-label" for="username">ユーザー名</label>
+        <input
+          type="text"
+          id="username"
+          class="form-input"
+          placeholder="shibuya-staff"
+          autocomplete="username"
+          required
+        >
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">パスワード</label>
+        <input
+          type="password"
+          id="password"
+          class="form-input"
+          placeholder="パスワードを入力"
+          autocomplete="current-password"
+          required
+        >
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="login-btn">
+        ログイン
+      </button>
+    </form>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    var form = document.getElementById('login-form');
+    var usernameInput = document.getElementById('username');
+    var passwordInput = document.getElementById('password');
+    var loginBtn = document.getElementById('login-btn');
+    var errorEl = document.getElementById('login-error');
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var username = usernameInput.value.trim();
+      var password = passwordInput.value;
+
+      if (!username || !password) {
+        showError('ユーザー名とパスワードを入力してください');
+        return;
+      }
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'ログイン中...';
+      hideError();
+
+      fetch('../../api/auth/login.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password }),
+        credentials: 'same-origin'
+      })
+      .then(function (res) {
+        return res.text().then(function (body) {
+          if (!body) throw new Error('サーバーが空のレスポンスを返しました');
+          try { return JSON.parse(body); }
+          catch (e) { throw new Error('応答の解析に失敗しました'); }
+        });
+      })
+      .then(function (json) {
+        if (json.ok) {
+          var role = json.data && json.data.user ? json.data.user.role : '';
+          window.location.href = role === 'owner' ? 'owner-dashboard.html' : 'dashboard.html';
+        } else {
+          showError(json.error ? json.error.message : 'ログインに失敗しました');
+        }
+      })
+      .catch(function (err) {
+        showError(err.message || '通信エラーが発生しました');
+      })
+      .finally(function () {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'ログイン';
+      });
+    });
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.classList.add('show');
+      usernameInput.classList.add('form-input--error');
+      passwordInput.classList.add('form-input--error');
+    }
+
+    function hideError() {
+      errorEl.classList.remove('show');
+      usernameInput.classList.remove('form-input--error');
+      passwordInput.classList.remove('form-input--error');
+    }
+
+    usernameInput.addEventListener('input', hideError);
+    passwordInput.addEventListener('input', hideError);
+  })();
+  </script>
+</body>
+</html>

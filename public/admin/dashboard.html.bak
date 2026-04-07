@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#3f51b5">
+  <title>管理ダッシュボード</title>
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+  <!-- ヘッダー -->
+  <header class="admin-header">
+    <div class="admin-header__left">
+      <span class="admin-header__title" id="header-tenant-name">管理画面</span>
+      <div class="store-selector" id="store-selector-wrap">
+        <span class="store-selector__label">店舗:</span>
+        <select class="store-selector__select" id="store-select"></select>
+      </div>
+    </div>
+    <div class="admin-header__actions">
+      <div class="header-shortcuts" id="header-shortcuts" data-role-max="manager">
+        <a class="header-shortcut header-shortcut--handy" href="../handy/index.html" target="_blank" title="ハンディPOS">ハンディ</a>
+        <a class="header-shortcut" href="../kds/index.html" target="_blank" title="キッチンディスプレイ">KDS</a>
+        <a class="header-shortcut" href="../kds/accounting.html" target="_blank" title="POSレジ（KDS会計ステーション）">レジ</a>
+        <a class="header-shortcut header-shortcut--customer" id="link-customer-menu" href="#" target="_blank" title="顧客メニュー（選択中店舗）">注文画面</a>
+      </div>
+      <span class="admin-header__user" id="header-user-name">-</span>
+      <button class="btn-logout" id="btn-logout">ログアウト</button>
+    </div>
+  </header>
+
+  <!-- タブナビゲーション -->
+  <nav class="tab-nav" id="tab-nav">
+    <!-- owner専用 -->
+    <button class="tab-nav__btn" data-tab="hq-categories" data-role-min="manager" data-role-max="manager" data-requires-store>カテゴリ管理</button>
+    <button class="tab-nav__btn" data-tab="hq-menu" data-role-min="manager" data-role-max="manager" data-requires-store>本部メニュー</button>
+    <button class="tab-nav__btn" data-tab="option-groups" data-role-min="manager" data-role-max="manager" data-requires-store>オプション管理</button>
+    <!-- manager以上 -->
+    <button class="tab-nav__btn" data-tab="store-menu" data-role-min="manager" data-role-max="manager" data-requires-store>店舗メニュー</button>
+    <button class="tab-nav__btn" data-tab="local-menu" data-role-min="manager" data-requires-store>限定メニュー</button>
+    <button class="tab-nav__btn" data-tab="tables" data-role-min="manager" data-requires-store>テーブル管理</button>
+    <button class="tab-nav__btn" data-tab="floor-map" data-role-min="manager" data-requires-store>フロアマップ</button>
+    <button class="tab-nav__btn" data-tab="sales" data-role-min="manager" data-requires-store>売上レポート</button>
+    <button class="tab-nav__btn" data-tab="cross-store" data-role-min="owner">全店舗分析</button>
+    <button class="tab-nav__btn" data-tab="abc-analytics" data-role-min="manager">ABC分析</button>
+    <button class="tab-nav__btn" data-tab="register" data-role-min="manager" data-requires-store>レジ分析</button>
+    <button class="tab-nav__btn" data-tab="orders" data-role-min="manager" data-requires-store>注文履歴</button>
+    <button class="tab-nav__btn" data-tab="time-plans" data-role-min="manager" data-requires-store>食べ放題プラン</button>
+    <button class="tab-nav__btn" data-tab="courses" data-role-min="manager" data-requires-store>コース管理</button>
+    <button class="tab-nav__btn" data-tab="inventory" data-role-min="manager" data-role-max="manager" data-requires-store>在庫・レシピ</button>
+    <button class="tab-nav__btn" data-tab="settings" data-role-min="manager" data-requires-store>店舗設定</button>
+    <button class="tab-nav__btn" data-tab="kds-stations" data-role-min="manager" data-requires-store>KDSステーション</button>
+    <button class="tab-nav__btn" data-tab="ai-assistant" data-role-min="manager" data-requires-store>AIアシスタント</button>
+    <button class="tab-nav__btn" data-tab="users" data-role-min="owner">ユーザー管理</button>
+    <button class="tab-nav__btn" data-tab="stores" data-role-min="owner">店舗管理</button>
+  </nav>
+
+  <!-- メインコンテンツ -->
+  <div class="admin-content">
+
+    <!-- カテゴリ管理(HQ) -->
+    <div class="tab-panel" id="panel-hq-categories">
+      <div class="panel-header">
+        <h2 class="panel-header__title">カテゴリ一覧 <span class="panel-header__count" id="category-count"></span></h2>
+        <button class="btn btn-primary" id="btn-add-category">+ カテゴリ追加</button>
+      </div>
+      <div class="card"><div id="category-list"></div></div>
+    </div>
+
+    <!-- 本部メニュー -->
+    <div class="tab-panel" id="panel-hq-menu">
+      <div class="panel-header">
+        <h2 class="panel-header__title">本部メニュー</h2>
+        <div class="panel-header__actions">
+          <button class="btn btn-sm btn-outline" id="btn-csv-export">CSVエクスポート</button>
+          <button class="btn btn-sm btn-outline" id="btn-csv-import">CSVインポート</button>
+          <input type="file" accept=".csv" id="csv-import-file" style="display:none">
+          <button class="btn btn-primary" id="btn-add-template">+ メニュー追加</button>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <select class="filter-select" id="template-category-filter">
+          <option value="">すべてのカテゴリ</option>
+        </select>
+      </div>
+      <div id="template-list"></div>
+    </div>
+
+    <!-- オプショングループ -->
+    <div class="tab-panel" id="panel-option-groups">
+      <div class="panel-header">
+        <h2 class="panel-header__title">オプショングループ <span class="panel-header__count" id="og-count"></span></h2>
+        <button class="btn btn-primary" id="btn-add-option-group">+ グループ追加</button>
+      </div>
+      <div id="option-group-list"></div>
+    </div>
+
+    <!-- 店舗メニューオーバーライド -->
+    <div class="tab-panel" id="panel-store-menu">
+      <div class="panel-header">
+        <h2 class="panel-header__title">店舗メニュー管理</h2>
+        <div class="panel-header__actions">
+          <button class="btn btn-sm btn-outline" id="btn-override-csv-export">CSVエクスポート</button>
+          <button class="btn btn-sm btn-outline" id="btn-override-csv-import">CSVインポート</button>
+          <input type="file" accept=".csv" id="override-csv-file" style="display:none">
+        </div>
+      </div>
+      <div id="override-list"></div>
+    </div>
+
+    <!-- 店舗限定メニュー -->
+    <div class="tab-panel" id="panel-local-menu">
+      <div class="panel-header">
+        <h2 class="panel-header__title">店舗限定メニュー</h2>
+        <div class="panel-header__actions">
+          <button class="btn btn-sm btn-outline" id="btn-local-csv-export">CSVエクスポート</button>
+          <button class="btn btn-sm btn-outline" id="btn-local-csv-import">CSVインポート</button>
+          <input type="file" accept=".csv" id="local-csv-import-file" style="display:none">
+          <button class="btn btn-primary" id="btn-add-local">+ 限定メニュー追加</button>
+        </div>
+      </div>
+      <div id="local-list"></div>
+    </div>
+
+    <!-- テーブル管理 -->
+    <div class="tab-panel" id="panel-tables">
+      <div class="panel-header">
+        <h2 class="panel-header__title">テーブル一覧 <span class="panel-header__count" id="table-count"></span></h2>
+        <button class="btn btn-primary" id="btn-add-table">+ テーブル追加</button>
+      </div>
+      <div class="card"><div id="table-list"></div></div>
+    </div>
+
+    <!-- フロアマップ -->
+    <div class="tab-panel" id="panel-floor-map">
+      <div class="panel-header">
+        <h2 class="panel-header__title">フロアマップ</h2>
+      </div>
+      <div id="floor-map-container"></div>
+    </div>
+
+    <!-- 売上レポート -->
+    <div class="tab-panel" id="panel-sales">
+      <div class="panel-header"><h2 class="panel-header__title">売上レポート</h2></div>
+      <div id="sales-report-container"></div>
+    </div>
+
+    <!-- 全店舗横断レポート -->
+    <div class="tab-panel" id="panel-cross-store">
+      <div class="panel-header"><h2 class="panel-header__title">全店舗横断分析</h2></div>
+      <div id="cross-store-container"></div>
+    </div>
+
+    <!-- ABC分析 -->
+    <div class="tab-panel" id="panel-abc-analytics">
+      <div class="panel-header"><h2 class="panel-header__title">ABC分析・売上ダッシュボード</h2></div>
+      <div id="abc-analytics-container"></div>
+    </div>
+
+    <!-- レジ分析 -->
+    <div class="tab-panel" id="panel-register">
+      <div class="panel-header"><h2 class="panel-header__title">レジ分析</h2></div>
+      <div id="register-report-container"></div>
+    </div>
+
+    <!-- 注文履歴 -->
+    <div class="tab-panel" id="panel-orders">
+      <div class="panel-header"><h2 class="panel-header__title">注文履歴</h2></div>
+      <div id="order-history-container"></div>
+    </div>
+
+    <!-- 食べ放題プラン -->
+    <div class="tab-panel" id="panel-time-plans">
+      <div class="panel-header">
+        <h2 class="panel-header__title">食べ放題プラン <span class="panel-header__count" id="time-plan-count"></span></h2>
+        <div class="panel-header__actions">
+          <button class="btn btn-sm btn-outline" id="btn-plan-csv-export">プランCSV</button>
+          <button class="btn btn-sm btn-outline" id="btn-plan-csv-import">プランインポート</button>
+          <input type="file" accept=".csv" id="plan-csv-file" style="display:none">
+          <button class="btn btn-sm btn-outline" id="btn-plan-menu-csv-export">メニューCSV</button>
+          <button class="btn btn-sm btn-outline" id="btn-plan-menu-csv-import">メニューインポート</button>
+          <input type="file" accept=".csv" id="plan-menu-csv-file" style="display:none">
+          <button class="btn btn-primary" id="btn-add-time-plan">+ プラン追加</button>
+        </div>
+      </div>
+      <div id="time-plan-list"></div>
+    </div>
+
+    <!-- コース管理 -->
+    <div class="tab-panel" id="panel-courses">
+      <div class="panel-header">
+        <h2 class="panel-header__title">コース料理 <span class="panel-header__count" id="course-count"></span></h2>
+        <div class="panel-header__actions">
+          <button class="btn btn-sm btn-outline" id="btn-course-csv-export">CSVエクスポート</button>
+          <button class="btn btn-sm btn-outline" id="btn-course-csv-import">CSVインポート</button>
+          <input type="file" accept=".csv" id="course-csv-file" style="display:none">
+          <button class="btn btn-primary" id="btn-add-course">+ コース追加</button>
+        </div>
+      </div>
+      <div id="course-list"></div>
+    </div>
+
+    <!-- 在庫・レシピ管理 -->
+    <div class="tab-panel" id="panel-inventory">
+      <div class="panel-header">
+        <h2 class="panel-header__title">在庫・レシピ管理 <span class="panel-header__count" id="ingredient-count"></span></h2>
+        <button class="btn btn-primary" id="btn-add-ingredient">+ 原材料追加</button>
+      </div>
+      <div id="inventory-container"></div>
+    </div>
+
+    <!-- 店舗設定 -->
+    <div class="tab-panel" id="panel-settings">
+      <div class="panel-header"><h2 class="panel-header__title">店舗設定</h2></div>
+      <div id="settings-container"></div>
+    </div>
+
+    <!-- KDSステーション -->
+    <div class="tab-panel" id="panel-kds-stations">
+      <div class="panel-header">
+        <h2 class="panel-header__title">KDSステーション</h2>
+        <button class="btn btn-primary" id="btn-add-station">+ ステーション追加</button>
+      </div>
+      <div id="kds-station-list"></div>
+    </div>
+
+    <!-- ユーザー管理 -->
+    <div class="tab-panel" id="panel-users">
+      <div class="panel-header">
+        <h2 class="panel-header__title">ユーザー管理</h2>
+        <button class="btn btn-primary" id="btn-add-user">+ ユーザー追加</button>
+      </div>
+      <div id="user-list"></div>
+    </div>
+
+    <!-- 店舗管理 -->
+    <div class="tab-panel" id="panel-stores">
+      <div class="panel-header">
+        <h2 class="panel-header__title">店舗管理</h2>
+        <button class="btn btn-primary" id="btn-add-store">+ 店舗追加</button>
+      </div>
+      <div id="store-list"></div>
+    </div>
+
+    <!-- AIアシスタント -->
+    <div class="tab-panel" id="panel-ai-assistant">
+      <div class="panel-header">
+        <h2 class="panel-header__title">AIアシスタント</h2>
+      </div>
+      <div class="card" id="ai-assistant-container">
+        <p style="padding:2rem;color:#888;text-align:center;">準備中</p>
+      </div>
+    </div>
+
+    <!-- スタッフ向け案内 -->
+    <div class="tab-panel" id="panel-staff-home" style="display:none;">
+      <div style="text-align:center; padding:3rem 1rem;">
+        <h2 style="margin-bottom:1rem; color:#333;">スタッフ画面</h2>
+        <p style="color:#666; margin-bottom:2rem;">以下の画面をご利用ください。</p>
+        <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
+          <a href="../handy/index.html" class="btn btn-primary" style="font-size:1.125rem; padding:1rem 2rem; text-decoration:none; background:#1a237e;">ハンディPOS</a>
+          <a href="../kds/index.html" class="btn btn-primary" style="font-size:1.125rem; padding:1rem 2rem; text-decoration:none;">KDS（キッチン）</a>
+          <a href="../kds/accounting.html" class="btn btn-primary" style="font-size:1.125rem; padding:1rem 2rem; text-decoration:none;">POSレジ</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 共通モーダル -->
+  <div class="modal-overlay" id="admin-modal-overlay">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 class="modal__title"></h3>
+        <button class="modal__close" data-action="modal-cancel">&times;</button>
+      </div>
+      <div class="modal__body"></div>
+      <div class="modal__footer"></div>
+    </div>
+  </div>
+
+  <!-- トースト -->
+  <div class="admin-toast" id="admin-toast"></div>
+
+  <!-- JS -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="../shared/js/utils.js"></script>
+  <script src="js/admin-api.js"></script>
+  <script src="js/store-selector.js"></script>
+  <script src="js/category-editor.js"></script>
+  <script src="js/menu-template-editor.js"></script>
+  <script src="js/menu-override-editor.js"></script>
+  <script src="js/local-item-editor.js"></script>
+  <script src="js/table-editor.js"></script>
+  <script src="js/floor-map.js"></script>
+  <script src="js/sales-report.js"></script>
+  <script src="js/cross-store-report.js"></script>
+  <script src="js/abc-analytics.js"></script>
+  <script src="js/register-report.js"></script>
+  <script src="js/order-history.js"></script>
+  <script src="js/time-limit-plan-editor.js"></script>
+  <script src="js/course-editor.js"></script>
+  <script src="js/inventory-manager.js"></script>
+  <script src="js/settings-editor.js"></script>
+  <script src="js/option-group-editor.js"></script>
+  <script src="js/kds-station-editor.js"></script>
+  <script src="js/user-editor.js"></script>
+  <script src="js/store-editor.js"></script>
+  <script src="js/ai-assistant.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var _role = '';
+
+    // 認証チェック
+    AdminApi.me().then(function (res) {
+      var user = res.user;
+      var stores = res.stores;
+      _role = user.role;
+
+      // ヘッダー
+      var pageSuffix = _role === 'owner' ? ' 管理者ページ' : ' 管理画面';
+      var tenantLabel = (user.tenantName || '管理画面') + (_role === 'owner' || user.tenantName ? pageSuffix : '');
+      document.getElementById('header-tenant-name').textContent = tenantLabel;
+      document.title = tenantLabel;
+      document.getElementById('header-user-name').textContent = user.displayName || user.email;
+
+      // ロールに応じたbodyクラス
+      document.body.classList.add('role-' + _role);
+
+      // ロールに応じたタブ表示制御
+      var roleLevel = { staff: 1, manager: 2, owner: 3 };
+      var userLevel = roleLevel[_role] || 0;
+      document.querySelectorAll('.tab-nav__btn[data-role-min]').forEach(function (btn) {
+        var minLevel = roleLevel[btn.dataset.roleMin] || 99;
+        var maxLevel = btn.dataset.roleMax ? (roleLevel[btn.dataset.roleMax] || 99) : 99;
+        if (userLevel < minLevel || userLevel > maxLevel) btn.style.display = 'none';
+      });
+
+      // ロールに応じた要素の表示制御（ショートカット等）
+      document.querySelectorAll('[data-role-max]').forEach(function (el) {
+        if (el.classList.contains('tab-nav__btn')) return; // タブは上で処理済
+        var maxLevel = roleLevel[el.dataset.roleMax] || 99;
+        if (userLevel > maxLevel) el.style.display = 'none';
+      });
+
+      // 店舗セレクター初期化
+      StoreSelector.init(document.getElementById('store-select'), stores, _role);
+
+      // ownerは店舗セレクターを非表示（分析画面内で個別に選択）
+      if (_role === 'owner') {
+        document.getElementById('store-selector-wrap').style.display = 'none';
+        document.getElementById('store-select').value = '';
+        AdminApi.setCurrentStore(null);
+      }
+
+      // 顧客メニューリンクを更新
+      function updateCustomerLink() {
+        var sid = StoreSelector.getSelectedStoreId();
+        var link = document.getElementById('link-customer-menu');
+        if (sid) {
+          link.href = '../customer/menu.html?store_id=' + encodeURIComponent(sid);
+        }
+      }
+      updateCustomerLink();
+
+      // 店舗固有タブの表示/非表示制御
+      function updateStoreRequiredTabs() {
+        var hasStore = !!StoreSelector.getSelectedStoreId();
+        document.querySelectorAll('.tab-nav__btn[data-requires-store]').forEach(function (btn) {
+          var minLevel = roleLevel[btn.dataset.roleMin] || 99;
+          var maxLevel = btn.dataset.roleMax ? (roleLevel[btn.dataset.roleMax] || 99) : 99;
+          btn.style.display = (hasStore && userLevel >= minLevel && userLevel <= maxLevel) ? '' : 'none';
+        });
+        // 全店舗選択中にstore固有タブがactiveなら、適切なタブに切替
+        if (!hasStore) {
+          var activeBtn = document.querySelector('.tab-nav__btn.active');
+          if (activeBtn && activeBtn.hasAttribute('data-requires-store')) {
+            activeBtn.classList.remove('active');
+            var fallback = document.querySelector('.tab-nav__btn[data-tab="cross-store"]')
+              || document.querySelector('.tab-nav__btn[data-tab="abc-analytics"]');
+            if (fallback && fallback.style.display !== 'none') {
+              fallback.classList.add('active');
+              activateTab(fallback.dataset.tab);
+            }
+          }
+        }
+      }
+      updateStoreRequiredTabs();
+
+      // 店舗切替時にデータリロード + タブ表示制御
+      StoreSelector.onChange(function () {
+        updateCustomerLink();
+        updateStoreRequiredTabs();
+        var activeTab = document.querySelector('.tab-nav__btn.active');
+        if (activeTab) activateTab(activeTab.dataset.tab);
+      });
+
+      // 各モジュール初期化
+      CategoryEditor.init(
+        document.getElementById('category-list'),
+        document.getElementById('category-count')
+      );
+      MenuTemplateEditor.init(document.getElementById('template-list'));
+      MenuOverrideEditor.init(document.getElementById('override-list'));
+      LocalItemEditor.init(document.getElementById('local-list'));
+      TableEditor.init(
+        document.getElementById('table-list'),
+        document.getElementById('table-count')
+      );
+      FloorMap.init(document.getElementById('floor-map-container'));
+      SalesReport.init(document.getElementById('sales-report-container'));
+      CrossStoreReport.init(document.getElementById('cross-store-container'));
+      AbcAnalytics.init(document.getElementById('abc-analytics-container'));
+      RegisterReport.init(document.getElementById('register-report-container'));
+      OrderHistory.init(document.getElementById('order-history-container'));
+      TimeLimitPlanEditor.init(
+        document.getElementById('time-plan-list'),
+        document.getElementById('time-plan-count')
+      );
+      CourseEditor.init(
+        document.getElementById('course-list'),
+        document.getElementById('course-count')
+      );
+      InventoryManager.init(
+        document.getElementById('inventory-container'),
+        document.getElementById('ingredient-count')
+      );
+      SettingsEditor.init(document.getElementById('settings-container'));
+      OptionGroupEditor.init(
+        document.getElementById('option-group-list'),
+        document.getElementById('og-count')
+      );
+      KdsStationEditor.init(document.getElementById('kds-station-list'));
+      UserEditor.init(document.getElementById('user-list'));
+      StoreEditor.init(document.getElementById('store-list'));
+      AiAssistant.init(document.getElementById('ai-assistant-container'));
+
+      // デフォルトタブを表示
+      if (_role === 'staff') {
+        // staffはタブなし → 案内パネル表示
+        document.getElementById('panel-staff-home').style.display = '';
+        document.getElementById('panel-staff-home').classList.add('active');
+      } else {
+        var firstTab;
+        if (_role === 'owner') firstTab = document.querySelector('.tab-nav__btn[data-tab="cross-store"]') || document.querySelector('.tab-nav__btn[data-tab="abc-analytics"]');
+        else if (_role === 'manager') firstTab = document.querySelector('.tab-nav__btn[data-tab="store-menu"]');
+        if (firstTab) {
+          firstTab.classList.add('active');
+          activateTab(firstTab.dataset.tab);
+        }
+      }
+    }).catch(function () {
+      window.location.href = 'index.html';
+    });
+
+    // タブ切替
+    var tabNav = document.getElementById('tab-nav');
+    tabNav.addEventListener('click', function (e) {
+      var btn = e.target.closest('.tab-nav__btn');
+      if (!btn) return;
+      tabNav.querySelectorAll('.tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      activateTab(btn.dataset.tab);
+    });
+
+    function activateTab(tabId) {
+      // フロアマップのポーリング停止（他タブに切替時）
+      if (tabId !== 'floor-map') FloorMap.stop();
+
+      document.querySelectorAll('.tab-panel').forEach(function (p) {
+        p.classList.toggle('active', p.id === 'panel-' + tabId);
+      });
+
+      // データ読み込み
+      switch (tabId) {
+        case 'hq-categories': CategoryEditor.load(); break;
+        case 'hq-menu': MenuTemplateEditor.load(); MenuTemplateEditor.refreshCategoryFilter(); break;
+        case 'option-groups': OptionGroupEditor.load(); break;
+        case 'store-menu': MenuOverrideEditor.load(); break;
+        case 'local-menu': LocalItemEditor.load(); break;
+        case 'tables': TableEditor.load(); break;
+        case 'floor-map': FloorMap.load(); break;
+        case 'sales': SalesReport.load(); break;
+        case 'cross-store': CrossStoreReport.load(); break;
+        case 'abc-analytics': AbcAnalytics.load(); break;
+        case 'register': RegisterReport.load(); break;
+        case 'orders': OrderHistory.load(); break;
+        case 'time-plans': TimeLimitPlanEditor.load(); break;
+        case 'courses': CourseEditor.load(); break;
+        case 'inventory': InventoryManager.load(); break;
+        case 'settings': SettingsEditor.load(); break;
+        case 'kds-stations': KdsStationEditor.load(); break;
+        case 'users': UserEditor.load(); break;
+        case 'stores': StoreEditor.load(); break;
+        case 'ai-assistant': AiAssistant.load(); break;
+      }
+    }
+
+    // ログアウト
+    document.getElementById('btn-logout').addEventListener('click', function () {
+      AdminApi.logout().finally(function () { window.location.href = 'index.html'; });
+    });
+
+    // モーダルキャンセル
+    document.addEventListener('click', function (e) {
+      if (e.target.matches('[data-action="modal-cancel"]')) {
+        document.getElementById('admin-modal-overlay').classList.remove('open');
+      }
+    });
+
+    var modalOverlay = document.getElementById('admin-modal-overlay');
+    modalOverlay.addEventListener('click', function (e) {
+      if (e.target === modalOverlay) modalOverlay.classList.remove('open');
+    });
+
+    // 追加ボタン
+    document.getElementById('btn-add-category').addEventListener('click', function () { CategoryEditor.openAddModal(); });
+    document.getElementById('btn-add-template').addEventListener('click', function () { MenuTemplateEditor.openAddModal(); });
+    document.getElementById('btn-add-local').addEventListener('click', function () { LocalItemEditor.openAddModal(); });
+    document.getElementById('btn-add-table').addEventListener('click', function () { TableEditor.openAddModal(); });
+    document.getElementById('btn-add-option-group').addEventListener('click', function () { OptionGroupEditor.openAddModal(); });
+    document.getElementById('btn-add-station').addEventListener('click', function () { KdsStationEditor.openAddModal(); });
+    document.getElementById('btn-add-user').addEventListener('click', function () { UserEditor.openAddModal(); });
+    document.getElementById('btn-add-store').addEventListener('click', function () { StoreEditor.openAddModal(); });
+    document.getElementById('btn-add-time-plan').addEventListener('click', function () { TimeLimitPlanEditor.openAddModal(); });
+    document.getElementById('btn-add-course').addEventListener('click', function () { CourseEditor.openAddModal(); });
+    document.getElementById('btn-add-ingredient').addEventListener('click', function () { InventoryManager.openAddModal(); });
+
+    // 限定メニューCSV
+    document.getElementById('btn-local-csv-export').addEventListener('click', function () {
+      AdminApi.exportLocalItemsCsv();
+    });
+    document.getElementById('btn-local-csv-import').addEventListener('click', function () {
+      document.getElementById('local-csv-import-file').click();
+    });
+    document.getElementById('local-csv-import-file').addEventListener('change', function () {
+      var file = this.files[0];
+      if (!file) return;
+      this.value = '';
+      if (!confirm('CSVファイル「' + file.name + '」をインポートしますか？')) return;
+      AdminApi.importLocalItemsCsv(file).then(function (res) {
+        var msg = '作成: ' + res.created + '件、更新: ' + res.updated + '件';
+        if (res.errors && res.errors.length > 0) msg += '\nエラー:\n' + res.errors.join('\n');
+        showToast(msg, res.errors && res.errors.length > 0 ? 'warning' : 'success');
+        LocalItemEditor.load();
+      }).catch(function (err) { showToast(err.message, 'error'); });
+    });
+
+    // カテゴリリストのイベント委譲
+    document.getElementById('category-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-category') CategoryEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-category') CategoryEditor.confirmDelete(btn.dataset.id);
+    });
+
+    // CSVエクスポート/インポート
+    document.getElementById('btn-csv-export').addEventListener('click', function () {
+      AdminApi.exportMenuCsv();
+    });
+    document.getElementById('btn-csv-import').addEventListener('click', function () {
+      document.getElementById('csv-import-file').click();
+    });
+    document.getElementById('csv-import-file').addEventListener('change', function () {
+      var file = this.files[0];
+      if (!file) return;
+      this.value = '';
+      if (!confirm('CSVファイル「' + file.name + '」をインポートしますか？')) return;
+      AdminApi.importMenuCsv(file).then(function (res) {
+        var msg = '作成: ' + res.created + '件、更新: ' + res.updated + '件';
+        if (res.errors && res.errors.length > 0) msg += '\nエラー:\n' + res.errors.join('\n');
+        showToast(msg, res.errors && res.errors.length > 0 ? 'warning' : 'success');
+        MenuTemplateEditor.load();
+      }).catch(function (err) {
+        showToast(err.message, 'error');
+      });
+    });
+
+    // テンプレートリストのイベント委譲
+    document.getElementById('template-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-template') MenuTemplateEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-template') MenuTemplateEditor.confirmDelete(btn.dataset.id);
+      else if (btn.dataset.action === 'toggle-sold-out') MenuTemplateEditor.toggleSoldOut(btn.dataset.id);
+    });
+
+    // カテゴリフィルタ
+    document.getElementById('template-category-filter').addEventListener('change', function () {
+      MenuTemplateEditor.filterByCategory(this.value);
+    });
+
+    // オーバーライドリストのイベント委譲
+    document.getElementById('override-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-override') MenuOverrideEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'toggle-override-sold-out') MenuOverrideEditor.toggleSoldOut(btn.dataset.id);
+    });
+
+    // 店舗メニューオーバーライドCSV
+    document.getElementById('btn-override-csv-export').addEventListener('click', function () {
+      AdminApi.exportOverridesCsv();
+    });
+    document.getElementById('btn-override-csv-import').addEventListener('click', function () {
+      document.getElementById('override-csv-file').click();
+    });
+    document.getElementById('override-csv-file').addEventListener('change', function () {
+      var file = this.files[0];
+      if (!file) return;
+      this.value = '';
+      if (!confirm('CSVファイル「' + file.name + '」をインポートしますか？')) return;
+      AdminApi.importOverridesCsv(file).then(function (res) {
+        var msg = '更新: ' + res.updated + '件';
+        if (res.errors && res.errors.length > 0) msg += '\nエラー:\n' + res.errors.join('\n');
+        showToast(msg, res.errors && res.errors.length > 0 ? 'warning' : 'success');
+        MenuOverrideEditor.load();
+      }).catch(function (err) { showToast(err.message, 'error'); });
+    });
+
+    // 食べ放題プランCSV
+    document.getElementById('btn-plan-csv-export').addEventListener('click', function () {
+      AdminApi.exportTimeLimitPlansCsv();
+    });
+    document.getElementById('btn-plan-csv-import').addEventListener('click', function () {
+      document.getElementById('plan-csv-file').click();
+    });
+    document.getElementById('plan-csv-file').addEventListener('change', function () {
+      var file = this.files[0];
+      if (!file) return;
+      this.value = '';
+      if (!confirm('CSVファイル「' + file.name + '」をインポートしますか？')) return;
+      AdminApi.importTimeLimitPlansCsv(file).then(function (res) {
+        var msg = '作成: ' + res.created + '件、更新: ' + res.updated + '件';
+        if (res.errors && res.errors.length > 0) msg += '\nエラー:\n' + res.errors.join('\n');
+        showToast(msg, res.errors && res.errors.length > 0 ? 'warning' : 'success');
+        TimeLimitPlanEditor.load();
+      }).catch(function (err) { showToast(err.message, 'error'); });
+    });
+
+    // プラン専用メニューCSV
+    document.getElementById('btn-plan-menu-csv-export').addEventListener('click', function () {
+      AdminApi.exportPlanMenuItemsCsv();
+    });
+    document.getElementById('btn-plan-menu-csv-import').addEventListener('click', function () {
+      document.getElementById('plan-menu-csv-file').click();
+    });
+    document.getElementById('plan-menu-csv-file').addEventListener('change', function () {
+      var file = this.files[0];
+      if (!file) return;
+      this.value = '';
+      if (!confirm('CSVファイル「' + file.name + '」をインポートしますか？')) return;
+      AdminApi.importPlanMenuItemsCsv(file).then(function (res) {
+        var msg = '作成: ' + res.created + '件、更新: ' + res.updated + '件';
+        if (res.errors && res.errors.length > 0) msg += '\nエラー:\n' + res.errors.join('\n');
+        showToast(msg, res.errors && res.errors.length > 0 ? 'warning' : 'success');
+        TimeLimitPlanEditor.load();
+      }).catch(function (err) { showToast(err.message, 'error'); });
+    });
+
+    // コース料理CSV
+    document.getElementById('btn-course-csv-export').addEventListener('click', function () {
+      AdminApi.exportCourseCsv();
+    });
+    document.getElementById('btn-course-csv-import').addEventListener('click', function () {
+      document.getElementById('course-csv-file').click();
+    });
+    document.getElementById('course-csv-file').addEventListener('change', function () {
+      var file = this.files[0];
+      if (!file) return;
+      this.value = '';
+      if (!confirm('CSVファイル「' + file.name + '」をインポートしますか？')) return;
+      AdminApi.importCourseCsv(file).then(function (res) {
+        var msg = 'コース: 作成' + res.courses_created + '件/更新' + res.courses_updated + '件、フェーズ: 作成' + res.phases_created + '件/更新' + res.phases_updated + '件';
+        if (res.errors && res.errors.length > 0) msg += '\nエラー:\n' + res.errors.join('\n');
+        showToast(msg, res.errors && res.errors.length > 0 ? 'warning' : 'success');
+        CourseEditor.load();
+      }).catch(function (err) { showToast(err.message, 'error'); });
+    });
+
+    // 限定メニューリストのイベント委譲
+    document.getElementById('local-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-local') LocalItemEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-local') LocalItemEditor.confirmDelete(btn.dataset.id);
+      else if (btn.dataset.action === 'toggle-local-sold-out') LocalItemEditor.toggleSoldOut(btn.dataset.id);
+    });
+
+    // テーブルリストのイベント委譲
+    document.getElementById('table-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-table') TableEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-table') TableEditor.confirmDelete(btn.dataset.id);
+      else if (btn.dataset.action === 'show-qr') TableEditor.showQR(btn.dataset.id, btn.dataset.name);
+    });
+
+    // オプショングループリストのイベント委譲
+    document.getElementById('option-group-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-group') OptionGroupEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-group') OptionGroupEditor.confirmDeleteGroup(btn.dataset.id);
+      else if (btn.dataset.action === 'add-choice') OptionGroupEditor.openAddChoiceModal(btn.dataset.group);
+      else if (btn.dataset.action === 'edit-choice') OptionGroupEditor.openEditChoiceModal(btn.dataset.id, btn.dataset.group);
+      else if (btn.dataset.action === 'delete-choice') OptionGroupEditor.confirmDeleteChoice(btn.dataset.id);
+    });
+
+    // KDSステーションリストのイベント委譲
+    document.getElementById('kds-station-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-station') KdsStationEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-station') KdsStationEditor.confirmDelete(btn.dataset.id);
+    });
+
+    // ユーザーリストのイベント委譲
+    document.getElementById('user-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-user') UserEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-user') UserEditor.confirmDelete(btn.dataset.id);
+    });
+
+    // 食べ放題プランリストのイベント委譲
+    document.getElementById('time-plan-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-plan') TimeLimitPlanEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-plan') TimeLimitPlanEditor.confirmDelete(btn.dataset.id);
+      else if (btn.dataset.action === 'toggle-plan-menu') TimeLimitPlanEditor.togglePlanMenu(btn.dataset.id);
+      else if (btn.dataset.action === 'add-plan-menu') TimeLimitPlanEditor.openAddPlanMenuModal(btn.dataset.plan);
+      else if (btn.dataset.action === 'edit-plan-menu') TimeLimitPlanEditor.openEditPlanMenuModal(btn.dataset.id, btn.dataset.plan);
+      else if (btn.dataset.action === 'delete-plan-menu') TimeLimitPlanEditor.confirmDeletePlanMenu(btn.dataset.id, btn.dataset.plan);
+    });
+
+    // 店舗リストのイベント委譲
+    document.getElementById('store-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-store') StoreEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-store') StoreEditor.confirmDelete(btn.dataset.id);
+    });
+
+    // 在庫・レシピコンテナのイベント委譲
+    document.getElementById('inventory-container').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      InventoryManager.handleAction(btn.dataset.action, btn.dataset);
+    });
+
+    // コースリストのイベント委譲
+    document.getElementById('course-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-course') CourseEditor.openEditModal(btn.dataset.id);
+      else if (btn.dataset.action === 'delete-course') CourseEditor.confirmDeleteCourse(btn.dataset.id);
+      else if (btn.dataset.action === 'add-phase') CourseEditor.openAddPhaseModal(btn.dataset.course);
+      else if (btn.dataset.action === 'edit-phase') CourseEditor.openEditPhaseModal(btn.dataset.id, btn.dataset.course);
+      else if (btn.dataset.action === 'delete-phase') CourseEditor.confirmDeletePhase(btn.dataset.id);
+    });
+
+  })();
+
+  // グローバルトースト
+  var _toastTimer = null;
+  function showToast(message, type) {
+    var el = document.getElementById('admin-toast');
+    el.textContent = message;
+    el.className = 'admin-toast show';
+    if (type === 'success') el.classList.add('admin-toast--success');
+    if (type === 'error') el.classList.add('admin-toast--error');
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2500);
+  }
+  </script>
+</body>
+</html>

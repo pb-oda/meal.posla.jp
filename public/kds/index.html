@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#263238">
+  <title>KDS - キッチンディスプレイ</title>
+  <link rel="stylesheet" href="css/kds.css">
+  <style>
+    .kds-badge-course { background:#2e7d32; color:#fff; font-size:0.65rem; padding:1px 5px; border-radius:3px; white-space:nowrap; }
+    .kds-card--course { border-left:3px solid #2e7d32; }
+    .kds-course-bar { display:flex; gap:0.5rem; padding:0.25rem 0.75rem; background:var(--kds-bg-header); flex-wrap:wrap; }
+    .kds-course-bar:empty { display:none; }
+    .kds-advance-btn { background:#2e7d32; color:#fff; border:none; padding:0.35rem 0.75rem; border-radius:4px; font-size:0.8rem; cursor:pointer; }
+    .kds-advance-btn:hover { background:#1b5e20; }
+    .kds-advance-btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .kds-station-bar { display:flex; gap:0.5rem; padding:0.5rem 1rem; background:var(--kds-bg-surface); flex-wrap:wrap; }
+    .kds-station-btn { background:var(--kds-bg-surface); color:var(--kds-text-muted); border:1px solid var(--kds-border); padding:0.35rem 0.75rem; border-radius:4px; font-size:0.8rem; cursor:pointer; }
+    .kds-station-btn:hover { background:var(--kds-bg-surface-subtle); }
+    .kds-station-btn.active { background:rgba(66,165,245,0.3); color:#fff; border-color:rgba(66,165,245,0.6); }
+    html.light-theme .kds-station-btn { color:#555; background:#fff; border-color:#ccc; }
+    html.light-theme .kds-station-btn:hover { background:#f0f0f0; }
+    html.light-theme .kds-station-btn.active { background:#e3f2fd; color:#1565c0; border-color:#42a5f5; }
+  </style>
+</head>
+<body>
+
+  <!-- ヘッダー -->
+  <header class="kds-header">
+    <div class="kds-header__left">
+      <span class="kds-header__title">KDS</span>
+      <span class="kds-header__store-name" id="kds-store-name">-</span>
+    </div>
+    <div class="kds-header__right">
+      <a href="#" class="kds-header__link" id="kds-change-store" style="display:none">店舗切替</a>
+      <a href="sold-out.html" class="kds-header__link">品切れ管理</a>
+      <button id="btn-ai-kitchen" onclick="AiKitchen.toggle()">&#x1F9D1;&#x200D;&#x1F373; AIシェフ</button>
+      <span class="kds-header__user" id="kds-user-name">-</span>
+      <button class="kds-header__logout" id="btn-kds-logout">ログアウト</button>
+    </div>
+  </header>
+
+  <!-- ステーション選択バー -->
+  <div class="kds-station-bar" id="kds-station-bar"></div>
+
+  <!-- コースフェーズ操作バー -->
+  <div class="kds-course-bar" id="kds-course-bar"></div>
+
+  <!-- キッチンモード: 3列カンバン -->
+  <div class="kds-board" id="kds-board">
+    <div class="kds-column kds-column--pending">
+      <div class="kds-column__header">受付 <span class="kds-column__count" id="count-pending">0</span></div>
+      <div class="kds-column__body" id="col-pending"></div>
+    </div>
+    <div class="kds-column kds-column--preparing">
+      <div class="kds-column__header">調理中 <span class="kds-column__count" id="count-preparing">0</span></div>
+      <div class="kds-column__body" id="col-preparing"></div>
+    </div>
+    <div class="kds-column kds-column--ready">
+      <div class="kds-column__header">提供待ち <span class="kds-column__count" id="count-ready">0</span></div>
+      <div class="kds-column__body" id="col-ready"></div>
+    </div>
+  </div>
+
+  <!-- トースト -->
+  <div class="kds-toast" id="kds-toast"></div>
+
+  <!-- 店舗選択オーバーレイ -->
+  <div class="kds-store-overlay" id="kds-store-overlay" style="display:none">
+    <div class="kds-store-overlay__box">
+      <div class="kds-store-overlay__title">店舗を選択してください</div>
+      <div class="kds-store-overlay__list" id="kds-store-list"></div>
+    </div>
+  </div>
+
+  <!-- KDS起動オーバーレイ -->
+  <div id="kds-startup-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.88);z-index:9999;align-items:center;justify-content:center;">
+    <div style="text-align:center;color:#fff;">
+      <div style="font-size:3.5rem;margin-bottom:0.75rem;">&#x1F373;</div>
+      <div style="font-size:1.4rem;font-weight:bold;margin-bottom:0.3rem;">KDS キッチンディスプレイ</div>
+      <div id="kds-startup-store" style="font-size:0.95rem;color:#aaa;margin-bottom:2rem;"></div>
+      <button id="kds-startup-btn" style="background:#4CAF50;color:#fff;border:none;padding:1rem 3rem;border-radius:8px;font-size:1.2rem;cursor:pointer;min-width:200px;">KDSを開始</button>
+      <div style="font-size:0.75rem;color:#666;margin-top:1rem;">音声コマンド・通知音が有効になります</div>
+    </div>
+  </div>
+
+  <script src="../shared/js/utils.js"></script>
+  <script src="js/kds-auth.js"></script>
+  <script src="js/polling-data-source.js"></script>
+  <script src="js/kds-renderer.js?v=20260404e"></script>
+  <script src="js/voice-commander.js?v=20260404e"></script>
+  <script src="js/ai-kitchen.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var _stationId = '';
+
+    function showStoreOverlay(stores, onSelect) {
+      var overlay = document.getElementById('kds-store-overlay');
+      var list = document.getElementById('kds-store-list');
+      var html = '';
+      stores.forEach(function (s) {
+        html += '<button class="kds-store-overlay__btn" data-store-id="' + s.id + '">' + Utils.escapeHtml(s.name) + '</button>';
+      });
+      list.innerHTML = html;
+      overlay.style.display = 'flex';
+
+      list.addEventListener('click', function handler(e) {
+        var btn = e.target.closest('.kds-store-overlay__btn');
+        if (!btn) return;
+        list.removeEventListener('click', handler);
+        overlay.style.display = 'none';
+        onSelect(btn.dataset.storeId);
+      });
+    }
+
+    // ── 起動オーバーレイ（オーディオ解禁用・セッション初回のみ表示） ──
+    function showStartupOverlay(storeName, callback) {
+      // 同一セッション内の2回目以降（ページ遷移して戻った場合）はスキップ
+      if (sessionStorage.getItem('mt_kds_started')) {
+        callback();
+        return;
+      }
+      var overlay = document.getElementById('kds-startup-overlay');
+      var storeEl = document.getElementById('kds-startup-store');
+      if (storeName) storeEl.textContent = storeName;
+      overlay.style.display = 'flex';
+      document.getElementById('kds-startup-btn').addEventListener('click', function () {
+        VoiceCommander.unlockAudio();
+        sessionStorage.setItem('mt_kds_started', '1');
+        overlay.style.display = 'none';
+        callback();
+      });
+    }
+
+    KdsAuth.init().catch(function () {}).then(function (ctx) {
+      if (!ctx) return;
+      document.getElementById('kds-user-name').textContent = ctx.user.displayName || ctx.user.email;
+
+      // 店舗名テキスト表示
+      var storeNameEl = document.getElementById('kds-store-name');
+      var changeLinkEl = document.getElementById('kds-change-store');
+      var currentStore = ctx.stores.find(function (s) { return s.id === ctx.storeId; });
+      if (currentStore) storeNameEl.textContent = currentStore.name;
+
+      // 複数店舗: オーバーレイまたは切替リンク
+      if (ctx.stores.length > 1) {
+        var savedStore = localStorage.getItem('mt_kds_store');
+        if (!savedStore || !ctx.stores.some(function (s) { return s.id === savedStore; })) {
+          // 初回: オーバーレイで選択を強制（クリックでオーディオも解禁）
+          showStoreOverlay(ctx.stores, function (selectedId) {
+            VoiceCommander.unlockAudio();
+            KdsAuth.setStore(selectedId);
+            var s = ctx.stores.find(function (x) { return x.id === selectedId; });
+            storeNameEl.textContent = s ? s.name : '-';
+            changeLinkEl.style.display = '';
+            initMain();
+          });
+          return;
+        }
+        // 2回目以降: 切替リンク表示
+        changeLinkEl.style.display = '';
+        changeLinkEl.addEventListener('click', function (e) {
+          e.preventDefault();
+          showStoreOverlay(ctx.stores, function (selectedId) {
+            VoiceCommander.unlockAudio();
+            KdsAuth.setStore(selectedId);
+            var s = ctx.stores.find(function (x) { return x.id === selectedId; });
+            storeNameEl.textContent = s ? s.name : '-';
+            VoiceCommander.onStoreChange();
+            restartPolling();
+          });
+        });
+      }
+
+      // 起動オーバーレイ → initMain
+      showStartupOverlay(currentStore ? currentStore.name : '', initMain);
+
+      // ── メイン初期化 ──
+      function initMain() {
+        _stationId = localStorage.getItem('mt_kds_station') || '';
+        renderStationButtons([]);
+
+        if (_stationId === '__cashier__') {
+          _stationId = '';
+          localStorage.removeItem('mt_kds_station');
+        }
+
+        // ステーションバーのクリック
+        document.getElementById('kds-station-bar').addEventListener('click', function (e) {
+          var btn = e.target.closest('.kds-station-btn');
+          if (!btn) return;
+          _stationId = btn.dataset.station;
+          if (_stationId) localStorage.setItem('mt_kds_station', _stationId);
+          else localStorage.removeItem('mt_kds_station');
+
+          var btns = document.querySelectorAll('.kds-station-btn');
+          for (var i = 0; i < btns.length; i++) {
+            btns[i].classList.toggle('active', btns[i].dataset.station === _stationId);
+          }
+
+          restartPolling();
+        });
+
+        KdsRenderer.init(
+          document.getElementById('col-pending'),
+          document.getElementById('col-preparing'),
+          document.getElementById('col-ready')
+        );
+
+        VoiceCommander.init();
+        startPolling();
+
+        // カンバンのアクションボタン
+        document.getElementById('kds-board').addEventListener('click', function (e) {
+          // 品目単位のアクションボタン
+          var itemBtn = e.target.closest('.kds-item-action');
+          if (itemBtn) {
+            KdsRenderer.handleItemAction(itemBtn.dataset.itemId, itemBtn.dataset.itemStatus, KdsAuth.getStoreId());
+            return;
+          }
+          // 注文単位のアクションボタン
+          var btn = e.target.closest('.kds-card__action') || e.target.closest('.kds-card__cancel');
+          if (!btn) return;
+          if (btn.dataset.status === 'cancelled') {
+            if (!confirm('この注文をキャンセルしますか？')) return;
+          }
+          KdsRenderer.handleAction(btn.dataset.order, btn.dataset.status, KdsAuth.getStoreId());
+        });
+
+        // コースフェーズバー
+        document.getElementById('kds-course-bar').addEventListener('click', function (e) {
+          var btn = e.target.closest('.kds-advance-btn');
+          if (!btn) return;
+          var tableId = btn.dataset.tableId;
+          if (!confirm('次のフェーズに進みますか？（現フェーズの未完了品目は全て提供済みになります）')) return;
+          btn.disabled = true;
+          btn.textContent = '処理中...';
+          KdsRenderer.advancePhase(KdsAuth.getStoreId(), tableId)
+            .then(function (json) {
+              if (json && json.ok && json.data) {
+                var msg = json.data.completed ? 'コース完了' : json.data.message;
+                btn.textContent = msg || '完了';
+              } else {
+                btn.textContent = (json && json.error && json.error.message) || 'エラー';
+              }
+              setTimeout(function () { btn.disabled = false; }, 1000);
+            });
+        });
+      }
+
+      // ── ポーリング制御 ──
+      function startPolling() {
+        var storeId = KdsAuth.getStoreId();
+        var sid = _stationId === '__cashier__' ? '' : _stationId;
+        PollingDataSource.start(storeId, function (data) {
+          clearError();
+          if (data.stations) renderStationButtons(data.stations);
+          KdsRenderer.onData(data);
+          VoiceCommander.updateOrders(data.orders || []);
+          if (window.AiKitchen) AiKitchen.onPollingData(data);
+          updateCourseBar();
+        }, handleError, sid);
+      }
+
+      function restartPolling() {
+        PollingDataSource.stop();
+        startPolling();
+      }
+
+      function updateCourseBar() {
+        var bar = document.getElementById('kds-course-bar');
+        var courseTables = KdsRenderer.getCourseTableIds();
+        if (courseTables.length === 0) { bar.innerHTML = ''; return; }
+        bar.innerHTML = courseTables.map(function (ct) {
+          return '<button class="kds-advance-btn" data-table-id="' + ct.tableId + '">'
+            + Utils.escapeHtml(ct.tableCode) + ' ' + Utils.escapeHtml(ct.courseName)
+            + ' P' + ct.currentPhase + ' → 次フェーズ</button>';
+        }).join('');
+      }
+
+      // ── ステーションボタン描画 ──
+      function renderStationButtons(stations) {
+        var bar = document.getElementById('kds-station-bar');
+        var html = '<button class="kds-station-btn' + (_stationId === '' ? ' active' : '') + '" data-station="">全品目</button>';
+        (stations || []).forEach(function (st) {
+          html += '<button class="kds-station-btn' + (_stationId === st.id ? ' active' : '') + '" data-station="' + Utils.escapeHtml(st.id) + '">' + Utils.escapeHtml(st.name) + '</button>';
+        });
+        bar.innerHTML = html;
+      }
+
+      function handleError(errMsg) {
+        console.error('KDS polling error:', errMsg);
+        var errEl = document.getElementById('kds-error');
+        if (!errEl) {
+          errEl = document.createElement('div');
+          errEl.id = 'kds-error';
+          errEl.style.cssText = 'background:#d32f2f;color:#fff;padding:0.5rem 1rem;text-align:center;font-size:0.875rem;';
+          document.querySelector('.kds-header').after(errEl);
+        }
+        errEl.textContent = 'エラー: ' + errMsg;
+        errEl.style.display = '';
+      }
+
+      function clearError() {
+        var errEl = document.getElementById('kds-error');
+        if (errEl) errEl.style.display = 'none';
+      }
+    });
+
+    // ログアウト
+    document.getElementById('btn-kds-logout').addEventListener('click', function () {
+      fetch('../../api/auth/logout.php', { method: 'DELETE', credentials: 'same-origin' })
+        .finally(function () { window.location.href = '../admin/index.html'; });
+    });
+  })();
+  </script>
+  <script src="js/kds-alert.js?v=20260404"></script>
+  <script src="../js/theme-switcher.js"></script>
+  <script>ThemeSwitcher.injectButton(document.querySelector('.kds-header__right'));</script>
+  <script src="../js/offline-detector.js"></script>
+  <script src="../js/session-monitor.js"></script>
+</body>
+</html>

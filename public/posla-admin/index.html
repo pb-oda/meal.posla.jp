@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#3f51b5">
+  <title>POSLA管理 - ログイン</title>
+  <link rel="stylesheet" href="../admin/css/admin.css">
+</head>
+<body class="login-page">
+
+  <div class="login-card">
+    <h1 class="login-card__title">POSLA管理</h1>
+    <p class="login-card__subtitle">管理者アカウントでログイン</p>
+
+    <div class="login-card__error" id="login-error"></div>
+
+    <form id="login-form" autocomplete="off">
+      <div class="form-group">
+        <label class="form-label" for="email">メールアドレス</label>
+        <input class="form-input" type="email" id="email" name="email" required placeholder="admin@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">パスワード</label>
+        <input class="form-input" type="password" id="password" name="password" required placeholder="パスワード">
+      </div>
+      <button class="btn btn-primary" type="submit" id="btn-login" style="width:100%;margin-top:0.5rem;">ログイン</button>
+    </form>
+  </div>
+
+  <script>
+  (function() {
+    'use strict';
+
+    var form = document.getElementById('login-form');
+    var errorEl = document.getElementById('login-error');
+    var btnLogin = document.getElementById('btn-login');
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      errorEl.classList.remove('show');
+      errorEl.textContent = '';
+      btnLogin.disabled = true;
+
+      var email = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value;
+
+      fetch('../../api/posla/login.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email: email, password: password })
+      }).then(function(res) {
+        return res.text().then(function(body) {
+          var json;
+          try { json = JSON.parse(body); }
+          catch (err) { return Promise.reject(new Error('応答の解析に失敗しました')); }
+          if (!res.ok || !json.ok) {
+            var msg = (json.error && json.error.message) || 'ログインに失敗しました';
+            return Promise.reject(new Error(msg));
+          }
+          return json.data;
+        });
+      }).then(function() {
+        window.location.href = 'dashboard.html';
+      }).catch(function(err) {
+        errorEl.textContent = err.message;
+        errorEl.classList.add('show');
+        btnLogin.disabled = false;
+      });
+    });
+  })();
+  </script>
+
+</body>
+</html>

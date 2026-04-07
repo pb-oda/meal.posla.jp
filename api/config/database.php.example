@@ -1,0 +1,12 @@
+<?php
+/**
+ * データベース接続設定
+ * このファイルをコピーして database.php を作成してください。
+ */
+return [
+    'host'     => 'localhost',
+    'dbname'   => 'matsunoya_mt',
+    'username' => 'root',
+    'password' => '',
+    'charset'  => 'utf8mb4',
+];

@@ -1,0 +1,2436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ff6f00">
+  <title>セルフオーダー</title>
+  <link rel="stylesheet" href="css/customer.css?v=20260405b">
+  <style>
+    .plan-banner { background:linear-gradient(135deg,#ff6f00,#ff8f00); color:#fff; padding:0.5rem 1rem; text-align:center; font-size:0.875rem; }
+    .plan-banner__name { font-weight:700; }
+    .plan-banner__time { font-size:0.8rem; margin-top:2px; }
+    .plan-banner__time--warning { color:#fff3cd; animation:pulse-warn 1s infinite; }
+    .plan-banner__time--ended { color:#ffcdd2; font-weight:700; }
+    @keyframes pulse-warn { 0%,100%{opacity:1} 50%{opacity:0.6} }
+    .menu-item__price--plan { color:#ff6f00; font-weight:700; }
+    /* コースモード */
+    .course-banner { background:linear-gradient(135deg,#2e7d32,#43a047); color:#fff; padding:0.75rem 1rem; text-align:center; }
+    .course-banner__name { font-weight:700; font-size:1rem; }
+    .course-banner__sub { font-size:0.8rem; margin-top:2px; opacity:0.9; }
+    .course-phase { padding:0.75rem 1rem; border-bottom:1px solid #e0e0e0; }
+    .course-phase--current { background:#e8f5e9; border-left:4px solid #2e7d32; }
+    .course-phase--done { opacity:0.5; }
+    .course-phase--future { opacity:0.7; }
+    .course-phase__header { display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem; }
+    .course-phase__num { background:#2e7d32; color:#fff; width:1.5rem; height:1.5rem; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700; flex-shrink:0; }
+    .course-phase--done .course-phase__num { background:#9e9e9e; }
+    .course-phase__name { font-weight:700; font-size:0.95rem; }
+    .course-phase__badge { font-size:0.7rem; padding:1px 6px; border-radius:8px; background:#c8e6c9; color:#2e7d32; }
+    .course-phase--done .course-phase__badge { background:#e0e0e0; color:#757575; }
+    .course-phase__items { list-style:none; margin:0; padding:0; }
+    .course-phase__items li { padding:0.25rem 0 0.25rem 2rem; font-size:0.9rem; color:#333; }
+    .course-phase__items li::before { content:''; display:inline-block; width:4px; height:4px; border-radius:50%; background:#2e7d32; margin-right:0.5rem; vertical-align:middle; }
+    .course-phase--done .course-phase__items li { text-decoration:line-through; color:#999; }
+    /* 前回の注文（再注文セクション） */
+    .reorder-section { background:#fff8e1; border:1px solid #ffe0b2; border-radius:var(--radius); margin:0.75rem 0.75rem 0; padding:0.75rem; }
+    .reorder-section__title { font-size:0.9375rem; font-weight:700; color:var(--orange-dark); margin-bottom:0.5rem; }
+    .reorder-item { display:flex; align-items:center; padding:0.5rem 0; border-bottom:1px solid #ffe0b2; }
+    .reorder-item:last-child { border-bottom:none; }
+    .reorder-item__info { flex:1; min-width:0; }
+    .reorder-item__name { font-size:0.875rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .reorder-item__meta { font-size:0.75rem; color:var(--text-muted); }
+    .reorder-item__add { background:var(--orange); color:#fff; border:none; border-radius:16px; padding:0.375rem 0.75rem; font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0; margin-left:0.5rem; }
+    .reorder-item__add:disabled { background:#bdbdbd; cursor:not-allowed; }
+    /* ウェルカムモーダル */
+    .welcome-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:500; display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:opacity 0.3s, visibility 0.3s; }
+    .welcome-overlay.open { opacity:1; visibility:visible; }
+    .welcome-modal { background:#fff; border-radius:16px; padding:2rem 1.5rem; margin:1rem; max-width:340px; width:100%; text-align:center; transform:scale(0.9); transition:transform 0.3s; }
+    .welcome-overlay.open .welcome-modal { transform:scale(1); }
+    .welcome-modal__store { font-size:1.25rem; font-weight:700; color:var(--orange-dark); margin-bottom:0.75rem; }
+    .welcome-modal__msg { font-size:0.9375rem; color:var(--text-primary); margin-bottom:0.75rem; line-height:1.6; }
+    .welcome-modal__wait { font-size:0.8125rem; color:var(--orange); font-weight:600; margin-bottom:1rem; }
+    .welcome-modal__btn { background:var(--orange); color:#fff; border:none; border-radius:8px; padding:0.75rem 2rem; font-size:1rem; font-weight:700; cursor:pointer; width:100%; }
+    /* O-3: ラストオーダーバナー */
+    .lo-banner { background:#d32f2f; color:#fff; padding:0.625rem 1rem; text-align:center; font-size:0.9375rem; font-weight:700; animation:pulse-warn 1.5s infinite; }
+    /* N-3: メモ・アレルギー */
+    .cart-modal__memo-section { padding:12px 16px; border-top:1px solid #333; }
+    .cart-memo-label { display:block; font-size:0.85rem; color:#aaa; margin-bottom:6px; }
+    .cart-memo-input { width:100%; background:#1a1a2e; border:1px solid #444; color:#fff; border-radius:8px; padding:8px 12px; font-size:0.9rem; resize:none; box-sizing:border-box; }
+    .cart-memo-input::placeholder { color:#666; }
+    .cart-allergen-section { margin-top:10px; }
+    .allergen-chips { display:flex; flex-wrap:wrap; gap:6px; }
+    .allergen-chip { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border:1px solid #555; border-radius:16px; font-size:0.8rem; color:#ccc; cursor:pointer; }
+    .allergen-chip input { display:none; }
+    .allergen-chip input:checked + span { color:#ff6b6b; font-weight:bold; }
+    .allergen-chip:has(input:checked) { border-color:#ff6b6b; background:rgba(255,107,107,0.15); }
+    /* N-1/N-6/N-7: バッジ・カロリー・アレルギー */
+    .menu-item__badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:bold; margin-left:6px; vertical-align:middle; }
+    .badge-recommend { background:#ff6b35; color:#fff; }
+    .badge-popular { background:#e91e63; color:#fff; }
+    .badge-new { background:#4caf50; color:#fff; }
+    .badge-limited { background:#9c27b0; color:#fff; }
+    .badge-today { background:#f44336; color:#fff; animation:pulse-badge 2s infinite; }
+    .badge-rank { background:transparent; font-size:1rem; padding:0 4px; }
+    .badge-rank-top10 { background:#607d8b; color:#fff; font-size:0.7rem; }
+    .menu-item__calories { font-size:0.75rem; color:#888; margin-right:8px; }
+    .menu-item__allergens { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+    .allergen-tag { display:inline-block; padding:1px 6px; border:1px solid #ff9800; border-radius:8px; font-size:0.65rem; color:#ff9800; }
+    .recommend-comment { font-size:0.8rem; color:#ff6b35; padding:0 1rem 0.5rem; margin-top:-0.25rem; font-style:italic; }
+    .menu-section--recommend { background:linear-gradient(135deg,#fff8e1,#fff3e0); border-bottom:2px solid #ff6b35; }
+    @keyframes pulse-badge { 0%,100%{opacity:1} 50%{opacity:0.6} }
+    /* N-2: 注文追跡 */
+    .order-status-section { padding:0 16px 12px; }
+    .order-status-card { background:#16213e; border-radius:12px; padding:12px; margin-bottom:10px; }
+    .order-status-card__header { display:flex; justify-content:space-between; margin-bottom:8px; font-size:0.85rem; color:#888; }
+    .order-status-item { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+    .order-status-item__name { font-size:0.9rem; color:#e0e0e0; }
+    .order-status-item__badge { padding:2px 10px; border-radius:10px; font-size:0.75rem; font-weight:bold; }
+    .status-pending { background:#555; color:#ccc; }
+    .status-preparing { background:#ff9800; color:#fff; animation:pulse 2s infinite; }
+    .status-ready { background:#4caf50; color:#fff; animation:pulse 1.5s infinite; }
+    .status-served { background:#2196f3; color:#fff; }
+    .order-progress-bar { height:4px; background:#333; border-radius:2px; margin-top:8px; overflow:hidden; }
+    .order-progress-bar__fill { height:100%; background:linear-gradient(90deg,#ff9800,#4caf50); transition:width 0.5s ease; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+    /* N-4: 評価モーダル */
+    .rating-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:2000; display:none; align-items:center; justify-content:center; }
+    .rating-overlay.open { display:flex; }
+    .rating-modal { background:#1a1a2e; border-radius:16px; padding:24px; text-align:center; max-width:340px; width:90%; }
+    .rating-modal__header { margin-bottom:16px; }
+    .rating-modal__header span:first-child { display:block; font-size:1.1rem; color:#fff; font-weight:bold; }
+    .rating-modal__sub { display:block; font-size:0.85rem; color:#aaa; margin-top:4px; }
+    .rating-modal__faces { display:flex; justify-content:space-around; margin-bottom:16px; }
+    .rating-face { background:none; border:2px solid transparent; border-radius:12px; padding:8px; font-size:2rem; cursor:pointer; color:#fff; transition:all 0.2s; }
+    .rating-face span { display:block; font-size:0.65rem; margin-top:4px; }
+    .rating-face:active, .rating-face:hover { border-color:#ff6b35; background:rgba(255,107,53,0.15); transform:scale(1.1); }
+    .rating-skip { background:none; border:none; color:#666; font-size:0.85rem; cursor:pointer; padding:8px; }
+    .rating-toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px); background:#333; color:#fff; padding:10px 24px; border-radius:20px; font-size:0.9rem; opacity:0; transition:all 0.3s; z-index:3000; }
+    .rating-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .rating-toast--review { text-align:center; padding:16px 20px; min-width:240px; }
+    .customer-header__takeout { color:#fff; font-size:0.75rem; font-weight:600; text-decoration:none; padding:0.25rem 0.625rem; border:1.5px solid #fff; border-radius:1rem; white-space:nowrap; }
+    /* L-4: 言語セレクター */
+    .lang-selector { position:relative; }
+    .lang-selector__btn { background:rgba(255,255,255,0.2); border:1.5px solid rgba(255,255,255,0.6); color:#fff; border-radius:1rem; padding:0.25rem 0.625rem; font-size:0.8125rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px; white-space:nowrap; }
+    .lang-selector__flag { font-size:1rem; line-height:1; }
+    .lang-selector__code { font-size:0.75rem; }
+    .lang-selector__dropdown { display:none; position:absolute; top:calc(100% + 6px); right:0; background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:600; min-width:160px; overflow:hidden; }
+    .lang-selector__dropdown.open { display:block; }
+    .lang-selector__option { display:flex; align-items:center; gap:8px; width:100%; padding:10px 16px; border:none; background:none; font-size:0.9rem; color:#333; cursor:pointer; text-align:left; }
+    .lang-selector__option:hover, .lang-selector__option:active { background:#fff3e0; }
+    .lang-selector__option.active { background:#ff6f00; color:#fff; font-weight:700; }
+    .lang-selector__option span { font-size:1.125rem; }
+    /* L-8: セルフレジ */
+    .checkout-bar { position:fixed; bottom:0; left:0; right:0; background:#2d7a4f; padding:10px 16px; text-align:center; z-index:199; display:none; }
+    .checkout-bar__btn { background:#fff; color:#2d7a4f; border:none; border-radius:8px; padding:12px 40px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; max-width:400px; }
+    .checkout-bar__btn:active { opacity:0.8; }
+    .cart-bar.checkout-active { bottom:56px; }
+    .checkout-modal { position:fixed; inset:0; z-index:2100; display:none; }
+    .checkout-modal.open { display:block; }
+    .checkout-modal__overlay { position:absolute; inset:0; background:rgba(0,0,0,0.6); }
+    .checkout-modal__content { position:absolute; bottom:0; left:0; right:0; background:#fff; border-radius:16px 16px 0 0; max-height:85vh; overflow-y:auto; }
+    .checkout-modal__header { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid #e0e0e0; }
+    .checkout-modal__header h2 { margin:0; font-size:1.125rem; color:#333; }
+    .checkout-modal__close { background:none; border:none; font-size:1.5rem; color:#999; cursor:pointer; padding:0 4px; }
+    .checkout-modal__body { padding:16px 20px; }
+    .checkout-order { margin-bottom:12px; }
+    .checkout-order__item { display:flex; justify-content:space-between; align-items:baseline; padding:4px 0; font-size:0.9rem; color:#333; }
+    .checkout-order__option { font-size:0.8rem; color:#888; padding-left:1rem; }
+    .checkout-order__divider { border:none; border-top:1px solid #e0e0e0; margin:12px 0; }
+    .checkout-summary { background:#f5f5f5; border-radius:8px; padding:12px 16px; margin-bottom:16px; }
+    .checkout-summary__row { display:flex; justify-content:space-between; padding:3px 0; font-size:0.85rem; color:#666; }
+    .checkout-summary__row--total { font-size:1.25rem; font-weight:bold; color:#333; padding-top:8px; border-top:2px solid #333; margin-top:8px; }
+    .checkout-modal__pay-btn { display:block; width:100%; background:#2d7a4f; color:#fff; border:none; border-radius:8px; padding:14px; font-size:1.05rem; font-weight:bold; cursor:pointer; margin-bottom:8px; }
+    .checkout-modal__pay-btn:disabled { background:#bdbdbd; cursor:not-allowed; }
+    .checkout-modal__note { text-align:center; font-size:0.75rem; color:#999; margin:0 0 8px; }
+    .checkout-done-modal { position:fixed; inset:0; z-index:2200; display:none; align-items:center; justify-content:center; }
+    .checkout-done-modal.open { display:flex; }
+    .checkout-done-modal__overlay { position:absolute; inset:0; background:rgba(0,0,0,0.7); }
+    .checkout-done-modal__content { position:relative; background:#fff; border-radius:16px; padding:32px 24px; text-align:center; max-width:340px; width:90%; z-index:1; }
+    .checkout-done-modal__icon { width:64px; height:64px; border-radius:50%; background:#2d7a4f; color:#fff; font-size:2rem; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; }
+    .checkout-done-modal__content h2 { margin:0 0 4px; font-size:1.25rem; color:#333; }
+    .checkout-done-modal__content p { margin:0 0 12px; color:#666; font-size:0.9rem; }
+    .checkout-done-modal__amount { font-size:2rem; font-weight:bold; color:#2d7a4f; margin-bottom:20px; }
+    .checkout-done-modal__receipt-btn { background:#2d7a4f; color:#fff; border:none; border-radius:8px; padding:12px 32px; font-size:1rem; font-weight:bold; cursor:pointer; margin-bottom:12px; }
+    .checkout-done-modal__receipt-btn:active { opacity:0.8; }
+    .checkout-done-modal__note { font-size:0.75rem; color:#999; margin:0; }
+    .checkout-done-modal__close-btn { background:none; border:1px solid #ccc; border-radius:8px; padding:8px 32px; font-size:0.9rem; color:#666; cursor:pointer; margin-top:16px; }
+  </style>
+</head>
+<body>
+
+  <!-- ヘッダー -->
+  <header class="customer-header" id="customer-header">
+    <div class="customer-header__info">
+      <span class="customer-header__store" id="store-name">-</span>
+      <span class="customer-header__table" id="table-name">-</span>
+    </div>
+    <a href="#" class="customer-header__takeout" id="btn-takeout" style="display:none">テイクアウト</a>
+    <div class="lang-selector" id="lang-selector">
+      <button class="lang-selector__btn" id="btn-lang">
+        <span class="lang-selector__flag" id="lang-flag">🇯🇵</span>
+        <span class="lang-selector__code" id="lang-code">JA</span>
+      </button>
+      <div class="lang-selector__dropdown" id="lang-dropdown">
+        <button class="lang-selector__option" data-lang="ja"><span>🇯🇵</span> 日本語</button>
+        <button class="lang-selector__option" data-lang="en"><span>🇺🇸</span> English</button>
+        <button class="lang-selector__option" data-lang="zh-Hans"><span>🇨🇳</span> 简体中文</button>
+        <button class="lang-selector__option" data-lang="zh-Hant"><span>🇹🇼</span> 繁體中文</button>
+        <button class="lang-selector__option" data-lang="ko"><span>🇰🇷</span> 한국어</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- プランバナー（食べ放題時のみ表示） -->
+  <div class="plan-banner" id="plan-banner" style="display:none">
+    <div class="plan-banner__name" id="plan-banner-name"></div>
+    <div class="plan-banner__time" id="plan-banner-time"></div>
+  </div>
+
+  <!-- コースバナー（コース時のみ表示） -->
+  <div class="course-banner" id="course-banner" style="display:none">
+    <div class="course-banner__name" id="course-banner-name"></div>
+    <div class="course-banner__sub" id="course-banner-sub"></div>
+  </div>
+
+  <!-- O-3: ラストオーダーバナー -->
+  <div class="lo-banner" id="lo-banner" style="display:none">ラストオーダーです。ご注文はお早めに！</div>
+
+  <!-- カテゴリナビ -->
+  <nav class="category-nav" id="category-nav"></nav>
+
+  <!-- N-2: 注文追跡セクション -->
+  <div id="order-status-section" class="order-status-section" style="display:none"></div>
+
+  <!-- 前回の注文（再注文セクション） -->
+  <div id="reorder-section" style="display:none"></div>
+
+  <!-- メニュー一覧 -->
+  <main class="menu-container" id="menu-container">
+    <div class="loading-overlay"><span class="loading-spinner"></span> メニューを読み込み中...</div>
+  </main>
+
+  <!-- カートバー -->
+  <div class="cart-bar" id="cart-bar" style="display:none">
+    <div class="cart-bar__info">
+      <span class="cart-bar__count" id="cart-count">0</span>品
+      <span class="cart-bar__total" id="cart-total">&yen;0</span>
+    </div>
+    <button class="cart-bar__btn" id="btn-view-cart">注文を確認</button>
+  </div>
+
+  <!-- L-8: セルフレジ — チェックアウトバー -->
+  <div class="checkout-bar" id="checkout-bar">
+    <button class="checkout-bar__btn" id="btn-checkout">お会計</button>
+  </div>
+
+  <!-- カートモーダル -->
+  <div class="cart-overlay" id="cart-overlay">
+    <div class="cart-modal">
+      <div class="cart-modal__header">
+        <h2>注文内容</h2>
+        <button class="cart-modal__close" id="btn-close-cart">&times;</button>
+      </div>
+      <div class="cart-modal__body" id="cart-items"></div>
+      <!-- N-3: メモ・アレルギー -->
+      <div class="cart-modal__memo-section" id="memo-section">
+        <label class="cart-memo-label">ひとことメモ（任意）</label>
+        <textarea id="order-memo" class="cart-memo-input" maxlength="200" placeholder="例：ネギ抜きで、辛さ控えめ" rows="2"></textarea>
+        <div class="cart-allergen-section">
+          <label class="cart-memo-label">アレルギー情報（該当があれば選択）</label>
+          <div class="allergen-chips" id="allergen-chips">
+            <label class="allergen-chip"><input type="checkbox" value="egg"><span>卵</span></label>
+            <label class="allergen-chip"><input type="checkbox" value="milk"><span>乳</span></label>
+            <label class="allergen-chip"><input type="checkbox" value="wheat"><span>小麦</span></label>
+            <label class="allergen-chip"><input type="checkbox" value="shrimp"><span>えび</span></label>
+            <label class="allergen-chip"><input type="checkbox" value="crab"><span>かに</span></label>
+            <label class="allergen-chip"><input type="checkbox" value="buckwheat"><span>そば</span></label>
+            <label class="allergen-chip"><input type="checkbox" value="peanut"><span>落花生</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="cart-modal__footer">
+        <div class="cart-modal__total">合計: <strong id="cart-modal-total">&yen;0</strong></div>
+        <button class="btn-order" id="btn-send-order">注文を送信</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- オプション選択モーダル -->
+  <div class="option-overlay" id="option-overlay">
+    <div class="option-modal">
+      <div class="option-modal__header">
+        <h2 id="option-modal-title">-</h2>
+        <button class="option-modal__close" id="btn-close-option">&times;</button>
+      </div>
+      <div class="option-modal__body" id="option-modal-body"></div>
+      <div class="option-modal__footer">
+        <span class="option-modal__price" id="option-modal-price">&yen;0</span>
+        <button class="option-modal__add" id="btn-option-add">カートに追加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ウェルカムモーダル -->
+  <div class="welcome-overlay" id="welcome-overlay">
+    <div class="welcome-modal">
+      <h2 class="welcome-modal__store" id="welcome-store"></h2>
+      <p class="welcome-modal__msg" id="welcome-msg"></p>
+      <p class="welcome-modal__wait" id="welcome-wait" style="display:none"></p>
+      <button class="welcome-modal__btn" id="btn-welcome-dismiss"></button>
+    </div>
+  </div>
+
+  <!-- セッション終了オーバーレイ -->
+  <div id="session-ended-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:16px;padding:2rem 1.5rem;margin:1rem;max-width:340px;width:100%;text-align:center">
+      <div style="font-size:2rem;margin-bottom:0.75rem">&#x1f512;</div>
+      <h2 id="session-ended-title" style="font-size:1.125rem;font-weight:700;color:#333;margin:0 0 0.75rem">ご利用ありがとうございました</h2>
+      <p id="session-ended-msg" style="font-size:0.9rem;color:#666;line-height:1.6;margin:0">お会計が完了しました。またのご来店をお待ちしております。</p>
+    </div>
+  </div>
+
+  <!-- N-4: 満足度評価モーダル -->
+  <div class="rating-overlay" id="rating-overlay">
+    <div class="rating-modal">
+      <div class="rating-modal__header">
+        <span id="rating-item-name"></span>
+        <span class="rating-modal__sub">お料理はいかがですか？</span>
+      </div>
+      <div class="rating-modal__faces" id="rating-faces">
+        <button class="rating-face" data-rating="1">&#x1f61e;<br><span>残念</span></button>
+        <button class="rating-face" data-rating="2">&#x1f610;<br><span>微妙</span></button>
+        <button class="rating-face" data-rating="3">&#x1f642;<br><span>普通</span></button>
+        <button class="rating-face" data-rating="4">&#x1f60a;<br><span>おいしい</span></button>
+        <button class="rating-face" data-rating="5">&#x1f60d;<br><span>最高!</span></button>
+      </div>
+      <button class="rating-skip" id="rating-skip">あとで</button>
+    </div>
+  </div>
+
+  <!-- 送信完了 -->
+  <div class="order-toast" id="order-toast">注文を送信しました！</div>
+
+  <!-- L-8: チェックアウトモーダル -->
+  <div class="checkout-modal" id="checkout-modal">
+    <div class="checkout-modal__overlay"></div>
+    <div class="checkout-modal__content">
+      <div class="checkout-modal__header">
+        <h2>お会計</h2>
+        <button class="checkout-modal__close" id="checkout-close">&times;</button>
+      </div>
+      <div class="checkout-modal__body" id="checkout-body">
+      </div>
+    </div>
+  </div>
+
+  <!-- L-8: 決済完了モーダル -->
+  <div class="checkout-done-modal" id="checkout-done-modal">
+    <div class="checkout-done-modal__overlay"></div>
+    <div class="checkout-done-modal__content">
+      <div class="checkout-done-modal__icon">&#x2713;</div>
+      <h2>お支払い完了</h2>
+      <p>ありがとうございました</p>
+      <div class="checkout-done-modal__amount" id="checkout-done-amount">&yen;0</div>
+      <div class="checkout-done-modal__actions">
+        <button class="checkout-done-modal__receipt-btn" id="btn-view-receipt">
+          領収書を表示
+        </button>
+      </div>
+      <p class="checkout-done-modal__note">
+        紙の領収書が必要な場合はスタッフにお申し付けください
+      </p>
+      <button class="checkout-done-modal__close-btn" id="btn-checkout-done-close">閉じる</button>
+    </div>
+  </div>
+
+  <script src="../shared/js/utils.js"></script>
+  <script src="../js/offline-detector.js"></script>
+  <script src="js/cart-manager.js"></script>
+  <script src="js/order-sender.js"></script>
+  <script src="js/order-tracker.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var BASE_API = '../../api';
+    var params = new URLSearchParams(window.location.search);
+    var storeId = params.get('store_id') || params.get('store');
+    var tableId = params.get('table_id') || params.get('table');
+    var lang = localStorage.getItem('mt_lang') || 'ja';
+    var _uiText = {};   // L-4: UI翻訳辞書（langごとのキーバリュー）
+    var _langMeta = {
+      'ja':      { flag: '🇯🇵', code: 'JA', label: '日本語' },
+      'en':      { flag: '🇺🇸', code: 'EN', label: 'English' },
+      'zh-Hans': { flag: '🇨🇳', code: 'CN', label: '简体中文' },
+      'zh-Hant': { flag: '🇹🇼', code: 'TW', label: '繁體中文' },
+      'ko':      { flag: '🇰🇷', code: 'KO', label: '한국어' }
+    };
+    var menuData = [];
+    var settings = {};
+    var _recommendations = {};  // menu_item_id -> {badge_type, comment}
+    var _popularity = {};       // menu_item_id -> rank (1,2,3...)
+    var _recList = [];          // おすすめ品目配列
+    var planInfo = null;      // プランセッション情報（nullなら通常）
+    var isPlanMode = false;   // プランメニュー表示中フラグ
+    var _planTimerInterval = null;
+    var courseInfo = null;     // コースセッション情報
+    var isCourseMode = false;
+    var _coursePollingInterval = null;
+
+    // L-8: セルフレジ
+    var _checkoutAvailable = false; // payment_available フラグ
+    var _checkoutPaymentId = null;  // 決済完了後の payment_id
+
+    var isPreview = !tableId;
+
+    if (!storeId) {
+      document.getElementById('menu-container').innerHTML =
+        '<div class="empty-state"><p>QRコードからアクセスしてください</p></div>';
+      return;
+    }
+
+    // ============================================================
+    // L-4: 多言語ヘルパー関数
+    // ============================================================
+
+    /** UI翻訳テキスト取得。_uiText にあればそれを返す。なければfallback */
+    function _t(key, fallbackJa) {
+      if (lang === 'ja') return fallbackJa;
+      if (_uiText[key]) return _uiText[key];
+      return fallbackJa;
+    }
+
+    // 外部JSから参照可能にする
+    window.__posla_lang = function () { return lang; };
+    window.__posla_t = _t;
+
+    /** メニューアイテム/カテゴリ等の翻訳済み名前を取得 */
+    function _getLocalizedName(obj, nameKey, nameEnKey) {
+      nameKey = nameKey || 'name';
+      nameEnKey = nameEnKey || 'nameEn';
+      if (lang === 'ja') return obj[nameKey] || '';
+      if (lang === 'en' && obj[nameEnKey]) return obj[nameEnKey];
+      // zh-Hans, zh-Hant, ko は translations フィールドから取得
+      if (obj.translations && obj.translations[lang] && obj.translations[lang].name) {
+        return obj.translations[lang].name;
+      }
+      // フォールバック: en → ja
+      if (obj[nameEnKey]) return obj[nameEnKey];
+      return obj[nameKey] || '';
+    }
+
+    /** メニューアイテムの翻訳済み説明文を取得 */
+    function _getLocalizedDesc(obj) {
+      if (lang === 'ja') return obj.description || '';
+      if (lang === 'en' && obj.descriptionEn) return obj.descriptionEn;
+      if (obj.translations && obj.translations[lang] && obj.translations[lang].description) {
+        return obj.translations[lang].description;
+      }
+      if (obj.descriptionEn) return obj.descriptionEn;
+      return obj.description || '';
+    }
+
+    /** カテゴリの翻訳済み名前を取得 */
+    function _getLocalizedCatName(cat) {
+      if (lang === 'ja') return cat.categoryName;
+      if (lang === 'en' && cat.categoryNameEn) return cat.categoryNameEn;
+      if (cat.translations && cat.translations[lang] && cat.translations[lang].name) {
+        return cat.translations[lang].name;
+      }
+      if (cat.categoryNameEn) return cat.categoryNameEn;
+      return cat.categoryName;
+    }
+
+    /** オプショングループの翻訳済み名前 */
+    function _getLocalizedGroupName(group) {
+      return _getLocalizedName(group, 'groupName', 'groupNameEn');
+    }
+
+    /** オプション選択肢の翻訳済み名前 */
+    function _getLocalizedChoiceName(choice) {
+      return _getLocalizedName(choice, 'name', 'nameEn');
+    }
+
+    /** 言語セレクターUIを更新 */
+    function _updateLangUI() {
+      var meta = _langMeta[lang] || _langMeta['ja'];
+      document.getElementById('lang-flag').textContent = meta.flag;
+      document.getElementById('lang-code').textContent = meta.code;
+      // アクティブ状態の更新
+      var options = document.querySelectorAll('.lang-selector__option');
+      for (var i = 0; i < options.length; i++) {
+        var opt = options[i];
+        if (opt.getAttribute('data-lang') === lang) {
+          opt.classList.add('active');
+        } else {
+          opt.classList.remove('active');
+        }
+      }
+      document.body.classList.toggle('lang-en', lang !== 'ja');
+    }
+
+    /** UI翻訳を読み込み */
+    function _loadUiTranslations(targetLang, callback) {
+      if (targetLang === 'ja') {
+        _uiText = {};
+        if (callback) callback();
+        return;
+      }
+      fetch(BASE_API + '/customer/ui-translations.php?lang=' + encodeURIComponent(targetLang))
+        .then(function (r) { return r.text(); })
+        .then(function (text) {
+          try {
+            var json = JSON.parse(text);
+            _uiText = (json.data && json.data.translations) ? json.data.translations : {};
+          } catch (e) { _uiText = {}; }
+          if (callback) callback();
+        })
+        .catch(function () {
+          _uiText = {};
+          if (callback) callback();
+        });
+    }
+
+    /** 言語を切り替え */
+    function _switchLang(newLang) {
+      if (newLang === lang) return;
+      lang = newLang;
+      localStorage.setItem('mt_lang', lang);
+      _updateLangUI();
+      _loadUiTranslations(lang, function () {
+        _refreshAllUI();
+      });
+    }
+
+    /** 静的HTML要素のテキストを現在言語で更新 */
+    function _updateStaticUI() {
+      var el;
+      // ヘッダー
+      el = document.getElementById('btn-takeout');
+      if (el) el.textContent = _t('takeout', 'テイクアウト');
+      // ラストオーダーバナー（非LO時のみ更新）
+      el = document.getElementById('lo-banner');
+      if (el && !_isLastOrder) el.textContent = _t('last_order_banner', 'ラストオーダーです。ご注文はお早めに！');
+      // カートバー
+      el = document.getElementById('btn-view-cart');
+      if (el) el.textContent = _t('view_cart', '注文を確認');
+      // カートモーダル
+      el = document.querySelector('#cart-overlay .cart-modal__header h2');
+      if (el) el.textContent = _t('order_details', '注文内容');
+      var memoLabels = document.querySelectorAll('.cart-memo-label');
+      if (memoLabels[0]) memoLabels[0].textContent = _t('memo_label', 'ひとことメモ（任意）');
+      if (memoLabels[1]) memoLabels[1].textContent = _t('allergy_label', 'アレルギー情報（該当があれば選択）');
+      el = document.getElementById('order-memo');
+      if (el) el.placeholder = _t('memo_placeholder', '例：ネギ抜きで、辛さ控えめ');
+      // 送信ボタン（LO時以外）
+      el = document.getElementById('btn-send-order');
+      if (el && !_isLastOrder) el.textContent = _t('send_order', '注文を送信');
+      // オプションモーダル
+      el = document.getElementById('btn-option-add');
+      if (el) el.textContent = _t('add_to_cart', 'カートに追加');
+      // セッション終了
+      el = document.getElementById('session-ended-title');
+      if (el) el.textContent = _t('session_ended_title', 'ご利用ありがとうございました');
+      el = document.getElementById('session-ended-msg');
+      if (el) el.textContent = _t('session_ended_msg', 'お会計が完了しました。またのご来店をお待ちしております。');
+      // 評価モーダル
+      el = document.querySelector('.rating-modal__sub');
+      if (el) el.textContent = _t('rating_question', 'お料理はいかがですか？');
+      var ratingKeys = ['rating_1', 'rating_2', 'rating_3', 'rating_4', 'rating_5'];
+      var ratingJa = ['残念', '微妙', '普通', 'おいしい', '最高!'];
+      var ratingFaces = document.querySelectorAll('.rating-modal__face span');
+      for (var ri = 0; ri < ratingFaces.length && ri < 5; ri++) {
+        ratingFaces[ri].textContent = _t(ratingKeys[ri], ratingJa[ri]);
+      }
+      el = document.getElementById('rating-skip');
+      if (el) el.textContent = _t('rating_skip', 'あとで');
+      // 注文トースト
+      el = document.getElementById('order-toast');
+      if (el) el.textContent = _t('order_success', 'ご注文ありがとうございます！');
+      // 呼び出しボタン（call-staff.js が生成）
+      el = document.querySelector('.cs-btn');
+      if (el && !el.disabled) el.innerHTML = '&#x1F514; ' + _t('call_staff', '呼び出し');
+      // AIウェイターFAB（ai-waiter.js が生成）
+      el = document.querySelector('.aiw-fab-label');
+      if (el) el.textContent = _t('ask_ai', 'AIに聞く');
+      el = document.querySelector('.aiw-fab');
+      if (el) el.setAttribute('aria-label', _t('ask_ai', 'AIに聞く'));
+
+      // === AIウェイターパネル（ai-waiter.js が生成したDOM） ===
+      var aiwTitle = document.querySelector('.aiw-header-title');
+      if (aiwTitle) aiwTitle.innerHTML = '\uD83E\uDD16 ' + _t('aiw_title', 'AIウェイター');
+
+      var aiwWelcome = document.querySelector('.aiw-welcome');
+      if (aiwWelcome) {
+        aiwWelcome.innerHTML = _t('aiw_welcome', '何でもお気軽にどうぞ！😊') + '<br>'
+          + _t('aiw_example1', '「辛いものは苦手です」') + '<br>'
+          + _t('aiw_example2', '「ボリュームある定食は？」') + '<br>'
+          + _t('aiw_example3', '「おすすめを教えて」');
+      }
+
+      var aiwInput = document.getElementById('aiw-input');
+      if (aiwInput) aiwInput.placeholder = _t('aiw_placeholder', 'メニューについて質問...');
+
+      // === スタッフ呼び出しモーダル（call-staff.js が生成したDOM） ===
+      var csHeader = document.querySelector('.cs-modal__header');
+      if (csHeader) csHeader.textContent = _t('cs_confirm', 'スタッフを呼びますか？');
+
+      var csCancel = document.getElementById('cs-cancel');
+      if (csCancel) csCancel.textContent = _t('cs_cancel', 'キャンセル');
+
+      // 呼び出し理由ボタン
+      var csReasons = document.querySelectorAll('.cs-modal__reason');
+      var reasonKeys = [
+        { key: 'cs_reason_order', ja: '注文したい' },
+        { key: 'cs_reason_check', ja: 'お会計をお願いします' },
+        { key: 'cs_reason_clear', ja: '食器を下げてください' },
+        { key: 'cs_reason_other', ja: 'その他' }
+      ];
+      for (var cri = 0; cri < csReasons.length && cri < reasonKeys.length; cri++) {
+        csReasons[cri].textContent = _t(reasonKeys[cri].key, reasonKeys[cri].ja);
+      }
+    }
+
+    /** 全UIを再描画 */
+    function _refreshAllUI() {
+      _updateStaticUI();
+      renderCategoryNav();
+      if (isCourseMode) {
+        showCourseBanner();
+        renderCourseView();
+      } else {
+        renderMenu();
+      }
+      // カートバーの更新
+      updateCartBar();
+    }
+
+    // 言語セレクター: ドロップダウンの開閉
+    document.getElementById('btn-lang').addEventListener('click', function (e) {
+      e.stopPropagation();
+      document.getElementById('lang-dropdown').classList.toggle('open');
+    });
+    // 言語選択
+    var langOptions = document.querySelectorAll('.lang-selector__option');
+    for (var _li = 0; _li < langOptions.length; _li++) {
+      langOptions[_li].addEventListener('click', function () {
+        var newLang = this.getAttribute('data-lang');
+        document.getElementById('lang-dropdown').classList.remove('open');
+        _switchLang(newLang);
+      });
+    }
+    // 外側クリックで閉じる
+    document.addEventListener('click', function () {
+      document.getElementById('lang-dropdown').classList.remove('open');
+    });
+
+    // 初期表示設定
+    _updateLangUI();
+    if (lang !== 'ja') {
+      _loadUiTranslations(lang, function () { _updateStaticUI(); });
+    }
+
+    // ============================================================
+    // ウェルカムモーダル
+    // ============================================================
+    var _welcomeTimer = null;
+
+    function showWelcomeModal(sessionData, onDismiss) {
+      var overlay = document.getElementById('welcome-overlay');
+      var storeName = _getLocalizedName(sessionData.store);
+
+      document.getElementById('welcome-store').textContent =
+        _t('welcome_prefix', '') + storeName + _t('welcome_suffix', 'へようこそ！');
+
+      var msg = '';
+      if (lang === 'ja') {
+        msg = sessionData.welcomeMessage || 'いらっしゃいませ！ご注文はメニューからどうぞ';
+      } else if (lang === 'en') {
+        msg = sessionData.welcomeMessageEn || _t('welcome_default', 'Welcome! Please order from the menu.');
+      } else {
+        msg = _t('welcome_default', 'いらっしゃいませ！ご注文はメニューからどうぞ');
+      }
+      document.getElementById('welcome-msg').textContent = msg;
+
+      var waitEl = document.getElementById('welcome-wait');
+      if (sessionData.avgWaitMinutes && sessionData.avgWaitMinutes > 0) {
+        var waitText = _t('wait_time', '約{min}分お待ちいただきます');
+        waitEl.textContent = waitText.replace('{min}', sessionData.avgWaitMinutes);
+        waitEl.style.display = '';
+      } else {
+        waitEl.style.display = 'none';
+      }
+
+      document.getElementById('btn-welcome-dismiss').textContent =
+        _t('btn_order', 'メニューを見る');
+
+      var dismissed = false;
+      function dismiss() {
+        if (dismissed) return;
+        dismissed = true;
+        overlay.classList.remove('open');
+        if (_welcomeTimer) { clearTimeout(_welcomeTimer); _welcomeTimer = null; }
+        onDismiss();
+      }
+
+      document.getElementById('btn-welcome-dismiss').addEventListener('click', dismiss);
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) dismiss();
+      });
+
+      overlay.classList.add('open');
+      _welcomeTimer = setTimeout(dismiss, 3000);
+    }
+
+    // N-12: 店舗ブランディング適用
+    function applyBranding(store) {
+      var color = store.brandColor;
+      if (color) {
+        document.documentElement.style.setProperty('--orange', color);
+        document.documentElement.style.setProperty('--orange-dark', color);
+        document.documentElement.style.setProperty('--orange-light', color + '1a');
+      }
+      var logoUrl = store.brandLogoUrl || '';
+      if (logoUrl) {
+        var el = document.getElementById('store-name');
+        if (el) {
+          var img = document.createElement('img');
+          img.src = logoUrl;
+          img.alt = '';
+          img.style.cssText = 'height:28px;margin-right:6px;vertical-align:middle;';
+          img.onerror = function () { this.style.display = 'none'; };
+          el.insertBefore(img, el.firstChild);
+        }
+      }
+      var displayName = store.brandDisplayName || '';
+      if (displayName) {
+        var nameEl = document.getElementById('store-name');
+        if (nameEl) {
+          for (var i = 0; i < nameEl.childNodes.length; i++) {
+            if (nameEl.childNodes[i].nodeType === 3) {
+              nameEl.childNodes[i].textContent = displayName;
+              return;
+            }
+          }
+          nameEl.appendChild(document.createTextNode(displayName));
+        }
+      }
+    }
+
+    if (isPreview) {
+      // プレビューモード: テーブルセッション不要、メニュー閲覧のみ
+      document.getElementById('table-name').textContent = 'プレビュー';
+      document.getElementById('cart-bar').style.display = 'none';
+      loadMenu();
+    } else {
+      // 通常モード: テーブルセッション取得
+      fetch(BASE_API + '/customer/table-session.php?store_id=' + storeId + '&table_id=' + tableId)
+        .then(function (r) {
+          return r.text().then(function (body) {
+            if (!body) throw new Error('サーバーが空のレスポンスを返しました');
+            try { return JSON.parse(body); }
+            catch (e) { throw new Error('応答の解析に失敗しました'); }
+          });
+        })
+        .then(function (json) {
+          if (!json.ok) throw new Error((json.error && json.error.message) || 'セッション取得失敗');
+          var d = json.data;
+          document.getElementById('store-name').textContent = d.store.name;
+          applyBranding(d.store);
+          document.getElementById('table-name').textContent = d.table.tableCode;
+          CartManager.init(storeId, tableId, d.sessionToken, BASE_API);
+
+          function proceedAfterWelcome() {
+            // コースセッション検出（プランより優先チェック）
+            if (d.course && d.course.id) {
+              courseInfo = d.course;
+              isCourseMode = true;
+              showCourseBanner();
+              renderCourseView();
+              startCoursePolling();
+              startTokenValidation();
+              startOrderTracking();
+              startLastOrderCheck();
+              return;
+            }
+
+            // プランセッション検出
+            if (d.plan && d.plan.id) {
+              planInfo = d.plan;
+              isPlanMode = true;
+              CartManager.setPlanMode(true);
+              showPlanBanner();
+            }
+
+            loadMenu();
+          }
+
+          // L-8: Stripe決済完了後のリダイレクト処理
+          var checkoutResult = params.get('checkout');
+          if (checkoutResult === 'success') {
+            var stripeSessionId = params.get('stripe_session_id');
+            if (stripeSessionId) {
+              handleCheckoutSuccess(stripeSessionId);
+              return; // 通常の初期化フローをスキップ
+            }
+          } else if (checkoutResult === 'cancel') {
+            showCheckoutCancelToast();
+            // URLからcheckoutパラメータを除去
+            var cleanUrl = window.location.pathname + '?store_id=' + encodeURIComponent(storeId) + '&table_id=' + encodeURIComponent(tableId);
+            window.history.replaceState(null, '', cleanUrl);
+          }
+
+          // ウェルカムモーダル表示（sessionStorage で重複防止）
+          if (!sessionStorage.getItem('mt_welcome_shown')) {
+            sessionStorage.setItem('mt_welcome_shown', '1');
+            showWelcomeModal(d, proceedAfterWelcome);
+          } else {
+            proceedAfterWelcome();
+          }
+        })
+        .catch(function (err) {
+          document.getElementById('menu-container').innerHTML =
+            '<div class="empty-state"><p>' + Utils.escapeHtml(err.message) + '</p></div>';
+        });
+    }
+
+    function loadMenu() {
+      var menuUrl = BASE_API + '/customer/menu.php?store_id=' + storeId;
+      if (isPlanMode && planInfo) {
+        menuUrl += '&plan_id=' + encodeURIComponent(planInfo.id);
+      }
+      fetch(menuUrl)
+        .then(function (r) {
+          return r.text().then(function (body) {
+            if (!body) throw new Error('サーバーが空のレスポンスを返しました');
+            try { return JSON.parse(body); }
+            catch (e) { throw new Error('応答の解析に失敗しました'); }
+          });
+        })
+        .then(function (json) {
+          if (!json.ok) throw new Error((json.error && json.error.message) || 'メニュー取得失敗');
+          var d = json.data;
+          menuData = d.categories || [];
+          settings = d.settings || {};
+          // N-1/N-6: おすすめ・人気ランキング
+          _recList = d.recommendations || [];
+          _recommendations = {};
+          for (var ri = 0; ri < _recList.length; ri++) {
+            _recommendations[_recList[ri].menu_item_id] = _recList[ri];
+          }
+          _popularity = d.popularity || {};
+          if (isPreview && d.store) {
+            document.getElementById('store-name').textContent = d.store.name;
+            applyBranding(d.store);
+          }
+          renderCategoryNav();
+          renderMenu();
+          if (!isPreview) {
+            updateCartBar();
+            startMenuVersionCheck();
+            startTokenValidation();
+            loadOrderHistory();
+            startOrderTracking();
+            startLastOrderCheck();
+            checkSelfCheckout(); // L-8: 既存注文があればチェックアウトバー表示
+          }
+          // テイクアウト導線
+          (function() {
+            var takeoutBtn = document.getElementById('btn-takeout');
+            if (!takeoutBtn) return;
+            fetch(BASE_API + '/customer/takeout-orders.php?action=settings&store_id=' + storeId)
+              .then(function(res) { return res.text(); })
+              .then(function(text) {
+                try {
+                  var json = JSON.parse(text);
+                  if (json.ok && json.data && json.data.takeout_enabled) {
+                    takeoutBtn.style.display = '';
+                    takeoutBtn.href = 'takeout.html?store_id=' + encodeURIComponent(storeId);
+                  }
+                } catch(e) {}
+              })
+              .catch(function() {});
+          })();
+        })
+        .catch(function (err) {
+          document.getElementById('menu-container').innerHTML =
+            '<div class="empty-state"><p>' + Utils.escapeHtml(err.message) + '</p></div>';
+        });
+    }
+
+    // ============================================================
+    // メニュー変更検知（品切れ即時反映）
+    // ============================================================
+    var _versionTimer = null;
+    var _lastMenuVersion = null;
+    var _VERSION_CHECK_INTERVAL = 2000; // 2秒
+
+    function startMenuVersionCheck() {
+      if (_versionTimer || isPreview) return;
+      _versionTimer = setInterval(checkMenuVersion, _VERSION_CHECK_INTERVAL);
+    }
+
+    function checkMenuVersion() {
+      fetch(BASE_API + '/store/menu-version.php?store_id=' + storeId + '&_t=' + Date.now())
+        .then(function (r) {
+          return r.text().then(function (body) {
+            if (!body) return null;
+            try { return JSON.parse(body); } catch (e) { return null; }
+          });
+        })
+        .then(function (json) {
+          if (!json || !json.ok) return;
+          var v = json.data.version;
+          if (_lastMenuVersion && v !== _lastMenuVersion) {
+            // バージョン変更を検出 → フルメニュー取得
+            refreshMenuSilent();
+          }
+          _lastMenuVersion = v;
+        })
+        .catch(function () { /* サイレント失敗 */ });
+    }
+
+    function refreshMenuSilent() {
+      var menuUrl = BASE_API + '/customer/menu.php?store_id=' + storeId;
+      if (isPlanMode && planInfo) {
+        menuUrl += '&plan_id=' + encodeURIComponent(planInfo.id);
+      }
+      fetch(menuUrl + '&_t=' + Date.now())
+        .then(function (r) {
+          return r.text().then(function (body) {
+            if (!body) return null;
+            try { return JSON.parse(body); } catch (e) { return null; }
+          });
+        })
+        .then(function (json) {
+          if (!json || !json.ok) return;
+          var newData = json.data.categories || [];
+          // N-1/N-6: おすすめ・人気ランキング更新
+          var recArr = json.data.recommendations || [];
+          _recommendations = {};
+          for (var rri = 0; rri < recArr.length; rri++) {
+            _recommendations[recArr[rri].menu_item_id] = recArr[rri];
+          }
+          _recList = recArr;
+          _popularity = json.data.popularity || {};
+          // 品切れ商品を検出
+          var soldOutIds = {};
+          newData.forEach(function (cat) {
+            (cat.items || []).forEach(function (item) {
+              if (item.soldOut) soldOutIds[item.menuItemId] = item.name;
+            });
+          });
+          // カート内の品切れ商品を除去
+          var cart = CartManager.getCart();
+          var removedNames = [];
+          var cleanCart = cart.filter(function (ci) {
+            if (soldOutIds[ci.id]) {
+              removedNames.push(soldOutIds[ci.id]);
+              return false;
+            }
+            return true;
+          });
+          if (removedNames.length > 0) {
+            var unique = [];
+            for (var ri = 0; ri < removedNames.length; ri++) {
+              if (unique.indexOf(removedNames[ri]) === -1) unique.push(removedNames[ri]);
+            }
+            localStorage.setItem('mt_cart_' + storeId + '_' + tableId, JSON.stringify(cleanCart));
+            updateCartBar();
+            alert(unique.join('、') + _t('sold_out_removed', 'が品切れになりました。カートから削除しました。'));
+          }
+          menuData = newData;
+          renderMenu();
+          if (!isPreview) updateCartBar();
+          if (_lastOrders && _lastOrders.length > 0) renderReorderSection(_lastOrders);
+        })
+        .catch(function () { /* サイレント失敗 */ });
+    }
+
+    // ============================================================
+    // メニューデータ検索ヘルパー
+    // ============================================================
+    function findMenuItem(menuItemId) {
+      for (var ci = 0; ci < menuData.length; ci++) {
+        var items = menuData[ci].items || [];
+        for (var ii = 0; ii < items.length; ii++) {
+          if (items[ii].menuItemId === menuItemId) return items[ii];
+        }
+      }
+      return null;
+    }
+
+    function hasOptions(menuItemId) {
+      var item = findMenuItem(menuItemId);
+      return item && item.optionGroups && item.optionGroups.length > 0;
+    }
+
+    // ============================================================
+    // 前回の注文（再注文セクション）
+    // ============================================================
+    var _reorderItems = [];
+    var _lastOrders = [];
+
+    function loadOrderHistory() {
+      if (isPreview || isPlanMode || isCourseMode) return;
+      var token = CartManager.getSessionToken();
+      if (!token) return;
+
+      fetch(BASE_API + '/customer/order-history.php?store_id=' + storeId
+        + '&table_id=' + tableId
+        + '&session_token=' + encodeURIComponent(token))
+        .then(function (r) {
+          return r.text().then(function (body) {
+            if (!body) return null;
+            try { return JSON.parse(body); } catch (e) { return null; }
+          });
+        })
+        .then(function (json) {
+          if (!json || !json.ok) return;
+          renderReorderSection(json.data.orders || []);
+        })
+        .catch(function () { /* サイレント失敗 */ });
+    }
+
+    function renderReorderSection(orders) {
+      var section = document.getElementById('reorder-section');
+      _reorderItems = [];
+      _lastOrders = orders || [];
+
+      if (_lastOrders.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      // 全注文のアイテムをフラットにし、同一アイテム+オプションは合算
+      var map = {};
+      for (var oi = 0; oi < _lastOrders.length; oi++) {
+        var orderItems = _lastOrders[oi].items || [];
+        for (var ii = 0; ii < orderItems.length; ii++) {
+          var item = orderItems[ii];
+          var key = item.id;
+          if (item.options && item.options.length > 0) {
+            var optIds = [];
+            for (var k = 0; k < item.options.length; k++) {
+              optIds.push(item.options[k].choiceId);
+            }
+            optIds.sort();
+            key += '__' + optIds.join(',');
+          }
+          if (map[key]) {
+            map[key].qty += (item.qty || 1);
+          } else {
+            map[key] = {
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              qty: item.qty || 1,
+              options: item.options || [],
+              basePrice: item.basePrice || null
+            };
+            _reorderItems.push(map[key]);
+          }
+        }
+      }
+
+      if (_reorderItems.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      var titleText = _t('previous_orders', '前回のご注文');
+      var html = '<div class="reorder-section">';
+      html += '<div class="reorder-section__title">' + Utils.escapeHtml(titleText) + '</div>';
+
+      for (var ri = 0; ri < _reorderItems.length; ri++) {
+        var rItem = _reorderItems[ri];
+        var menuItem = findMenuItem(rItem.id);
+        var isSoldOut = !menuItem || !!menuItem.soldOut;
+        var displayName = menuItem ? _getLocalizedName(menuItem) : rItem.name;
+
+        var optDesc = '';
+        if (rItem.options.length > 0) {
+          var optNames = [];
+          for (var oni = 0; oni < rItem.options.length; oni++) {
+            optNames.push(rItem.options[oni].choiceName);
+          }
+          optDesc = optNames.join(', ');
+        }
+
+        var priceText = '';
+        if (!isSoldOut) {
+          var currentPrice = menuItem.price;
+          if (rItem.options.length > 0) {
+            var optDiff = 0;
+            for (var opi = 0; opi < rItem.options.length; opi++) {
+              optDiff += (rItem.options[opi].price || 0);
+            }
+            currentPrice += optDiff;
+          }
+          priceText = Utils.formatYen(currentPrice);
+        }
+
+        var btnClass = 'reorder-item__add' + (isSoldOut ? ' reorder-item__add--disabled' : '');
+        var btnText = isSoldOut
+          ? _t('sold_out', '品切れ')
+          : ('+ ' + _t('btn_add', '追加'));
+
+        html += '<div class="reorder-item">';
+        html += '<div class="reorder-item__info">';
+        html += '<div class="reorder-item__name">' + Utils.escapeHtml(displayName) + '</div>';
+        if (optDesc) {
+          html += '<div class="reorder-item__meta">' + Utils.escapeHtml(optDesc) + '</div>';
+        }
+        html += '<div class="reorder-item__meta">'
+          + Utils.escapeHtml(String(rItem.qty)) + _t('items_count', '点')
+          + (priceText ? ' ' + priceText : '')
+          + '</div>';
+        html += '</div>';
+        html += '<button class="' + btnClass + '" data-reorder-idx="' + ri + '"'
+          + (isSoldOut ? ' disabled' : '') + '>' + btnText + '</button>';
+        html += '</div>';
+      }
+
+      html += '</div>';
+      section.innerHTML = html;
+      section.style.display = '';
+    }
+
+    document.getElementById('reorder-section').addEventListener('click', function (e) {
+      var btn = e.target.closest('.reorder-item__add');
+      if (!btn || btn.disabled) return;
+      var idx = parseInt(btn.dataset.reorderIdx, 10);
+      var rItem = _reorderItems[idx];
+      if (!rItem) return;
+
+      var menuItem = findMenuItem(rItem.id);
+      if (!menuItem || menuItem.soldOut) {
+        showReorderToast(_t('sold_out', '品切れです'));
+        return;
+      }
+
+      var currentPrice = menuItem.price;
+      if (rItem.options.length > 0) {
+        var optDiff = 0;
+        for (var i = 0; i < rItem.options.length; i++) {
+          optDiff += (rItem.options[i].price || 0);
+        }
+        CartManager.addItem({
+          id: rItem.id,
+          name: rItem.name,
+          price: currentPrice + optDiff,
+          basePrice: currentPrice,
+          options: rItem.options
+        });
+      } else {
+        CartManager.addItem({
+          id: rItem.id,
+          name: rItem.name,
+          price: currentPrice
+        });
+      }
+
+      renderMenu();
+      updateCartBar();
+      showReorderToast(_t('added_to_cart', 'カートに追加しました'));
+    });
+
+    function showReorderToast(msg) {
+      var toast = document.getElementById('order-toast');
+      var origText = toast.textContent;
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(function () {
+        toast.classList.remove('show');
+        toast.textContent = origText;
+      }, 2000);
+    }
+
+    // ============================================================
+    // カテゴリナビ
+    // ============================================================
+    function renderCategoryNav() {
+      var nav = document.getElementById('category-nav');
+      var tabsHtml = '';
+      // N-1: おすすめタブ（おすすめがある場合のみ先頭に追加）
+      if (_recList.length > 0 && !isPlanMode && !isCourseMode) {
+        tabsHtml += '<button class="category-nav__btn" data-cat="recommendations">'
+          + _t('recommended', 'おすすめ') + '</button>';
+      }
+      tabsHtml += menuData.map(function (cat) {
+        var name = _getLocalizedCatName(cat);
+        return '<button class="category-nav__btn" data-cat="' + cat.categoryId + '">' + Utils.escapeHtml(name) + '</button>';
+      }).join('');
+      nav.innerHTML = tabsHtml;
+
+      nav.addEventListener('click', function (e) {
+        var btn = e.target.closest('.category-nav__btn');
+        if (!btn) return;
+        var el = document.getElementById('cat-' + btn.dataset.cat);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+
+    // ============================================================
+    // メニュー描画
+    // ============================================================
+    // N-7: アレルゲンラベルマップ
+    var _allergenLabels = {
+      egg: '卵', milk: '乳', wheat: '小麦', shrimp: 'えび', crab: 'かに',
+      buckwheat: 'そば', peanut: '落花生', almond: 'アーモンド', cashew: 'カシューナッツ',
+      walnut: 'くるみ', sesame: 'ごま', salmon: 'さけ', mackerel: 'さば',
+      squid: 'いか', abalone: 'あわび', ikura: 'いくら', soy: '大豆',
+      matsutake: 'まつたけ', peach: 'もも', apple: 'りんご', kiwi: 'キウイ',
+      banana: 'バナナ', orange: 'オレンジ', gelatin: 'ゼラチン',
+      chicken: '鶏肉', beef: '牛肉', pork: '豚肉'
+    };
+
+    // N-1: バッジラベルマップ
+    var _badgeLabels = {
+      recommend: { ja: 'おすすめ', en: 'Recommend', cls: 'badge-recommend' },
+      popular: { ja: '人気', en: 'Popular', cls: 'badge-popular' },
+      'new': { ja: '新着', en: 'New', cls: 'badge-new' },
+      limited: { ja: '限定', en: 'Limited', cls: 'badge-limited' },
+      today_only: { ja: '本日限り', en: 'Today Only', cls: 'badge-today' }
+    };
+
+    function buildItemBadges(itemId, source) {
+      var badges = '';
+
+      // N-1: おすすめバッジ
+      var rec = _recommendations[itemId];
+      if (rec) {
+        var bl = _badgeLabels[rec.badge_type] || _badgeLabels.recommend;
+        badges += '<span class="menu-item__badge ' + bl.cls + '">' + (lang !== 'ja' ? bl.en : bl.ja) + '</span>';
+      }
+
+      // N-6: 人気ランキングバッジ
+      var rank = _popularity[itemId];
+      if (rank && rank <= 3) {
+        var medals = ['', '\uD83E\uDD47', '\uD83E\uDD48', '\uD83E\uDD49'];
+        badges += '<span class="menu-item__badge badge-rank">' + medals[rank] + ' ' + _t('badge_rank', '{rank}位').replace('{rank}', rank) + '</span>';
+      } else if (rank && rank <= 10) {
+        badges += '<span class="menu-item__badge badge-rank-top10">TOP' + rank + '</span>';
+      }
+
+      // 限定バッジ（おすすめバッジがない場合のみ）
+      if (!rec && source === 'local') {
+        badges += '<span class="menu-item__badge-limited">' + _t('badge_limited', '限定') + '</span>';
+      }
+
+      return badges;
+    }
+
+    function buildNutritionHtml(item) {
+      var html = '';
+      if (item.calories) {
+        html += '<span class="menu-item__calories">' + item.calories + 'kcal</span>';
+      }
+      if (item.allergens && item.allergens.length > 0) {
+        var tags = '';
+        for (var ai = 0; ai < item.allergens.length; ai++) {
+          var a = item.allergens[ai];
+          tags += '<span class="allergen-tag">' + Utils.escapeHtml(_allergenLabels[a] || a) + '</span>';
+        }
+        html += '<div class="menu-item__allergens">' + tags + '</div>';
+      }
+      return html;
+    }
+
+    function renderMenuItemHtml(item) {
+      var itemId = item.menuItemId;
+      var name = _getLocalizedName(item);
+      var desc = _getLocalizedDesc(item);
+      var img = item.imageUrl
+        ? '<img class="menu-item__image" src="../../' + Utils.escapeHtml(item.imageUrl) + '" alt="" loading="lazy">'
+        : '';
+      var qtyHtml = '';
+      if (!isPreview) {
+        var cartQty = CartManager.getItemQty(itemId);
+        var itemHasOptions = item.optionGroups && item.optionGroups.length > 0;
+
+        if (cartQty > 0 && !itemHasOptions) {
+          qtyHtml = '<div class="menu-item__qty-ctrl">'
+            + '<button class="qty-btn qty-btn--minus" data-id="' + itemId + '" data-action="minus">-</button>'
+            + '<span class="qty-val">' + cartQty + '</span>'
+            + '<button class="qty-btn qty-btn--plus" data-id="' + itemId + '" data-action="plus">+</button></div>';
+        } else if (cartQty > 0 && itemHasOptions) {
+          qtyHtml = '<div class="menu-item__qty-ctrl">'
+            + '<span class="qty-val">' + cartQty + '</span>'
+            + '<button class="menu-item__add-btn" data-id="' + itemId + '">' + _t('btn_add_short', '追加') + '</button></div>';
+        } else {
+          qtyHtml = '<button class="menu-item__add-btn" data-id="' + itemId + '">' + _t('btn_add_short', '追加') + '</button>';
+        }
+      }
+
+      var badges = buildItemBadges(itemId, item.source);
+      var nutritionHtml = buildNutritionHtml(item);
+
+      return '<div class="menu-item">'
+        + img
+        + '<div class="menu-item__body">'
+        + '<div class="menu-item__name">' + Utils.escapeHtml(name) + badges + '</div>'
+        + (desc ? '<div class="menu-item__desc">' + Utils.escapeHtml(desc) + '</div>' : '')
+        + nutritionHtml
+        + '<div class="menu-item__price' + (isPlanMode ? ' menu-item__price--plan' : '') + '">'
+        + (isPlanMode ? _t('included', '食べ放題') : Utils.formatYen(item.price))
+        + '</div>'
+        + '</div>'
+        + '<div class="menu-item__action">' + qtyHtml + '</div>'
+        + '</div>';
+    }
+
+    function renderMenu() {
+      var container = document.getElementById('menu-container');
+      var html = '';
+
+      // N-1: おすすめセクション
+      if (_recList.length > 0 && !isPlanMode && !isCourseMode) {
+        html += '<section class="menu-section menu-section--recommend" id="cat-recommendations">'
+          + '<h2 class="menu-section__title">' + _t('recommended', 'おすすめ') + '</h2>'
+          + '<div class="menu-section__items">';
+        for (var rci = 0; rci < _recList.length; rci++) {
+          var recItem = null;
+          var rec = _recList[rci];
+          // メニューデータから品目を検索
+          for (var ci = 0; ci < menuData.length; ci++) {
+            var items = menuData[ci].items || [];
+            for (var ii = 0; ii < items.length; ii++) {
+              if (items[ii].menuItemId === rec.menu_item_id) { recItem = items[ii]; break; }
+            }
+            if (recItem) break;
+          }
+          if (!recItem || recItem.soldOut) continue;
+          html += renderMenuItemHtml(recItem);
+          if (rec.comment) {
+            html += '<div class="recommend-comment">' + Utils.escapeHtml(rec.comment) + '</div>';
+          }
+        }
+        html += '</div></section>';
+      }
+
+      menuData.forEach(function (cat) {
+        var catName = _getLocalizedCatName(cat);
+        html += '<section class="menu-section" id="cat-' + cat.categoryId + '">'
+          + '<h2 class="menu-section__title">' + Utils.escapeHtml(catName) + '</h2>'
+          + '<div class="menu-section__items">';
+
+        (cat.items || []).forEach(function (item) {
+          if (item.soldOut) return;
+          html += renderMenuItemHtml(item);
+        });
+
+        html += '</div></section>';
+      });
+
+      container.innerHTML = html;
+    }
+
+    // ============================================================
+    // メニューエリアのイベント委譲
+    // ============================================================
+    document.getElementById('menu-container').addEventListener('click', function (e) {
+      // 追加ボタン
+      var addBtn = e.target.closest('.menu-item__add-btn');
+      if (addBtn) {
+        var itemId = addBtn.dataset.id;
+        if (hasOptions(itemId)) {
+          openOptionModal(itemId);
+        } else {
+          var item = findMenuItem(itemId);
+          if (item) {
+            CartManager.addItem({
+              id: item.menuItemId,
+              name: item.name,
+              price: item.price
+            });
+            renderMenu();
+            updateCartBar();
+          }
+        }
+        return;
+      }
+      // +/- ボタン（オプションなしアイテム専用）
+      var qtyBtn = e.target.closest('[data-action]');
+      if (qtyBtn) {
+        var id = qtyBtn.dataset.id;
+        if (qtyBtn.dataset.action === 'plus') CartManager.incrementItem(id);
+        else CartManager.decrementItem(id);
+        renderMenu();
+        updateCartBar();
+      }
+    });
+
+    // ============================================================
+    // オプション選択モーダル
+    // ============================================================
+    var _optionItem = null; // 現在モーダルで選択中のメニューアイテム
+
+    function openOptionModal(menuItemId) {
+      var item = findMenuItem(menuItemId);
+      if (!item) return;
+      _optionItem = item;
+
+      document.getElementById('option-modal-title').textContent = _getLocalizedName(item);
+
+      renderOptionGroups(item);
+      updateOptionPrice();
+      document.getElementById('option-overlay').classList.add('open');
+    }
+
+    function closeOptionModal() {
+      document.getElementById('option-overlay').classList.remove('open');
+      _optionItem = null;
+    }
+
+    document.getElementById('btn-close-option').addEventListener('click', closeOptionModal);
+    document.getElementById('option-overlay').addEventListener('click', function (e) {
+      if (e.target === this) closeOptionModal();
+    });
+
+    function renderOptionGroups(item) {
+      var body = document.getElementById('option-modal-body');
+      var html = '';
+
+      (item.optionGroups || []).forEach(function (group, gi) {
+        var gName = _getLocalizedGroupName(group);
+        var isSingle = group.selectionType === 'single';
+        var badgeClass = group.isRequired ? 'option-group__badge--required' : 'option-group__badge--optional';
+        var badgeText = group.isRequired
+          ? _t('option_required', '必須')
+          : _t('option_select', '任意');
+
+        html += '<div class="option-group" data-group-index="' + gi + '">'
+          + '<div class="option-group__title">'
+          + Utils.escapeHtml(gName)
+          + '<span class="option-group__badge ' + badgeClass + '">' + badgeText + '</span>'
+          + '</div>';
+
+        (group.choices || []).forEach(function (choice) {
+          var cName = _getLocalizedChoiceName(choice);
+          var inputType = isSingle ? 'radio' : 'checkbox';
+          var inputName = 'opt-group-' + gi;
+          var checked = choice.isDefault ? ' checked' : '';
+          var priceDiff = choice.priceDiff || 0;
+          var priceLabel = '';
+          var priceClass = 'option-choice__price';
+          if (priceDiff > 0) {
+            priceLabel = '+' + Utils.formatYen(priceDiff);
+          } else if (priceDiff < 0) {
+            priceLabel = Utils.formatYen(priceDiff);
+          } else {
+            priceLabel = '&plusmn;0';
+            priceClass += ' option-choice__price--zero';
+          }
+
+          html += '<label class="option-choice">'
+            + '<input class="option-choice__input" type="' + inputType + '"'
+            + ' name="' + inputName + '"'
+            + ' value="' + choice.choiceId + '"'
+            + ' data-group-index="' + gi + '"'
+            + ' data-price-diff="' + priceDiff + '"'
+            + checked + '>'
+            + '<span class="option-choice__label">' + Utils.escapeHtml(cName) + '</span>'
+            + '<span class="' + priceClass + '">' + priceLabel + '</span>'
+            + '</label>';
+        });
+
+        html += '</div>';
+      });
+
+      body.innerHTML = html;
+    }
+
+    // 選択変更 → 価格更新 + バリデーション
+    document.getElementById('option-modal-body').addEventListener('change', function () {
+      updateOptionPrice();
+    });
+
+    function updateOptionPrice() {
+      if (!_optionItem) return;
+
+      var basePrice = _optionItem.price;
+      var totalDiff = 0;
+      var groups = _optionItem.optionGroups || [];
+      var allValid = true;
+
+      groups.forEach(function (group, gi) {
+        var inputs = document.querySelectorAll('input[data-group-index="' + gi + '"]');
+        var checkedInputs = document.querySelectorAll('input[data-group-index="' + gi + '"]:checked');
+        var checkedCount = checkedInputs.length;
+
+        // 価格差分を合算
+        checkedInputs.forEach(function (inp) {
+          totalDiff += parseInt(inp.dataset.priceDiff, 10) || 0;
+        });
+
+        // バリデーション
+        var groupEl = document.querySelector('.option-group[data-group-index="' + gi + '"]');
+        if (group.isRequired && checkedCount < (group.minSelect || 1)) {
+          allValid = false;
+          if (groupEl) groupEl.classList.add('option-group--error');
+        } else if (group.selectionType === 'multi' && group.maxSelect && checkedCount > group.maxSelect) {
+          allValid = false;
+          if (groupEl) groupEl.classList.add('option-group--error');
+        } else {
+          if (groupEl) groupEl.classList.remove('option-group--error');
+        }
+      });
+
+      var finalPrice = basePrice + totalDiff;
+      document.getElementById('option-modal-price').textContent = Utils.formatYen(finalPrice);
+      document.getElementById('btn-option-add').disabled = !allValid;
+    }
+
+    // multiのmaxSelect制御
+    document.getElementById('option-modal-body').addEventListener('change', function (e) {
+      var inp = e.target;
+      if (inp.type !== 'checkbox') return;
+      var gi = parseInt(inp.dataset.groupIndex, 10);
+      if (!_optionItem) return;
+      var group = _optionItem.optionGroups[gi];
+      if (!group || group.selectionType !== 'multi' || !group.maxSelect) return;
+
+      var checked = document.querySelectorAll('input[data-group-index="' + gi + '"]:checked');
+      if (checked.length > group.maxSelect) {
+        inp.checked = false;
+      }
+    });
+
+    // カートに追加
+    document.getElementById('btn-option-add').addEventListener('click', function () {
+      if (!_optionItem) return;
+
+      var item = _optionItem;
+      var groups = item.optionGroups || [];
+      var selectedOptions = [];
+      var totalDiff = 0;
+
+      groups.forEach(function (group, gi) {
+        var checkedInputs = document.querySelectorAll('input[data-group-index="' + gi + '"]:checked');
+        checkedInputs.forEach(function (inp) {
+          var choiceId = inp.value;
+          var choice = null;
+          for (var ci = 0; ci < group.choices.length; ci++) {
+            if (group.choices[ci].choiceId === choiceId) {
+              choice = group.choices[ci];
+              break;
+            }
+          }
+          if (choice) {
+            var diff = choice.priceDiff || 0;
+            totalDiff += diff;
+            selectedOptions.push({
+              groupId: group.groupId,
+              groupName: group.groupName,
+              choiceId: choice.choiceId,
+              choiceName: choice.name,
+              price: diff
+            });
+          }
+        });
+      });
+
+      CartManager.addItem({
+        id: item.menuItemId,
+        name: item.name,
+        price: item.price + totalDiff,
+        basePrice: item.price,
+        options: selectedOptions
+      });
+
+      closeOptionModal();
+      renderMenu();
+      updateCartBar();
+    });
+
+    // ============================================================
+    // カートバー
+    // ============================================================
+    function updateCartBar() {
+      var cart = CartManager.getCart();
+      var count = cart.reduce(function (s, i) { return s + i.qty; }, 0);
+      var total = cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0);
+      document.getElementById('cart-count').textContent = count;
+      document.getElementById('cart-total').textContent = isPlanMode
+        ? _t('included', '食べ放題')
+        : Utils.formatYen(total);
+      document.getElementById('cart-bar').style.display = count > 0 ? '' : 'none';
+    }
+
+    // ============================================================
+    // カートモーダル
+    // ============================================================
+    document.getElementById('btn-view-cart').addEventListener('click', function () {
+      renderCartModal();
+      document.getElementById('cart-overlay').classList.add('open');
+    });
+
+    document.getElementById('btn-close-cart').addEventListener('click', function () {
+      document.getElementById('cart-overlay').classList.remove('open');
+    });
+
+    // ── カート表示用: menuDataからアイテム検索 ──
+    function _findMenuItemById(id) {
+      for (var ci = 0; ci < menuData.length; ci++) {
+        var items = menuData[ci].items || [];
+        for (var ii = 0; ii < items.length; ii++) {
+          if (items[ii].menuItemId === id) return items[ii];
+        }
+      }
+      return null;
+    }
+
+    function _getCartItemName(cartItem) {
+      var menuItem = _findMenuItemById(cartItem.id);
+      if (menuItem) return _getLocalizedName(menuItem);
+      return cartItem.name; // フォールバック
+    }
+
+    function _getCartOptionName(option) {
+      // optionGroupsから選択肢を検索
+      for (var ci = 0; ci < menuData.length; ci++) {
+        var items = menuData[ci].items || [];
+        for (var ii = 0; ii < items.length; ii++) {
+          var ogs = items[ii].optionGroups || [];
+          for (var gi = 0; gi < ogs.length; gi++) {
+            if (ogs[gi].groupId !== option.groupId) continue;
+            var choices = ogs[gi].choices || [];
+            for (var chi = 0; chi < choices.length; chi++) {
+              if (choices[chi].choiceId === option.choiceId) {
+                return _getLocalizedName(choices[chi]);
+              }
+            }
+          }
+        }
+      }
+      return option.choiceName; // フォールバック
+    }
+
+    function renderCartModal() {
+      var cart = CartManager.getCart();
+      var total = cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0);
+      var html = '';
+      cart.forEach(function (item) {
+        var optText = '';
+        if (item.options && item.options.length > 0) {
+          optText = '<div style="font-size:0.75rem;color:#999;margin-top:2px">'
+            + item.options.map(function (o) { return Utils.escapeHtml(_getCartOptionName(o)); }).join(', ')
+            + '</div>';
+        }
+        var displayName = _getCartItemName(item);
+        var priceText = isPlanMode ? _t('included', '¥0') : Utils.formatYen(item.price * item.qty);
+        html += '<div class="cart-item">'
+          + '<span class="cart-item__name">' + Utils.escapeHtml(displayName) + optText + '</span>'
+          + '<span class="cart-item__qty">&times;' + item.qty + '</span>'
+          + '<span class="cart-item__price">' + priceText + '</span>'
+          + '<button class="cart-item__remove" data-cartkey="' + Utils.escapeHtml(item.cartKey || item.id) + '">&times;</button>'
+          + '</div>';
+      });
+      document.getElementById('cart-items').innerHTML = html || '<p style="text-align:center;color:#999">' + _t('cart_empty', 'カートは空です') + '</p>';
+      document.getElementById('cart-modal-total').textContent = isPlanMode
+        ? _t('included', '食べ放題')
+        : Utils.formatYen(total);
+    }
+
+    document.getElementById('cart-items').addEventListener('click', function (e) {
+      var rmBtn = e.target.closest('.cart-item__remove');
+      if (rmBtn) {
+        CartManager.removeItem(rmBtn.dataset.cartkey);
+        renderCartModal();
+        renderMenu();
+        updateCartBar();
+      }
+    });
+
+    // ============================================================
+    // 注文送信
+    // ============================================================
+    document.getElementById('btn-send-order').addEventListener('click', function () {
+      var btn = this;
+      var cart = CartManager.getCart();
+      if (cart.length === 0) return;
+
+      // N-3: メモ・アレルギー取得
+      var memo = document.getElementById('order-memo').value.trim();
+      var allergenChecks = document.querySelectorAll('#allergen-chips input:checked');
+      var allergens = [];
+      for (var i = 0; i < allergenChecks.length; i++) {
+        allergens.push(allergenChecks[i].value);
+      }
+
+      btn.disabled = true;
+      btn.textContent = _t('sending', '送信中...');
+
+      OrderSender.send(BASE_API, storeId, tableId, cart, CartManager.getSessionToken(), CartManager.getRemovedItems(), 0, null, memo, allergens)
+        .then(function () {
+          CartManager.clearCart();
+          document.getElementById('cart-overlay').classList.remove('open');
+          document.getElementById('order-memo').value = '';
+          var checkedAllergens = document.querySelectorAll('#allergen-chips input:checked');
+          for (var j = 0; j < checkedAllergens.length; j++) {
+            checkedAllergens[j].checked = false;
+            checkedAllergens[j].parentNode.style.borderColor = '#555';
+            checkedAllergens[j].parentNode.style.background = 'transparent';
+          }
+          renderMenu();
+          updateCartBar();
+          showOrderToast();
+          loadOrderHistory();
+          checkSelfCheckout();
+        })
+        .catch(function (err) {
+          if (err.lastOrder) {
+            // O-3: ラストオーダーエラー — バナー表示 + ボタン無効化
+            _isLastOrder = true;
+            var loBanner = document.getElementById('lo-banner');
+            if (loBanner) loBanner.style.display = '';
+            btn.disabled = true;
+            btn.textContent = _t('last_order_closed', 'ラストオーダー終了');
+          }
+          alert(err.message || '送信に失敗しました');
+        })
+        .finally(function () {
+          if (!_isLastOrder) {
+            btn.disabled = false;
+            btn.textContent = _t('btn_order', '注文を送信');
+          }
+        });
+    });
+
+    function showOrderToast() {
+      var toast = document.getElementById('order-toast');
+      toast.classList.add('show');
+      setTimeout(function () { toast.classList.remove('show'); }, 3000);
+    }
+
+    // ============================================================
+    // プランバナー（残り時間表示）
+    // ============================================================
+    function showPlanBanner() {
+      if (!planInfo) return;
+      var banner = document.getElementById('plan-banner');
+      var nameEl = document.getElementById('plan-banner-name');
+      var nameText = _getLocalizedName(planInfo);
+      nameEl.textContent = nameText;
+      banner.style.display = '';
+      updatePlanTimer();
+      _planTimerInterval = setInterval(updatePlanTimer, 30000); // 30秒ごと更新
+    }
+
+    function updatePlanTimer() {
+      if (!planInfo || !planInfo.expiresAt) return;
+      var timeEl = document.getElementById('plan-banner-time');
+      var now = new Date();
+      var expires = new Date(planInfo.expiresAt.replace(' ', 'T'));
+      var lastOrder = planInfo.lastOrderAt ? new Date(planInfo.lastOrderAt.replace(' ', 'T')) : null;
+
+      var remainMs = expires.getTime() - now.getTime();
+      var remainMin = Math.ceil(remainMs / 60000);
+
+      if (remainMin <= 0) {
+        timeEl.textContent = _t('time_expired', '時間終了');
+        timeEl.className = 'plan-banner__time plan-banner__time--ended';
+        clearInterval(_planTimerInterval);
+        return;
+      }
+
+      if (lastOrder && now >= lastOrder) {
+        timeEl.textContent = _t('last_order_closed', 'ラストオーダー終了');
+        timeEl.className = 'plan-banner__time plan-banner__time--ended';
+        return;
+      }
+
+      var loRemainMs = lastOrder ? lastOrder.getTime() - now.getTime() : remainMs;
+      var loRemainMin = Math.ceil(loRemainMs / 60000);
+
+      var timeText = _t('remaining_min', '残り {min}分').replace('{min}', remainMin);
+      if (lastOrder) timeText += _t('lo_before', '（LO {min}分前）').replace('{min}', loRemainMin);
+      timeEl.textContent = timeText;
+
+      // 残り10分以下で警告スタイル
+      if (loRemainMin <= 10) {
+        timeEl.className = 'plan-banner__time plan-banner__time--warning';
+      } else {
+        timeEl.className = 'plan-banner__time';
+      }
+    }
+
+    // ============================================================
+    // コース閲覧モード
+    // ============================================================
+    function showCourseBanner() {
+      if (!courseInfo) return;
+      var banner = document.getElementById('course-banner');
+      var nameEl = document.getElementById('course-banner-name');
+      var subEl = document.getElementById('course-banner-sub');
+      var nameText = _getLocalizedName(courseInfo);
+      nameEl.textContent = nameText;
+      var phaseCount = courseInfo.phases ? courseInfo.phases.length : 0;
+      subEl.textContent = phaseCount + _t('course_view_only', '品のコース — 閲覧専用');
+      banner.style.display = '';
+      // カートバー・カテゴリナビ非表示
+      document.getElementById('cart-bar').style.display = 'none';
+      document.getElementById('category-nav').style.display = 'none';
+    }
+
+    function renderCourseView() {
+      if (!courseInfo || !courseInfo.phases) return;
+      var container = document.getElementById('menu-container');
+      var currentPhase = courseInfo.currentPhase || 1;
+
+      var html = '';
+      courseInfo.phases.forEach(function (phase) {
+        var phNum = phase.phaseNumber;
+        var stateClass = '';
+        var badgeText = '';
+        if (phNum < currentPhase) {
+          stateClass = ' course-phase--done';
+          badgeText = _t('course_done', '完了');
+        } else if (phNum === currentPhase) {
+          stateClass = ' course-phase--current';
+          badgeText = _t('course_serving', '提供中');
+        } else {
+          stateClass = ' course-phase--future';
+          badgeText = _t('course_upcoming', 'まもなく');
+        }
+
+        var phaseName = _getLocalizedName(phase);
+
+        html += '<div class="course-phase' + stateClass + '">';
+        html += '<div class="course-phase__header">';
+        html += '<span class="course-phase__num">' + phNum + '</span>';
+        html += '<span class="course-phase__name">' + Utils.escapeHtml(phaseName) + '</span>';
+        html += '<span class="course-phase__badge">' + badgeText + '</span>';
+        html += '</div>';
+
+        html += '<ul class="course-phase__items">';
+        (phase.items || []).forEach(function (item) {
+          var itemName = _getLocalizedName(item);
+          var qtyStr = item.qty > 1 ? ' x' + item.qty : '';
+          html += '<li>' + Utils.escapeHtml(itemName) + qtyStr + '</li>';
+        });
+        html += '</ul></div>';
+      });
+
+      container.innerHTML = html;
+    }
+
+    // コースのフ���ーズ進行をポーリングで検出
+    function startCoursePolling() {
+      if (_coursePollingInterval) clearInterval(_coursePollingInterval);
+      _coursePollingInterval = setInterval(function () {
+        fetch(BASE_API + '/customer/table-session.php?store_id=' + storeId + '&table_id=' + tableId)
+          .then(function (r) {
+            return r.text().then(function (body) {
+              if (!body) return {};
+              try { return JSON.parse(body); } catch (e) { return {}; }
+            });
+          })
+          .then(function (json) {
+            if (!json.ok || !json.data || !json.data.course) return;
+            var newPhase = json.data.course.currentPhase;
+            if (newPhase !== courseInfo.currentPhase) {
+              courseInfo.currentPhase = newPhase;
+              renderCourseView();
+            }
+          })
+          .catch(function () {});
+      }, 10000); // 10秒間隔
+    }
+
+    // ============================================================
+    // セッショントークン検証ポーリング（会計後の無効化検出）
+    // ============================================================
+    var _tokenCheckInterval = null;
+    var _TOKEN_CHECK_INTERVAL = 10000; // 10秒（OrderTracker未稼働時のフォールバック）
+
+    function startTokenValidation() {
+      if (_tokenCheckInterval || isPreview) return;
+      var token = CartManager.getSessionToken();
+      if (!token) return;
+
+      _tokenCheckInterval = setInterval(function () {
+        fetch(BASE_API + '/customer/validate-token.php?store_id=' + storeId
+          + '&table_id=' + tableId
+          + '&token=' + encodeURIComponent(token)
+          + '&_t=' + Date.now())
+          .then(function (r) {
+            return r.text().then(function (body) {
+              if (!body) return null;
+              try { return JSON.parse(body); } catch (e) { return null; }
+            });
+          })
+          .then(function (json) {
+            if (!json || !json.ok) return;
+            if (!json.data.valid) {
+              showSessionEnded();
+            }
+          })
+          .catch(function () { /* サイレント失敗 */ });
+      }, _TOKEN_CHECK_INTERVAL);
+    }
+
+    // ============================================================
+    // N-2: 注文追跡ポーリング
+    // ============================================================
+    function startOrderTracking() {
+      if (isPreview || isPlanMode || isCourseMode) return;
+      var token = CartManager.getSessionToken();
+      if (!token) return;
+      OrderTracker.init({
+        baseApi: BASE_API,
+        storeId: storeId,
+        tableId: tableId,
+        sessionToken: token,
+        onServed: function (order, item) {
+          showSatisfactionRating(order, item);
+        },
+        onSessionInvalid: function () {
+          showSessionEnded();
+        }
+      });
+      OrderTracker.start();
+    }
+
+    // ============================================================
+    // O-3: ラストオーダー状態ポーリング
+    // ============================================================
+    var _loTimer = null;
+    var _isLastOrder = false;
+
+    function startLastOrderCheck() {
+      if (isPreview) return;
+      _checkLastOrder();
+      _loTimer = setInterval(_checkLastOrder, 30000);
+    }
+
+    function _checkLastOrder() {
+      fetch(BASE_API + '/store/last-order.php?store_id=' + encodeURIComponent(storeId))
+        .then(function (r) { return r.text().then(function (t) { try { return JSON.parse(t); } catch (e) { return {}; } }); })
+        .then(function (json) {
+          if (!json.ok) return;
+          var isLO = json.data && json.data.is_last_order;
+          _isLastOrder = !!isLO;
+          var banner = document.getElementById('lo-banner');
+          var btn = document.getElementById('btn-send-order');
+          if (_isLastOrder) {
+            if (banner) banner.style.display = '';
+            if (btn) {
+              btn.disabled = true;
+              btn.textContent = _t('last_order_closed', 'ラストオーダー終了');
+            }
+          } else {
+            if (banner) banner.style.display = 'none';
+            if (btn && btn.disabled) {
+              btn.disabled = false;
+              btn.textContent = _t('btn_order', '注文を送信');
+            }
+          }
+        })
+        .catch(function () { /* サイレント */ });
+    }
+
+    // ============================================================
+    // N-4: 満足度評価
+    // ============================================================
+    var _ratingQueue = [];
+    var _ratingBusy = false;
+
+    function showSatisfactionRating(order, item) {
+      _ratingQueue.push({ order: order, item: item });
+      processRatingQueue();
+    }
+
+    function processRatingQueue() {
+      if (_ratingBusy || _ratingQueue.length === 0) return;
+      _ratingBusy = true;
+      var entry = _ratingQueue.shift();
+      var overlay = document.getElementById('rating-overlay');
+      document.getElementById('rating-item-name').textContent = entry.item.name;
+      document.querySelector('.rating-modal__sub').textContent = _t('rating_question', 'お料理はいかがですか？');
+      document.getElementById('rating-skip').textContent = _t('rating_skip', 'あとで');
+      overlay.classList.add('open');
+
+      var autoClose = setTimeout(function () { closeRating(); }, 15000);
+
+      var faces = document.querySelectorAll('.rating-face');
+      function handleFaceClick(e) {
+        var btn = e.currentTarget;
+        var rating = parseInt(btn.getAttribute('data-rating'), 10);
+        clearTimeout(autoClose);
+        submitRating(entry, rating);
+        closeRating();
+      }
+      for (var i = 0; i < faces.length; i++) {
+        faces[i].onclick = handleFaceClick;
+      }
+      document.getElementById('rating-skip').onclick = function () {
+        clearTimeout(autoClose);
+        closeRating();
+      };
+    }
+
+    function closeRating() {
+      document.getElementById('rating-overlay').classList.remove('open');
+      _ratingBusy = false;
+      setTimeout(processRatingQueue, 1000);
+    }
+
+    function submitRating(entry, rating) {
+      OrderTracker.markRated(entry.item.item_id);
+      var body = {
+        store_id: storeId,
+        table_id: tableId,
+        session_token: CartManager.getSessionToken(),
+        order_id: entry.order.id,
+        order_item_id: entry.item.item_id,
+        menu_item_id: entry.item.menu_item_id || null,
+        item_name: entry.item.name,
+        rating: rating
+      };
+      fetch(BASE_API + '/customer/satisfaction-rating.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        var json;
+        try { json = JSON.parse(text); } catch (e) { return; }
+        if (json && json.ok) {
+          if (rating >= 4 && settings.googlePlaceId) {
+            showGoogleReviewToast();
+          } else {
+            showRatingToast(rating >= 4 ? _t('rating_thanks_good', 'ありがとうございます！') : _t('rating_thanks_other', 'ご意見ありがとうございます'));
+          }
+        }
+      })
+      .catch(function () { /* silent */ });
+    }
+
+    function showRatingToast(msg) {
+      var toast = document.createElement('div');
+      toast.className = 'rating-toast';
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(function () { toast.classList.add('show'); }, 10);
+      setTimeout(function () {
+        toast.classList.remove('show');
+        setTimeout(function () { document.body.removeChild(toast); }, 300);
+      }, 2000);
+    }
+
+    function showGoogleReviewToast() {
+      var reviewUrl = 'https://search.google.com/local/writereview?placeid=' + encodeURIComponent(settings.googlePlaceId);
+      var toast = document.createElement('div');
+      toast.className = 'rating-toast rating-toast--review';
+      toast.innerHTML = '<div style="margin-bottom:8px;font-weight:600;">'
+        + Utils.escapeHtml(_t('rating_thanks_good', 'ありがとうございます！'))
+        + '</div>'
+        + '<a href="' + Utils.escapeHtml(reviewUrl) + '" target="_blank" rel="noopener" '
+        + 'style="display:inline-block;padding:8px 16px;background:#4285f4;color:#fff;border-radius:20px;text-decoration:none;font-size:0.85rem;">'
+        + '<span style="margin-right:4px;">&#9733;</span>'
+        + Utils.escapeHtml(_t('review_google', 'Googleで評価する'))
+        + '</a>';
+      document.body.appendChild(toast);
+      setTimeout(function () { toast.classList.add('show'); }, 10);
+      setTimeout(function () {
+        toast.classList.remove('show');
+        setTimeout(function () {
+          if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 300);
+      }, 6000);
+    }
+
+    // ============================================================
+    // L-8: セルフレジ
+    // ============================================================
+
+    /** get-bill APIで決済可否を確認し、チェックアウトバーを表示制御 */
+    function checkSelfCheckout() {
+      if (_checkoutAvailable || isPreview) return;
+      var token = CartManager.getSessionToken();
+      if (!token) return;
+      fetch(BASE_API + '/customer/get-bill.php?store_id=' + encodeURIComponent(storeId)
+        + '&table_id=' + encodeURIComponent(tableId)
+        + '&session_token=' + encodeURIComponent(token))
+        .then(function (r) { return r.text(); })
+        .then(function (text) {
+          var json;
+          try { json = JSON.parse(text); } catch (e) { return; }
+          if (!json || !json.ok) return;
+          var d = json.data;
+          if (d.payment_available && d.self_checkout_enabled) {
+            _checkoutAvailable = true;
+            var bar = document.getElementById('checkout-bar');
+            bar.style.display = 'block';
+            // カートバーを上にずらす
+            var cartBar = document.getElementById('cart-bar');
+            cartBar.classList.add('checkout-active');
+            // ボタンテキスト翻訳
+            document.getElementById('btn-checkout').textContent = _t('btn_checkout', 'お会計');
+          }
+        })
+        .catch(function () { /* サイレント */ });
+    }
+
+    /** チェックアウトモーダルを開く */
+    function openCheckoutModal() {
+      var modal = document.getElementById('checkout-modal');
+      var body = document.getElementById('checkout-body');
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">読み込み中...</div>';
+      modal.classList.add('open');
+
+      // 翻訳適用
+      modal.querySelector('.checkout-modal__header h2').textContent = _t('checkout_title', 'お会計');
+
+      var token = CartManager.getSessionToken();
+      fetch(BASE_API + '/customer/get-bill.php?store_id=' + encodeURIComponent(storeId)
+        + '&table_id=' + encodeURIComponent(tableId)
+        + '&session_token=' + encodeURIComponent(token))
+        .then(function (r) { return r.text(); })
+        .then(function (text) {
+          var json;
+          try { json = JSON.parse(text); } catch (e) { throw new Error('応答の解析に失敗しました'); }
+          if (!json || !json.ok) throw new Error((json.error && json.error.message) || 'データ取得に失敗しました');
+          renderCheckoutBody(json.data);
+        })
+        .catch(function (err) {
+          body.innerHTML = '<div style="text-align:center;padding:40px;color:#d32f2f;">'
+            + Utils.escapeHtml(err.message) + '</div>';
+        });
+    }
+
+    /** チェックアウトモーダルの中身を描画 */
+    function renderCheckoutBody(data) {
+      var body = document.getElementById('checkout-body');
+      var h = '';
+
+      // 注文内訳
+      var orders = data.orders || [];
+      for (var oi = 0; oi < orders.length; oi++) {
+        var order = orders[oi];
+        h += '<div class="checkout-order">';
+        var items = order.items || [];
+        for (var ii = 0; ii < items.length; ii++) {
+          var item = items[ii];
+          var lineTotal = (item.price || 0) * (item.qty || 1);
+          h += '<div class="checkout-order__item">'
+            + '<span>' + Utils.escapeHtml(item.name) + ' &times; ' + (item.qty || 1) + '</span>'
+            + '<span>&yen;' + lineTotal.toLocaleString() + '</span>'
+            + '</div>';
+          // オプション表示
+          var opts = item.options || [];
+          for (var ki = 0; ki < opts.length; ki++) {
+            var opt = opts[ki];
+            var optPrice = opt.price || 0;
+            if (optPrice > 0) {
+              h += '<div class="checkout-order__item checkout-order__option">'
+                + '<span>+ ' + Utils.escapeHtml(opt.name || opt.choiceName || '') + '</span>'
+                + '<span>&yen;' + optPrice.toLocaleString() + '</span>'
+                + '</div>';
+            }
+          }
+        }
+        if (oi < orders.length - 1) h += '<hr class="checkout-order__divider">';
+        h += '</div>';
+      }
+      h += '<hr class="checkout-order__divider">';
+
+      // 合計セクション
+      var summary = data.summary || {};
+      h += '<div class="checkout-summary">';
+      if (summary.subtotal_10 > 0) {
+        h += '<div class="checkout-summary__row"><span>' + _t('checkout_subtotal_10', '10%対象 小計') + '</span><span>&yen;' + summary.subtotal_10.toLocaleString() + '</span></div>';
+        h += '<div class="checkout-summary__row"><span>' + _t('checkout_tax_10', '(税10%)') + '</span><span>&yen;' + summary.tax_10.toLocaleString() + '</span></div>';
+      }
+      if (summary.subtotal_8 > 0) {
+        h += '<div class="checkout-summary__row"><span>' + _t('checkout_subtotal_8', '8%対象 小計') + '</span><span>&yen;' + summary.subtotal_8.toLocaleString() + '</span></div>';
+        h += '<div class="checkout-summary__row"><span>' + _t('checkout_tax_8', '(税8%)') + '</span><span>&yen;' + summary.tax_8.toLocaleString() + '</span></div>';
+      }
+      h += '<div class="checkout-summary__row checkout-summary__row--total"><span>' + _t('checkout_total', '合計') + '</span><span>&yen;' + (summary.total || 0).toLocaleString() + '</span></div>';
+      h += '</div>';
+
+      // 決済ボタン
+      h += '<button class="checkout-modal__pay-btn" id="btn-pay">'
+        + _t('checkout_pay_card', 'カードで支払う') + ' &yen;' + (summary.total || 0).toLocaleString()
+        + '</button>';
+      h += '<p class="checkout-modal__note">' + _t('checkout_stripe_note', 'Stripeの安全な決済ページに移動します') + '</p>';
+
+      body.innerHTML = h;
+
+      // 決済ボタンイベント
+      document.getElementById('btn-pay').addEventListener('click', startPayment);
+    }
+
+    /** Stripe決済開始 */
+    function startPayment() {
+      var btn = document.getElementById('btn-pay');
+      btn.disabled = true;
+      btn.textContent = _t('checkout_processing', '処理中...');
+
+      var token = CartManager.getSessionToken();
+      fetch(BASE_API + '/customer/checkout-session.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store_id: storeId,
+          table_id: tableId,
+          session_token: token
+        })
+      })
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        var json;
+        try { json = JSON.parse(text); } catch (e) { throw new Error('応答の解析に失敗しました'); }
+        if (!json || !json.ok) throw new Error((json.error && json.error.message) || '決済セッション作成に失敗しました');
+        // Stripeの決済ページにリダイレクト
+        window.location.href = json.data.checkout_url;
+      })
+      .catch(function (err) {
+        alert(err.message || '決済処理に失敗しました');
+        btn.disabled = false;
+        btn.textContent = _t('checkout_pay_card', 'カードで支払う');
+      });
+    }
+
+    /** Stripe決済完了後の処理 */
+    function handleCheckoutSuccess(stripeSessionId) {
+      var token = CartManager.getSessionToken();
+      // ローディング表示
+      var container = document.getElementById('menu-container');
+      container.innerHTML = '<div style="text-align:center;padding:60px 20px;"><div class="loading-spinner"></div><p style="margin-top:16px;color:#666;">決済を確認中...</p></div>';
+
+      fetch(BASE_API + '/customer/checkout-confirm.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store_id: storeId,
+          table_id: tableId,
+          session_token: token,
+          stripe_session_id: stripeSessionId
+        })
+      })
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        var json;
+        try { json = JSON.parse(text); } catch (e) { throw new Error('応答の解析に失敗しました'); }
+        if (!json || !json.ok) {
+          var code = json && json.error ? json.error.code : '';
+          if (code === 'PAYMENT_NOT_CONFIRMED') {
+            throw new Error(_t('checkout_not_confirmed', '決済が確認できませんでした。しばらくしてから再度お試しください'));
+          }
+          throw new Error((json.error && json.error.message) || 'エラーが発生しました。スタッフにお声がけください');
+        }
+
+        var d = json.data;
+        _checkoutPaymentId = d.payment_id;
+
+        // カート・バー非表示
+        CartManager.clearCart();
+        document.getElementById('cart-bar').style.display = 'none';
+        document.getElementById('checkout-bar').style.display = 'none';
+
+        // URLからcheckoutパラメータを除去
+        var cleanUrl = window.location.pathname + '?store_id=' + encodeURIComponent(storeId) + '&table_id=' + encodeURIComponent(tableId);
+        window.history.replaceState(null, '', cleanUrl);
+
+        // 決済完了モーダル表示
+        showCheckoutDone(d.total || 0);
+      })
+      .catch(function (err) {
+        container.innerHTML = '<div style="text-align:center;padding:60px 20px;">'
+          + '<div style="font-size:2rem;margin-bottom:16px;">&#x26A0;</div>'
+          + '<p style="color:#d32f2f;font-size:1rem;">' + Utils.escapeHtml(err.message) + '</p>'
+          + '<p style="color:#999;font-size:0.85rem;margin-top:12px;">お困りの場合はスタッフにお声がけください</p>'
+          + '</div>';
+      });
+    }
+
+    /** 決済完了モーダル表示 */
+    function showCheckoutDone(total) {
+      // 背景の「決済を確認中...」を消す
+      document.getElementById('menu-container').innerHTML = '';
+      var modal = document.getElementById('checkout-done-modal');
+      modal.querySelector('h2').textContent = _t('checkout_done_title', 'お支払い完了');
+      modal.querySelector('.checkout-done-modal__content > p').textContent = _t('checkout_done_thanks', 'ありがとうございました');
+      document.getElementById('checkout-done-amount').textContent = '\u00a5' + total.toLocaleString();
+      document.getElementById('btn-view-receipt').textContent = _t('checkout_view_receipt', '領収書を表示');
+      modal.querySelector('.checkout-done-modal__note').textContent = _t('checkout_receipt_note', '紙の領収書が必要な場合はスタッフにお申し付けください');
+      document.getElementById('btn-checkout-done-close').textContent = _t('btn_close', '閉じる');
+      modal.classList.add('open');
+    }
+
+    /** 領収書表示 */
+    function viewReceipt() {
+      if (!_checkoutPaymentId) return;
+      fetch(BASE_API + '/customer/receipt-view.php?payment_id=' + encodeURIComponent(_checkoutPaymentId)
+        + '&store_id=' + encodeURIComponent(storeId))
+        .then(function (r) { return r.text(); })
+        .then(function (text) {
+          var json;
+          try { json = JSON.parse(text); } catch (e) { throw new Error('データ取得に失敗しました'); }
+          if (!json || !json.ok) throw new Error((json.error && json.error.message) || 'データ取得に失敗しました');
+          printReceiptHtml(json.data);
+        })
+        .catch(function (err) {
+          alert(err.message);
+        });
+    }
+
+    /** 領収書HTMLを新しいウィンドウで表示 */
+    function printReceiptHtml(data) {
+      var store = data.store || {};
+      var payment = data.payment || {};
+      var items = data.items || [];
+      var summary = data.summary || {};
+
+      var esc = function (s) { return Utils.escapeHtml(s || ''); };
+
+      var h = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+        + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        + '<title>' + esc(_t('receipt_title', 'お会計明細')) + '</title>'
+        + '<style>'
+        + 'body{font-family:sans-serif;max-width:320px;margin:0 auto;padding:16px;font-size:13px;color:#333;}'
+        + '.rc-header{text-align:center;margin-bottom:12px;}'
+        + '.rc-store{font-size:1.1rem;font-weight:bold;}'
+        + '.rc-addr{font-size:0.8rem;color:#666;margin-top:4px;}'
+        + '.rc-title{font-size:1rem;font-weight:bold;text-align:center;margin:12px 0;border-top:1px dashed #999;border-bottom:1px dashed #999;padding:6px 0;}'
+        + '.rc-item{display:flex;justify-content:space-between;padding:2px 0;}'
+        + '.rc-divider{border:none;border-top:1px dashed #999;margin:8px 0;}'
+        + '.rc-total{display:flex;justify-content:space-between;font-size:1.2rem;font-weight:bold;padding:8px 0;border-top:2px solid #333;margin-top:4px;}'
+        + '.rc-tax{font-size:0.8rem;color:#666;}'
+        + '.rc-footer{text-align:center;margin-top:16px;font-size:0.75rem;color:#999;}'
+        + '.rc-reg{font-size:0.8rem;margin-top:8px;}'
+        + '@media print{body{max-width:72mm;padding:0;margin:0;font-size:11px;}}'
+        + '</style></head><body>';
+
+      // ヘッダー
+      h += '<div class="rc-header">';
+      h += '<div class="rc-store">' + esc(store.receipt_store_name) + '</div>';
+      if (store.receipt_address) h += '<div class="rc-addr">' + esc(store.receipt_address) + '</div>';
+      if (store.receipt_phone) h += '<div class="rc-addr">TEL: ' + esc(store.receipt_phone) + '</div>';
+      if (store.registration_number) {
+        h += '<div class="rc-reg">登録番号: ' + esc(store.registration_number) + '</div>';
+        if (store.business_name) h += '<div class="rc-addr">' + esc(store.business_name) + '</div>';
+      }
+      h += '</div>';
+
+      // タイトル
+      var titleText = store.registration_number ? '適格簡易請求書' : 'お会計明細';
+      h += '<div class="rc-title">' + esc(titleText) + '</div>';
+
+      // 品目一覧
+      for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        var lineTotal = (item.price || 0) * (item.qty || 1);
+        var taxMark = item.taxRate === 8 ? ' ※' : '';
+        h += '<div class="rc-item"><span>' + esc(item.name) + ' x' + (item.qty || 1) + taxMark + '</span><span>&yen;' + lineTotal.toLocaleString() + '</span></div>';
+      }
+
+      h += '<hr class="rc-divider">';
+
+      // 税率別内訳
+      if (summary.subtotal_10 > 0) {
+        h += '<div class="rc-item rc-tax"><span>10%対象</span><span>&yen;' + summary.subtotal_10.toLocaleString() + '</span></div>';
+        h += '<div class="rc-item rc-tax"><span> 消費税(10%)</span><span>&yen;' + summary.tax_10.toLocaleString() + '</span></div>';
+      }
+      if (summary.subtotal_8 > 0) {
+        h += '<div class="rc-item rc-tax"><span>8%対象 ※</span><span>&yen;' + summary.subtotal_8.toLocaleString() + '</span></div>';
+        h += '<div class="rc-item rc-tax"><span> 消費税(8%)</span><span>&yen;' + summary.tax_8.toLocaleString() + '</span></div>';
+      }
+
+      // 合計
+      h += '<div class="rc-total"><span>' + esc(_t('checkout_total', '合計')) + '</span><span>&yen;' + (summary.total || 0).toLocaleString() + '</span></div>';
+
+      // 支払い方法・日時
+      h += '<hr class="rc-divider">';
+      h += '<div class="rc-item"><span>お支払い</span><span>カード</span></div>';
+      if (payment.paid_at) h += '<div class="rc-item"><span>日時</span><span>' + esc(payment.paid_at) + '</span></div>';
+
+      // フッター
+      h += '<div class="rc-footer">';
+      if (store.receipt_footer) h += '<p>' + esc(store.receipt_footer) + '</p>';
+      h += '<p style="margin-top:8px;">この画面をスクリーンショットで保存してください</p>';
+      if (summary.subtotal_8 > 0) h += '<p>※ は軽減税率(8%)対象品目です</p>';
+      h += '</div>';
+
+      h += '</body></html>';
+
+      var w = window.open('', '_blank', 'width=320,height=600');
+      if (w) {
+        w.document.write(h);
+        w.document.close();
+        w.focus();
+      } else {
+        alert('ポップアップがブロックされました。ブラウザの設定をご確認ください。');
+      }
+    }
+
+    /** キャンセルトースト表示 */
+    function showCheckoutCancelToast() {
+      var msg = _t('checkout_cancel_msg', 'お支払いがキャンセルされました');
+      var toast = document.createElement('div');
+      toast.className = 'rating-toast';
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(function () { toast.classList.add('show'); }, 10);
+      setTimeout(function () {
+        toast.classList.remove('show');
+        setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+      }, 3000);
+    }
+
+    // L-8: イベントリスナー
+    document.getElementById('btn-checkout').addEventListener('click', function () {
+      openCheckoutModal();
+    });
+    document.getElementById('checkout-close').addEventListener('click', function () {
+      document.getElementById('checkout-modal').classList.remove('open');
+    });
+    document.querySelector('#checkout-modal .checkout-modal__overlay').addEventListener('click', function () {
+      document.getElementById('checkout-modal').classList.remove('open');
+    });
+    document.getElementById('btn-view-receipt').addEventListener('click', function () {
+      viewReceipt();
+    });
+    document.getElementById('btn-checkout-done-close').addEventListener('click', function () {
+      document.getElementById('checkout-done-modal').classList.remove('open');
+      _checkoutPaymentId = null; // ガード解除
+      showSessionEnded();
+    });
+
+    function showSessionEnded() {
+      // 全ポーリング停止
+      if (_tokenCheckInterval) { clearInterval(_tokenCheckInterval); _tokenCheckInterval = null; }
+      if (_versionTimer) { clearInterval(_versionTimer); _versionTimer = null; }
+      if (_planTimerInterval) { clearInterval(_planTimerInterval); _planTimerInterval = null; }
+      if (_coursePollingInterval) { clearInterval(_coursePollingInterval); _coursePollingInterval = null; }
+      OrderTracker.stop();
+
+      // L-8: 決済完了モーダル表示中なら session-ended は出さない
+      if (_checkoutPaymentId) return;
+
+      // 言語対応
+      var titleEl = document.getElementById('session-ended-title');
+      var msgEl = document.getElementById('session-ended-msg');
+      titleEl.textContent = _t('session_ended_title', 'ご利用ありがとうございました');
+      msgEl.textContent = _t('session_ended_msg', 'お会計が完了しました。またのご来店をお待ちしております。');
+
+      // オーバーレイ表示
+      var overlay = document.getElementById('session-ended-overlay');
+      overlay.style.display = 'flex';
+
+      // カートバー非表示
+      document.getElementById('cart-bar').style.display = 'none';
+      // L-8: チェックアウトバーも非表示
+      document.getElementById('checkout-bar').style.display = 'none';
+    }
+  })();
+  </script>
+  <script src="js/ai-waiter.js?v=20260405a"></script>
+  <script src="js/call-staff.js?v=20260405a"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+---
+layout: home
+title: POSLA運営向け取扱説明書
+hero:
+  name: POSLA 運営マニュアル
+  text: プラスビリーフ社内向け
+  tagline: 運営編（社内業務）＋機能詳細（全20章）
+  actions:
+    - theme: brand
+      text: 運営編から読む →
+      link: /internal/01-posla-admin
+    - theme: alt
+      text: 機能詳細から読む →
+      link: /internal/features/01-introduction
+features:
+  - title: 運営編（POSLA社内）
+    details: POSLA管理画面・テナントオンボーディング・Stripe Billing/Connect・システム運用・トラブル対応
+    link: /internal/01-posla-admin
+  - title: 機能詳細（全機能）
+    details: テナント向けマニュアルと同じ20章。何ができるのかを関係者へ周知
+    link: /internal/features/01-introduction
+  - title: Stripe・スマレジ連携
+    details: テナント側・POSLA側の両方の設定手順を完全収録
+    link: /internal/03-billing
+---

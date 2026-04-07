@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POSLA 機能ガイド — 飲食店まるごとDX</title>
+<style>
+/* ========== RESET & BASE ========== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;
+  color:#1a1a2e;background:#f8f9fa;line-height:1.8}
+a{color:#0f3460;text-decoration:none}
+a:hover{text-decoration:underline}
+img{max-width:100%}
+
+/* ========== LAYOUT ========== */
+.container{max-width:860px;margin:0 auto;padding:0 20px}
+
+/* ========== COVER ========== */
+.cover{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+  color:#fff;padding:80px 20px;text-align:center;position:relative;overflow:hidden}
+.cover::after{content:'';position:absolute;top:-50%;right:-50%;width:100%;height:100%;
+  background:radial-gradient(circle,rgba(230,81,0,.15) 0%,transparent 70%);pointer-events:none}
+.cover h1{font-size:2.4rem;font-weight:800;letter-spacing:.05em;margin-bottom:12px}
+.cover h1 span{color:#ff9800}
+.cover .subtitle{font-size:1.2rem;opacity:.85;margin-bottom:32px}
+.cover .tagline{display:inline-block;background:rgba(255,152,0,.2);border:1px solid rgba(255,152,0,.4);
+  border-radius:40px;padding:8px 28px;font-size:.95rem;letter-spacing:.08em}
+
+/* ========== NAV ========== */
+.nav{background:#fff;border-bottom:1px solid #e0e0e0;padding:12px 0;position:sticky;top:0;z-index:100}
+.nav-inner{display:flex;gap:6px;overflow-x:auto;padding:0 20px;max-width:860px;margin:0 auto}
+.nav a{white-space:nowrap;padding:6px 14px;border-radius:20px;font-size:.8rem;font-weight:600;
+  transition:all .2s;border:1px solid transparent}
+.nav a:hover{text-decoration:none;background:#f0f0f0}
+.nav a.customer{color:#2e7d32} .nav a.customer:hover{background:#e8f5e9;border-color:#a5d6a7}
+.nav a.store{color:#e65100} .nav a.store:hover{background:#fff3e0;border-color:#ffcc80}
+.nav a.analytics{color:#6a1b9a} .nav a.analytics:hover{background:#f3e5f5;border-color:#ce93d8}
+.nav a.safety{color:#37474f} .nav a.safety:hover{background:#eceff1;border-color:#b0bec5}
+
+/* ========== SECTION ========== */
+section{padding:48px 0 24px}
+section h2{font-size:1.6rem;font-weight:800;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+section .section-sub{color:#666;font-size:.9rem;margin-bottom:28px}
+
+/* ロール別カラー */
+.role-customer h2{color:#2e7d32} .role-customer .step-num{background:#2e7d32}
+.role-kitchen h2{color:#e65100} .role-kitchen .step-num{background:#e65100}
+.role-staff h2{color:#1565c0}  .role-staff .step-num{background:#1565c0}
+.role-manager h2{color:#6a1b9a} .role-manager .step-num{background:#6a1b9a}
+.role-owner h2{color:#bf360c}  .role-owner .step-num{background:#bf360c}
+.role-setup h2{color:#37474f}  .role-setup .step-num{background:#37474f}
+
+/* ========== STEP CARD ========== */
+.step{background:#fff;border-radius:12px;padding:24px;margin-bottom:20px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);border-left:4px solid #ddd;position:relative}
+.role-customer .step{border-left-color:#4caf50}
+.role-kitchen .step{border-left-color:#ff9800}
+.role-staff .step{border-left-color:#2196f3}
+.role-manager .step{border-left-color:#9c27b0}
+.role-owner .step{border-left-color:#ff5722}
+.role-setup .step{border-left-color:#607d8b}
+
+.step-num{display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:50%;color:#fff;font-size:.8rem;font-weight:700;
+  margin-right:8px;vertical-align:middle}
+.step h3{font-size:1.05rem;font-weight:700;margin-bottom:10px;line-height:1.5}
+.step p{margin-bottom:8px;font-size:.92rem}
+
+/* ========== ACTION / RESULT ========== */
+.action{background:#f5f5f5;border-radius:8px;padding:14px 16px;margin:10px 0;font-size:.9rem}
+.action::before{content:'[ 操作 ]';font-weight:700;color:#37474f;display:block;margin-bottom:4px;font-size:.78rem}
+.result{background:#e8f5e9;border-radius:8px;padding:14px 16px;margin:10px 0;font-size:.9rem}
+.result::before{content:'[ 結果 ]';font-weight:700;color:#2e7d32;display:block;margin-bottom:4px;font-size:.78rem}
+.wow{background:#fff8e1;border-radius:8px;padding:14px 16px;margin:10px 0;font-size:.9rem;
+  border:1px solid #ffe082}
+.wow::before{content:'[ 注目ポイント ]';font-weight:700;color:#f57f17;display:block;margin-bottom:4px;font-size:.78rem}
+
+/* ========== BADGES ========== */
+.badge-new{display:inline-block;background:#ff1744;color:#fff;font-size:.65rem;font-weight:700;
+  padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:6px;letter-spacing:.05em}
+.badge-star{display:inline-block;background:linear-gradient(135deg,#ff9800,#ff5722);color:#fff;
+  font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:6px}
+.badge-ai{display:inline-block;background:linear-gradient(135deg,#7c4dff,#448aff);color:#fff;
+  font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:6px}
+
+/* ========== CREDENTIAL BOX ========== */
+.cred-box{background:linear-gradient(135deg,#1a1a2e,#0f3460);color:#fff;border-radius:12px;
+  padding:24px 28px;margin:16px 0}
+.cred-box h4{font-size:.85rem;opacity:.7;margin-bottom:12px;letter-spacing:.1em}
+.cred-row{display:flex;gap:20px;flex-wrap:wrap}
+.cred-item{flex:1;min-width:200px}
+.cred-label{font-size:.75rem;opacity:.6;margin-bottom:2px}
+.cred-value{font-size:1.3rem;font-weight:700;font-family:'Courier New',monospace;color:#ffcc80}
+
+/* ========== TIP / WARN ========== */
+.tip{background:#e3f2fd;border-radius:8px;padding:14px 16px;margin:10px 0;font-size:.88rem;
+  border-left:3px solid #2196f3}
+.tip::before{content:'💡 ';margin-right:4px}
+.warn{background:#fff3e0;border-radius:8px;padding:14px 16px;margin:10px 0;font-size:.88rem;
+  border-left:3px solid #ff9800}
+.warn::before{content:'⚠️ ';margin-right:4px}
+
+/* ========== URL BOX ========== */
+.url-box{background:#263238;color:#80cbc4;border-radius:8px;padding:12px 16px;margin:8px 0;
+  font-family:'Courier New',monospace;font-size:.82rem;word-break:break-all;position:relative}
+.url-label{color:#78909c;font-size:.7rem;display:block;margin-bottom:2px}
+
+/* ========== FLOW ========== */
+.flow{display:flex;align-items:center;justify-content:center;gap:0;margin:16px 0;flex-wrap:wrap}
+.flow-item{background:#fff;border:2px solid #e0e0e0;border-radius:10px;padding:10px 16px;
+  font-size:.82rem;font-weight:600;text-align:center;min-width:100px}
+.flow-arrow{font-size:1.2rem;color:#bdbdbd;padding:0 4px}
+
+/* ========== FEATURE GRID (安心のしくみ) ========== */
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin:20px 0}
+.feature-card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 2px 6px rgba(0,0,0,.05);
+  border-top:3px solid #607d8b}
+.feature-card h4{font-size:.88rem;font-weight:700;margin-bottom:4px}
+.feature-card p{font-size:.78rem;color:#666;line-height:1.5}
+
+/* ========== SUB-SECTION DIVIDER ========== */
+.sub-divider{font-size:.85rem;font-weight:700;color:#9e9e9e;letter-spacing:.12em;
+  margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid #e0e0e0}
+.sub-divider.kitchen{color:#e65100;border-bottom-color:#ffcc80}
+.sub-divider.hall{color:#1565c0;border-bottom-color:#90caf9}
+.sub-divider.cashier{color:#e65100;border-bottom-color:#ffcc80}
+.sub-divider.menu{color:#6a1b9a;border-bottom-color:#ce93d8}
+.sub-divider.shop-mgr{color:#6a1b9a;border-bottom-color:#ce93d8}
+.sub-divider.owner-mgr{color:#bf360c;border-bottom-color:#ffab91}
+
+/* ========== SECTION DIVIDER ========== */
+.scene-divider{text-align:center;padding:40px 0 16px;position:relative}
+.scene-divider::before{content:'';position:absolute;top:55%;left:0;right:0;height:1px;background:#e0e0e0}
+.scene-divider span{background:#f8f9fa;padding:0 20px;position:relative;font-size:.85rem;color:#9e9e9e;font-weight:600;letter-spacing:.1em}
+
+/* ========== FOOTER ========== */
+footer{background:#1a1a2e;color:rgba(255,255,255,.6);text-align:center;padding:32px 20px;font-size:.8rem;margin-top:48px}
+footer strong{color:#ffcc80}
+
+/* ========== MODE TOGGLE ========== */
+.mode-bar{background:#fff;border-bottom:1px solid #e0e0e0;padding:10px 0;text-align:center;
+  position:sticky;top:42px;z-index:99}
+.mode-toggle{display:inline-flex;border-radius:28px;overflow:hidden;border:2px solid #0f3460;background:#fff}
+.mode-btn{padding:8px 24px;font-size:.85rem;font-weight:700;cursor:pointer;border:none;background:transparent;
+  color:#0f3460;transition:all .25s;white-space:nowrap}
+.mode-btn.active{background:#0f3460;color:#fff}
+.mode-btn:hover:not(.active){background:#e8eef6}
+
+/* ========== PROGRESS BAR (quick mode) ========== */
+.progress-wrap{background:#fff;border-bottom:1px solid #e0e0e0;padding:10px 20px;
+  position:sticky;top:84px;z-index:98;max-width:860px;margin:0 auto;display:none}
+.progress-wrap.visible{display:block}
+.progress-track{height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin-bottom:6px}
+.progress-fill{height:100%;background:linear-gradient(90deg,#0f3460,#ff9800);border-radius:3px;
+  transition:width .4s ease}
+.progress-label{font-size:.75rem;color:#999;text-align:center}
+
+/* ========== QUICK-STEP NUMBER (overlay) ========== */
+.quick-num{display:none;position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,#0f3460,#1a6baa);color:#fff;font-size:.8rem;font-weight:800;
+  align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+body.quick-mode .quick-num{display:inline-flex}
+
+/* ========== QUICK MODE VISIBILITY ========== */
+body.quick-mode section:not(#demo) .step:not([data-quick]){display:none}
+body.quick-mode section:not(#demo) .sub-divider{display:none}
+body.quick-mode section:not(#demo) .section-sub{display:none}
+body.quick-mode .step[data-quick]{border-left-width:5px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+
+/* demo-setup is shown in both modes (common prerequisite) */
+
+/* hide safety in quick mode */
+body.quick-mode #safety{display:none}
+body.quick-mode .nav a[href="#safety"]{display:none}
+
+/* ========== PRINT ========== */
+@media print{
+  .nav,.mode-bar,.progress-wrap{display:none}
+  section{page-break-inside:avoid}
+  .step{break-inside:avoid}
+}
+
+/* ========== RESPONSIVE ========== */
+@media(max-width:600px){
+  .cover h1{font-size:1.6rem}
+  .cred-row{flex-direction:column;gap:10px}
+  .flow{flex-direction:column;gap:0}
+  .flow-arrow{transform:rotate(90deg)}
+  .feature-grid{grid-template-columns:1fr}
+  .mode-btn{padding:6px 16px;font-size:.78rem}
+  .mode-bar{top:38px}
+  .progress-wrap{top:78px}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- COVER -->
+<!-- ============================================================ -->
+<header class="cover">
+  <div class="container">
+    <h1><span>POSLA</span> 機能ガイド</h1>
+    <p class="subtitle">飲食店まるごとDX &mdash; すべての機能を紹介</p>
+    <div class="tagline">注文・調理・配膳・会計・分析をひとつに</div>
+  </div>
+</header>
+
+<!-- ============================================================ -->
+<!-- NAV -->
+<!-- ============================================================ -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#demo" class="safety">デモ環境</a>
+    <a href="#customer" class="customer">お客様機能</a>
+    <a href="#store" class="store">店舗機能</a>
+    <a href="#analytics" class="analytics">経営分析機能</a>
+    <a href="#safety" class="safety">安心のしくみ</a>
+  </div>
+</nav>
+
+<!-- ============================================================ -->
+<!-- MODE TOGGLE -->
+<!-- ============================================================ -->
+<div class="mode-bar">
+  <div class="mode-toggle">
+    <button class="mode-btn active" onclick="setMode('quick')">&#9889; クイックデモ（10分）</button>
+    <button class="mode-btn" onclick="setMode('full')">&#128214; フルガイド（全機能）</button>
+  </div>
+</div>
+
+<div class="progress-wrap visible" id="progressWrap">
+  <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="progress-label" id="progressLabel">下にスクロールしてデモを開始</div>
+</div>
+
+<div class="container">
+
+<!-- ============================================================ -->
+<!-- デモ環境 -->
+<!-- ============================================================ -->
+<section id="demo" class="role-setup">
+  <h2>デモ環境の準備</h2>
+  <p class="section-sub">まずブラウザで6つのタブを開きます。これが飲食店で実際に使われる全画面です。各タブの役割を理解してから、機能紹介に進みましょう。</p>
+
+  <!-- ステップ1: ログイン -->
+  <div class="step">
+    <h3><span class="step-num">1</span>管理画面にログインする</h3>
+    <p>まず、POSLAの管理画面にログインします。</p>
+    <div class="url-box">
+      <span class="url-label">管理画面ログイン</span>
+      https://eat.posla.jp/public/admin/index.html
+    </div>
+    <div class="cred-box">
+      <h4>ログイン情報（5アカウント共通パスワード）</h4>
+      <div class="cred-row">
+        <div class="cred-item">
+          <div class="cred-label">ユーザー名（5つから選ぶ）</div>
+          <div class="cred-value">test1 〜 test5</div>
+        </div>
+        <div class="cred-item">
+          <div class="cred-label">パスワード（共通）</div>
+          <div class="cred-value">password</div>
+        </div>
+      </div>
+      <p style="margin-top:12px;font-size:.78rem;opacity:.6">
+        同じアカウントを誰かが使用中の場合はログインできません。test1 でうまくいかなければ test2、test3 … と別のアカウントを試してください。
+      </p>
+    </div>
+    <div class="action">
+      上のURLをブラウザで開き、ユーザー名に <strong>test1</strong>〜<strong>test5</strong> のいずれか、パスワードに <strong>password</strong> を入力して「ログイン」をタップしてください。ログインできない場合は別の番号を試します。
+    </div>
+    <div class="result">
+      管理ダッシュボード画面が開きます。画面上部にメニュー管理・テーブル管理・注文/KDS・レポートなどのタブが並んでいます。これがタブ <strong>A</strong> です。
+    </div>
+  </div>
+
+  <!-- ステップ2: 6つのタブを開く -->
+  <div class="step">
+    <h3><span class="step-num">2</span>6つのタブを開く</h3>
+    <p>管理ダッシュボードのヘッダーにあるリンクと、以下のURLから、合計<strong>6つのタブ</strong>を準備します。これが飲食店のすべての画面です。</p>
+    <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:.88rem">
+      <thead>
+        <tr style="background:#f5f5f5">
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">タブ</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">画面名</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">誰が使うか</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">開き方</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:8px;border-bottom:1px solid #eee"><strong>A</strong></td>
+          <td style="padding:8px;border-bottom:1px solid #eee">管理ダッシュボード</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">店長</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">（ステップ1で既に開いている）</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;border-bottom:1px solid #eee"><strong>B</strong></td>
+          <td style="padding:8px;border-bottom:1px solid #eee">KDS（キッチン画面）</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">キッチンスタッフ</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">ヘッダーの「KDS」リンクを右クリック →「新しいタブで開く」</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;border-bottom:1px solid #eee"><strong>C</strong></td>
+          <td style="padding:8px;border-bottom:1px solid #eee">POSレジ</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">レジ担当</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">ヘッダーの「レジ」リンクを右クリック →「新しいタブで開く」</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;border-bottom:1px solid #eee"><strong>D</strong></td>
+          <td style="padding:8px;border-bottom:1px solid #eee">ハンディ（スタッフ注文端末）</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">ホールスタッフ</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">ヘッダーの「ハンディ」リンクを右クリック →「新しいタブで開く」</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;border-bottom:1px solid #eee"><strong>E</strong></td>
+          <td style="padding:8px;border-bottom:1px solid #eee">お客様メニュー（セルフオーダー）</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">お客様</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">下のURLを新しいタブで開く</td>
+        </tr>
+        <tr>
+          <td style="padding:8px"><strong>F</strong></td>
+          <td style="padding:8px">テイクアウト注文</td>
+          <td style="padding:8px">お客様（持ち帰り）</td>
+          <td style="padding:8px">下のURLを新しいタブで開く</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="url-box">
+      <span class="url-label">タブE: お客様セルフオーダー画面（テーブル01）</span>
+      https://eat.posla.jp/public/customer/menu.html?store_id=s-shibuya-001&amp;table_id=tbl-shib-01
+    </div>
+    <div class="url-box">
+      <span class="url-label">タブF: テイクアウト注文画面</span>
+      https://eat.posla.jp/public/customer/takeout.html?store_id=s-shibuya-001
+    </div>
+    <div class="tip">
+      実際の店舗では、タブA〜Dはお店のPC・タブレットで開き、タブE・Fはお客様自身のスマホで開く画面です。デモでは1台のPCで全部の画面をタブで切り替えながら体験します。
+    </div>
+  </div>
+
+  <!-- ステップ3: 各タブの役割を理解 -->
+  <div class="step">
+    <h3><span class="step-num">3</span>各タブの役割を理解する</h3>
+    <p>6つのタブは、飲食店の登場人物ごとに分かれています。</p>
+    <div class="flow">
+      <div class="flow-item" style="border-color:#4caf50">お客様が注文<br><small style="color:#666">タブE・F</small></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#ff9800">キッチンが調理<br><small style="color:#666">タブB</small></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#2196f3">ホールが配膳<br><small style="color:#666">タブD</small></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#ff9800">レジで会計<br><small style="color:#666">タブC</small></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#9c27b0">店長が分析<br><small style="color:#666">タブA</small></div>
+    </div>
+    <p>この後の機能紹介では「タブ <strong>E</strong>（お客様メニュー）を開いてください」のように案内します。該当するタブに切り替えて操作してください。</p>
+  </div>
+
+  <!-- ステップ4: オーナー画面（任意） -->
+  <div class="step">
+    <h3><span class="step-num">4</span>オーナー画面を見たい場合（任意）</h3>
+    <p>複数店舗を管理するオーナー画面は、別のアカウントでログインします。経営分析機能のセクションで使います。</p>
+    <div class="cred-box">
+      <h4>オーナーアカウント</h4>
+      <div class="cred-row">
+        <div class="cred-item">
+          <div class="cred-label">ユーザー名</div>
+          <div class="cred-value">owner@matsunoya.com</div>
+        </div>
+        <div class="cred-item">
+          <div class="cred-label">パスワード</div>
+          <div class="cred-value">password</div>
+        </div>
+      </div>
+    </div>
+    <div class="action">
+      ブラウザで<strong>新しいタブ</strong>（またはシークレットウィンドウ）を開き、同じログインURL（https://eat.posla.jp/public/admin/index.html）にアクセスして、上のオーナーアカウントでログインしてください。
+    </div>
+    <div class="result">
+      オーナー専用のダッシュボードが表示されます。クロス店舗レポート・ABC分析・店舗管理・ユーザー管理など、本部向けの機能が揃っています。
+    </div>
+    <div class="tip">ここまでで準備完了です。以下の機能紹介を読みながら、各タブで実際に操作してみてください。</div>
+  </div>
+
+  <!-- 補足: 混雑予報 -->
+  <div class="step">
+    <h3><span class="step-num">&#9733;</span>補足: 混雑予報ページ（ログイン不要）</h3>
+    <p>お客様が来店前にスマホで確認できるページです。ログイン不要で誰でもアクセスできます。</p>
+    <div class="url-box">
+      <span class="url-label">リアルタイム混雑予報</span>
+      https://eat.posla.jp/public/live/?store=s-shibuya-001
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- セクション1: お客様機能 -->
+<!-- ============================================================ -->
+<div class="scene-divider"><span>SECTION 1</span></div>
+
+<section id="customer" class="role-customer">
+  <h2>お客様機能</h2>
+  <p class="section-sub">お客様のスマホに届く体験。注文から評価まで、すべてがデジタルで完結します。</p>
+
+  <!-- 1. セルフオーダー -->
+  <div class="step" data-quick="1">
+    <span class="quick-num">1</span>
+    <h3><span class="step-num">1</span>セルフオーダー<span class="badge-star">目玉</span></h3>
+    <p>お客様がQRコードをスマホで読み取るだけで、メニュー閲覧・注文が完結します。</p>
+    <div class="action">
+      お客様メニューURLを開き、カテゴリタブ（定食・丼もの・カレー等）を切り替えながらメニューを眺めてください。好きなメニューの「追加」ボタンをタップしてカートに入れ、画面下部のカートバーから「注文する」を送信します。
+    </div>
+    <div class="result">
+      「ご注文ありがとうございます」と表示され、注文がキッチンのKDS画面にリアルタイムで届きます。
+    </div>
+    <div class="wow">
+      お客様が「注文する」を押した瞬間にキッチンに届きます。スタッフが注文を取りに行く必要がありません。
+    </div>
+  </div>
+
+  <!-- 2. テイクアウト事前注文 -->
+  <div class="step">
+    <h3><span class="step-num">2</span>テイクアウト事前注文<span class="badge-new">NEW</span></h3>
+    <p>来店前にスマホからテイクアウト注文と受取時間の指定ができます。</p>
+    <div class="action">
+      テイクアウトURLを開き、メニューを選んでカートに追加してください。受取日時を15分刻みのスロットから選択し、お客様情報（名前・電話番号）を入力して注文を送信します。
+    </div>
+    <div class="result">
+      注文完了画面に注文番号と受取時間が表示されます。管理画面のテイクアウトタブにも注文が即時反映されます。Stripe決済が有効な店舗では、決済画面に遷移して事前支払いも可能です。
+    </div>
+    <div class="wow">
+      セルフオーダー画面のヘッダーにも「テイクアウト」リンクが表示されます（テイクアウト有効店舗のみ）。QRコードを店頭ポスターやSNSに貼れば、そこからテイクアウト注文を受け付けられます。
+    </div>
+  </div>
+
+  <!-- 3. AIウェイター -->
+  <div class="step" data-quick="4">
+    <span class="quick-num">4</span>
+    <h3><span class="step-num">3</span>AIウェイター<span class="badge-ai">AI</span></h3>
+    <p>メニューについてAIにチャットで相談できます。</p>
+    <div class="action">
+      お客様メニュー画面の右下にある「AIに聞く」ボタンをタップしてください。チャット入力欄が開くので「<strong>辛くないおすすめを教えて</strong>」と入力して送信します。
+    </div>
+    <div class="result">
+      AIがこの店のメニュー情報（品名・価格・カロリー・アレルゲン）を理解した上で、条件に合うメニューを提案します。提案メニュー横の「カートに追加」ボタンからそのまま注文できます。
+    </div>
+    <div class="tip">
+      「卵アレルギーでも食べられるものは？」「1000円以下のメニューは？」「一番人気は何？」など自然な日本語で質問できます。
+    </div>
+  </div>
+
+  <!-- 4. 多言語対応 -->
+  <div class="step" data-quick="5">
+    <span class="quick-num">5</span>
+    <h3><span class="step-num">4</span>多言語対応<span class="badge-new">NEW</span></h3>
+    <p>外国人のお客様も母国語でメニューを読めます。5言語に対応しています。</p>
+    <div class="action">
+      お客様メニュー画面のヘッダー右上にある国旗ドロップダウンをタップし、English / 中文(简) / 中文(繁) / 한국어 のいずれかを選んでください。
+    </div>
+    <div class="result">
+      メニュー名・カテゴリ名・ボタン・メッセージがすべて選択した言語に切り替わります。AIウェイターや呼び出しボタンの表示も連動して切り替わります。
+    </div>
+    <div class="wow">
+      管理ダッシュボードの「メニュー管理」タブにある「一括翻訳」ボタンを押すだけで、全メニューがAI（Gemini）で自動翻訳されます。飲食の文脈を理解した翻訳なので、直訳にならず自然な表現になります。
+    </div>
+    <div class="tip">翻訳は管理画面から一括実行します。翻訳していない言語を選ぶとメニュー名は日本語のままで表示されます。</div>
+  </div>
+
+  <!-- 5. おすすめ・人気ランキング -->
+  <div class="step">
+    <h3><span class="step-num">5</span>おすすめ・人気ランキング</h3>
+    <p>店長おすすめと、実際の注文データに基づくランキングが自動表示されます。</p>
+    <div class="action">
+      お客様メニュー画面のカテゴリタブから「おすすめ」をタップしてください。
+    </div>
+    <div class="result">
+      店長が設定した「本日のおすすめ」メニューがバッジ付きで表示されます（シェフのおすすめ / 季節限定 / 期間限定 / 新メニュー / 本日のおすすめ の5種類）。また、メニュー名の横に金（1位）・銀（2位）・銅（3位）のランキングバッジが付いたメニューがあります。これは過去30日間の注文データから自動計算されています。
+    </div>
+  </div>
+
+  <!-- 5. カロリー・アレルギー情報 -->
+  <div class="step">
+    <h3><span class="step-num">6</span>カロリー・アレルギー情報</h3>
+    <p>メニューごとにカロリーとアレルゲン情報が表示されます。</p>
+    <div class="result">
+      メニューカードの下部にカロリー（例：520 kcal）と、該当するアレルゲン（特定原材料7品目＋準ずる21品目）が表示されます。管理画面で店長が設定した場合のみ表示されます。
+    </div>
+  </div>
+
+  <!-- 6. ひとことメモ・アレルギー選択 -->
+  <div class="step">
+    <h3><span class="step-num">7</span>ひとことメモ・アレルギー選択</h3>
+    <p>注文時にメモやアレルギー情報をキッチンに伝えられます。</p>
+    <div class="action">
+      カート画面を下にスクロールすると「ひとことメモ」入力欄とアレルギー品目のチップ（えび・かに・小麦・そば・卵・乳・落花生）が表示されます。メモに「<strong>ネギ抜きでお願いします</strong>」と入力し、「<strong>卵</strong>」チップをタップして注文してください。
+    </div>
+    <div class="result">
+      KDS画面の注文カードに、金色枠のメモと赤色枠のアレルギー警告が表示されます。キッチンスタッフは調理前にアレルギー情報を確認できます。
+    </div>
+  </div>
+
+  <!-- 7. 調理進捗リアルタイム表示 -->
+  <div class="step">
+    <h3><span class="step-num">8</span>調理進捗リアルタイム表示</h3>
+    <p>注文後、お客様のスマホで調理状況がリアルタイムに確認できます。</p>
+    <div class="result">
+      注文した各品目の横にプログレスバーとステータスバッジが表示されます。キッチンがステータスを更新するたびに、5秒以内にお客様の画面に自動反映されます。
+    </div>
+    <div class="flow">
+      <div class="flow-item">注文済み</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#ff9800">調理中</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#4caf50">まもなく届きます</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#2196f3">提供済み</div>
+    </div>
+    <div class="wow">「あとどれくらい？」とスタッフに聞く必要がなくなります。</div>
+  </div>
+
+  <!-- 8. 満足度評価 -->
+  <div class="step">
+    <h3><span class="step-num">9</span>満足度評価</h3>
+    <p>料理提供後に、お客様がワンタップで満足度を送信できます。</p>
+    <div class="action">
+      KDS画面で品目を「提供済み」にした後、お客様メニュー画面に戻ってください。
+    </div>
+    <div class="result">
+      5段階のフェイスアイコン（とても不満〜とても満足）が自動ポップアップ表示されます。タップで評価を送信、15秒で自動クローズ。複数品目は順番に表示されます。
+    </div>
+    <div class="wow">
+      不満の顔（1〜2）をタップすると、KDS画面に低評価アラートが即座に表示されます。キッチンはリアルタイムで品質フィードバックを受け取れます。
+    </div>
+  </div>
+
+  <!-- 9. テーブル呼び出し -->
+  <div class="step">
+    <h3><span class="step-num">10</span>テーブル呼び出し</h3>
+    <p>お客様がスマホからスタッフを呼べます。</p>
+    <div class="action">
+      お客様メニュー画面の「呼び出し」ボタンをタップし、理由（注文したい / お会計 / 食器下げて / その他）を選んで送信してください。
+    </div>
+    <div class="result">
+      KDS・ハンディ画面に赤いバナーとビープ音で通知が届きます。テーブル番号と呼び出し理由が表示されるので、どのテーブルが何を求めているかすぐにわかります。
+    </div>
+    <div class="tip">連続押し防止のため、3分間のクールダウンが設定されています。</div>
+  </div>
+
+  <!-- セルフレジ（L-8） -->
+  <div class="step" data-quick="6">
+    <span class="quick-num">6</span>
+    <h3><span class="step-num">11</span>セルフレジ<span class="badge-new">NEW</span></h3>
+    <p>スタッフを呼ばずに、スマホからそのままお会計ができます。</p>
+    <div class="action">
+      注文送信後、画面下部に表示される「お会計」ボタンをタップしてください。注文内容と合計金額を確認し、「カードで支払う」を押すとStripe決済ページに移動します。
+    </div>
+    <div class="result">
+      カード情報を入力して支払いが完了すると、セルフオーダー画面に「お支払い完了」と表示されます。「領収書を表示」ボタンでお会計明細をスマホに表示できます（スクリーンショットで保存可能）。紙の領収書が必要な場合はスタッフにお申し付けください。
+    </div>
+    <div class="tip">この機能は管理画面の設定タブで「セルフレジ」をONにし、Stripe決済（自前またはPOSLA決済）が設定済みの店舗でのみ利用できます。Square決済のみの店舗では現在未対応です。</div>
+    <div class="wow">注文から支払いまで完全にスマホで完結。スタッフの会計対応を大幅に削減できます。</div>
+  </div>
+
+  <!-- 10. ウェルカムメッセージ -->
+  <div class="step">
+    <h3><span class="step-num">12</span>ウェルカムメッセージ</h3>
+    <p>QRコードを読み取った直後に、店舗からのご挨拶と調理目安時間を表示します。</p>
+    <div class="result">
+      初回アクセス時にモーダルで表示されます。多言語対応で、同じセッション中は重複表示されません。
+    </div>
+  </div>
+
+  <!-- 11. 追加注文・再注文 -->
+  <div class="step">
+    <h3><span class="step-num">13</span>追加注文・再注文</h3>
+    <p>前回の注文をワンタップで再注文できます。</p>
+    <div class="result">
+      注文履歴セクションに前回の注文内容が表示されます。品切れチェック付きなので、品切れメニューは自動的に除外されます。
+    </div>
+  </div>
+
+  <!-- 12. リアルタイム混雑予報 -->
+  <div class="step">
+    <h3><span class="step-num">14</span>リアルタイム混雑予報</h3>
+    <p>来店前にスマホで空席状況を確認できるログイン不要の公開ページです。</p>
+    <div class="action">
+      混雑予報URLを開いてください（ログイン不要）。
+    </div>
+    <div class="result">
+      テーブル空き状況・混雑度（空いています / やや混雑 / 満席に近い）がリアルタイムで表示されます。本日のおすすめメニューや品切れ情報も自動反映されます。
+    </div>
+    <div class="wow">このURLをGoogleマップ・Instagram・LINE公式アカウントに貼るだけで、お客様が来店前に混雑状況を確認できる集客ツールになります。</div>
+  </div>
+
+  <!-- 13. Googleレビュー連携 -->
+  <div class="step">
+    <h3><span class="step-num">15</span>Googleレビュー連携<span class="badge-new">NEW</span></h3>
+    <p>満足度の高いお客様を自然にGoogleレビューへ誘導します。</p>
+    <div class="result">
+      満足度評価で4点以上をつけたお客様に、Googleレビューへのリンク付きトースト（6秒間表示）が自動表示されます。多言語対応。
+    </div>
+    <div class="tip">管理画面の設定タブでGoogle Place IDを設定すると有効になります。</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- セクション2: 店舗機能 -->
+<!-- ============================================================ -->
+<div class="scene-divider"><span>SECTION 2</span></div>
+
+<section id="store">
+  <h2 style="color:#e65100">店舗機能</h2>
+  <p class="section-sub">キッチン・ホール・レジ。店舗オペレーションのすべてをカバーします。</p>
+
+  <!-- --- キッチン --- -->
+  <div class="sub-divider kitchen">キッチン</div>
+
+  <div class="role-kitchen">
+
+  <!-- 1. KDS -->
+  <div class="step" data-quick="2">
+    <span class="quick-num">2</span>
+    <h3><span class="step-num">1</span>KDS（キッチンディスプレイ）<span class="badge-star">目玉</span></h3>
+    <p>注文がリアルタイムでカード形式に表示されるキッチン専用画面です。</p>
+    <div class="action">
+      管理画面ヘッダーの「KDS」リンクを新しいタブで開いてください。セルフオーダーやハンディから注文を送信すると、即座にカードが追加されます。
+    </div>
+    <div class="result">
+      注文カードにテーブル番号・品目名・数量・経過時間が表示されます。各品目のステータスボタンをタップして進捗を管理します。メモは金色枠、アレルギー警告は赤色枠で強調表示されます。テイクアウト注文は「TO」バッジ＋オレンジ背景＋受取時間で区別されます。
+    </div>
+    <div class="flow">
+      <div class="flow-item">受付（白）</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#ff9800;background:#fff3e0">調理中（黄）</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#4caf50;background:#e8f5e9">完成（緑）</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#9e9e9e;background:#f5f5f5">提供済み</div>
+    </div>
+    <div class="wow">時間超過アラートにより、設定時間を超えた注文カードが赤く警告表示されます。遅延を見逃しません。</div>
+  </div>
+
+  <!-- 2. AI音声コマンド -->
+  <div class="step" data-quick="3">
+    <span class="quick-num">3</span>
+    <h3><span class="step-num">2</span>AI音声コマンド<span class="badge-ai">AI</span></h3>
+    <p>声だけでKDSを操作できます。調理中に画面を触る必要がありません。</p>
+    <div class="action">
+      KDS画面右上のマイクボタンをONにして、以下の言葉を声に出してください。
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:.88rem">
+      <thead>
+        <tr style="background:#fff3e0"><th style="padding:8px;text-align:left;border-bottom:2px solid #ffcc80">声に出す言葉</th><th style="padding:8px;text-align:left;border-bottom:2px solid #ffcc80">何が起きるか</th></tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding:8px;border-bottom:1px solid #eee">「<strong>調理開始</strong>」</td><td style="padding:8px;border-bottom:1px solid #eee">最も古い受付中の品目が「調理中」に変わる</td></tr>
+        <tr><td style="padding:8px;border-bottom:1px solid #eee">「<strong>できました</strong>」</td><td style="padding:8px;border-bottom:1px solid #eee">調理中の品目が「完成」に変わる</td></tr>
+        <tr><td style="padding:8px;border-bottom:1px solid #eee">「<strong>焼き魚定食 売り切れ</strong>」</td><td style="padding:8px;border-bottom:1px solid #eee">そのメニューが品切れになる</td></tr>
+        <tr><td style="padding:8px">「<strong>AIシェフ</strong>」</td><td style="padding:8px">AIキッチンダッシュボードが開く</td></tr>
+      </tbody>
+    </table>
+    <div class="tip">Chrome推奨。初回はマイクの使用許可が必要です。</div>
+  </div>
+
+  <!-- 3. AIキッチンダッシュボード -->
+  <div class="step">
+    <h3><span class="step-num">3</span>AIキッチンダッシュボード<span class="badge-ai">AI</span></h3>
+    <p>AIが全注文を分析し、調理の優先順位を提案します。</p>
+    <div class="action">KDS画面の「AIシェフ」ボタンをタップしてください。</div>
+    <div class="result">
+      注文の待ち時間や調理工程の長さを考慮して、3段階の優先度で提案されます。
+    </div>
+    <div class="flow">
+      <div class="flow-item" style="border-color:#f44336;background:#ffebee">今すぐ着手</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#ff9800;background:#fff3e0">次に着手</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#9e9e9e;background:#f5f5f5">待機中</div>
+    </div>
+  </div>
+
+  <!-- 4. 双方向KDS通知 -->
+  <div class="step">
+    <h3><span class="step-num">4</span>双方向KDS通知</h3>
+    <p>キッチンとホールがリアルタイムに連携します。</p>
+    <div class="action">
+      KDS画面で品目を「完成」にした後、すぐにハンディ画面を確認してください。
+    </div>
+    <div class="result">
+      ハンディ画面の上部に緑色バナーで「テーブル01 — 焼き魚定食 できました」と通知が表示されます。通知音も鳴ります。ホールスタッフが「提供済み」にすると、KDS側のステータスも自動更新されます。全品目が提供完了すると注文が自動的にservedに移行します。
+    </div>
+    <div class="wow">従来は「料理できたよ！」と声で呼ぶか、キッチンカウンターを何度も見に行く必要がありました。POSLAならスタッフがフロアのどこにいても通知が届きます。</div>
+  </div>
+
+  </div><!-- /role-kitchen -->
+
+  <!-- --- ホール --- -->
+  <div class="sub-divider hall">ホール</div>
+
+  <div class="role-staff">
+
+  <!-- 5. ハンディ -->
+  <div class="step">
+    <h3><span class="step-num">5</span>ハンディ（スタッフ注文端末）</h3>
+    <p>ホールスタッフがスマホやタブレットで注文を入力する端末です。</p>
+    <div class="action">
+      管理画面ヘッダーの「ハンディ」リンクを新しいタブで開いてください。テーブルを選択し、メニューをタップしてカートに追加、「注文送信」で送信します。
+    </div>
+    <div class="result">
+      注文がKDS画面にリアルタイムで反映されます。セルフオーダーからの注文と同じ画面に一元表示されるので、キッチンは注文経路を意識する必要がありません。
+    </div>
+    <div class="tip">スマホ操作が苦手なお客様や混雑時に、スタッフが代わりに注文を受けられます。テイクアウト注文にも対応しています。</div>
+  </div>
+
+  <!-- 6. フロアマップ・テーブル管理 -->
+  <div class="step" data-quick="7">
+    <span class="quick-num">7</span>
+    <h3><span class="step-num">6</span>フロアマップ・テーブル管理</h3>
+    <p>全テーブルの状況をひと目で把握できます。</p>
+    <div class="action">
+      管理ダッシュボードの「テーブル管理」タブをタップしてください。
+    </div>
+    <div class="result">
+      全テーブルがカード形式で表示されます。各カードに滞在時間・品目進捗バー（色分け）が表示されます。テーブル枠の色でステータスがわかります: オレンジ枠＝着席済み未注文、青枠＝注文済み、赤枠＝会計要求中。
+    </div>
+    <div class="wow">画面上部のサマリーバーに「未注文テーブル：○卓」「会計要求：○卓」がリアルタイム更新されます。フロア全体の状況を瞬時に把握できます。</div>
+  </div>
+
+  <!-- 7. テーブルメモ -->
+  <div class="step">
+    <h3><span class="step-num">7</span>テーブルメモ</h3>
+    <p>スタッフ間の引き継ぎメモをテーブルに紐づけて共有できます。</p>
+    <div class="action">
+      フロアマップのテーブルカードをタップし、「メモ」ボタンを開いてください。プリセットタグ（アレルギー注意・VIP・誕生日・子連れ・車椅子等）をタップするか、自由入力でメモを保存します。
+    </div>
+    <div class="result">
+      メモがフロアマップのテーブルカード上に即座に表示されます。ハンディ画面からもリアルタイムで共有されます。会計後に自動リセットされます。
+    </div>
+    <div class="wow">シフト交代時の引き継ぎが劇的にラクになります。口頭伝達に頼らず、確実に次のスタッフに引き継がれます。</div>
+  </div>
+
+  <!-- 8. ラストオーダー -->
+  <div class="step">
+    <h3><span class="step-num">8</span>ラストオーダー</h3>
+    <p>全テーブルに一斉にラストオーダーを通知します。</p>
+    <div class="action">
+      フロアマップの「ラストオーダー」ボタンをタップしてください。
+    </div>
+    <div class="result">
+      お客様のセルフオーダー画面に黄色いバナーで「ラストオーダーです。ご注文はお早めに！」と表示されます。一定時間後に注文ボタンが無効化されます。
+    </div>
+    <div class="tip">
+      管理ダッシュボードの「設定」タブで定時ラストオーダー（例：毎日21:30）を設定すれば、毎日自動的に発動します。手動ボタンとの併用も可能です。
+    </div>
+    <div class="warn">テスト後は必ず「LO解除」ボタンをタップしてください。解除しないとお客様が注文できない状態が続きます。</div>
+  </div>
+
+  </div><!-- /role-staff -->
+
+  <!-- --- レジ・会計 --- -->
+  <div class="sub-divider cashier">レジ・会計</div>
+
+  <div class="role-kitchen">
+
+  <!-- 9. POSレジ -->
+  <div class="step">
+    <h3><span class="step-num">9</span>POSレジ</h3>
+    <p>テーブル選択から会計確定まで、レジ操作を一画面で完結します。</p>
+    <div class="action">
+      管理画面ヘッダーの「レジ」リンクを新しいタブで開いてください。左カラムからテーブルを選択し、「現金」をタップ、預かり金額を入力して「会計確定」します。
+    </div>
+    <div class="result">
+      お釣りが自動計算され、レシートプレビューが表示されます。会計確定後、フロアマップ上のテーブルが自動的に「空席」に戻ります。
+    </div>
+    <div class="tip">クイックボタン（1,000円 / 5,000円 / 10,000円）で預かり金をワンタップ入力できます。キーボードショートカットにも対応しています。</div>
+  </div>
+
+  <!-- 10. 合流会計 -->
+  <div class="step">
+    <h3><span class="step-num">10</span>合流会計</h3>
+    <p>複数テーブルのお客様が「一緒に会計したい」場合に使います。</p>
+    <div class="action">
+      POSレジの「合流会計」ボタンをタップし、合流させたいテーブルを2つ選択してください。品目が統合表示されたら、通常通り支払い処理を行います。
+    </div>
+    <div class="result">
+      1回の操作で2テーブル分がまとめて精算されます。両テーブルが同時に「空席」に戻ります。
+    </div>
+    <div class="wow">忘年会やグループ来店で「まとめて会計して」というリクエストにワンタップで対応できます。</div>
+  </div>
+
+  <!-- 11. 分割会計 -->
+  <div class="step">
+    <h3><span class="step-num">11</span>分割会計（個別会計）</h3>
+    <p>「自分の分だけ先に払いたい」場合に、品目ごとに個別精算できます。</p>
+    <div class="action">
+      テーブルを選択し、先に支払いたい品目のみチェックを残して会計確定します。
+    </div>
+    <div class="result">
+      チェックした品目だけが精算されます。支払済み品目はグレーアウト＋「支払済」ラベルで表示され、二重請求を防止します。全員が支払い終わるとテーブルが自動解放されます。
+    </div>
+  </div>
+
+  <!-- 12. 領収書発行 -->
+  <div class="step">
+    <h3><span class="step-num">12</span>領収書発行<span class="badge-new">NEW</span></h3>
+    <p>お客様から「領収書をください」と言われたら、レジ画面からその場で発行できます。</p>
+    <div class="action">
+      会計が完了してレシートプレビューが表示されたら、「<strong>領収書</strong>」ボタンをタップしてください。宛名の入力ダイアログが表示されるので、会社名などを入力します（空欄の場合は「上様」になります）。
+    </div>
+    <div class="result">
+      領収書が新しいウィンドウで表示され、印刷ダイアログが開きます。レシートと同じプリンターからそのまま印刷できます。発行済みの領収書は管理ダッシュボードの「領収書設定」タブで履歴を確認・再印刷できます。
+    </div>
+    <div class="wow">
+      管理画面の「領収書設定」で適格請求書発行事業者の登録番号（T+13桁）を設定すると、自動的にインボイス制度対応の「適格簡易請求書」として発行されます。税率ごとの内訳（10%対象・8%対象）も自動で記載されます。
+    </div>
+  </div>
+
+  <!-- 13. 決済端末連携 -->
+  <div class="step">
+    <h3><span class="step-num">13</span>決済端末連携<span class="badge-new">NEW</span></h3>
+    <p>Stripe決済端末（Stripe Reader S700）と連携して対面カード決済を処理します。自前のStripeアカウントがなくても、POSLA決済を使えばカード決済を始められます。</p>
+    <div class="action">
+      <strong>自前のStripeアカウントがある場合：</strong><br>
+      オーナーダッシュボードの「決済設定」タブで、StripeのAPIキーを入力してください。<br><br>
+      <strong>Stripeアカウントがない場合（POSLA決済）：</strong><br>
+      オーナーダッシュボードの「決済設定」タブで「POSLA決済を利用する」を選択し、画面の案内に従ってStripe Connectのオンボーディング（銀行口座・本人確認の登録）を完了してください。審査完了後、すぐにカード決済が使えるようになります。売上は店舗の銀行口座に直接入金されます。<br><br>
+      <strong>端末の設置：</strong><br>
+      Stripe Reader S700（¥52,480）を店舗のWi-Fiに接続し、KDSレジ画面を開いてください。端末が自動検出されます。
+    </div>
+    <div class="result">
+      POSレジの支払い方法で「カード」を選択すると、S700の画面にカードタッチ/IC挿入の案内が表示されます。決済完了後、結果がPOSLAに自動記録されます。
+    </div>
+    <div class="tip">対応端末はStripe Reader S700（¥52,480）のみです。POSLA決済の場合でも端末の購入は必要です。Stripeアカウントの作成や複雑な設定は不要で、オンボーディングの案内に沿って進めるだけで導入できます。</div>
+    <div class="wow">決済機能を持っていない店舗でも、POSLA決済を使えば初期費用は端末代のみでカード決済・セルフレジ・テイクアウトオンライン決済をすべて導入できます。</div>
+  </div>
+
+  </div><!-- /role-kitchen -->
+
+  <!-- --- メニュー・在庫 --- -->
+  <div class="sub-divider menu">メニュー・在庫</div>
+
+  <div class="role-manager">
+
+  <!-- 13. メニュー管理 -->
+  <div class="step">
+    <h3><span class="step-num">14</span>メニュー管理</h3>
+    <p>メニューの登録・編集・カテゴリ管理をひとつの画面で行えます。</p>
+    <div class="action">
+      管理ダッシュボードの「メニュー管理」タブを開いてください。
+    </div>
+    <div class="result">
+      メニュー一覧が表示されます。各メニューのカテゴリ・価格・画像・説明文を編集できます。店舗独自の限定メニューの追加や、CSV入出力にも対応しています。
+    </div>
+  </div>
+
+  <!-- 14. 品切れ管理 -->
+  <div class="step">
+    <h3><span class="step-num">15</span>品切れ管理<span class="badge-star">目玉</span></h3>
+    <p>ワンタップで品切れに設定でき、お客様メニューに約2秒で反映されます。</p>
+    <div class="action">
+      メニュー管理で任意のメニューの「品切れ」トグルをONにして、お客様メニュー画面を確認してください。
+    </div>
+    <div class="result">
+      品切れメニューがグレーアウトされ、注文不可になります。在庫管理と連動している場合は、在庫0で自動品切れ、補充で自動解除されます。
+    </div>
+    <div class="warn">テスト後は必ずトグルをOFFに戻してください。</div>
+  </div>
+
+  <!-- 15. おすすめ設定 -->
+  <div class="step">
+    <h3><span class="step-num">16</span>おすすめ設定</h3>
+    <p>「本日のおすすめ」をメニュー管理から簡単に設定できます。</p>
+    <div class="action">
+      メニュー管理の「おすすめ設定」セクションで、メニューを選択しバッジタイプ（シェフのおすすめ / 季節限定 / 期間限定 / 新メニュー / 本日のおすすめ）を選んで追加してください。
+    </div>
+    <div class="result">
+      お客様メニューの「おすすめ」タブにバッジ付きで即時反映されます。複数メニューに設定可能で、日替わり運用もできます。
+    </div>
+  </div>
+
+  <!-- 16. 在庫管理 -->
+  <div class="step">
+    <h3><span class="step-num">17</span>在庫管理<span class="badge-new">NEW</span></h3>
+    <p>食材の在庫をレシピと連動して自動管理します。</p>
+    <div class="result">
+      食材マスタにレシピ（BOM: 1品あたりの食材使用量）を登録すると、会計確定時に自動で在庫が引き落とされます。棚卸し機能で実在庫との差異も管理できます。在庫が0になると自動で品切れ表示に切り替わります。
+    </div>
+  </div>
+
+  <!-- 17. テイクアウト管理 -->
+  <div class="step">
+    <h3><span class="step-num">18</span>テイクアウト管理<span class="badge-new">NEW</span></h3>
+    <p>テイクアウト注文の受付・調理・受け渡しを管理画面から一元管理します。</p>
+    <div class="action">
+      管理ダッシュボードの「テイクアウト」タブを開いてください。
+    </div>
+    <div class="result">
+      注文がカード形式で一覧表示されます。各カードのステータスボタンで進捗を管理します。30秒ごとに自動リフレッシュされます。
+    </div>
+    <div class="flow">
+      <div class="flow-item">受付</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#ff9800;background:#fff3e0">調理中</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#4caf50;background:#e8f5e9">準備完了</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#9e9e9e;background:#f5f5f5">受け渡し済み</div>
+    </div>
+    <div class="tip">「設定」タブでテイクアウトのON/OFF、受付時間帯、準備時間、スロット容量を設定できます。ONにするとQRコード表示とURLコピー機能も利用可能です。</div>
+  </div>
+
+  <!-- 18. 食べ放題・コース料理 -->
+  <div class="step">
+    <h3><span class="step-num">19</span>食べ放題・コース料理</h3>
+    <p>時間制プランとフェーズ制コースに対応しています。</p>
+    <div class="result">
+      食べ放題プランは時間制限付き。プラン専用メニューを設定でき、タイマーで残り時間を管理します。コース料理はフェーズ制（前菜→メイン→デザート等）で、自動発火・手動発火に対応しています。
+    </div>
+  </div>
+
+  <!-- 20. シフト管理・勤怠 -->
+  <div class="step">
+    <h3><span class="step-num">20</span>シフト管理・勤怠<span class="badge-new">NEW</span></h3>
+    <p>シフト作成・希望シフト提出・出退勤打刻を一元管理します。proプラン以上で利用可能です。</p>
+    <div class="action">
+      管理ダッシュボードの「シフト」グループを開いてください。6つのサブタブ（テンプレート／カレンダー／希望シフト／勤怠一覧／サマリー／設定）があります。
+    </div>
+    <div class="result">
+      <strong>シフトテンプレート</strong>は「繰り返しのシフト枠」を事前定義しておく機能です。例えば：
+    </div>
+    <ul style="margin:8px 0 8px 24px;font-size:.92rem;line-height:1.7">
+      <li>「月曜 ランチ 09:00〜14:00 キッチン2名」</li>
+      <li>「金曜 ディナー 17:00〜22:00 ホール3名」</li>
+      <li>「土曜 通し 10:00〜21:00 キッチン1名」</li>
+    </ul>
+    <div class="result">
+      これを作っておくと、カレンダー画面の「テンプレート適用」ボタンから指定期間に一括でシフトを生成できます。重複は自動スキップされるので安全です。
+    </div>
+    <div class="flow">
+      <div class="flow-item">テンプレート登録</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#1565c0;background:#e3f2fd">カレンダーに割当</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#ff9800;background:#fff3e0">公開</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#4caf50;background:#e8f5e9">スタッフが確認</div>
+    </div>
+    <div class="result">
+      <strong>希望シフト提出：</strong>スタッフがスマホから希望日時を提出できます。マネージャーはカレンダー画面で希望を参照しながらシフトを組めます。
+    </div>
+    <div class="result">
+      <strong>勤怠打刻：</strong>スタッフがダッシュボードにログインすると、ヘッダーに出勤・退勤ボタンが常時表示されます（マネージャー・オーナーには非表示）。出勤ボタンを押すと打刻、退勤ボタンで退勤記録。打刻忘れは自動退勤（12時間超過で自動処理）またはマネージャーが「勤怠一覧」から手動修正できます。
+    </div>
+    <div class="result">
+      <strong>GPS出退勤（オプション）：</strong>設定タブで店舗の緯度・経度・半径を設定すると、打刻時に店舗圏内にいるかを自動判定します。「📍 現在地から店舗位置を設定」ボタンで簡単に設定できます。
+    </div>
+    <div class="result">
+      <strong>表示ツール制御：</strong>スタッフごとにハンディ・KDS・レジの表示をON/OFFできます。キッチン専任スタッフにはKDSだけ、ホール専任にはハンディだけ表示するといった設定が可能です。設定は店舗単位（設定タブ）またはユーザー単位（ユーザー管理の編集モーダル）で行えます。
+    </div>
+    <div class="tip">カレンダー画面の「テンプレート適用」ボタンを押すと、期間とスタッフを選んでテンプレートから一括でシフトを生成できます。既に同じ日時のシフトがある場合は自動スキップされます。</div>
+
+    <h4 style="margin-top:18px;color:#1565c0">Phase 2: AI最適シフト・人件費・労基法チェック</h4>
+    <div class="result">
+      <strong>AI最適シフト提案：</strong>カレンダー画面の「AI提案」ボタンを押すと、過去4週間の売上データ・スタッフの希望シフト・勤怠実績をもとにAIが最適なシフトを自動提案します。提案結果は一覧で表示され、「適用」ボタンで一括登録できます。
+    </div>
+    <div class="result">
+      <strong>人件費シミュレーション：</strong>シフトカレンダーとサマリー画面に人件費がリアルタイム表示されます。深夜帯（22:00〜翌5:00）は自動で25%割増計算。時給は「設定」タブで店舗デフォルトを設定し、スタッフごとに個別時給も設定できます（ユーザー管理の編集画面）。
+    </div>
+    <div class="flow">
+      <div class="flow-item">設定タブで<br>デフォルト時給</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#1565c0;background:#e3f2fd">ユーザー管理で<br>個別時給（任意）</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#4caf50;background:#e8f5e9">カレンダー＆サマリーに<br>人件費自動表示</div>
+    </div>
+    <div class="result">
+      <strong>労基法チェック：</strong>サマリー画面とカレンダーに労基法の警告バッジが自動表示されます。チェックされるルールは以下の6つです：
+    </div>
+    <ul style="margin:8px 0 8px 24px;font-size:.92rem;line-height:1.7">
+      <li>週40時間超過</li>
+      <li>6時間以上勤務で休憩45分未満 / 8時間以上で60分未満</li>
+      <li>連続6日以上勤務</li>
+      <li>1日8時間超の勤務</li>
+      <li>深夜勤務（22:00〜翌5:00）の検出</li>
+      <li>月間残業時間の集計</li>
+    </ul>
+    <div class="tip">時給が未設定の場合、人件費は計算されません（0円表示ではなく非表示）。まず設定タブで店舗デフォルト時給を設定してください。</div>
+    <div class="wow">AIがPOSの売上データから曜日・時間帯ごとの必要人数を予測し、希望シフトと突き合わせて最適配置を提案。人件費もリアルタイムで把握でき、労基法違反のリスクも自動で検出します。</div>
+
+    <h4 style="margin-top:18px;color:#e65100">Phase 3: 店舗間ヘルプ要請・統合シフトビュー（enterprise）</h4>
+    <div class="result">
+      <strong>店舗間ヘルプ要請：</strong>シフトグループの「ヘルプ」タブから、他店舗にスタッフの派遣を依頼できます。日付・時間帯・必要人数・役割を指定して送信すると、送信先店舗のマネージャーに要請が届きます。
+    </div>
+    <div class="flow">
+      <div class="flow-item">渋谷店が<br>ヘルプ要請</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#ff9800;background:#fff3e0">新宿店が確認<br>スタッフ指名</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#4caf50;background:#e8f5e9">承認→シフト<br>自動作成</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-item" style="border-color:#e65100;background:#fff3e0">カレンダーに<br>ヘルプ表示</div>
+    </div>
+    <div class="result">
+      承認されると、派遣スタッフのシフトが要請元のカレンダーに自動で作成されます。ヘルプスタッフはオレンジ色で表示され、出身店舗名が括弧で表示されます（例：田中一郎 (新宿店)）。
+    </div>
+    <div class="result">
+      <strong>統合シフトビュー（オーナー向け）：</strong>オーナーダッシュボードの「シフト概況」タブが全店舗一覧モードに拡張されます。各店舗の出勤人数・人件費・充足率・ヘルプ要請状況を一画面で横断的に把握でき、店舗カードをクリックすると詳細表示に切り替わります。
+    </div>
+    <div class="tip">ヘルプ要請はenterpriseプラン限定の機能です。standard/proプランではヘルプタブは表示されません。</div>
+    <div class="wow">繁忙期やスタッフの急な欠勤時に、店舗間でスタッフを融通し合えます。オーナーは全店舗のシフト充足率と人件費を一画面で把握し、経営判断に活用できます。</div>
+  </div>
+
+  </div><!-- /role-manager -->
+
+</section>
+
+<!-- ============================================================ -->
+<!-- セクション3: 経営分析機能 -->
+<!-- ============================================================ -->
+<div class="scene-divider"><span>SECTION 3</span></div>
+
+<section id="analytics">
+  <h2 style="color:#6a1b9a">経営分析機能</h2>
+  <p class="section-sub">データに基づく経営判断。売上・客層・スタッフ・AIがすべて揃っています。</p>
+
+  <!-- --- 店長向け --- -->
+  <div class="sub-divider shop-mgr">店長向け（管理ダッシュボード）</div>
+
+  <div class="role-manager">
+
+  <!-- 1. 売上レポート -->
+  <div class="step">
+    <h3><span class="step-num">1</span>売上レポート</h3>
+    <p>日次・期間別の売上データを確認できます。</p>
+    <div class="action">
+      管理ダッシュボードの「レポート」タブ →「売上レポート」サブタブを開いてください。
+    </div>
+    <div class="result">
+      日次サマリー（売上合計・注文件数・客単価）、期間別レポート（日付範囲指定）、売上推移の棒グラフ、サービスタイム分析（注文→提供の平均時間）が表示されます。
+    </div>
+  </div>
+
+  <!-- 2. 回転率・調理時間分析 -->
+  <div class="step">
+    <h3><span class="step-num">2</span>回転率・調理時間分析</h3>
+    <p>テーブルの使われ方と調理効率を可視化します。</p>
+    <div class="action">
+      「レポート」タブ →「回転率・客層」サブタブを開いてください。
+    </div>
+    <div class="result">
+      平均滞在時間・平均回転数・ピーク時間帯のサマリー、テーブル別回転率の一覧表、ランチ/ディナー比較、時間帯別効率の棒グラフが表示されます。調理時間分析では品目別の平均/最大調理時間が確認でき、目標超過率が20%以上の品目は赤文字で警告されます。
+    </div>
+  </div>
+
+  <!-- 3. 客層・価格帯分析 -->
+  <div class="step">
+    <h3><span class="step-num">3</span>客層・価格帯分析</h3>
+    <p>お客様の組人数や注文価格帯の傾向を分析します。</p>
+    <div class="result">
+      組人数別分析（1人〜6人以上のグループ別に組数・客数・客単価）、価格帯別分布（〜¥500 / ¥501〜¥1,000 / ... / ¥5,001〜 の6段階）、時間帯別客数の棒グラフが表示されます。
+    </div>
+    <div class="wow">「2人組が最も客単価が高い」「ランチは1組40分、ディナーは80分」といった気づきが得られ、席配置やメニュー価格の見直しに活かせます。</div>
+  </div>
+
+  <!-- 4. スタッフ評価・不正検知 -->
+  <div class="step">
+    <h3><span class="step-num">4</span>スタッフ評価・不正検知</h3>
+    <p>スタッフごとの実績と、不正の兆候を自動検出します。</p>
+    <div class="action">
+      「レポート」タブ →「スタッフ評価」サブタブを開いてください。
+    </div>
+    <div class="result">
+      スタッフ別の注文実績・キャンセル率・満足度・レジ差異が表示されます。キャンセル率の異常、レジ差異の自動検出、深夜帯の不審操作に対して4種のルールでアラートが表示されます。
+    </div>
+  </div>
+
+  <!-- 5. 併売分析 -->
+  <div class="step">
+    <h3><span class="step-num">5</span>併売分析（バスケット分析）</h3>
+    <p>どのメニューが一緒に注文されやすいかを分析します。</p>
+    <div class="action">
+      「レポート」タブ →「併売分析」サブタブを開いてください。
+    </div>
+    <div class="result">
+      よく一緒に注文される組み合わせTOP30が表示されます。各ペアに同時購入率（support）・条件付き確率（confidence）・関連度（lift）が付きます。品目別出現頻度TOP20の棒グラフも表示されます。
+    </div>
+    <div class="wow">lift値が1.0以上のペアは「偶然以上に一緒に注文されやすい」ことを意味します。セットメニューの企画やAIウェイターのおすすめ精度向上に直結します。</div>
+  </div>
+
+  <!-- 6. AIアシスタント -->
+  <div class="step">
+    <h3><span class="step-num">6</span>AIアシスタント<span class="badge-ai">AI</span></h3>
+    <p>自然言語で店舗データを分析したり、SNS投稿文を生成できます。</p>
+    <div class="action">
+      管理ダッシュボードの「AIアシスタント」タブで「<strong>今週の売上を分析して</strong>」と入力して送信してください。
+    </div>
+    <div class="result">
+      AIが店舗の売上データを自動で読み取り、トレンド・人気メニューの傾向・改善提案を要約して返します。「SNS投稿用の文章を書いて」「客単価の傾向は？」なども対応します。
+    </div>
+  </div>
+
+  <!-- 7. AI需要予測・発注提案 -->
+  <div class="step" data-quick="8">
+    <span class="quick-num">8</span>
+    <h3><span class="step-num">7</span>AI需要予測・発注提案<span class="badge-ai">AI</span></h3>
+    <p>AIがデータに基づいて食材の発注量を提案します。</p>
+    <div class="action">
+      「AIアシスタント」タブを下にスクロールし、「需要予測・発注提案」セクションの「予測実行」ボタンをタップしてください。
+    </div>
+    <div class="result">
+      過去7日間の売上実績・曜日パターン・在庫量・レシピBOMを自動で読み取り、本日の売れ筋予測と食材の発注提案が具体的な数量付きで表示されます。
+    </div>
+    <div class="wow">店長の勘と経験に頼っていた発注判断を、AIがデータで裏付けます。食材ロスの削減と機会損失の防止を両立します。</div>
+  </div>
+
+  </div><!-- /role-manager -->
+
+  <!-- --- オーナー向け --- -->
+  <div class="sub-divider owner-mgr">オーナー向け（オーナーダッシュボード）</div>
+
+  <div class="role-owner">
+
+  <div class="tip" style="margin-bottom:16px">
+    オーナーダッシュボードは別アカウント（owner@matsunoya.com / password）でログインすると表示されます。ブラウザの新しいタブまたはシークレットウィンドウで開いてください。
+  </div>
+
+  <!-- 8. クロス店舗レポート -->
+  <div class="step">
+    <h3><span class="step-num">8</span>クロス店舗レポート</h3>
+    <p>複数店舗の売上・注文数・客単価を横並びで比較します。</p>
+    <div class="action">
+      オーナーダッシュボードの「クロス店舗レポート」タブを開いてください。
+    </div>
+    <div class="result">
+      渋谷店・新宿店の売上・注文数・客単価が比較表示されます。どちらの店舗の業績が良いか一目で比較できます。
+    </div>
+  </div>
+
+  <!-- 9. ABC分析 -->
+  <div class="step">
+    <h3><span class="step-num">9</span>ABC分析</h3>
+    <p>メニューを売上貢献度で自動分類し、入れ替え候補を可視化します。</p>
+    <div class="action">
+      「ABC分析」タブを開いてください。
+    </div>
+    <div class="result">
+      全メニューがA（売上上位70%）・B（次の20%）・C（残り10%）に自動分類されます。Cランクのメニューはメニュー入れ替えの候補として検討できます。
+    </div>
+  </div>
+
+  <!-- 10. 店舗管理 -->
+  <div class="step">
+    <h3><span class="step-num">10</span>店舗管理</h3>
+    <p>店舗情報の確認・編集ができます。</p>
+    <div class="result">
+      「店舗管理」タブで、店舗名・住所・営業時間などの情報を確認・編集できます。
+    </div>
+  </div>
+
+  <!-- 11. ユーザー管理 -->
+  <div class="step">
+    <h3><span class="step-num">11</span>ユーザー管理<span class="badge-star">重要</span></h3>
+    <p>POSLAを使うスタッフ全員に、1人1つのアカウントを作成します。これはPOSLAの基本ルールです。</p>
+    <div class="action">
+      「ユーザー管理」タブを開き、「ユーザー追加」ボタンをタップしてください。ユーザー名・パスワード・ロール（owner / manager / staff）・所属店舗を入力して登録します。
+    </div>
+    <div class="result">
+      スタッフ一覧にアカウントが追加されます。作成したユーザー名とパスワードをスタッフ本人に伝えてください。スタッフは初回ログイン後に自分でパスワードを変更できます。
+    </div>
+    <div class="wow">
+      <strong>メールアドレスは不要です。</strong>ユーザー名とパスワードだけでログインできます。飲食店スタッフにメールアドレスを聞く必要はありません。ユーザー名は「tanaka」「suzuki」のように、店舗内でわかりやすい名前を付けてください。
+    </div>
+    <div class="tip">
+      <strong>アカウント作成権限は階層型です。</strong>オーナーはマネージャーとスタッフの両方を作成できます（全店舗対象）。マネージャーは自分の所属店舗のスタッフのみ作成できます。スタッフにはアカウント作成権限はありません。日常運用では、店長（マネージャー）が自店舗のスタッフアカウントを管理する流れになります。
+    </div>
+    <div class="warn">
+      <strong>1人1アカウントは必須です。</strong>共有アカウント（「kitchen」「hall」など）は使わないでください。監査ログ・勤怠打刻・スタッフ評価・シフト管理の全てが「誰が操作したか」を前提に動いています。アカウント未作成のスタッフはシフト管理・勤怠の対象外になります。
+    </div>
+  </div>
+
+  <!-- 12. 決済設定 -->
+  <div class="step">
+    <h3><span class="step-num">12</span>決済設定</h3>
+    <p>カード決済の方法を設定します。2つの方式から選択できます。</p>
+    <div class="action">
+      「決済設定」タブを開いてください。
+    </div>
+    <div class="result">
+      <strong>方式1: 自前の決済アカウント</strong> &mdash; お持ちのStripe/SquareアカウントのAPIキーを登録します。決済手数料はお持ちのアカウントの料率のみです。<br><br>
+      <strong>方式2: POSLA経由決済（Stripe Connect）</strong> &mdash; 決済アカウントをお持ちでない場合、「Stripe Connectに登録」ボタンから簡単に開始できます。POSLAが決済を代行し、売上は自動で口座に入金されます。決済金額の一定割合が手数料となります。
+    </div>
+    <div class="tip">カードリーダー端末をWi-Fiに接続すれば、どちらの方式でもタッチ決済が使えます。</div>
+  </div>
+
+  <!-- 13. 契約・プラン -->
+  <div class="step">
+    <h3><span class="step-num">13</span>契約・プラン</h3>
+    <p>ご利用プランの確認・変更・解約ができます。</p>
+    <div class="action">
+      「契約・プラン」タブを開いてください。
+    </div>
+    <div class="result">
+      現在のプランとステータスが表示されます。<br>
+      <strong>プラン一覧:</strong> Standard（&#165;10,000/月）、Pro（&#165;20,000/月）、Enterprise（&#165;50,000/月）<br><br>
+      「サブスクリプションを更新」でプラン変更、「サブスクリプションをキャンセル」で解約ができます。カード情報の変更や請求履歴の確認もこちらから行えます。
+    </div>
+  </div>
+
+  <!-- 14. スマレジ連携（外部POS） -->
+  <div class="step">
+    <h3><span class="step-num">14</span>スマレジ連携（外部POS）<span class="badge-new">NEW</span></h3>
+    <p>既にスマレジをお使いの場合、POSLAのセルフオーダーとスマレジの会計を連携できます。</p>
+    <div class="action">
+      「スマレジ連携」タブを開き、「スマレジと連携する」ボタンを押してください。
+    </div>
+    <div class="result">
+      スマレジのログイン画面が表示され、認可するとPOSLAに戻ります。接続後は3つの機能が使えます。<br><br>
+      <strong>&#9312; 店舗マッピング</strong> &mdash; POSLAの店舗とスマレジの店舗を紐付けます。<br>
+      <strong>&#9313; メニューインポート</strong> &mdash; スマレジの商品をPOSLAのメニューに取り込みます。<br>
+      <strong>&#9314; 注文自動送信</strong> &mdash; セルフオーダーで注文が入ると、スマレジに仮販売として自動送信されます。スタッフはスマレジのPOSで会計するだけです。
+    </div>
+    <div class="tip">スマレジ連携は併用期の橋渡しです。メニューはPOSLAに正式保持されるため、将来スマレジ連携を外してもPOSLA単体で運営を続けられます。</div>
+  </div>
+
+  </div><!-- /role-owner -->
+
+</section>
+
+<!-- ============================================================ -->
+<!-- セクション4: 安心のしくみ -->
+<!-- ============================================================ -->
+<div class="scene-divider"><span>SECTION 4</span></div>
+
+<section id="safety" class="role-setup">
+  <h2>安心のしくみ &mdash; POSLAがお店を守ります</h2>
+  <p class="section-sub">セキュリティや安定性は、意識しなくても常に動いています。</p>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>QRコード不正利用防止</h4>
+      <p>注文時にトークンを検証し、有効期限は4時間。店外からの不正注文をブロックします。</p>
+    </div>
+
+    <div class="feature-card">
+      <h4>自動ログアウト</h4>
+      <p>30分操作がないと自動でログアウト。端末の置き忘れによる不正操作を防ぎます。</p>
+    </div>
+
+    <div class="feature-card">
+      <h4>同時ログイン制御</h4>
+      <p>同じアカウントが別端末でログインすると警告を表示。管理者がセッションを無効化できます。</p>
+    </div>
+
+    <div class="feature-card">
+      <h4>全操作の記録</h4>
+      <p>誰が・いつ・何をしたかを自動記録。管理画面からいつでも確認できます。</p>
+    </div>
+
+    <div class="feature-card">
+      <h4>オフライン対策</h4>
+      <p>Wi-Fiが切れても注文をローカル保存。復旧時に自動再送信。営業が止まりません。</p>
+    </div>
+  </div>
+</section>
+
+</div><!-- .container -->
+
+<footer>
+  <p><strong>POSLA</strong> &mdash; 飲食店まるごとDXプラットフォーム</p>
+  <p style="margin-top:8px">サービス デモ環境 &middot; https://eat.posla.jp</p>
+</footer>
+
+<script>
+(function(){
+  var TOTAL_QUICK = 8;
+  var currentMode = 'quick';
+
+  function setMode(mode) {
+    currentMode = mode;
+    var btns = document.querySelectorAll('.mode-btn');
+    btns[0].className = 'mode-btn' + (mode === 'quick' ? ' active' : '');
+    btns[1].className = 'mode-btn' + (mode === 'full' ? ' active' : '');
+    if (mode === 'quick') {
+      document.body.classList.add('quick-mode');
+      document.getElementById('progressWrap').classList.add('visible');
+      updateProgress();
+      // update cover text
+      document.querySelector('.cover .subtitle').textContent = '10分クイックデモ — 厳選8機能を体験';
+      document.querySelector('.cover .tagline').textContent = '注文 → 調理 → AI → 会計 → 分析';
+    } else {
+      document.body.classList.remove('quick-mode');
+      document.getElementById('progressWrap').classList.remove('visible');
+      document.querySelector('.cover .subtitle').textContent = '飲食店まるごとDX — すべての機能を紹介';
+      document.querySelector('.cover .tagline').textContent = '注文・調理・配膳・会計・分析をひとつに';
+    }
+  }
+  window.setMode = setMode;
+
+  function updateProgress() {
+    if (currentMode !== 'quick') return;
+    var steps = document.querySelectorAll('.step[data-quick]');
+    var viewportMid = window.innerHeight * 0.6;
+    var seen = 0;
+    for (var i = 0; i < steps.length; i++) {
+      var rect = steps[i].getBoundingClientRect();
+      if (rect.top < viewportMid) seen = i + 1; // count by scroll order, not data-quick number
+    }
+    var pct = Math.round((seen / TOTAL_QUICK) * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    if (seen === 0) {
+      document.getElementById('progressLabel').textContent = '下にスクロールしてデモを開始';
+    } else if (seen >= TOTAL_QUICK) {
+      document.getElementById('progressLabel').textContent = '✓ クイックデモ完了！「フルガイド」で全機能を確認できます';
+    } else {
+      document.getElementById('progressLabel').textContent = seen + ' / ' + TOTAL_QUICK + ' 完了';
+    }
+  }
+
+  window.addEventListener('scroll', function() {
+    if (currentMode === 'quick') updateProgress();
+  }, {passive: true});
+
+  // init: start in quick mode
+  document.body.classList.add('quick-mode');
+  updateProgress();
+})();
+</script>
+</body>
+</html>

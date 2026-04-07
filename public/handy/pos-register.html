@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a237e">
+  <title>POSレジ</title>
+  <link rel="stylesheet" href="css/handy.css">
+  <link rel="stylesheet" href="css/pos-register.css">
+</head>
+<body>
+
+  <!-- ヘッダー -->
+  <header class="handy-header">
+    <div class="handy-header__left">
+      <span class="handy-header__title">レジ</span>
+      <span class="handy-header__store-name" id="pos-store-name">-</span>
+    </div>
+    <div class="handy-header__right">
+      <a href="#" class="handy-header__link" id="pos-change-store" style="display:none">店舗切替</a>
+      <span id="pos-user-name" class="handy-header__user">-</span>
+      <button id="pos-logout" class="handy-header__logout">ログアウト</button>
+    </div>
+  </header>
+
+  <!-- メインレイアウト -->
+  <div class="pos-body">
+
+    <!-- 左パネル -->
+    <div class="pos-left">
+      <div class="pos-left__header">テーブル</div>
+
+      <!-- テーブルグリッド -->
+      <div class="pos-tables">
+        <div class="pos-tables__grid" id="pos-table-grid"></div>
+      </div>
+
+      <!-- テイクアウト -->
+      <button id="pos-takeout-btn" class="pos-takeout-btn">テイクアウト</button>
+
+      <!-- 支払方法 -->
+      <div class="pos-payment-methods">
+        <div class="pos-payment-methods__label">支払方法</div>
+        <div class="pos-pay-btns">
+          <button class="pos-pay-btn pos-pay-btn--cash pos-pay-btn--active" data-method="cash">現金</button>
+          <button class="pos-pay-btn pos-pay-btn--card" data-method="card">カード</button>
+          <button class="pos-pay-btn pos-pay-btn--qr" data-method="qr">QR</button>
+        </div>
+      </div>
+
+      <!-- 受取・お釣り -->
+      <div class="pos-cash-info" id="pos-cash-info">
+        <div class="pos-cash-row">
+          <span class="pos-cash-row__label">受取</span>
+          <span class="pos-cash-row__value" id="pos-received-value">-</span>
+        </div>
+        <div class="pos-cash-row">
+          <span class="pos-cash-row__label">お釣り</span>
+          <span class="pos-cash-row__value" id="pos-change-value">-</span>
+        </div>
+      </div>
+
+      <!-- 会計ボタン -->
+      <div class="pos-submit-area">
+        <button id="pos-submit-btn" class="pos-submit-btn" disabled>会計する</button>
+      </div>
+    </div>
+
+    <!-- 右パネル -->
+    <div class="pos-right">
+      <!-- 注文ヘッダー -->
+      <div class="pos-order-header">
+        <span id="pos-order-header-title" class="pos-order-header__title">テーブルを選択してください</span>
+      </div>
+
+      <!-- セッション情報 -->
+      <div id="pos-session-info" class="pos-session-info" style="display:none"></div>
+
+      <!-- 注文一覧 -->
+      <div class="pos-order-list" id="pos-order-list">
+        <div class="pos-empty">テーブルを選択してください</div>
+      </div>
+
+      <!-- 税計算エリア -->
+      <div class="pos-tax-area" id="pos-tax-area"></div>
+
+      <!-- クイック金額 -->
+      <div class="pos-quick-amounts" id="pos-quick-amounts">
+        <button class="pos-quick-btn" data-val="1000">&yen;1,000</button>
+        <button class="pos-quick-btn" data-val="5000">&yen;5,000</button>
+        <button class="pos-quick-btn" data-val="10000">&yen;10,000</button>
+        <button class="pos-quick-btn pos-quick-btn--exact" data-val="exact">ぴったり</button>
+      </div>
+
+      <!-- テンキー -->
+      <div class="pos-tenkey" id="pos-tenkey">
+        <div class="pos-tenkey__grid">
+          <button class="pos-tenkey__btn" data-val="7">7</button>
+          <button class="pos-tenkey__btn" data-val="8">8</button>
+          <button class="pos-tenkey__btn" data-val="9">9</button>
+          <button class="pos-tenkey__btn" data-val="4">4</button>
+          <button class="pos-tenkey__btn" data-val="5">5</button>
+          <button class="pos-tenkey__btn" data-val="6">6</button>
+          <button class="pos-tenkey__btn" data-val="1">1</button>
+          <button class="pos-tenkey__btn" data-val="2">2</button>
+          <button class="pos-tenkey__btn" data-val="3">3</button>
+          <button class="pos-tenkey__btn" data-val="00">00</button>
+          <button class="pos-tenkey__btn" data-val="0">0</button>
+          <button class="pos-tenkey__btn pos-tenkey__btn--clear" data-val="C">C</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- レシートモーダル -->
+  <div id="pos-receipt-overlay" class="pos-receipt-overlay">
+    <div class="pos-receipt" id="pos-receipt-body"></div>
+  </div>
+
+  <!-- 店舗選択オーバーレイ -->
+  <div class="handy-store-overlay" id="handy-store-overlay" style="display:none">
+    <div class="handy-store-overlay__box">
+      <div class="handy-store-overlay__title">店舗を選択してください</div>
+      <div class="handy-store-overlay__list" id="handy-store-list"></div>
+    </div>
+  </div>
+
+  <!-- トースト -->
+  <div id="pos-toast" class="handy-toast"></div>
+
+  <script src="../shared/js/utils.js"></script>
+  <script src="js/pos-register.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    PosRegister.init();
+  })();
+  </script>
+</body>
+</html>

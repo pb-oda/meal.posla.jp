@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+
+# Claude Code
+.claude/
+
+# SSH keys / secrets
+id_ecdsa.pem
+id_ecdsa
+*.pem
+sshkey.txt
+
+# DB credentials
+api/config/database.php
+
+# User uploads
+uploads/
+
+# Server backups (sakura)
+_backup_*/
+
+# Business documents
+*.docx
+*.xlsx
+*.pdf
+*.pptx
+
+# Node
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log

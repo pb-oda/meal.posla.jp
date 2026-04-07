@@ -1,0 +1,245 @@
+/* ===== Reset & Base ===== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+  background: #f5f7fa;
+  color: #333;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Container ===== */
+.live-container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0;
+  min-height: 100vh;
+  background: #fff;
+  box-shadow: 0 0 20px rgba(0,0,0,.06);
+}
+
+/* ===== Header ===== */
+.live-header {
+  padding: 24px 20px 20px;
+  background: linear-gradient(135deg, #00c896, #00a67d);
+  color: #fff;
+}
+.store-name {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.status-badge {
+  display: inline-block;
+  font-size: .75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(255,255,255,.2);
+}
+
+/* ===== Section ===== */
+.live-section {
+  padding: 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.live-section:last-child { border-bottom: none; }
+.section-label {
+  font-size: .8rem;
+  font-weight: 700;
+  color: #999;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+/* ===== Congestion ===== */
+.congestion-display { text-align: center; padding: 8px 0; }
+.congestion-icon { font-size: 2rem; margin-bottom: 4px; }
+.congestion-label {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin-bottom: 12px;
+}
+.congestion-label.empty  { color: #00c896; }
+.congestion-label.normal { color: #f9a825; }
+.congestion-label.busy   { color: #ff6d00; }
+.congestion-label.full   { color: #d32f2f; }
+
+/* Progress Bar */
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.progress-bar {
+  flex: 1;
+  height: 12px;
+  background: #f0f0f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width .6s ease;
+}
+.progress-fill.empty  { background: linear-gradient(90deg, #00c896, #00e6ac); }
+.progress-fill.normal { background: linear-gradient(90deg, #f9a825, #fdd835); }
+.progress-fill.busy   { background: linear-gradient(90deg, #ff6d00, #ff9100); }
+.progress-fill.full   { background: linear-gradient(90deg, #d32f2f, #ef5350); }
+.progress-pct {
+  font-size: .9rem;
+  font-weight: 700;
+  color: #666;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* Table & Wait Info */
+.congestion-detail {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  font-size: .9rem;
+  color: #666;
+}
+.congestion-detail span { display: flex; align-items: center; gap: 4px; }
+.detail-num { font-weight: 800; color: #333; font-size: 1rem; }
+
+/* ===== Popular Items ===== */
+.popular-list { list-style: none; }
+.popular-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+.popular-item:last-child { border-bottom: none; }
+.popular-rank {
+  flex-shrink: 0;
+  width: 28px;
+  font-size: 1.1rem;
+  text-align: center;
+}
+.popular-name {
+  flex: 1;
+  font-size: .95rem;
+  font-weight: 600;
+  color: #333;
+}
+.popular-name.sold-out {
+  text-decoration: line-through;
+  color: #bbb;
+}
+.popular-price {
+  font-size: .9rem;
+  font-weight: 700;
+  color: #00a67d;
+}
+.sold-out-tag {
+  font-size: .7rem;
+  font-weight: 700;
+  color: #d32f2f;
+  background: #ffebee;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+/* ===== Sold Out ===== */
+.soldout-list { list-style: none; }
+.soldout-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: .9rem;
+  color: #999;
+  border-bottom: 1px solid #f5f5f5;
+}
+.soldout-item:last-child { border-bottom: none; }
+.soldout-x { color: #d32f2f; font-weight: 700; }
+.no-soldout {
+  text-align: center;
+  color: #bbb;
+  font-size: .9rem;
+  padding: 8px 0;
+}
+
+/* ===== Store Info ===== */
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: .9rem;
+  color: #555;
+}
+.info-row .info-icon { flex-shrink: 0; width: 20px; text-align: center; }
+.info-row .info-text { flex: 1; }
+
+/* ===== Footer ===== */
+.live-footer {
+  text-align: center;
+  padding: 20px;
+  background: #f9fafb;
+}
+.last-updated {
+  font-size: .78rem;
+  color: #aaa;
+  margin-bottom: 12px;
+}
+.refresh-btn {
+  display: inline-block;
+  padding: 10px 28px;
+  border: 2px solid #00c896;
+  border-radius: 24px;
+  background: #fff;
+  color: #00c896;
+  font-size: .9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+  -webkit-appearance: none;
+}
+.refresh-btn:active {
+  background: #00c896;
+  color: #fff;
+}
+.powered {
+  margin-top: 16px;
+  font-size: .72rem;
+  color: #ccc;
+  letter-spacing: 1px;
+}
+
+/* ===== Loading / Error ===== */
+.loading-state, .error-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+.loading-state .spinner {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e0e0e0;
+  border-top-color: #00c896;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  margin-bottom: 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.error-state { color: #d32f2f; }
+.error-state .error-icon { font-size: 2rem; margin-bottom: 8px; }
+
+/* ===== Responsive ===== */
+@media (max-width: 480px) {
+  .live-container { box-shadow: none; }
+}
