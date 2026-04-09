@@ -3,6 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- P1-26: AI/検索エンジン完全遮断 -->
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
+<meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="ChatGPT-User" content="noindex, nofollow">
+<meta name="GPTBot" content="noindex, nofollow">
+<meta name="ClaudeBot" content="noindex, nofollow">
+<meta name="anthropic-ai" content="noindex, nofollow">
+<meta name="Google-Extended" content="noindex, nofollow">
+<meta name="CCBot" content="noindex, nofollow">
+<meta name="PerplexityBot" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
 <title>POSLA 機能ガイド — 飲食店まるごとDX</title>
 <style>
 /* ========== RESET & BASE ========== */
@@ -192,6 +204,42 @@ body.quick-mode .nav a[href="#safety"]{display:none}
   .mode-btn{padding:6px 16px;font-size:.78rem}
   .mode-bar{top:38px}
   .progress-wrap{top:78px}
+}
+
+/* ========== P1-26: コピー防止 ========== */
+html, body {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* 操作系要素は選択可能に戻す（モード切替ボタン等） */
+button, a, input, textarea {
+  -webkit-user-select: auto;
+  -moz-user-select: auto;
+  -ms-user-select: auto;
+  user-select: auto;
+}
+/* 印刷を抑止 */
+@media print {
+  body { display: none !important; }
+  body::before {
+    content: "印刷は許可されていません";
+    display: block !important;
+    font-size: 24px;
+    padding: 40px;
+  }
+}
+/* ドラッグ防止 */
+img, .demo-screenshot, figure {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  pointer-events: auto;
 }
 </style>
 </head>
@@ -1273,6 +1321,71 @@ body.quick-mode .nav a[href="#safety"]{display:none}
   <p><strong>POSLA</strong> &mdash; 飲食店まるごとDXプラットフォーム</p>
   <p style="margin-top:8px">サービス デモ環境 &middot; https://eat.posla.jp</p>
 </footer>
+
+<!-- P1-26: コピー防止 + DevTools 検知 -->
+<script>
+(function(){
+  'use strict';
+  // 右クリック禁止
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    return false;
+  });
+  // テキスト選択禁止（INPUT/TEXTAREA は除外）
+  document.addEventListener('selectstart', function(e) {
+    var tag = e.target && e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return true;
+    e.preventDefault();
+    return false;
+  });
+  // ドラッグ禁止
+  document.addEventListener('dragstart', function(e) {
+    e.preventDefault();
+    return false;
+  });
+  // コピー・カット・ペースト禁止
+  var copyEvents = ['copy', 'cut', 'paste'];
+  for (var i = 0; i < copyEvents.length; i++) {
+    document.addEventListener(copyEvents[i], function(e) {
+      var tag = e.target && e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return true;
+      e.preventDefault();
+      return false;
+    });
+  }
+  // キーボードショートカット禁止
+  document.addEventListener('keydown', function(e) {
+    var ctrl = e.ctrlKey || e.metaKey;
+    var key = (e.key || '').toLowerCase();
+    var tag = e.target && e.target.tagName;
+    var inField = (tag === 'INPUT' || tag === 'TEXTAREA');
+    if (e.key === 'F12') { e.preventDefault(); return false; }
+    if (ctrl && e.shiftKey && (key === 'i' || key === 'j' || key === 'c')) {
+      e.preventDefault(); return false;
+    }
+    if (ctrl && key === 'u') { e.preventDefault(); return false; }
+    if (ctrl && key === 's') { e.preventDefault(); return false; }
+    if (ctrl && key === 'p') { e.preventDefault(); return false; }
+    if (!inField && ctrl && (key === 'a' || key === 'c' || key === 'x')) {
+      e.preventDefault(); return false;
+    }
+  });
+  // DevTools 検知（ウィンドウサイズ差分方式）
+  var devtoolsOpen = false;
+  var threshold = 160;
+  function checkDevTools() {
+    var widthDiff = window.outerWidth - window.innerWidth;
+    var heightDiff = window.outerHeight - window.innerHeight;
+    if (widthDiff > threshold || heightDiff > threshold) {
+      if (!devtoolsOpen) {
+        devtoolsOpen = true;
+        document.body.innerHTML = '<div style="padding:80px;text-align:center;font-family:sans-serif;"><h1>このページは閲覧できません</h1><p>開発者ツールを閉じてリロードしてください。</p></div>';
+      }
+    }
+  }
+  setInterval(checkDevTools, 1000);
+})();
+</script>
 
 <script>
 (function(){

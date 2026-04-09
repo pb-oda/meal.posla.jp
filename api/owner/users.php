@@ -25,19 +25,19 @@ $isOwner = ($user['role'] === 'owner');
 // ----- GET -----
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if ($isOwner) {
-        // owner: テナント全ユーザー
+        // owner: テナント全ユーザー（P1a: device は KDS/レジ端末専用なので除外）
         $stmt = $pdo->prepare(
-            'SELECT u.id, u.username, u.email, u.display_name, u.role, u.is_active, u.created_at,
+            "SELECT u.id, u.username, u.email, u.display_name, u.role, u.is_active, u.created_at,
                     GROUP_CONCAT(us.store_id ORDER BY us.store_id) AS store_ids,
                     GROUP_CONCAT(s.name ORDER BY us.store_id) AS store_names,
-                    GROUP_CONCAT(IFNULL(us.visible_tools, \'\') ORDER BY us.store_id SEPARATOR \'|\') AS visible_tools_pipe,
-                    GROUP_CONCAT(IFNULL(us.hourly_rate, \'\') ORDER BY us.store_id SEPARATOR \'|\') AS hourly_rate_pipe
+                    GROUP_CONCAT(IFNULL(us.visible_tools, '') ORDER BY us.store_id SEPARATOR '|') AS visible_tools_pipe,
+                    GROUP_CONCAT(IFNULL(us.hourly_rate, '') ORDER BY us.store_id SEPARATOR '|') AS hourly_rate_pipe
              FROM users u
              LEFT JOIN user_stores us ON us.user_id = u.id
              LEFT JOIN stores s ON s.id = us.store_id
-             WHERE u.tenant_id = ?
+             WHERE u.tenant_id = ? AND u.role != 'device'
              GROUP BY u.id
-             ORDER BY u.role, u.display_name'
+             ORDER BY u.role, u.display_name"
         );
         $stmt->execute([$tenantId]);
     } else {
@@ -185,6 +185,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     // manager権限制限: staffのみ編集可能
     if (!$isOwner) {
         if ($target['role'] !== 'staff') json_error('FORBIDDEN', '権限が不足しています', 403);
+        // P1b-1: 対象スタッフの所属店舗が manager の担当店舗と重なるかチェック
+        // GET 一覧 (L43-66) と整合させ、他店舗 staff を PATCH できないようにする
+        $chkStmt = $pdo->prepare('SELECT store_id FROM user_stores WHERE user_id = ?');
+        $chkStmt->execute([$id]);
+        $targetStoreIds = $chkStmt->fetchAll(PDO::FETCH_COLUMN);
+        if (empty(array_intersect($targetStoreIds, $user['store_ids']))) {
+            json_error('FORBIDDEN', 'このユーザーへのアクセス権がありません', 403);
+        }
     }
 
     $data = get_json_body();
@@ -304,6 +312,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     // manager権限制限: staffのみ削除可能
     if (!$isOwner) {
         if ($target['role'] !== 'staff') json_error('FORBIDDEN', '権限が不足しています', 403);
+        // P1b-1: 対象スタッフの所属店舗が manager の担当店舗と重なるかチェック
+        // GET 一覧 (L43-66) と整合させ、他店舗 staff を DELETE できないようにする
+        $chkStmt = $pdo->prepare('SELECT store_id FROM user_stores WHERE user_id = ?');
+        $chkStmt->execute([$id]);
+        $targetStoreIds = $chkStmt->fetchAll(PDO::FETCH_COLUMN);
+        if (empty(array_intersect($targetStoreIds, $user['store_ids']))) {
+            json_error('FORBIDDEN', 'このユーザーへのアクセス権がありません', 403);
+        }
     }
 
     $pdo->beginTransaction();

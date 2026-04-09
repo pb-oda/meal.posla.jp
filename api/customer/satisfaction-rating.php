@@ -64,6 +64,7 @@ if ($orderItemId) {
         }
     } catch (PDOException $e) {
         // テーブル未作成 → INSERT で失敗する（下記 catch で処理）
+        error_log('[P1-12][api/customer/satisfaction-rating.php:65] check_existing_rating: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 }
 

@@ -15,7 +15,9 @@ require_once __DIR__ . '/../lib/stripe-connect.php';
 require_once __DIR__ . '/../lib/payment-gateway.php';
 
 $method = require_method(['POST']);
-$user = require_role('manager');
+// P1a: device ロール（レジ端末）からも呼び出せるように manager 制限を撤廃。
+// 認証 + 同テナント縛りで十分な保護を確保する。
+$user = require_auth();
 $pdo = get_db();
 
 $tenantId = $user['tenant_id'];

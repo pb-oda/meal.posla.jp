@@ -1,0 +1,81 @@
+kind,count,pattern
+WHERE,5,"orders WHERE created_at, status, store_id"
+WHERE,5,"attendance_logs WHERE a.status, a.store_id, a.tenant_id"
+WHERE,4,"stores WHERE is_active, tenant_id"
+WHERE,4,store_settings WHERE store_id
+WHERE,4,course_phases WHERE course_id
+WHERE,3,"cash_log WHERE cl.created_at, cl.store_id"
+WHERE,3,menu_templates WHERE mt.tenant_id
+WHERE,3,"orders WHERE not, session_token, store_id, table_id"
+WHERE,3,"users WHERE u.is_active, u.role, u.tenant_id"
+WHERE,3,"attendance_logs WHERE status, store_id, tenant_id, user_id"
+WHERE,2,categories WHERE tenant_id
+WHERE,2,orders WHERE store_id
+WHERE,2,"table_sessions WHERE not, store_id, table_id"
+WHERE,2,"orders WHERE session_token, status, store_id, table_id"
+WHERE,2,"order_items WHERE created_at, status, store_id"
+WHERE,2,"table_sessions WHERE ts.plan_id, ts.status, ts.store_id, ts.table_id"
+WHERE,2,time_limit_plans WHERE store_id
+WHERE,2,"audit_log WHERE action, created_at, store_id, tenant_id"
+WHERE,2,"user_sessions WHERE us.is_active, us.tenant_id"
+WHERE,2,course_templates WHERE store_id
+WHERE,2,store_local_items WHERE sli.store_id
+WHERE,2,"orders WHERE o.created_at, o.status, o.store_id"
+WHERE,2,"users WHERE u.is_active, u.tenant_id"
+WHERE,2,"shift_availabilities WHERE sa.store_id, sa.target_date, sa.tenant_id"
+WHERE,2,"shift_templates WHERE is_active, store_id, tenant_id"
+WHERE,1,smaregi_store_mapping WHERE sm.tenant_id
+WHERE,1,"table_sessions WHERE course_id, current_phase_number, status, store_id, table_id"
+WHERE,1,"call_alerts WHERE status, store_id"
+WHERE,1,order_items WHERE order_id
+WHERE,1,"kds_stations WHERE is_active, store_id"
+WHERE,1,"satisfaction_ratings WHERE sr.created_at, sr.rating, sr.store_id"
+WHERE,1,tenants WHERE is_active
+WHERE,1,"stores WHERE s.tenant_id, u.tenant_id"
+WHERE,1,stores WHERE tenant_id
+WHERE,1,recipes WHERE i.tenant_id
+WHERE,1,"recipes WHERE i.tenant_id, r.menu_template_id"
+WHERE,1,"cart_events WHERE created_at, store_id"
+WHERE,1,recipes WHERE mt.tenant_id
+WHERE,1,users WHERE u.tenant_id
+WHERE,1,"users WHERE u.id, u.role, u.tenant_id, us.store_id"
+JOIN,9,"recipes JOIN ingredients ON id,ingredient_id"
+JOIN,5,"table_sessions JOIN time_limit_plans ON id,plan_id"
+JOIN,5,"menu_templates JOIN categories ON category_id,id"
+JOIN,5,"shift_help_requests JOIN stores ON from_store_id,id"
+JOIN,5,"shift_help_requests JOIN stores ON id,to_store_id"
+JOIN,5,"users JOIN user_stores ON id,store_id,user_id"
+JOIN,4,"course_phases JOIN course_templates ON course_id,id"
+JOIN,4,"users JOIN user_stores ON id,user_id"
+JOIN,4,"menu_templates JOIN store_menu_overrides ON id,store_id,template_id"
+JOIN,4,"plan_menu_items JOIN time_limit_plans ON id,plan_id"
+JOIN,3,"cash_log JOIN users ON id,user_id"
+JOIN,3,"recipes JOIN menu_templates ON id,menu_template_id"
+JOIN,3,"users JOIN stores ON id,store_id"
+JOIN,3,"option_choices JOIN option_groups ON group_id,id"
+JOIN,3,"plan_menu_items JOIN categories ON category_id,id"
+JOIN,3,"table_sessions JOIN course_templates ON course_id,id"
+JOIN,3,"order_items JOIN orders ON id,order_id"
+JOIN,3,"shift_assignments JOIN users ON id,user_id"
+JOIN,3,"attendance_logs JOIN users ON id,user_id"
+JOIN,2,"orders JOIN stores ON id,store_id"
+JOIN,2,"orders JOIN tables ON id,store_id,table_id"
+JOIN,2,"kds_routing_rules JOIN kds_stations ON id,station_id"
+JOIN,2,"store_local_items JOIN stores ON id,store_id"
+JOIN,2,"users JOIN tenants ON id,tenant_id"
+JOIN,2,"stores JOIN shift_settings ON id,store_id,tenant_id"
+JOIN,2,plan_features JOIN tenants ON plan
+JOIN,2,"table_sessions JOIN tables ON id,table_id"
+JOIN,2,"orders JOIN tables ON id,table_id"
+JOIN,2,"user_sessions JOIN users ON id,user_id"
+JOIN,2,"store_local_items JOIN categories ON category_id,id"
+ORDER_BY,4,table_sessions ORDER BY ts.started_at
+ORDER_BY,1,table_sessions ORDER BY started_at
+ORDER_BY,1,tenants ORDER BY created_at
+ORDER_BY,1,cart_events ORDER BY remove_count
+ORDER_BY,1,table_sessions ORDER BY created_at
+ORDER_BY,1,order_items ORDER BY order_count
+ORDER_BY,1,orders ORDER BY o.created_at
+ORDER_BY,1,receipts ORDER BY receipt_number
+ORDER_BY,1,orders ORDER BY id
+ORDER_BY,1,attendance_logs ORDER BY clock_in

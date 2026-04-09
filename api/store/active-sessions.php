@@ -65,10 +65,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
 
     if (!$sessionId) json_error('MISSING_FIELDS', 'session_id は必須です', 400);
 
-    // テナント境界チェック
-    $stmt = $pdo->prepare('SELECT id FROM user_sessions WHERE session_id = ? AND tenant_id = ?');
+    // テナント境界チェック + 対象ユーザー情報取得
+    $stmt = $pdo->prepare(
+        'SELECT us.user_id, u.role
+         FROM user_sessions us
+         JOIN users u ON u.id = us.user_id
+         WHERE us.session_id = ? AND us.tenant_id = ?'
+    );
     $stmt->execute([$sessionId, $tenantId]);
-    if (!$stmt->fetch()) json_error('NOT_FOUND', 'セッションが見つかりません', 404);
+    $targetSession = $stmt->fetch();
+    if (!$targetSession) json_error('NOT_FOUND', 'セッションが見つかりません', 404);
+
+    // P1b-3: manager は自分の担当店舗内のセッションのみ無効化可能
+    // (owner のセッションは無効化不可、他店舗のセッションも不可)
+    if ($user['role'] !== 'owner') {
+        if ($targetSession['role'] === 'owner') {
+            json_error('FORBIDDEN', 'オーナーのセッションは無効化できません', 403);
+        }
+        $chk = $pdo->prepare('SELECT store_id FROM user_stores WHERE user_id = ?');
+        $chk->execute([$targetSession['user_id']]);
+        $targetStoreIds = $chk->fetchAll(PDO::FETCH_COLUMN);
+        if (empty(array_intersect($targetStoreIds, $user['store_ids']))) {
+            json_error('FORBIDDEN', 'このセッションへのアクセス権がありません', 403);
+        }
+    }
 
     $pdo->prepare('UPDATE user_sessions SET is_active = 0 WHERE session_id = ? AND tenant_id = ?')
         ->execute([$sessionId, $tenantId]);

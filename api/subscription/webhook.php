@@ -48,6 +48,29 @@ $eventType = $event['type'];
 $dataObject = isset($event['data']['object']) ? $event['data']['object'] : [];
 $stripeEventId = isset($event['id']) ? $event['id'] : null;
 
+// P1-11: 冪等性チェック — 同じ stripe_event_id を既に処理済みなら 200 即返却
+// （Stripe は最大3日間 webhook をリトライするため、二重処理による plan 誤ロールバック防止）
+if ($stripeEventId) {
+    try {
+        $checkStmt = $pdo->prepare('SELECT id FROM subscription_events WHERE stripe_event_id = ? LIMIT 1');
+        $checkStmt->execute([$stripeEventId]);
+        if ($checkStmt->fetch()) {
+            error_log('[P1-25][api/subscription/webhook.php:58] webhook_duplicate_event_ignored: ' . $stripeEventId, 3, '/home/odah/log/php_errors.log');
+            send_api_headers();
+            http_response_code(200);
+            echo json_encode([
+                'ok' => true,
+                'data' => ['status' => 'duplicate_ignored'],
+                'serverTime' => date('c'),
+            ]);
+            exit;
+        }
+    } catch (Exception $e) {
+        error_log('[P1-25][api/subscription/webhook.php:69] idempotency_check_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        // チェック失敗時は通常処理に進ませる（既存挙動を壊さない）
+    }
+}
+
 // テナント特定用関数
 $findTenantByCustomerId = function($customerId) use ($pdo) {
     if (!$customerId) return null;
@@ -66,6 +89,8 @@ $findTenantBySubscriptionId = function($subscriptionId) use ($pdo) {
 $tenantId = null;
 
 // イベントタイプ別処理
+// P1-25: switch 全体を try-catch で囲み、ハンドラ内の例外発生時は 500 を返して Stripe にリトライさせる
+try {
 switch ($eventType) {
 
     // ── checkout.session.completed ──
@@ -74,7 +99,10 @@ switch ($eventType) {
         $subscriptionId = isset($dataObject['subscription']) ? $dataObject['subscription'] : null;
 
         $tenant = $findTenantByCustomerId($customerId);
-        if (!$tenant) break;
+        if (!$tenant) {
+            error_log('[P1-25][api/subscription/webhook.php:100] tenant_not_found: ' . $eventType . ' stripe_customer_id=' . $customerId, 3, '/home/odah/log/php_errors.log');
+            break;
+        }
         $tenantId = $tenant['id'];
 
         if ($subscriptionId) {
@@ -127,7 +155,10 @@ switch ($eventType) {
         $subscriptionId = isset($dataObject['id']) ? $dataObject['id'] : null;
 
         $tenant = $findTenantBySubscriptionId($subscriptionId);
-        if (!$tenant) break;
+        if (!$tenant) {
+            error_log('[P1-25][api/subscription/webhook.php:153] tenant_not_found: ' . $eventType . ' stripe_subscription_id=' . $subscriptionId, 3, '/home/odah/log/php_errors.log');
+            break;
+        }
         $tenantId = $tenant['id'];
 
         $sets = [];
@@ -178,7 +209,10 @@ switch ($eventType) {
         $subscriptionId = isset($dataObject['id']) ? $dataObject['id'] : null;
 
         $tenant = $findTenantBySubscriptionId($subscriptionId);
-        if (!$tenant) break;
+        if (!$tenant) {
+            error_log('[P1-25][api/subscription/webhook.php:204] tenant_not_found: ' . $eventType . ' stripe_subscription_id=' . $subscriptionId, 3, '/home/odah/log/php_errors.log');
+            break;
+        }
         $tenantId = $tenant['id'];
 
         // subscription_status = 'canceled' にする（planはそのまま）
@@ -198,17 +232,34 @@ switch ($eventType) {
         // ログ記録のみ（下のイベントログ処理で保存）
         break;
 }
+} catch (\Exception $e) {
+    // P1-25: ハンドラ内の例外は 500 を返し Stripe にリトライさせる
+    error_log('[P1-25][api/subscription/webhook.php] event_dispatch_failed: ' . $eventType . ': ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    send_api_headers();
+    http_response_code(500);
+    echo json_encode(['error' => 'temporary_failure']);
+    exit;
+}
 
 // ── 全イベントを subscription_events に記録 ──
+// P1-25: tenant_id は NOT NULL のため、テナント未特定時は INSERT をスキップしてログに残す。
+//       INSERT 失敗は 200 を返す（Stripe のリトライループを避け、恒久的なログ欠損は監視で検知する）
 $eventId = generate_uuid();
-$logTenantId = $tenantId ?: '';
 $eventData = json_encode($dataObject, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-$stmt = $pdo->prepare(
-    'INSERT INTO subscription_events (id, tenant_id, event_type, stripe_event_id, data)
-     VALUES (?, ?, ?, ?, ?)'
-);
-$stmt->execute([$eventId, $logTenantId, $eventType, $stripeEventId, $eventData]);
+if ($tenantId) {
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO subscription_events (id, tenant_id, event_type, stripe_event_id, data)
+             VALUES (?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([$eventId, $tenantId, $eventType, $stripeEventId, $eventData]);
+    } catch (\PDOException $e) {
+        error_log('[P1-25][api/subscription/webhook.php] event_log_insert_failed: ' . $eventType . ': ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    }
+} else {
+    error_log('[P1-25][api/subscription/webhook.php] event_log_skipped_no_tenant: ' . $eventType . ' stripe_event_id=' . ($stripeEventId ?: 'none'), 3, '/home/odah/log/php_errors.log');
+}
 
 // Stripe にはリトライを防ぐため必ず 200 を返す
 send_api_headers();

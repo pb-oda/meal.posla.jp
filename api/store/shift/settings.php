@@ -39,7 +39,7 @@ $defaults = [
     'store_lng'                  => null,
     'gps_radius_meters'          => 200,
     'gps_required'               => 0,
-    'staff_visible_tools'        => null,
+    'staff_visible_tools'        => 'handy',
     'default_hourly_rate'        => null,
 ];
 

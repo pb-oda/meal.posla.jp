@@ -1,10 +1,12 @@
 <?php
 /**
- * 呼び出しアラート API（認証必要：staff以上）
+ * 呼び出しアラート API（認証必要：device 以上）
  *
  * GET  /api/kds/call-alerts.php?store_id=X  → pending一覧
  * PATCH /api/kds/call-alerts.php             → 対応済みにする
  * POST /api/kds/call-alerts.php              → キッチン呼び出しアラート作成
+ *
+ * P1a: device ロール（KDS端末）からも呼び出せるように staff 制限を撤廃
  */
 
 require_once __DIR__ . '/../lib/response.php';
@@ -13,7 +15,6 @@ require_once __DIR__ . '/../lib/auth.php';
 
 $method = require_method(['GET', 'PATCH', 'POST']);
 $user = require_auth();
-require_role('staff');
 
 $pdo = get_db();
 
@@ -103,6 +104,7 @@ if ($method === 'PATCH') {
         }
     } catch (PDOException $e) {
         // type カラムが無い場合は従来通り
+        error_log('[P1-12][api/kds/call-alerts.php:104] fetch_alert_info: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 
     try {
@@ -151,6 +153,7 @@ if ($method === 'PATCH') {
             }
         } catch (PDOException $e) {
             // order_items テーブル未作成時はスキップ
+            error_log('[P1-12][api/kds/call-alerts.php:152] kds_item_served_sync: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
         }
     }
 

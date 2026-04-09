@@ -6,9 +6,11 @@ var MenuOverrideEditor = (function () {
 
   var _container = null;
   var _items = [];
+  var _isHqLocked = false; // P1-29: enterprise (hq_menu_broadcast=true) では本部マスタフィールドをロック
 
-  function init(container) {
+  function init(container, features) {
     _container = container;
+    _isHqLocked = !!(features && features.hq_menu_broadcast === true);
   }
 
   function load() {
@@ -108,8 +110,10 @@ var MenuOverrideEditor = (function () {
           : '<button class="btn btn-sm btn-outline" data-action="toggle-override-sold-out" data-id="' + item.template_id + '" style="color:#999;border-color:#ccc">販売中</button>')
         + '</td>'
         + '<td class="text-right">'
-        + '<button class="btn btn-sm btn-outline" data-action="edit-override" data-id="' + item.template_id + '">編集</button> '
-        + '<button class="btn btn-sm btn-danger" data-action="delete-override-template" data-id="' + item.template_id + '">削除</button>'
+        + '<button class="btn btn-sm btn-outline" data-action="edit-override" data-id="' + item.template_id + '">編集</button>'
+        // P1-30: enterprise (hq_menu_broadcast=true) では本部マスタ由来行の削除ボタンを非表示
+        // (getMenuOverrides は menu_templates のみ返し store_local_items は混入しないため全件非表示でOK)
+        + (_isHqLocked ? '' : ' <button class="btn btn-sm btn-danger" data-action="delete-override-template" data-id="' + item.template_id + '">削除</button>')
         + '</td>'
         + '</tr>';
     });
@@ -274,27 +278,40 @@ var MenuOverrideEditor = (function () {
         linkedRequired[l.group_id] = l.is_required == 1;
       });
 
+      // P1-29: enterprise なら本部マスタ系フィールドを disabled、ラベルに注釈
+      var dis = _isHqLocked ? ' disabled' : '';
+      var hqNote = _isHqLocked ? ' <span style="color:#888;font-size:11px;">（本部マスタ・店舗からは編集不可）</span>' : '';
+
       overlay.querySelector('.modal__body').innerHTML =
-        '<div class="form-group"><label class="form-label">メニュー名</label>'
-        + '<input class="form-input" id="ovr-name" value="' + Utils.escapeHtml(item.name) + '"></div>'
-        + '<div class="form-group"><label class="form-label">メニュー名（英語）</label>'
-        + '<input class="form-input" id="ovr-name-en" value="' + Utils.escapeHtml(item.name_en || '') + '"></div>'
-        + '<div class="form-group"><label class="form-label">カテゴリ</label>'
-        + '<select class="form-input" id="ovr-category">' + buildCategoryOptions(item.category_id) + '</select></div>'
+        '<div class="form-group"><label class="form-label">メニュー名' + hqNote + '</label>'
+        + '<input class="form-input" id="ovr-name"' + dis + ' value="' + Utils.escapeHtml(item.name) + '"></div>'
+        + '<div class="form-group"><label class="form-label">メニュー名（英語）' + hqNote + '</label>'
+        + '<input class="form-input" id="ovr-name-en"' + dis + ' value="' + Utils.escapeHtml(item.name_en || '') + '"></div>'
+        + '<div class="form-group"><label class="form-label">カテゴリ' + hqNote + '</label>'
+        + '<select class="form-input" id="ovr-category"' + dis + '>' + buildCategoryOptions(item.category_id) + '</select></div>'
         + '<div class="form-group"><label class="form-label">価格（税込）</label>'
         + '<input class="form-input" id="ovr-price" type="number" value="' + _effectivePrice(item) + '"></div>'
         + '<div class="form-group"><label class="form-label">非表示（この店舗で表示しない）</label>'
         + '<label class="toggle"><input type="checkbox" id="ovr-hidden" ' + (item.is_hidden == 1 ? 'checked' : '') + '><span class="toggle__slider"></span></label></div>'
         + '<div class="form-group"><label class="form-label">品切れ</label>'
         + '<label class="toggle"><input type="checkbox" id="ovr-soldout" ' + (item.override_sold_out == 1 ? 'checked' : '') + '><span class="toggle__slider"></span></label></div>'
-        + '<div class="form-group"><label class="form-label">カロリー (kcal)</label>'
-        + '<input class="form-input" id="ovr-calories" type="number" min="0" placeholder="未設定" value="' + (item.calories != null ? item.calories : '') + '"></div>'
-        + '<div class="form-group"><label class="form-label">アレルギー特定原材料</label>'
+        + '<div class="form-group"><label class="form-label">カロリー (kcal)' + hqNote + '</label>'
+        + '<input class="form-input" id="ovr-calories" type="number" min="0" placeholder="未設定"' + dis + ' value="' + (item.calories != null ? item.calories : '') + '"></div>'
+        + '<div class="form-group"><label class="form-label">アレルギー特定原材料' + hqNote + '</label>'
         + _buildAllergenCheckboxes('ovr', item.allergens) + '</div>'
         + _ovrImageHtml(item.override_image_url || '')
         + _renderOptionGroupsHtml(allGroups, linkedIds, linkedRequired);
 
       _setupOvrImageUpload();
+
+      // P1-29: enterprise なら生成済アレルゲンチェックボックスを一括 disabled
+      if (_isHqLocked) {
+        var allergenBoxes = document.querySelectorAll('#ovr-allergens input[type="checkbox"]');
+        for (var ai = 0; ai < allergenBoxes.length; ai++) {
+          allergenBoxes[ai].disabled = true;
+        }
+      }
+
       document.getElementById('btn-save-ovr').disabled = false;
     });
 
@@ -305,24 +322,36 @@ var MenuOverrideEditor = (function () {
       var imageUrl = document.getElementById('ovr-image-url').value;
       this.disabled = true;
 
-      // テンプレート更新（名前・カテゴリ）
-      AdminApi.updateMenuTemplate(templateId, {
-        name: name,
-        name_en: document.getElementById('ovr-name-en').value.trim(),
-        category_id: document.getElementById('ovr-category').value
-      }).then(function () {
-        // オーバーライド更新（価格・非表示・品切れ・画像・カロリー・アレルギー）
-        var caloriesVal = document.getElementById('ovr-calories').value;
-        return AdminApi.updateMenuOverride(templateId, {
+      // P1-29: enterprise なら本部マスタ更新スキップ + calories/allergens を送信しない
+      var savePromise;
+      if (_isHqLocked) {
+        savePromise = AdminApi.updateMenuOverride(templateId, {
           price: price,
           is_hidden: document.getElementById('ovr-hidden').checked,
           is_sold_out: document.getElementById('ovr-soldout').checked,
-          image_url: imageUrl || null,
-          calories: caloriesVal !== '' ? parseInt(caloriesVal, 10) : null,
-          allergens: _collectAllergens('ovr')
+          image_url: imageUrl || null
         });
-      }).then(function () {
-        // オプショングループ紐付け同期
+      } else {
+        // 既存ロジック (standard/pro): 本部マスタ → オーバーライドの順に更新
+        savePromise = AdminApi.updateMenuTemplate(templateId, {
+          name: name,
+          name_en: document.getElementById('ovr-name-en').value.trim(),
+          category_id: document.getElementById('ovr-category').value
+        }).then(function () {
+          var caloriesVal = document.getElementById('ovr-calories').value;
+          return AdminApi.updateMenuOverride(templateId, {
+            price: price,
+            is_hidden: document.getElementById('ovr-hidden').checked,
+            is_sold_out: document.getElementById('ovr-soldout').checked,
+            image_url: imageUrl || null,
+            calories: caloriesVal !== '' ? parseInt(caloriesVal, 10) : null,
+            allergens: _collectAllergens('ovr')
+          });
+        });
+      }
+
+      savePromise.then(function () {
+        // オプショングループ紐付け同期（両プラン共通: 本タスクではスコープ外）
         var groups = _collectOptionGroups('ovr-option-groups');
         return AdminApi.syncTemplateOptionLinks(templateId, groups);
       }).then(function () {
@@ -339,6 +368,11 @@ var MenuOverrideEditor = (function () {
   }
 
   function openAddModal() {
+    // P1-29: enterprise では本部マスタへの新規追加を禁止
+    if (_isHqLocked) {
+      showToast('本部メニューは owner ダッシュボードの「本部メニュー」タブから追加してください', 'error');
+      return;
+    }
     var overlay = document.getElementById('admin-modal-overlay');
     overlay.querySelector('.modal__title').textContent = 'メニューを追加';
     overlay.querySelector('.modal__body').innerHTML =

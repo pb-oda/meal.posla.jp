@@ -30,12 +30,34 @@ function json_response(array $data, int $status_code = 200): void
     send_api_headers();
     http_response_code($status_code);
 
-    echo json_encode([
+    $body = json_encode([
         'ok'         => true,
         'data'       => $data,
         'serverTime' => date('c'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
+    // P1-14: json_encode 失敗時のフォールバック
+    // 想定: data に不正な UTF-8 / リソース型 / 循環参照などが含まれる場合
+    if ($body === false) {
+        error_log('json_response: json_encode failed - ' . json_last_error_msg());
+        http_response_code(500);
+        $fallback = json_encode([
+            'ok'    => false,
+            'error' => [
+                'code'    => 'ENCODE_FAILED',
+                'message' => 'レスポンスの生成に失敗しました',
+                'status'  => 500,
+            ],
+            'serverTime' => date('c'),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        // 二重フェイルセーフ: フォールバック自体の encode 失敗にも備える
+        echo ($fallback === false)
+            ? '{"ok":false,"error":{"code":"ENCODE_FAILED","message":"response encode failed","status":500}}'
+            : $fallback;
+        exit;
+    }
+
+    echo $body;
     exit;
 }
 
@@ -44,7 +66,7 @@ function json_error(string $code, string $message, int $status_code = 400): void
     send_api_headers();
     http_response_code($status_code);
 
-    echo json_encode([
+    $body = json_encode([
         'ok'    => false,
         'error' => [
             'code'    => $code,
@@ -54,6 +76,16 @@ function json_error(string $code, string $message, int $status_code = 400): void
         'serverTime' => date('c'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
+    // P1-14: json_encode 失敗時のフォールバック
+    // 想定: message に不正な UTF-8 が含まれる場合等
+    if ($body === false) {
+        error_log('json_error: json_encode failed - ' . json_last_error_msg() . ' (code=' . $code . ')');
+        // 二重フェイルセーフ: ハードコード文字列のみで構成
+        echo '{"ok":false,"error":{"code":"ENCODE_FAILED","message":"error response encode failed","status":500}}';
+        exit;
+    }
+
+    echo $body;
     exit;
 }
 

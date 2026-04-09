@@ -12,10 +12,11 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/posla-settings.php';
 
 require_method(['POST']);
+// P1a: device ロール（KDS端末）からも呼び出せるように staff 制限を撤廃
 $user = require_auth();
-require_role('staff');
 
 // S-1: IPレートリミット（1時間あたり60リクエスト、スタッフ認証済みのため緩め）
 require_once __DIR__ . '/../lib/rate-limiter.php';
@@ -33,20 +34,8 @@ require_store_access($storeId);
 
 $pdo = get_db();
 
-// ── 1. APIキー取得 ──
-$stmt = $pdo->prepare(
-    'SELECT t.ai_api_key
-     FROM stores s
-     INNER JOIN tenants t ON t.id = s.tenant_id
-     WHERE s.id = ? AND s.is_active = 1'
-);
-$stmt->execute([$storeId]);
-$row = $stmt->fetch();
-$apiKey = $row['ai_api_key'] ?? '';
-
-if ($apiKey === '') {
-    json_error('AI_NOT_CONFIGURED', 'AI機能が設定されていません', 503);
-}
+// ── 1. APIキー取得（POSLA共通設定 / P1-6 で統一） ──
+$apiKey = require_gemini_api_key($pdo);
 
 // ── 2. 品目なし → 即返却 ──
 if (empty($items)) {

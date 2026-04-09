@@ -20,17 +20,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $storeId = require_store_param();
     require_store_access($storeId);
 
+    // P1-30c: テーブル名 menu_items → menu_templates、列 mt.price → mt.base_price、is_removed 列は存在しないため削除
     $stmt = $pdo->prepare(
         'SELECT mt.id AS template_id, c.name AS category_name, mt.name, mt.name_en,
-                mt.price AS base_price, mt.is_sold_out AS template_sold_out,
-                COALESCE(smo.price, mt.price) AS effective_price,
+                mt.base_price, mt.is_sold_out AS template_sold_out,
+                COALESCE(smo.price, mt.base_price) AS effective_price,
                 COALESCE(smo.is_hidden, 0) AS is_hidden,
                 COALESCE(smo.is_sold_out, 0) AS override_sold_out,
                 COALESCE(smo.sort_order, mt.sort_order) AS effective_sort_order
-         FROM menu_items mt
+         FROM menu_templates mt
          JOIN categories c ON c.id = mt.category_id
          LEFT JOIN store_menu_overrides smo ON smo.template_id = mt.id AND smo.store_id = ?
-         WHERE mt.tenant_id = ? AND mt.is_removed = 0
+         WHERE mt.tenant_id = ?
          ORDER BY c.sort_order, mt.sort_order, mt.name'
     );
     $stmt->execute([$storeId, $tenantId]);
@@ -80,8 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         json_error('MISSING_COLUMN', '必須カラム "template_id" がありません', 400);
     }
 
-    // テンプレートID→存在確認マップ
-    $stmt = $pdo->prepare('SELECT id FROM menu_items WHERE tenant_id = ? AND is_removed = 0');
+    // P1-30c: テーブル名 menu_items → menu_templates、is_removed 列は存在しないため削除
+    $stmt = $pdo->prepare('SELECT id FROM menu_templates WHERE tenant_id = ?');
     $stmt->execute([$tenantId]);
     $validTemplates = [];
     foreach ($stmt->fetchAll() as $row) $validTemplates[$row['id']] = true;

@@ -59,6 +59,7 @@ try {
     $occupiedTables = (int) $stmt->fetchColumn();
 } catch (PDOException $e) {
     // table_sessions テーブル未作成 → 0
+    error_log('[P1-12][api/public/store-status.php:60] count_occupied_tables: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 $availableTables = $totalTables - $occupiedTables;

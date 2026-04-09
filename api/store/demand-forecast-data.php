@@ -36,7 +36,9 @@ try {
     foreach ($drinkRows as $dr) {
         $drinkNames[$dr['name']] = true;
     }
-} catch (PDOException $e) {}
+} catch (PDOException $e) {
+    error_log('[P1-12][demand-forecast-data.php:39] fetch_drink_names: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+}
 
 // ===== A: 直近7日間の品目別日別売上（ドリンク除外） =====
 $stmt = $pdo->prepare(
@@ -139,7 +141,9 @@ try {
             'lowStockThreshold' => (float)$inv['low_stock_threshold'],
         ];
     }
-} catch (PDOException $e) {}
+} catch (PDOException $e) {
+    error_log('[P1-12][demand-forecast-data.php:142] fetch_inventory: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+}
 
 // ===== D: レシピ（BOM）情報（try-catch: テーブル不存在対応） =====
 $recipes = [];
@@ -164,7 +168,9 @@ try {
             'unit'            => $rr['unit'],
         ];
     }
-} catch (PDOException $e) {}
+} catch (PDOException $e) {
+    error_log('[P1-12][demand-forecast-data.php:167] fetch_recipes: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+}
 
 // ===== E: 本日の情報 =====
 $todayWeekdayNum = (int)date('w');
@@ -183,7 +189,9 @@ try {
     $stmt->execute([$storeId]);
     $storeRow = $stmt->fetch();
     $storeName = $storeRow ? ($storeRow['receipt_store_name'] ?: '') : '';
-} catch (PDOException $e) {}
+} catch (PDOException $e) {
+    error_log('[P1-12][demand-forecast-data.php:186] fetch_store_name: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+}
 
 json_response([
     'dailySales'     => $dailySales,

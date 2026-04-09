@@ -39,6 +39,21 @@
   - オーナー → マネージャー・スタッフの両方を作成可能（全店舗対象）
   - マネージャー → 自分の所属店舗のスタッフのみ作成可能
   - スタッフ → アカウント作成権限なし
+- **device ロール（P1a）— KDS / レジ端末専用アカウント。**
+  - スタッフ（人）ではなく**端末**のためのログインアカウント
+  - 1端末 = 1アカウント。`users.role = 'device'`
+  - ロール階層は `device(0) < staff(1) < manager(2) < owner(3)`
+  - **シフト管理・人件費・スタッフレポート・監査ログのスタッフ集計から除外される**
+  - 作成は dashboard.html → スタッフ管理タブ → 「+ デバイス追加」ボタン（manager 以上）
+  - owner-dashboard.html のユーザー一覧には**表示されない**（GET /api/owner/users.php で `role != 'device'`）
+  - ログインすると dashboard.html ではなく `kds/index.html` または `kds/cashier.html` に直接遷移する
+    （`stores[0].userVisibleTools` または `staffVisibleTools` の `register` 含有有無で振り分け）
+  - `visible_tools` は `kds` / `register` のいずれか（または両方）。`handy` は不可
+  - 作成・更新・削除は `POST/PATCH/DELETE /api/store/staff-management.php?kind=device`
+  - KDS / レジ系 API（`api/kds/*`、`api/connect/terminal-token.php`、`api/store/terminal-intent.php` 等）は
+    device からも呼び出せるよう `require_role(...)` ではなく `require_auth()` のみで保護する
+  - シフト割当（`api/store/shift/apply-ai-suggestions.php`）に device を指定するとサーバーが
+    `DEVICE_NOT_ASSIGNABLE` エラーで拒否する
 
 ---
 
@@ -140,7 +155,7 @@
 - KDS + AI音声コマンド（KDSがあれば音声は標準）
 - 基本レポート（売上日報）
 - オフライン検知 + マルチセッション制御（インフラ。全プラン共通）
-- 未実装: 領収書発行（L-5）
+- 電子領収書発行（L-5）
 
 **pro（2〜3万円/月）— 全チャネル + 経営管理**
 - standard の全機能 +
@@ -170,6 +185,31 @@
 - テナントごとに個別のAIキーを設定する運用はしない
 - POSLA共通のAPIキーは `posla_settings` テーブルで一元管理（L-10b で実装済み）
 - 決済キー（Square/Stripe）のみテナント個別。owner-dashboard.htmlの「決済設定」タブで管理
+
+---
+
+## メニュー編集経路（重要・運用ルール）
+
+POSLAのメニューは3層構造：
+- `menu_templates` … 本部マスタ（テナント単位、全店共通の name/category/base_price/image/calories/allergens）
+- `store_menu_overrides` … 店舗差分（NULL=本部継承、値あり=店舗上書き、is_sold_out/price/is_hidden/image_url）
+- `store_local_items` … 店舗限定品（その店舗だけ、本部マスタに紐づかない）
+
+お客さん側のセルフメニューでは `api/lib/menu-resolver.php` の `resolve_store_menu()` が3層を統合してから返す。
+
+### enterprise の編集ルール（厳守）
+- 全店共通の品目（本部マスタ）は **owner-dashboard 「本部メニュー」タブからのみ編集可**（owner ロール限定、P1-28 で実装）
+- 店舗側 dashboard 「店舗メニュー」タブからは **本部マスタ項目（name/name_en/category_id/calories/allergens/base_price/image_url）は readonly**（P1-29 で実装）
+- 店舗側で編集できるのは `store_menu_overrides` の項目のみ：店舗価格上書き / 非表示 / 売り切れ
+- 店舗独自品は **dashboard 「限定メニュー」タブ（`store_local_items`）から追加**する。本部マスタには絶対に書き込まない
+
+### standard / pro の編集ルール
+- owner-dashboard に「本部メニュー」タブは出ない（プラン制限、`features.hq_menu_broadcast=0`）
+- dashboard 「店舗メニュー」タブから事実上 `menu_templates` を全項目編集できる（既存運用、変更しない）
+- 店舗独自品は同じく「限定メニュー」タブから追加
+
+### 全プラン共通
+- **店舗独自メニューの作成は「限定メニュー」タブを使う**。「店舗メニュー」タブで新規追加するのではない（こちらは本部マスタ + 店舗オーバーライド統合表示）
 
 ---
 

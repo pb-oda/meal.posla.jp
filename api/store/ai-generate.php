@@ -13,6 +13,7 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/posla-settings.php';
 
 require_method(['POST']);
 $user = require_auth();
@@ -34,14 +35,7 @@ if ($maxTokens < 1) $maxTokens = 1024;
 if ($maxTokens > 8192) $maxTokens = 8192;
 
 // POSLA共通設定からGemini APIキーを取得
-$stmt = $pdo->prepare('SELECT setting_value FROM posla_settings WHERE setting_key = ?');
-$stmt->execute(['gemini_api_key']);
-$row = $stmt->fetch();
-$apiKey = $row ? $row['setting_value'] : null;
-
-if (!$apiKey) {
-    json_error('AI_NOT_CONFIGURED', 'AIサービスが現在利用できません', 503);
-}
+$apiKey = require_gemini_api_key($pdo);
 
 // Gemini API 呼び出し
 $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . urlencode($apiKey);

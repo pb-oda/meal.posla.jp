@@ -32,6 +32,7 @@ try {
     }
 } catch (PDOException $e) {
     // テーブル未作成時は空オブジェクト
+    error_log('[P1-12][api/customer/ui-translations.php:33] load_translations: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 json_response([

@@ -5,7 +5,7 @@
  * セッション構造 ($_SESSION):
  *   'user_id'    => UUID
  *   'tenant_id'  => UUID
- *   'role'       => 'owner'|'manager'|'staff'
+ *   'role'       => 'owner'|'manager'|'staff'|'device' (P1a)
  *   'username'   => string
  *   'email'      => string
  *   'store_ids'  => array of UUIDs（ownerは空配列=全店舗暗黙アクセス）
@@ -57,12 +57,13 @@ function require_auth(): array
 
 /**
  * 最低ロールレベルを要求
- * ロール階層: owner(3) > manager(2) > staff(1)
+ * ロール階層: owner(3) > manager(2) > staff(1) > device(0)
+ * P1a: device は KDS/レジ端末専用アカウント。staff より下位扱い。
  */
 function require_role(string $minimum_role): array
 {
     $user = require_auth();
-    $hierarchy = ['staff' => 1, 'manager' => 2, 'owner' => 3];
+    $hierarchy = ['device' => 0, 'staff' => 1, 'manager' => 2, 'owner' => 3];
 
     $user_level    = $hierarchy[$user['role']] ?? 0;
     $required_level = $hierarchy[$minimum_role] ?? 99;
@@ -215,6 +216,7 @@ function _check_session_validity(): void
         }
     } catch (Exception $e) {
         // DB接続エラー等は認証自体を阻害しない
+        error_log('[P1-12][api/lib/auth.php:216] session_last_active_update: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 }
 

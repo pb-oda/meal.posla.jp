@@ -117,6 +117,7 @@ if ($tableId) {
         }
     } catch (PDOException $e) {
         // table_sessions/time_limit_plans 未作成時はスキップ
+        error_log('[P1-12][api/store/process-payment.php:118] fetch_session_plan: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 }
 
@@ -342,7 +343,9 @@ try {
                         'UPDATE table_sessions SET status = "paid", closed_at = NOW()
                          WHERE store_id = ? AND table_id = ? AND status NOT IN ("paid", "closed")'
                     )->execute([$storeId, $mTableId]);
-                } catch (PDOException $e) {}
+                } catch (PDOException $e) {
+                    error_log('[P1-12][api/store/process-payment.php:345] merged_payment_close: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+                }
             }
         } elseif ($tableId) {
             $newToken = bin2hex(random_bytes(16));
@@ -355,6 +358,7 @@ try {
                 )->execute([$storeId, $tableId]);
             } catch (PDOException $e) {
                 // table_sessions 未作成時はスキップ
+                error_log('[P1-12][api/store/process-payment.php:356] single_payment_close: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
             }
         }
     }
@@ -385,7 +389,9 @@ try {
                     'UPDATE table_sessions SET status = "paid", closed_at = NOW()
                      WHERE store_id = ? AND table_id = ? AND status NOT IN ("paid", "closed")'
                 )->execute([$storeId, $tableId]);
-            } catch (PDOException $e) {}
+            } catch (PDOException $e) {
+                error_log('[P1-12][api/store/process-payment.php:388] split_payment_close: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            }
         }
     }
 
@@ -454,6 +460,7 @@ try {
         }
     } catch (PDOException $e) {
         // recipes/ingredients テーブル未作成時はスキップ
+        error_log('[P1-12][api/store/process-payment.php:455] recipe_deduct_stock_dine_in: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 
     // ── 在庫→品切れ自動同期（S-5） ──

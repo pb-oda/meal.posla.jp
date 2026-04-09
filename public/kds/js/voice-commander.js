@@ -10,8 +10,8 @@
 var VoiceCommander = (function () {
   'use strict';
 
-  var _apiKey = null;
-  var _apiKeyLoaded = false;
+  var _aiConfigured = false;
+  var _aiConfigLoaded = false;
   var _recognition = null;
   var _btn = null;
   var _statusEl = null;
@@ -54,7 +54,7 @@ var VoiceCommander = (function () {
   // ── 初期化 ──
   function init() {
     _createUI();
-    _loadApiKey();
+    _checkAiConfig();
     _loadMenu();
     _loadSensitivity();
     _unlockAudio();
@@ -107,8 +107,8 @@ var VoiceCommander = (function () {
     });
   }
 
-  // ── APIキー取得 ──
-  function _loadApiKey() {
+  // ── AI設定確認（POSLA共通設定の有無フラグのみ取得。キー本体はサーバー内に保持） ──
+  function _checkAiConfig() {
     var storeId = KdsAuth.getStoreId();
     if (!storeId) return;
 
@@ -120,34 +120,14 @@ var VoiceCommander = (function () {
         });
       })
       .then(function (json) {
-        _apiKeyLoaded = true;
+        _aiConfigLoaded = true;
         if (json.ok && json.data && json.data.settings) {
-          if (!json.data.settings.ai_api_key_set) {
-            _apiKey = null;
-          } else {
-            _fetchApiKeyDirect(storeId);
-          }
+          _aiConfigured = !!json.data.settings.ai_api_key_set;
         }
       })
       .catch(function () {
-        _apiKeyLoaded = true;
+        _aiConfigLoaded = true;
       });
-  }
-
-  function _fetchApiKeyDirect(storeId) {
-    fetch('../../api/store/settings.php?store_id=' + encodeURIComponent(storeId) + '&include_ai_key=1', { credentials: 'same-origin' })
-      .then(function (r) {
-        return r.text().then(function (body) {
-          if (!body) return {};
-          try { return JSON.parse(body); } catch (e) { return {}; }
-        });
-      })
-      .then(function (json) {
-        if (json.ok && json.data && json.data.ai_api_key) {
-          _apiKey = json.data.ai_api_key;
-        }
-      })
-      .catch(function () {});
   }
 
   // ── メニューデータ読み込み（品切れ管理用） ──
@@ -1132,10 +1112,10 @@ var VoiceCommander = (function () {
     }
   }
 
-  // ── Gemini API 呼び出し ──
+  // ── Gemini API 呼び出し（ai-generate.php プロキシ経由） ──
   function _analyzeWithGemini(transcript) {
-    if (!_apiKey) {
-      _showStatus('APIキー未設定: 管理画面で設定してください', 3000);
+    if (!_aiConfigured) {
+      _showStatus('APIキー未設定: POSLA管理画面で設定してください', 3000);
       _returnToStandby();
       return;
     }
@@ -1190,30 +1170,32 @@ var VoiceCommander = (function () {
       + '■ 現在のアクティブ注文:\n' + JSON.stringify(ordersSummary) + '\n\n'
       + '■ 音声:「' + transcript + '」';
 
-    var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(_apiKey);
-
-    fetch(url, {
+    fetch('../../api/store/ai-generate.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 256 }
+        prompt: prompt,
+        temperature: 0,
+        max_tokens: 256
       })
     })
     .then(function (r) {
       return r.text().then(function (body) {
-        if (!body) throw new Error('Gemini APIが空のレスポンスを返しました');
-        try { return JSON.parse(body); } catch (e) { throw new Error('Gemini JSON解析エラー'); }
+        if (!body) throw new Error('AIプロキシが空のレスポンスを返しました');
+        try { return JSON.parse(body); } catch (e) { throw new Error('AIプロキシ JSON解析エラー'); }
       });
     })
     .then(function (json) {
-      if (json.error) {
-        throw new Error(json.error.message || 'Gemini APIエラー');
+      if (!json.ok) {
+        var msg = (json.error && json.error.message) || 'AIプロキシエラー';
+        if (json.error && json.error.code === 'AI_NOT_CONFIGURED') {
+          _aiConfigured = false;
+          msg = 'POSLA管理画面でGemini APIキーを設定してください';
+        }
+        throw new Error(msg);
       }
-      var text = '';
-      if (json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) {
-        text = json.candidates[0].content.parts[0].text || '';
-      }
+      var text = (json.data && json.data.text) || '';
       _handleGeminiResponse(text, transcript);
     })
     .catch(function (err) {
@@ -1592,14 +1574,14 @@ var VoiceCommander = (function () {
     }
   }
 
-  // ── 店舗変更時にAPIキーを再取得 ──
+  // ── 店舗変更時にAI設定を再取得 ──
   function onStoreChange() {
     _stopContinuousListening();
-    _apiKey = null;
-    _apiKeyLoaded = false;
+    _aiConfigured = false;
+    _aiConfigLoaded = false;
     _menuItems = [];
     _menuLoaded = false;
-    _loadApiKey();
+    _checkAiConfig();
     _loadMenu();
   }
 

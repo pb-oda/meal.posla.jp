@@ -136,6 +136,25 @@ var AdminApi = (function () {
     return request('DELETE', '/store/staff-management.php?id=' + encodeURIComponent(id) + '&store_id=' + encodeURIComponent(_currentStoreId));
   }
 
+  // --- デバイスアカウント管理（P1a: KDS/レジ端末専用） ---
+  // staff-management.php に kind=device を渡して切り替える
+  function getDevices() {
+    return storeGet('/store/staff-management.php', { kind: 'device' });
+  }
+
+  function createDevice(data) {
+    data.kind = 'device';
+    return request('POST', '/store/staff-management.php', data);
+  }
+
+  function updateDevice(id, data) {
+    return request('PATCH', '/store/staff-management.php?id=' + encodeURIComponent(id) + '&kind=device&store_id=' + encodeURIComponent(_currentStoreId), data);
+  }
+
+  function deleteDevice(id) {
+    return request('DELETE', '/store/staff-management.php?id=' + encodeURIComponent(id) + '&kind=device&store_id=' + encodeURIComponent(_currentStoreId));
+  }
+
   // --- カテゴリ管理（owner） ---
   function getCategories() {
     return request('GET', '/owner/categories.php');
@@ -738,6 +757,10 @@ var AdminApi = (function () {
     createStaff: createStaff,
     updateStaff: updateStaff,
     deleteStaff: deleteStaff,
+    getDevices: getDevices,
+    createDevice: createDevice,
+    updateDevice: updateDevice,
+    deleteDevice: deleteDevice,
     getCategories: getCategories,
     createCategory: createCategory,
     updateCategory: updateCategory,

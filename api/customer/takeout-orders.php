@@ -55,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         } catch (PDOException $e) {
             // マイグレーション未適用時はデフォルト値のまま
+            error_log('[P1-12][customer/takeout-orders.php:56] fetch_takeout_settings: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
         }
 
         // オンライン決済可否判定
@@ -69,7 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 if ($gwRow && $gwRow['payment_gateway'] === 'stripe') {
                     $onlinePaymentAvailable = true;
                 }
-            } catch (PDOException $e) {}
+            } catch (PDOException $e) {
+                error_log('[P1-12][customer/takeout-orders.php:72] check_payment_gateway: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            }
         }
 
         json_response([
@@ -112,7 +115,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $capacity = (int)($ssRow['takeout_slot_capacity'] ?: 5);
                 $minPrep = (int)($ssRow['takeout_min_prep_minutes'] ?: 30);
             }
-        } catch (PDOException $e) {}
+        } catch (PDOException $e) {
+            error_log('[P1-12][customer/takeout-orders.php:115] fetch_slot_settings: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        }
 
         // 各スロットの既存注文数を一括取得
         $countStmt = $pdo->prepare(
@@ -187,7 +192,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $pStmt = $pdo->prepare('SELECT id FROM payments WHERE order_ids LIKE ? LIMIT 1');
                 $pStmt->execute(['%' . $orderId . '%']);
                 if ($pStmt->fetch()) $paymentStatus = 'paid';
-            } catch (PDOException $e) {}
+            } catch (PDOException $e) {
+                error_log('[P1-12][customer/takeout-orders.php:190] check_payment_status: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            }
         }
 
         json_response([
@@ -242,7 +249,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ssStmt->execute([$storeId]);
         $ss = $ssStmt->fetch();
         if ($ss) $takeoutEnabled = (int)$ss['takeout_enabled'];
-    } catch (PDOException $e) {}
+    } catch (PDOException $e) {
+        error_log('[P1-12][customer/takeout-orders.php:245] check_takeout_enabled: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    }
     if (!$takeoutEnabled) json_error('TAKEOUT_DISABLED', '現在テイクアウトは受け付けていません', 400);
 
     // 冪等キーチェック
@@ -291,7 +300,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $maxItems = (int)($limRow['max_items_per_order'] ?: 10);
             $maxAmount = (int)($limRow['max_amount_per_order'] ?: 30000);
         }
-    } catch (PDOException $e) {}
+    } catch (PDOException $e) {
+        error_log('[P1-12][customer/takeout-orders.php:294] fetch_max_limits: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    }
 
     $totalQty = 0;
     $totalAmount = 0;
@@ -370,7 +381,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         try {
                             $pdo->prepare("UPDATE orders SET memo = CONCAT(COALESCE(memo,''), '\n[stripe_session:', ?, ']') WHERE id = ?")
                                 ->execute([$result['session_id'], $orderId]);
-                        } catch (PDOException $e) {}
+                        } catch (PDOException $e) {
+                            error_log('[P1-12][api/customer/takeout-orders.php:373] stripe_connect_session_link: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+                        }
                         json_response(['order_id' => $orderId, 'status' => 'pending_payment', 'checkout_url' => $result['checkout_url']]);
                     }
                     // Connect決済URL生成失敗 → 店頭払いにフォールバック
@@ -380,6 +393,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } catch (Exception $e) {
             // stripe-connect.php 未存在やカラム未存在時はスキップ（C-3にフォールスルー）
+            error_log('[P1-12][api/customer/takeout-orders.php:381] stripe_connect_fallthrough: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
         }
 
         // C-3 / P1-2: 従来の直接決済（Stripe のみ）
@@ -398,7 +412,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $pdo->prepare("UPDATE orders SET memo = CONCAT(COALESCE(memo,''), '\n[stripe_session:', ?, ']') WHERE id = ?")
                     ->execute([$result['session_id'], $orderId]);
-            } catch (PDOException $e) {}
+            } catch (PDOException $e) {
+                error_log('[P1-12][api/customer/takeout-orders.php:401] stripe_direct_session_link: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            }
             json_response(['order_id' => $orderId, 'status' => 'pending_payment', 'checkout_url' => $result['checkout_url']]);
         }
         // 決済URL生成失敗 → 店頭払いにフォールバック

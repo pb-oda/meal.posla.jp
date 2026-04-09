@@ -6,7 +6,7 @@
  * Body: { "current_password": "...", "new_password": "..." }
  *
  * - 現セッションは維持
- * - POSLA管理者用セッション管理テーブルが存在しないため、他セッション無効化はスキップ
+ * - P1-6d: 現セッション以外の posla_admin_sessions レコードを削除
  * - POSLA側に audit_log 運用が無いため、error_log で簡易記録
  */
 
@@ -53,8 +53,24 @@ $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
 $pdo->prepare('UPDATE posla_admins SET password_hash = ? WHERE id = ?')
     ->execute([$newHash, $admin['admin_id']]);
 
-// POSLA管理者用セッション管理テーブル(posla_admin_sessions)は未実装のため
-// 他セッション無効化処理はスキップ
+// P1-6d: 現セッション以外の posla_admin_sessions レコードを削除
+// （攻撃者がセッション窃取済みの場合の乗っ取り防止）
+// 失敗してもパスワード変更処理は止めない（既存挙動を壊さない）
+try {
+    $currentSessionId = session_id();
+    $delStmt = $pdo->prepare(
+        'DELETE FROM posla_admin_sessions
+         WHERE admin_id = ? AND session_id != ?'
+    );
+    $delStmt->execute([$admin['admin_id'], $currentSessionId]);
+    error_log(sprintf(
+        'posla_admin sessions invalidated: admin_id=%s deleted=%d',
+        $admin['admin_id'],
+        $delStmt->rowCount()
+    ));
+} catch (Exception $e) {
+    error_log('posla_admin_sessions cleanup failed: ' . $e->getMessage());
+}
 
 // POSLA側に audit_log 運用が無いため error_log で簡易記録
 error_log(sprintf(

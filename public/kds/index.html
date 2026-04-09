@@ -155,6 +155,7 @@
             var s = ctx.stores.find(function (x) { return x.id === selectedId; });
             storeNameEl.textContent = s ? s.name : '-';
             changeLinkEl.style.display = '';
+            sessionStorage.setItem('mt_kds_started', '1');
             initMain();
           });
           return;

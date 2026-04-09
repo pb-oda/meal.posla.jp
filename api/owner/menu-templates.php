@@ -41,6 +41,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 // ----- POST -----
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // P1-29: enterprise (hq_menu_broadcast=true) では owner のみ本部マスタを変更可能
+    if (check_plan_feature($pdo, $tenantId, 'hq_menu_broadcast') && $user['role'] !== 'owner') {
+        json_error('FORBIDDEN_HQ_MENU', '本部メニューは owner ロールでのみ編集できます', 403);
+    }
     $data = get_json_body();
     $name = trim($data['name'] ?? '');
     $categoryId = $data['category_id'] ?? '';
@@ -80,6 +84,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ----- PATCH -----
 if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
+    // P1-29: enterprise (hq_menu_broadcast=true) では owner のみ本部マスタを変更可能
+    if (check_plan_feature($pdo, $tenantId, 'hq_menu_broadcast') && $user['role'] !== 'owner') {
+        json_error('FORBIDDEN_HQ_MENU', '本部メニューは owner ロールでのみ編集できます', 403);
+    }
     $id = $_GET['id'] ?? null;
     if (!$id) json_error('MISSING_ID', 'idが必要です', 400);
 
@@ -128,6 +136,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
 
 // ----- DELETE -----
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    // P1-29: enterprise (hq_menu_broadcast=true) では owner のみ本部マスタを変更可能
+    if (check_plan_feature($pdo, $tenantId, 'hq_menu_broadcast') && $user['role'] !== 'owner') {
+        json_error('FORBIDDEN_HQ_MENU', '本部メニューは owner ロールでのみ編集できます', 403);
+    }
     $id = $_GET['id'] ?? null;
     if (!$id) json_error('MISSING_ID', 'idが必要です', 400);
 

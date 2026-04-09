@@ -31,10 +31,15 @@ if ($action !== 'add' && $action !== 'remove') {
 
 $pdo = get_db();
 
-$stmt = $pdo->prepare(
-    'INSERT INTO cart_events (store_id, table_id, session_token, item_id, item_name, item_price, action)
-     VALUES (?, ?, ?, ?, ?, ?, ?)'
-);
-$stmt->execute([$storeId, $tableId, $sessionToken, $itemId, $itemName, $itemPrice, $action]);
+try {
+    $stmt = $pdo->prepare(
+        'INSERT INTO cart_events (store_id, table_id, session_token, item_id, item_name, item_price, action)
+         VALUES (?, ?, ?, ?, ?, ?, ?)'
+    );
+    $stmt->execute([$storeId, $tableId, $sessionToken, $itemId, $itemName, $itemPrice, $action]);
+} catch (Exception $e) {
+    error_log('cart-event INSERT failed: ' . $e->getMessage());
+    json_error('CART_LOG_FAILED', 'カートログ記録に失敗しました', 503);
+}
 
 json_response(['ok' => true]);

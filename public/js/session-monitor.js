@@ -111,7 +111,9 @@
         cloned.text().then(function (text) {
           try {
             var json = JSON.parse(text);
-            if (json.error === 'SESSION_TIMEOUT' || json.error === 'SESSION_REVOKED') {
+            // P1b-4: json.error は { code, message, status } オブジェクト
+            // 旧コードは json.error を文字列比較していたため常に false でデッドコード化していた
+            if (json.error && (json.error.code === 'SESSION_TIMEOUT' || json.error.code === 'SESSION_REVOKED')) {
               redirectToLogin();
             }
           } catch (e) {

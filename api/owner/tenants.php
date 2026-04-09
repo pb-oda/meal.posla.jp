@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $hasPaymentGw = true;
     } catch (PDOException $e) {}
 
-    $selectCols = 'id, slug, name, name_en, ai_api_key, google_places_api_key, created_at';
+    $selectCols = 'id, slug, name, name_en, created_at';
     if ($hasPaymentGw) {
         $selectCols .= ', stripe_secret_key, payment_gateway';
     }
@@ -39,12 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $stmt->execute([$user['tenant_id']]);
     $tenant = $stmt->fetch();
     if (!$tenant) json_error('NOT_FOUND', 'テナントが見つかりません', 404);
-
-    // マスク付きキーと設定済みフラグを返す
-    $tenant['ai_api_key_set'] = !empty($tenant['ai_api_key']);
-    $tenant['ai_api_key_masked'] = mask_api_key($tenant['ai_api_key']);
-    $tenant['google_places_api_key_set'] = !empty($tenant['google_places_api_key']);
-    $tenant['google_places_api_key_masked'] = mask_api_key($tenant['google_places_api_key']);
 
     // 決済キー
     if ($hasPaymentGw) {
@@ -56,10 +50,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $tenant['stripe_secret_key_set'] = false;
         $tenant['stripe_secret_key_masked'] = null;
     }
-
-    // フルキーは返さない
-    unset($tenant['ai_api_key']);
-    unset($tenant['google_places_api_key']);
 
     json_response(['tenant' => $tenant]);
 }
@@ -76,18 +66,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     if (isset($data['name_en'])) {
         $fields[] = 'name_en = ?';
         $params[] = trim($data['name_en']);
-    }
-
-    // APIキー: 値があれば更新、nullなら削除
-    if (array_key_exists('ai_api_key', $data)) {
-        $fields[] = 'ai_api_key = ?';
-        $val = $data['ai_api_key'];
-        $params[] = ($val === null || $val === '') ? null : trim($val);
-    }
-    if (array_key_exists('google_places_api_key', $data)) {
-        $fields[] = 'google_places_api_key = ?';
-        $val = $data['google_places_api_key'];
-        $params[] = ($val === null || $val === '') ? null : trim($val);
     }
 
     // 決済ゲートウェイ設定（カラム存在チェック付き、P1-2 で Square 削除済み）

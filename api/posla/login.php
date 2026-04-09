@@ -44,6 +44,22 @@ $_SESSION['posla_admin_login_time']   = time();
 $pdo->prepare('UPDATE posla_admins SET last_login_at = NOW() WHERE id = ?')
     ->execute([$admin['id']]);
 
+// P1-6d: posla_admin_sessions に記録（パスワード変更時の旧セッション無効化のため）
+// 失敗してもログイン処理は止めない（既存挙動を壊さない）
+try {
+    $sessionId = session_id();
+    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
+    $pdo->prepare(
+        'INSERT INTO posla_admin_sessions
+         (admin_id, session_id, ip_address, user_agent, login_at, last_active_at, is_active)
+         VALUES (?, ?, ?, ?, NOW(), NOW(), 1)'
+    )->execute([$admin['id'], $sessionId, $ipAddress, $userAgent]);
+} catch (Exception $e) {
+    error_log('posla_admin_sessions insert failed: ' . $e->getMessage());
+}
+
 json_response([
     'admin' => [
         'id'          => $admin['id'],

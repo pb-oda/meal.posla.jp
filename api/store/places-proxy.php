@@ -12,6 +12,7 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/posla-settings.php';
 
 require_method(['GET']);
 $user = require_auth();
@@ -22,16 +23,11 @@ $storeId = $_GET['store_id'] ?? '';
 if (!$storeId) json_error('MISSING_STORE', 'store_idは必須です', 400);
 require_store_access($storeId);
 
-// テナントからGoogle Places APIキーを取得
-$stmt = $pdo->prepare(
-    'SELECT t.google_places_api_key FROM tenants t JOIN stores s ON s.tenant_id = t.id WHERE s.id = ?'
-);
-$stmt->execute([$storeId]);
-$row = $stmt->fetch();
-$apiKey = $row ? $row['google_places_api_key'] : null;
+// POSLA共通設定からGoogle Places APIキーを取得（L-10b 統一 / P1-22）
+$apiKey = get_posla_setting($pdo, 'google_places_api_key');
 
 if (!$apiKey) {
-    json_error('NO_API_KEY', 'Google Places APIキーが設定されていません', 400);
+    json_error('NO_API_KEY', 'Google Places APIキーが設定されていません（POSLA管理画面で設定してください）', 400);
 }
 
 // ── Geocoding ──

@@ -51,6 +51,7 @@ if ($stationId) {
         $allowedCategories = array_column($stmt->fetchAll(), 'category_id');
     } catch (PDOException $e) {
         // kds_stations / kds_routing_rules テーブル未作成時はスキップ
+        error_log('[P1-12][kds/orders.php:52] fetch_kds_routing: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 }
 
@@ -228,6 +229,7 @@ try {
     $stationList = $stmt->fetchAll();
 } catch (PDOException $e) {
     // テーブル未作成時はスキップ
+    error_log('[P1-12][kds/orders.php:229] fetch_station_list: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 // コース注文にフェーズ名を付与
@@ -273,6 +275,7 @@ try {
     $lowRatingAlerts = $alertStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     // satisfaction_ratings テーブル未作成
+    error_log('[P1-12][kds/orders.php:274] fetch_low_rating_alerts: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 json_response([

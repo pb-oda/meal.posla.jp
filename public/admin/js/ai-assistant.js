@@ -133,7 +133,20 @@ var AiAssistant = (function () {
           _storeAddress = json.data.settings.receipt_address || '';
           _storeName = json.data.settings.receipt_store_name || '';
         }
+        // P1-23: 住所登録状況に応じて案内バナー表示制御
+        _updateCompAddressWarn();
       });
+  }
+
+  // P1-23: 住所未登録警告バナーの表示/非表示制御
+  function _updateCompAddressWarn() {
+    var warnEl = document.getElementById('ai-comp-address-warn');
+    if (!warnEl) return;
+    if (!_storeAddress) {
+      warnEl.style.display = '';
+    } else {
+      warnEl.style.display = 'none';
+    }
   }
 
   // ── 結果カード用スタイル（CSS文字列）──
@@ -270,6 +283,12 @@ var AiAssistant = (function () {
       + '</div>'
       + '<p style="margin:0 0 1rem;font-size:0.8rem;color:#aaa;">店舗の住所は店舗設定から自動取得します。</p>'
 
+      // P1-23: 住所未登録時の案内バナー（_updateCompAddressWarn() で表示制御）
+      + '<div id="ai-comp-address-warn" style="display:none;margin:0 0 1rem;padding:0.75rem 1rem;background:#fff3e0;border:1px solid #ffcc80;border-radius:8px;font-size:0.85rem;color:#e65100;">'
+      +   '&#x26A0;&#xFE0F; 店舗住所が未登録です。競合調査には住所情報が必要です。'
+      +   '<a href="#" id="ai-comp-go-settings" style="display:inline-block;margin-left:0.5rem;color:#1565c0;text-decoration:underline;font-weight:600;">店舗設定へ</a>'
+      + '</div>'
+
       + '<div style="margin-bottom:1rem;">'
       +   '<label style="display:block;font-weight:600;margin-bottom:0.5rem;font-size:0.8rem;color:#555;">調査半径</label>'
       +   '<div id="ai-radius-btns" style="display:flex;gap:0.5rem;">'
@@ -371,6 +390,29 @@ var AiAssistant = (function () {
     // 競合調査ボタンイベント
     _btnCompetition.addEventListener('click', _compResearch);
 
+    // P1-23: 案内バナーの「店舗設定へ」リンク
+    var goSettingsLink = document.getElementById('ai-comp-go-settings');
+    if (goSettingsLink) {
+      goSettingsLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (_isOwner) {
+          // owner-dashboard の「店舗管理」タブへ
+          var ownerTab = document.querySelector('[data-tab="stores"]');
+          if (ownerTab) ownerTab.click();
+        } else {
+          // dashboard では config グループを開くと最初の sub-tab (店舗設定) が自動選択される
+          var configGroup = document.querySelector('.tab-nav__btn[data-group="config"]');
+          if (configGroup) {
+            configGroup.click();
+          } else {
+            // フォールバック: settings サブタブ直接
+            var settingsTab = document.querySelector('[data-tab="settings"]');
+            if (settingsTab) settingsTab.click();
+          }
+        }
+      });
+    }
+
     // 競合調査店舗ドロップダウン変更（owner用）
     var compStoreEl = document.getElementById('ai-comp-store');
     if (compStoreEl) {
@@ -431,6 +473,8 @@ var AiAssistant = (function () {
           if (_inputStore && !_inputStore.value && _storeName) {
             _inputStore.value = _storeName;
           }
+          // P1-23: 住所登録状況に応じて案内バナー表示制御
+          _updateCompAddressWarn();
         } else {
           _showMsg('AIサービスは現在利用できません。POSLA運営にお問い合わせください', 'warn');
         }

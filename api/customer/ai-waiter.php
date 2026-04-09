@@ -13,6 +13,7 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/menu-resolver.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
+require_once __DIR__ . '/../lib/posla-settings.php';
 
 require_method(['POST']);
 
@@ -33,11 +34,10 @@ if (trim($message) === '') {
 
 $pdo = get_db();
 
-// ── 1. 店舗 + テナント情報取得 ──
+// ── 1. 店舗情報取得 ──
 $stmt = $pdo->prepare(
-    'SELECT s.id, s.name, s.tenant_id, t.ai_api_key
+    'SELECT s.id, s.name, s.tenant_id
      FROM stores s
-     INNER JOIN tenants t ON t.id = s.tenant_id
      WHERE s.id = ? AND s.is_active = 1'
 );
 $stmt->execute([$storeId]);
@@ -47,10 +47,8 @@ if (!$store) {
     json_error('STORE_NOT_FOUND', '店舗が見つかりません', 404);
 }
 
-$apiKey = $store['ai_api_key'] ?? '';
-if ($apiKey === '') {
-    json_error('AI_NOT_CONFIGURED', 'AI機能が設定されていません', 503);
-}
+// Gemini APIキーは POSLA共通設定から取得（P1-6 で統一）
+$apiKey = require_gemini_api_key($pdo);
 
 // ── 2. メニュー情報を取得 ──
 $categories = resolve_store_menu($pdo, $storeId);

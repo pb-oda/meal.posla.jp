@@ -53,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         } catch (PDOException $e) {
             // course_phases 未作成時はスキップ
+            error_log('[P1-12][api/store/course-csv.php:54] fetch_course_phases: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
         }
     }
 
@@ -139,6 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } catch (PDOException $e) {
         // course_phases 未作成時はスキップ
+        error_log('[P1-12][api/store/course-csv.php:140] fetch_existing_phases: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 
     // CSV全行を読み込んでコースごとにグループ化

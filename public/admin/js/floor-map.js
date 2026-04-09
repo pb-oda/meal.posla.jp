@@ -40,7 +40,7 @@ var FloorMap = (function () {
         AdminApi.closeTableSession(sessionId).then(function () {
           _fetch();
         }).catch(function (err) {
-          alert(err.message || 'エラーが発生しました');
+          if (typeof showToast === 'function') showToast(err.message || 'エラーが発生しました', 'error');
         });
         return;
       }
@@ -303,7 +303,7 @@ var FloorMap = (function () {
     .then(function (r) { return r.text().then(function (t) { return JSON.parse(t); }); })
     .then(function (json) {
       if (!json.ok) {
-        alert((json.error && json.error.message) || '保存に失敗しました');
+        if (typeof showToast === 'function') showToast((json.error && json.error.message) || '保存に失敗しました', 'error');
         saveBtn.disabled = false;
         saveBtn.textContent = '保存';
         return;
@@ -312,7 +312,7 @@ var FloorMap = (function () {
       _fetch();
     })
     .catch(function () {
-      alert('通信エラー');
+      if (typeof showToast === 'function') showToast('通信エラー', 'error');
       saveBtn.disabled = false;
       saveBtn.textContent = '保存';
     });
@@ -338,12 +338,12 @@ var FloorMap = (function () {
     .then(function (r) { return r.text().then(function (t) { return JSON.parse(t); }); })
     .then(function (json) {
       if (!json.ok) {
-        alert((json.error && json.error.message) || '操作に失敗しました');
+        if (typeof showToast === 'function') showToast((json.error && json.error.message) || '操作に失敗しました', 'error');
         return;
       }
       _fetch();
     })
-    .catch(function () { alert('通信エラー'); })
+    .catch(function () { if (typeof showToast === 'function') showToast('通信エラー', 'error'); })
     .finally(function () { btn.disabled = false; });
   }
 

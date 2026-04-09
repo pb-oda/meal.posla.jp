@@ -73,6 +73,7 @@ if ($tableId) {
         }
     } catch (PDOException $e) {
         // table_sessions/time_limit_plans 未作成時はスキップ
+        error_log('[P1-12][api/kds/close-table.php:74] fetch_session_plan: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 }
 
@@ -117,6 +118,7 @@ try {
             )->execute([$storeId, $tableId]);
         } catch (PDOException $e) {
             // table_sessions 未作成時はスキップ
+            error_log('[P1-12][api/kds/close-table.php:118] kds_close_mark_paid: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
         }
     }
 

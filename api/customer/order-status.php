@@ -131,6 +131,7 @@ try {
     $ratedItemIds = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'order_item_id');
 } catch (PDOException $e) {
     // satisfaction_ratings テーブル未作成
+    error_log('[P1-12][api/customer/order-status.php:132] fetch_rated_items: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 json_response([

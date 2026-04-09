@@ -24,20 +24,8 @@ $to   = $_GET['to']   ?? date('Y-m-d');
 
 $range = get_business_day_range($pdo, $storeId, $from, $to);
 
-// ===== 目標調理時間の取得 =====
-$targetCookSec = 900; // デフォルト15分
-try {
-    $stmt = $pdo->prepare(
-        'SELECT target_cook_time_sec FROM store_settings WHERE store_id = ? LIMIT 1'
-    );
-    $stmt->execute([$storeId]);
-    $row = $stmt->fetch();
-    if ($row && !empty($row['target_cook_time_sec'])) {
-        $targetCookSec = (int)$row['target_cook_time_sec'];
-    }
-} catch (PDOException $e) {
-    // カラムが存在しない場合はデフォルト値のまま
-}
+// ===== 目標調理時間 =====
+$targetCookSec = 900; // デフォルト15分（店舗別設定は未実装）
 
 // ===== 1. テーブル回転率 =====
 $stmt = $pdo->prepare(

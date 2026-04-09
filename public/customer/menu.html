@@ -185,7 +185,6 @@
         <button class="lang-selector__option" data-lang="ja"><span>🇯🇵</span> 日本語</button>
         <button class="lang-selector__option" data-lang="en"><span>🇺🇸</span> English</button>
         <button class="lang-selector__option" data-lang="zh-Hans"><span>🇨🇳</span> 简体中文</button>
-        <button class="lang-selector__option" data-lang="zh-Hant"><span>🇹🇼</span> 繁體中文</button>
         <button class="lang-selector__option" data-lang="ko"><span>🇰🇷</span> 한국어</button>
       </div>
     </div>
@@ -249,13 +248,13 @@
         <div class="cart-allergen-section">
           <label class="cart-memo-label">アレルギー情報（該当があれば選択）</label>
           <div class="allergen-chips" id="allergen-chips">
-            <label class="allergen-chip"><input type="checkbox" value="egg"><span>卵</span></label>
-            <label class="allergen-chip"><input type="checkbox" value="milk"><span>乳</span></label>
-            <label class="allergen-chip"><input type="checkbox" value="wheat"><span>小麦</span></label>
-            <label class="allergen-chip"><input type="checkbox" value="shrimp"><span>えび</span></label>
-            <label class="allergen-chip"><input type="checkbox" value="crab"><span>かに</span></label>
-            <label class="allergen-chip"><input type="checkbox" value="buckwheat"><span>そば</span></label>
-            <label class="allergen-chip"><input type="checkbox" value="peanut"><span>落花生</span></label>
+            <label class="allergen-chip"><input type="checkbox" value="egg"><span data-allergen="egg">卵</span></label>
+            <label class="allergen-chip"><input type="checkbox" value="milk"><span data-allergen="milk">乳</span></label>
+            <label class="allergen-chip"><input type="checkbox" value="wheat"><span data-allergen="wheat">小麦</span></label>
+            <label class="allergen-chip"><input type="checkbox" value="shrimp"><span data-allergen="shrimp">えび</span></label>
+            <label class="allergen-chip"><input type="checkbox" value="crab"><span data-allergen="crab">かに</span></label>
+            <label class="allergen-chip"><input type="checkbox" value="buckwheat"><span data-allergen="buckwheat">そば</span></label>
+            <label class="allergen-chip"><input type="checkbox" value="peanut"><span data-allergen="peanut">落花生</span></label>
           </div>
         </div>
       </div>
@@ -368,12 +367,16 @@
     var storeId = params.get('store_id') || params.get('store');
     var tableId = params.get('table_id') || params.get('table');
     var lang = localStorage.getItem('mt_lang') || 'ja';
+    // P1-31: 繁體中文を運用判断で無効化。既存ユーザーの localStorage 'zh-Hant' は 'zh-Hans' にフォールバック
+    if (lang === 'zh-Hant') {
+      lang = 'zh-Hans';
+      localStorage.setItem('mt_lang', lang);
+    }
     var _uiText = {};   // L-4: UI翻訳辞書（langごとのキーバリュー）
     var _langMeta = {
       'ja':      { flag: '🇯🇵', code: 'JA', label: '日本語' },
       'en':      { flag: '🇺🇸', code: 'EN', label: 'English' },
       'zh-Hans': { flag: '🇨🇳', code: 'CN', label: '简体中文' },
-      'zh-Hant': { flag: '🇹🇼', code: 'TW', label: '繁體中文' },
       'ko':      { flag: '🇰🇷', code: 'KO', label: '한국어' }
     };
     var menuData = [];
@@ -533,6 +536,20 @@
       if (memoLabels[1]) memoLabels[1].textContent = _t('allergy_label', 'アレルギー情報（該当があれば選択）');
       el = document.getElementById('order-memo');
       if (el) el.placeholder = _t('memo_placeholder', '例：ネギ抜きで、辛さ控えめ');
+      // P1-19: アレルギーチップのラベル
+      var allergenLabels = [
+        { code: 'egg', ja: '卵' },
+        { code: 'milk', ja: '乳' },
+        { code: 'wheat', ja: '小麦' },
+        { code: 'shrimp', ja: 'えび' },
+        { code: 'crab', ja: 'かに' },
+        { code: 'buckwheat', ja: 'そば' },
+        { code: 'peanut', ja: '落花生' }
+      ];
+      for (var ai = 0; ai < allergenLabels.length; ai++) {
+        var allergenEl = document.querySelector('span[data-allergen="' + allergenLabels[ai].code + '"]');
+        if (allergenEl) allergenEl.textContent = _t('allergen_' + allergenLabels[ai].code, allergenLabels[ai].ja);
+      }
       // 送信ボタン（LO時以外）
       el = document.getElementById('btn-send-order');
       if (el && !_isLastOrder) el.textContent = _t('send_order', '注文を送信');
@@ -2316,8 +2333,9 @@
       var esc = function (s) { return Utils.escapeHtml(s || ''); };
 
       var h = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+        + '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
         + '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        + '<title>' + esc(_t('receipt_title', 'お会計明細')) + '</title>'
+        + '<title>お会計明細</title>'
         + '<style>'
         + 'body{font-family:sans-serif;max-width:320px;margin:0 auto;padding:16px;font-size:13px;color:#333;}'
         + '.rc-header{text-align:center;margin-bottom:12px;}'
@@ -2385,12 +2403,16 @@
 
       h += '</body></html>';
 
-      var w = window.open('', '_blank', 'width=320,height=600');
+      // P1-19b: Blob URL 方式に変更（document.write 方式で iOS Safari 等が UTF-8 を誤認して文字化けする問題対策）
+      var blob = new Blob([h], { type: 'text/html;charset=UTF-8' });
+      var blobUrl = URL.createObjectURL(blob);
+      var w = window.open(blobUrl, '_blank', 'width=320,height=600');
       if (w) {
-        w.document.write(h);
-        w.document.close();
         w.focus();
+        // メモリリーク予防のため5秒後に Blob URL を解放（ブラウザによる読み込み完了を待つ）
+        setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 5000);
       } else {
+        URL.revokeObjectURL(blobUrl);
         alert('ポップアップがブロックされました。ブラウザの設定をご確認ください。');
       }
     }

@@ -10,6 +10,7 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/audit-log.php';
+require_once __DIR__ . '/../lib/posla-settings.php';
 
 require_method(['GET', 'PATCH']);
 // GETはstaff以上（KDS音声コマンドでAPIキー取得に必要）、PATCHはmanager以上
@@ -34,29 +35,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $settings = $stmt->fetch();
     }
 
-    // include_ai_key=1 の場合はPOSLA共通設定からAPIキーを取得（認証済みスタッフ向け、KDS音声コマンド等の旧呼び出し元との互換用）
-    // ※新規実装は api/store/ai-generate.php / places-proxy.php を経由すること（キーをブラウザに渡さない）
-    if (!empty($_GET['include_ai_key'])) {
-        $aiStmt = $pdo->prepare("SELECT setting_key, setting_value FROM posla_settings WHERE setting_key IN ('gemini_api_key', 'google_places_api_key')");
-        $aiStmt->execute();
-        $aiKey = null;
-        $placesKey = null;
-        while ($row = $aiStmt->fetch()) {
-            if ($row['setting_key'] === 'gemini_api_key') $aiKey = $row['setting_value'];
-            if ($row['setting_key'] === 'google_places_api_key') $placesKey = $row['setting_value'];
-        }
-        json_response([
-            'settings' => $settings,
-            'ai_api_key' => $aiKey,
-            'google_places_api_key' => $placesKey
-        ]);
-    }
+    // P1b-2: include_ai_key=1 の旧呼び出しブランチを廃止（codex #1）
+    // フロントエンド (voice-commander/shift-calendar/sold-out) は P1-6b/c で
+    // ai-generate.php プロキシ経由に完全移行済み。本ブランチは APIキーを返す可能性が
+    // あったため攻撃面を残していた。posla-admin 側は posla_settings テーブル経由の
+    // 別経路なので影響なし。
 
     // POSLA共通でAIキーが設定済みかフラグを付与
-    $aiStmt = $pdo->prepare("SELECT setting_value FROM posla_settings WHERE setting_key = 'gemini_api_key'");
-    $aiStmt->execute();
-    $aiRow = $aiStmt->fetch();
-    $aiConfigured = $aiRow && !empty($aiRow['setting_value']);
+    $aiConfigured = get_posla_setting($pdo, 'gemini_api_key') !== null;
     $settings['ai_api_key_set'] = $aiConfigured;
     $settings['ai_configured'] = $aiConfigured;
 
@@ -82,7 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
             'last_order_time', 'google_place_id',
             'takeout_enabled', 'takeout_min_prep_minutes', 'takeout_available_from',
             'takeout_available_to', 'takeout_slot_capacity', 'takeout_online_payment',
-            'brand_color', 'brand_logo_url', 'brand_display_name'
+            'brand_color', 'brand_logo_url', 'brand_display_name',
+            'self_checkout_enabled' // P1-10b: セルフレジ有効フラグ
         ];
 
         $fields = [];
@@ -124,6 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
 
         json_response(['ok' => true]);
     } catch (Exception $e) {
-        json_error('SERVER_ERROR', $e->getMessage(), 500);
+        // P1b-5: 例外メッセージ (DB カラム名等) を攻撃者に露出させない。詳細は error_log に。
+        error_log('[settings.php PATCH] ' . $e->getMessage());
+        json_error('SERVER_ERROR', '設定の更新に失敗しました', 500);
     }
 }

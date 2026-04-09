@@ -48,6 +48,12 @@ var SettingsEditor = (function () {
       + '<label class="settings-toggle"><input type="checkbox" class="settings-toggle__input pay-cb" value="card"' + (payMethods.indexOf('card') >= 0 ? ' checked' : '') + '> カード</label>'
       + '<label class="settings-toggle"><input type="checkbox" class="settings-toggle__input pay-cb" value="qr"' + (payMethods.indexOf('qr') >= 0 ? ' checked' : '') + '> QR決済</label></div></div>'
 
+      + '<div class="form-group"><label class="form-label">セルフレジ</label>'
+      + '<div class="settings-toggle-group">'
+      + '<label class="settings-toggle"><input type="checkbox" class="settings-toggle__input" id="set-self-checkout"' + (parseInt(s.self_checkout_enabled, 10) ? ' checked' : '') + '> 有効</label>'
+      + '</div>'
+      + '<div style="font-size:0.75rem;color:#888;margin-top:0.25rem">顧客がスマホで自己決済できる機能。事前にオーナー管理画面で決済ゲートウェイ（Stripe）を設定してから有効にしてください。</div></div>'
+
       + '<h3 style="margin:2rem 0 1rem;font-size:1rem">レシート設定</h3>'
       + '<div class="form-group"><label class="form-label">店舗名</label><input class="form-input" id="set-receipt-name" value="' + Utils.escapeHtml(s.receipt_store_name || '') + '"></div>'
       + '<div class="form-group"><label class="form-label">住所</label><input class="form-input" id="set-receipt-addr" value="' + Utils.escapeHtml(s.receipt_address || '') + '"></div>'
@@ -268,7 +274,8 @@ var SettingsEditor = (function () {
         takeout_online_payment: document.getElementById('set-takeout-online').checked ? 1 : 0,
         brand_color: document.getElementById('set-brand-color').value.trim() || null,
         brand_logo_url: document.getElementById('set-brand-logo-url').value.trim() || null,
-        brand_display_name: document.getElementById('set-brand-display-name').value.trim() || null
+        brand_display_name: document.getElementById('set-brand-display-name').value.trim() || null,
+        self_checkout_enabled: document.getElementById('set-self-checkout').checked ? 1 : 0
       };
 
       this.disabled = true;

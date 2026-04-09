@@ -190,6 +190,7 @@ try {
     $sessionId = $sessRow ? $sessRow['id'] : null;
 } catch (PDOException $e) {
     // table_sessions 未存在時はスキップ
+    error_log('[P1-12][api/customer/checkout-confirm.php:191] fetch_session_id: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 // ── カラム存在チェック ──
@@ -260,6 +261,7 @@ try {
         )->execute([$storeId, $tableId]);
     } catch (PDOException $e) {
         // table_sessions 未存在時はスキップ
+        error_log('[P1-12][api/customer/checkout-confirm.php:261] checkout_mark_paid: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 
     // ── レシピ連動在庫引き落とし ──
@@ -306,6 +308,7 @@ try {
         }
     } catch (PDOException $e) {
         // recipes/ingredients テーブル未作成時はスキップ
+        error_log('[P1-12][api/customer/checkout-confirm.php:307] recipe_deduct_stock: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 
     $pdo->commit();

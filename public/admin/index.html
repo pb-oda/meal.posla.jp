@@ -84,7 +84,18 @@
       .then(function (json) {
         if (json.ok) {
           var role = json.data && json.data.user ? json.data.user.role : '';
-          window.location.href = role === 'owner' ? 'owner-dashboard.html' : 'dashboard.html';
+          var dest;
+          if (role === 'owner') {
+            dest = 'owner-dashboard.html';
+          } else if (role === 'device') {
+            // P1a: device は dashboard.html 経由で KDS / レジに振り分け
+            // （dashboard.html の auth チェックが stores[0].userVisibleTools / staffVisibleTools を見て
+            //   ../kds/index.html or ../kds/cashier.html に再遷移する）
+            dest = 'dashboard.html';
+          } else {
+            dest = 'dashboard.html';
+          }
+          window.location.href = dest;
         } else {
           showError(json.error ? json.error.message : 'ログインに失敗しました');
         }

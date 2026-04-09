@@ -210,7 +210,9 @@ try {
     $stmt->execute([$storeId]);
     $storeRow = $stmt->fetch();
     $storeName = $storeRow ? ($storeRow['receipt_store_name'] ?: '') : '';
-} catch (PDOException $e) {}
+} catch (PDOException $e) {
+    error_log('[P1-12][api/store/shift/ai-suggest-data.php:213] fetch_store_name: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+}
 
 json_response([
     'templates'      => $templates,

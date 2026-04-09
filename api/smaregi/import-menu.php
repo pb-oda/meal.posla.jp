@@ -16,6 +16,13 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/smaregi-client.php';
 
+// P1-20: 自動翻訳トリガー用。translate-menu.php の POST ハンドラ起動を抑止して
+// translate_menu_core() 関数のみを利用する。
+if (!defined('TRANSLATE_MENU_CORE_ONLY')) {
+    define('TRANSLATE_MENU_CORE_ONLY', true);
+}
+require_once __DIR__ . '/../store/translate-menu.php';
+
 $user = require_role('owner');
 require_method(['POST']);
 
@@ -183,9 +190,22 @@ $stmt = $pdo->prepare(
 );
 $stmt->execute([$tenantId, $storeId]);
 
+// ===== P1-20: 自動翻訳トリガー =====
+// 新規インポートが0件の場合は呼出スキップ（無駄なAPI呼出回避）
+$autoTranslate = null;
+if ($imported > 0) {
+    try {
+        $autoTranslate = translate_menu_core($pdo, $tenantId, $storeId, ['en'], false);
+    } catch (\Exception $e) {
+        error_log('[P1-20][api/smaregi/import-menu.php] auto_translate_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        $autoTranslate = ['ok' => false, 'warning' => 'auto_translate_failed'];
+    }
+}
+
 json_response([
-    'message'  => 'メニューインポートが完了しました',
-    'imported' => $imported,
-    'skipped'  => $skipped,
-    'errors'   => $errors,
+    'message'        => 'メニューインポートが完了しました',
+    'imported'       => $imported,
+    'skipped'        => $skipped,
+    'errors'         => $errors,
+    'auto_translate' => $autoTranslate,
 ]);

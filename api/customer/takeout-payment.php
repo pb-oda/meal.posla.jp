@@ -141,6 +141,7 @@ try {
     $pdo->prepare('INSERT INTO payments (' . $cols . ') VALUES (' . $vals . ')')->execute($params);
 } catch (PDOException $e) {
     // payments記録失敗は致命的ではない（注文ステータスは更新済み）
+    error_log('[P1-12][api/customer/takeout-payment.php:142] takeout_payment_record: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 json_response([

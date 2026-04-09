@@ -64,6 +64,18 @@
     StoreEditor.init(document.getElementById('store-list'));
     AiAssistant.init(document.getElementById('ai-assistant-container'));
 
+    // P1-28: 本部メニュー（enterprise限定: hq_menu_broadcast）
+    // CategoryEditor は init(listEl, countEl) で両方必須（render() が countEl.textContent を書き込むため）
+    if (typeof CategoryEditor !== 'undefined') {
+      CategoryEditor.init(
+        document.getElementById('hq-category-list-hidden'),
+        document.getElementById('hq-category-count-hidden')
+      );
+    }
+    if (typeof MenuTemplateEditor !== 'undefined') {
+      MenuTemplateEditor.init(document.getElementById('hq-menu-template-list'));
+    }
+
     // ユーザーリストのstaffフィルタ（owner画面ではowner/managerのみ管理）
     var userListEl = document.getElementById('user-list');
     new MutationObserver(function () {
@@ -148,6 +160,7 @@
     var tabFeatureMap = {
       'cross-store': 'advanced_reports',
       'abc-analytics': 'basket_analysis',
+      'hq-menu': 'hq_menu_broadcast',
       'ai-assistant': 'ai_waiter'
     };
     var keys = Object.keys(tabFeatureMap);
@@ -187,6 +200,31 @@
     switch (tabId) {
       case 'cross-store': CrossStoreReport.load(); break;
       case 'abc-analytics': AbcAnalytics.load(); break;
+      case 'hq-menu':
+        // P1-28: 本部メニュー（enterprise限定）
+        // 1. CategoryEditor.load() でカテゴリ取得 + _categories キャッシュ更新（buildCategoryOptions が依存）
+        // 2. AdminApi.getCategories() でカテゴリフィルタ <select> を再構築
+        // 3. MenuTemplateEditor.load() でテンプレート一覧表示
+        if (typeof CategoryEditor !== 'undefined' && typeof MenuTemplateEditor !== 'undefined') {
+          CategoryEditor.load();
+          AdminApi.getCategories().then(function (res) {
+            var cats = res.categories || [];
+            var filterEl = document.getElementById('hq-menu-category-filter');
+            if (filterEl) {
+              filterEl.innerHTML = '<option value="">全カテゴリ</option>';
+              for (var i = 0; i < cats.length; i++) {
+                var opt = document.createElement('option');
+                opt.value = cats[i].id;
+                opt.textContent = cats[i].name;
+                filterEl.appendChild(opt);
+              }
+            }
+            MenuTemplateEditor.load();
+          }).catch(function (err) {
+            showToast('カテゴリ読み込み失敗: ' + err.message, 'error');
+          });
+        }
+        break;
       case 'stores': StoreEditor.load(); break;
       case 'users': UserEditor.load(); break;
       case 'ai-assistant':
@@ -1024,6 +1062,74 @@
       else if (btn.dataset.action === 'delete-store') StoreEditor.confirmDelete(btn.dataset.id);
     });
 
+    // P1-28: 本部メニュー追加ボタン
+    var btnAddHqMenu = document.getElementById('btn-add-hq-menu');
+    if (btnAddHqMenu) {
+      btnAddHqMenu.addEventListener('click', function () {
+        if (typeof MenuTemplateEditor !== 'undefined') {
+          MenuTemplateEditor.openAddModal();
+        }
+      });
+    }
+
+    // P1-28: 本部メニュー カテゴリフィルタ
+    var hqFilterEl = document.getElementById('hq-menu-category-filter');
+    if (hqFilterEl) {
+      hqFilterEl.addEventListener('change', function () {
+        if (typeof MenuTemplateEditor !== 'undefined') {
+          MenuTemplateEditor.filterByCategory(hqFilterEl.value);
+        }
+      });
+    }
+
+    // P1-28: 本部メニュー編集/削除/売切トグル のイベント委譲
+    var hqMenuListEl = document.getElementById('hq-menu-template-list');
+    if (hqMenuListEl) {
+      hqMenuListEl.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-action]');
+        if (!btn || typeof MenuTemplateEditor === 'undefined') return;
+        if (btn.dataset.action === 'edit-template') MenuTemplateEditor.openEditModal(btn.dataset.id);
+        else if (btn.dataset.action === 'delete-template') MenuTemplateEditor.confirmDelete(btn.dataset.id);
+        else if (btn.dataset.action === 'toggle-sold-out') MenuTemplateEditor.toggleSoldOut(btn.dataset.id);
+      });
+    }
+
+    // P1-28b: 本部メニュー CSV エクスポート
+    var btnHqCsvExport = document.getElementById('btn-hq-menu-csv-export');
+    if (btnHqCsvExport) {
+      btnHqCsvExport.addEventListener('click', function () {
+        AdminApi.exportMenuCsv();
+      });
+    }
+
+    // P1-28b: 本部メニュー CSV インポート (ボタン → 隠し file input トリガ)
+    var btnHqCsvImport = document.getElementById('btn-hq-menu-csv-import');
+    var hqCsvFile = document.getElementById('hq-menu-csv-file');
+    if (btnHqCsvImport && hqCsvFile) {
+      btnHqCsvImport.addEventListener('click', function () {
+        hqCsvFile.click();
+      });
+      hqCsvFile.addEventListener('change', function () {
+        var file = this.files[0];
+        if (!file) return;
+        if (!confirm('CSVファイル「' + file.name + '」をインポートします。\n既存メニューと id が一致する行は更新されます。続行しますか？')) {
+          this.value = '';
+          return;
+        }
+        AdminApi.importMenuCsv(file).then(function (res) {
+          var msg = '作成: ' + (res.created || 0) + '件、更新: ' + (res.updated || 0) + '件';
+          var hasErrors = res.errors && res.errors.length > 0;
+          if (hasErrors) msg += '\nエラー:\n' + res.errors.join('\n');
+          showToast(msg, hasErrors ? 'warning' : 'success');
+          if (typeof MenuTemplateEditor !== 'undefined') MenuTemplateEditor.load();
+        }).catch(function (err) {
+          showToast('インポート失敗: ' + (err.message || err), 'error');
+        }).finally(function () {
+          hqCsvFile.value = '';
+        });
+      });
+    }
+
     // モーダルキャンセル
     document.addEventListener('click', function (e) {
       if (e.target.matches('[data-action="modal-cancel"]')) {
@@ -1270,7 +1376,8 @@
     var btn = document.getElementById('smaregi-import-btn');
     if (btn) {
       btn.disabled = true;
-      btn.textContent = 'インポート中...';
+      // P1-20: 同期翻訳のため、ボタン文言で事前告知
+      btn.textContent = 'インポート＆翻訳中...';
     }
 
     var resultEl = document.getElementById('smaregi-import-result');
@@ -1283,10 +1390,31 @@
       if (data.errors > 0) {
         msg += ', ' + data.errors + '件エラー';
       }
-      if (resultEl) {
-        resultEl.innerHTML = '<div style="padding:0.75rem;background:#e8f5e9;border-radius:4px;color:#2e7d32;font-size:0.9rem;">' + Utils.escapeHtml(msg) + '</div>';
+
+      // P1-20: 自動翻訳結果の表示分岐
+      var translateMsg = '';
+      var translateWarn = false;
+      var auto = data.auto_translate;
+      if (auto && auto.ok === true) {
+        translateMsg = '（翻訳 ' + (auto.translated || 0) + '件）';
+      } else if (auto && auto.ok === false) {
+        translateMsg = '⚠ 翻訳は後ほど手動で実行してください';
+        translateWarn = true;
       }
-      showToast(msg, 'success');
+      // auto === null の場合（新規0件）は何も追記しない
+
+      if (resultEl) {
+        var bgColor = translateWarn ? '#fff8e1' : '#e8f5e9';
+        var fgColor = translateWarn ? '#e65100' : '#2e7d32';
+        var html = '<div style="padding:0.75rem;background:' + bgColor + ';border-radius:4px;color:' + fgColor + ';font-size:0.9rem;">'
+          + Utils.escapeHtml(msg);
+        if (translateMsg) {
+          html += '<br>' + Utils.escapeHtml(translateMsg);
+        }
+        html += '</div>';
+        resultEl.innerHTML = html;
+      }
+      showToast(msg + (translateMsg ? ' ' + translateMsg : ''), translateWarn ? 'warning' : 'success');
     }).catch(function (err) {
       if (resultEl) {
         resultEl.innerHTML = '<div style="padding:0.75rem;background:#ffebee;border-radius:4px;color:#c62828;font-size:0.9rem;">' + Utils.escapeHtml(err.message) + '</div>';

@@ -62,6 +62,7 @@ try {
     }
 } catch (PDOException $e) {
     // table_sessions 未作成時はスキップ
+    error_log('[P1-12][tables-status.php:63] fetch_session_map: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 // テーブルごとの未会計注文数・合計金額
@@ -83,6 +84,7 @@ try {
     }
 } catch (PDOException $e) {
     // skip
+    error_log('[P1-12][tables-status.php:84] fetch_order_map: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 // O-1: テーブルごとの品目ステータス集計（order_items テーブルが存在する場合）
@@ -112,6 +114,7 @@ try {
     }
 } catch (PDOException $e) {
     // order_items テーブル未作成時はスキップ
+    error_log('[P1-12][tables-status.php:113] fetch_item_status_map: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 $now = time();
@@ -167,6 +170,7 @@ try {
     }
 } catch (PDOException $e) {
     // カラム未存在時はデフォルト値
+    error_log('[P1-12][tables-status.php:168] fetch_last_order_data: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 json_response([

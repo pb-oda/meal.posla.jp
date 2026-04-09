@@ -25,6 +25,9 @@ _backup_*/
 *.pdf
 *.pptx
 
+# Internal credentials / 社外秘
+docs/internal/
+
 # Node
 node_modules/
 

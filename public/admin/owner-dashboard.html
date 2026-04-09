@@ -14,13 +14,6 @@
     .owner-tab-panel.active {
       display: block;
     }
-    /* 店舗管理タブのAI設定欄を非表示（AIアシスタントタブに移動済み） */
-    #store-list .card__body > h4 {
-      display: none;
-    }
-    #store-list .card__body > .form-group {
-      display: none;
-    }
     /* P1-5: パスワード変更ボタン */
     .btn-change-password {
       background: transparent;
@@ -56,6 +49,7 @@
   <nav class="tab-nav" id="owner-tab-nav">
     <button class="tab-nav__btn" data-tab="cross-store">クロス店舗レポート</button>
     <button class="tab-nav__btn" data-tab="abc-analytics">ABC分析</button>
+    <button class="tab-nav__btn" data-tab="hq-menu">本部メニュー</button>
     <button class="tab-nav__btn" data-tab="stores">店舗管理</button>
     <button class="tab-nav__btn" data-tab="users">ユーザー管理</button>
     <button class="tab-nav__btn" data-tab="ai-assistant">AIアシスタント</button>
@@ -83,6 +77,34 @@
       <div id="abc-analytics-container"></div>
     </div>
 
+    <!-- 本部メニュー（enterprise限定: hq_menu_broadcast） -->
+    <div class="owner-tab-panel" id="owner-panel-hq-menu">
+      <div class="panel-header">
+        <h2 class="panel-header__title">本部メニュー一括配信</h2>
+        <div class="panel-header__actions">
+          <button class="btn btn-sm btn-outline" id="btn-hq-menu-csv-export">CSVエクスポート</button>
+          <button class="btn btn-sm btn-outline" id="btn-hq-menu-csv-import">CSVインポート</button>
+          <input type="file" accept=".csv" id="hq-menu-csv-file" style="display:none">
+          <button class="btn btn-primary" id="btn-add-hq-menu">+ メニュー追加</button>
+        </div>
+      </div>
+      <p style="color:var(--text-muted);font-size:0.9rem;margin:0 0 12px;">
+        本部で登録したメニューは、全店舗の<strong>メニューテンプレート</strong>として共有されます。<br>
+        各店舗の在庫や売り切れ状態は <code>store_menu_overrides</code> で個別管理されます。
+      </p>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card__body" style="display:flex;align-items:center;gap:12px;">
+          <label for="hq-menu-category-filter" style="font-weight:600;">カテゴリ:</label>
+          <select id="hq-menu-category-filter" class="form-input" style="max-width:240px;">
+            <option value="">全カテゴリ</option>
+          </select>
+          <span id="hq-category-count-hidden" style="display:none;"></span>
+        </div>
+      </div>
+      <div id="hq-category-list-hidden" style="display:none;"></div>
+      <div id="hq-menu-template-list"></div>
+    </div>
+
     <!-- 店舗管理 -->
     <div class="owner-tab-panel" id="owner-panel-stores">
       <div class="panel-header">
@@ -106,9 +128,7 @@
       <div class="panel-header">
         <h2 class="panel-header__title">AIアシスタント</h2>
       </div>
-      <div class="card" id="ai-assistant-container">
-        <p style="padding:2rem;color:#888;text-align:center;">準備中</p>
-      </div>
+      <div class="card" id="ai-assistant-container"></div>
     </div>
 
     <!-- 契約・プラン -->
@@ -210,9 +230,11 @@
   <script src="js/abc-analytics.js"></script>
   <script src="js/user-editor.js?v=20260406b"></script>
   <script src="js/store-editor.js"></script>
-  <script src="js/ai-assistant.js?v=20260407p15"></script>
+  <script src="js/category-editor.js?v=20260408a"></script>
+  <script src="js/menu-template-editor.js?v=20260408a"></script>
+  <script src="js/ai-assistant.js?v=20260408bF"></script>
   <script src="../js/shift-manager.js?v=20260406b"></script>
-  <script src="js/owner-app.js?v=20260406c"></script>
+  <script src="js/owner-app.js?v=20260408p120"></script>
 
   <!-- グローバルトースト（dashboard.htmlと同一パターン） -->
   <script>
@@ -334,7 +356,7 @@
         var json;
         try { json = JSON.parse(r.text); } catch (e) { json = null; }
         if (r.status === 200 && json && json.ok) {
-          alert('パスワードを変更しました。');
+          if (typeof showToast === 'function') showToast('パスワードを変更しました。', 'success');
           closeModal();
         } else {
           var msg = (json && json.error && json.error.message) || 'パスワード変更に失敗しました';

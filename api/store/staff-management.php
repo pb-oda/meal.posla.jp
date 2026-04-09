@@ -2,13 +2,16 @@
 /**
  * スタッフ管理 API（manager用）
  *
- * GET    /api/store/staff-management.php?store_id=xxx       — 自店舗のstaff一覧
- * POST   /api/store/staff-management.php                    — staff新規作成
- * PATCH  /api/store/staff-management.php?id=xxx             — staff更新
- * DELETE /api/store/staff-management.php?id=xxx&store_id=xxx — staff削除
+ * GET    /api/store/staff-management.php?store_id=xxx[&kind=staff|device]       — 自店舗のstaff/device一覧
+ * POST   /api/store/staff-management.php[?kind=staff|device]                    — staff/device新規作成
+ * PATCH  /api/store/staff-management.php?id=xxx[&kind=staff|device]             — staff/device更新
+ * DELETE /api/store/staff-management.php?id=xxx&store_id=xxx[&kind=staff|device] — staff/device削除
  *
  * manager（レベル2）以上のみアクセス可能
- * 自店舗に紐づくstaffのみ操作可能
+ * 自店舗に紐づくstaff/deviceのみ操作可能
+ *
+ * P1a: kind パラメータで staff / device を切り替え。デフォルト staff。
+ * device は KDS/レジ端末専用アカウント（dashboard.html には遷移しない）。
  */
 
 require_once __DIR__ . '/../lib/response.php';
@@ -21,6 +24,24 @@ require_method(['GET', 'POST', 'PATCH', 'DELETE']);
 $user = require_role('manager');
 $pdo = get_db();
 $tenantId = $user['tenant_id'];
+
+// P1a: kind パラメータ（staff or device のみ許可）
+// POST 時は body 優先、その他は GET クエリ
+$kind = 'staff';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $rawBody = file_get_contents('php://input');
+    $tmpBody = $rawBody ? json_decode($rawBody, true) : null;
+    if (is_array($tmpBody) && isset($tmpBody['kind'])) {
+        $kind = $tmpBody['kind'];
+    } elseif (isset($_GET['kind'])) {
+        $kind = $_GET['kind'];
+    }
+} elseif (isset($_GET['kind'])) {
+    $kind = $_GET['kind'];
+}
+if ($kind !== 'staff' && $kind !== 'device') {
+    json_error('INVALID_KIND', 'kind は staff または device のみ指定可能です', 400);
+}
 
 // ----- GET -----
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -39,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
          GROUP BY u.id
          ORDER BY u.display_name'
     );
-    $stmt->execute([$storeId, $tenantId, 'staff']);
+    $stmt->execute([$storeId, $tenantId, $kind]);
     $users = $stmt->fetchAll();
 
     foreach ($users as &$u) {
@@ -93,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare(
             'INSERT INTO users (id, tenant_id, username, email, password_hash, display_name, role) VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
-        $stmt->execute([$id, $tenantId, $username, $email ?: null, $hash, $displayName, 'staff']);
+        $stmt->execute([$id, $tenantId, $username, $email ?: null, $hash, $displayName, $kind]);
 
         // 店舗割当 (L-3b2: visible_tools対応, L-3 Phase 2: hourly_rate対応)
         $visibleTools = isset($data['visible_tools']) ? $data['visible_tools'] : null;
@@ -112,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         json_error('CREATE_FAILED', 'スタッフ作成に失敗しました', 500);
     }
 
-    write_audit_log($pdo, $user, $storeId, 'staff_create', 'user', $id, null, ['username' => $username, 'display_name' => $displayName, 'role' => 'staff'], null);
+    write_audit_log($pdo, $user, $storeId, $kind . '_create', 'user', $id, null, ['username' => $username, 'display_name' => $displayName, 'role' => $kind], null);
 
     json_response(['ok' => true, 'id' => $id], 201);
 }
@@ -122,12 +143,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $id = $_GET['id'] ?? null;
     if (!$id) json_error('MISSING_ID', 'idが必要です', 400);
 
-    // 対象ユーザーがstaffかつ同テナントか確認（監査ログ用に変更前の値も取得）
+    // 対象ユーザーが指定 kind かつ同テナントか確認（監査ログ用に変更前の値も取得）
     $stmt = $pdo->prepare('SELECT id, username, display_name, role, is_active FROM users WHERE id = ? AND tenant_id = ?');
     $stmt->execute([$id, $tenantId]);
     $target = $stmt->fetch();
     if (!$target) json_error('NOT_FOUND', 'ユーザーが見つかりません', 404);
-    if ($target['role'] !== 'staff') json_error('FORBIDDEN', 'スタッフのみ編集可能です', 403);
+    if ($target['role'] !== $kind) {
+        json_error('FORBIDDEN', ($kind === 'device' ? 'デバイス' : 'スタッフ') . 'のみ編集可能です', 403);
+    }
 
     // 対象が自分の担当店舗に紐づいているか確認
     $myStoreIds = $user['store_ids'];
@@ -198,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $auditOld = ['username' => $target['username'], 'display_name' => $target['display_name'], 'is_active' => $target['is_active']];
     $auditNew = array_intersect_key($data, array_flip(['username', 'display_name', 'is_active']));
     if (!empty($data['password'])) $auditNew['password'] = '(変更あり)';
-    write_audit_log($pdo, $user, null, 'staff_update', 'user', $id, $auditOld, $auditNew, null);
+    write_audit_log($pdo, $user, null, $kind . '_update', 'user', $id, $auditOld, $auditNew, null);
 
     json_response(['ok' => true]);
 }
@@ -213,17 +236,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
 
     if ($id === $user['user_id']) json_error('CANNOT_DELETE_SELF', '自分自身は削除できません', 400);
 
-    // 対象ユーザーがstaffかつ同テナントか確認（監査ログ用に変更前の値も取得）
+    // 対象ユーザーが指定 kind かつ同テナントか確認（監査ログ用に変更前の値も取得）
     $stmt = $pdo->prepare('SELECT id, username, display_name, role, is_active FROM users WHERE id = ? AND tenant_id = ?');
     $stmt->execute([$id, $tenantId]);
     $target = $stmt->fetch();
     if (!$target) json_error('NOT_FOUND', 'ユーザーが見つかりません', 404);
-    if ($target['role'] !== 'staff') json_error('FORBIDDEN', 'スタッフのみ削除可能です', 403);
+    if ($target['role'] !== $kind) {
+        json_error('FORBIDDEN', ($kind === 'device' ? 'デバイス' : 'スタッフ') . 'のみ削除可能です', 403);
+    }
 
     // 対象が指定店舗に紐づいているか確認
     $stmt = $pdo->prepare('SELECT COUNT(*) FROM user_stores WHERE user_id = ? AND store_id = ?');
     $stmt->execute([$id, $storeId]);
-    if ($stmt->fetchColumn() == 0) json_error('FORBIDDEN', 'この店舗のスタッフではありません', 403);
+    if ($stmt->fetchColumn() == 0) {
+        json_error('FORBIDDEN', 'この店舗の' . ($kind === 'device' ? 'デバイス' : 'スタッフ') . 'ではありません', 403);
+    }
 
     $pdo->beginTransaction();
     try {
@@ -235,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
         json_error('DELETE_FAILED', '削除に失敗しました', 500);
     }
 
-    write_audit_log($pdo, $user, $storeId, 'staff_delete', 'user', $id, ['username' => $target['username'], 'display_name' => $target['display_name']], null, null);
+    write_audit_log($pdo, $user, $storeId, $kind . '_delete', 'user', $id, ['username' => $target['username'], 'display_name' => $target['display_name']], null, null);
 
     json_response(['ok' => true]);
 }

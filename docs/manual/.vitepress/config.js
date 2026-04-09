@@ -164,6 +164,13 @@ export default defineConfig({
           items: [
             { text: 'OAuth接続・店舗/商品マッピング', link: '/tenant/22-smaregi-full' }
           ]
+        },
+        {
+          text: '23. KDSデバイス端末ガイド',
+          collapsed: false,
+          items: [
+            { text: 'タブレット・マイク・ハンディ', link: '/tenant/23-kds-devices' }
+          ]
         }
       ],
       '/internal/': [

@@ -36,60 +36,8 @@ var StoreEditor = (function () {
       + '<div class="form-group" style="flex:1"><label class="form-label">テナント名</label>'
       + '<p style="margin:0;font-size:0.95rem;font-weight:600">' + Utils.escapeHtml(_tenant.name || '') + '</p></div>'
       + '</div>'
-      + '<h4 style="margin:1.5rem 0 0.75rem;font-size:0.9rem">AI設定（Gemini）</h4>'
-      + '<div class="form-group"><label class="form-label">APIキー'
-      + (_tenant.ai_api_key_set ? ' <span style="color:#43a047;font-weight:normal;font-size:0.8rem">（設定済み）</span>' : '')
-      + '</label>'
-      + '<div style="display:flex;gap:0.5rem;align-items:center">'
-      + '<input class="form-input" id="tenant-ai-key" type="password" value="" placeholder="'
-      + (_tenant.ai_api_key_set ? '変更する場合のみ入力' : 'APIキーを入力') + '" style="flex:1">'
-      + '<button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-tenant-ai-key" style="white-space:nowrap">表示</button>'
-      + '<button type="button" class="btn btn-primary btn-sm" id="btn-save-tenant-ai-key" style="white-space:nowrap">保存</button>'
-      + '</div></div>'
       + '</div></div>';
     return html;
-  }
-
-  function bindTenantEvents() {
-    var toggleBtn = document.getElementById('btn-toggle-tenant-ai-key');
-    if (toggleBtn) {
-      toggleBtn.addEventListener('click', function () {
-        var inp = document.getElementById('tenant-ai-key');
-        if (inp.type === 'password') {
-          inp.type = 'text';
-          this.textContent = '非表示';
-        } else {
-          inp.type = 'password';
-          this.textContent = '表示';
-        }
-      });
-    }
-
-    var saveBtn = document.getElementById('btn-save-tenant-ai-key');
-    if (saveBtn) {
-      saveBtn.addEventListener('click', function () {
-        var aiKey = document.getElementById('tenant-ai-key').value.trim();
-        if (!aiKey) { showToast('APIキーを入力してください', 'error'); return; }
-
-        this.disabled = true;
-        AdminApi.updateTenant({ ai_api_key: aiKey }).then(function () {
-          showToast('AIキーを保存しました', 'success');
-          var inp = document.getElementById('tenant-ai-key');
-          if (inp) { inp.value = ''; inp.placeholder = '変更する場合のみ入力'; }
-          _tenant.ai_api_key_set = true;
-          // ラベルの「設定済み」表示を更新
-          var label = inp.closest('.form-group').querySelector('.form-label');
-          if (label && label.innerHTML.indexOf('設定済み') < 0) {
-            label.innerHTML += ' <span style="color:#43a047;font-weight:normal;font-size:0.8rem">（設定済み）</span>';
-          }
-        }).catch(function (err) {
-          showToast(err.message, 'error');
-        }).finally(function () {
-          var btn = document.getElementById('btn-save-tenant-ai-key');
-          if (btn) btn.disabled = false;
-        });
-      });
-    }
   }
 
   function render() {
@@ -97,7 +45,6 @@ var StoreEditor = (function () {
 
     if (_stores.length === 0) {
       _container.innerHTML = tenantHtml + '<div class="empty-state"><div class="empty-state__icon">🏪</div><p class="empty-state__text">店舗がありません</p></div>';
-      bindTenantEvents();
       return;
     }
 
@@ -122,7 +69,6 @@ var StoreEditor = (function () {
 
     html += '</tbody></table></div></div>';
     _container.innerHTML = html;
-    bindTenantEvents();
   }
 
   function openAddModal() {

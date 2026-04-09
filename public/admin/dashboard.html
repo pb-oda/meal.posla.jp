@@ -145,7 +145,8 @@
         <h2 class="panel-header__title">メニュー管理</h2>
         <div class="panel-header__actions">
           <button class="btn btn-primary" id="btn-add-store-menu">+ メニュー追加</button>
-          <button class="btn btn-sm btn-outline" id="btn-translate-menu" title="メニューを中国語・韓国語に一括翻訳">🌐 一括翻訳</button>
+          <button class="btn btn-sm btn-outline" id="btn-translate-menu" title="未翻訳の品目のみ英語・中国語・韓国語に翻訳（既存の翻訳は保持）">🌐 一括翻訳</button>
+          <button class="btn btn-sm btn-outline" id="btn-retranslate-menu" title="既存の翻訳を全て上書きして再生成">🔄 強制再翻訳</button>
           <button class="btn btn-sm btn-outline" id="btn-override-csv-export">CSVエクスポート</button>
           <button class="btn btn-sm btn-outline" id="btn-override-csv-import">CSVインポート</button>
           <input type="file" accept=".csv" id="override-csv-file" style="display:none">
@@ -291,6 +292,14 @@
         <button class="btn btn-primary" id="btn-add-staff">+ スタッフ追加</button>
       </div>
       <div id="staff-list"></div>
+
+      <!-- P1a: デバイスアカウント管理（KDS / レジ端末用） -->
+      <div class="panel-header" style="margin-top:24px;">
+        <h2 class="panel-header__title">デバイスアカウント（KDS / レジ端末）</h2>
+        <button class="btn btn-primary" id="btn-add-device">+ デバイス追加</button>
+      </div>
+      <p style="color:#666;font-size:0.85rem;margin:4px 0 12px;">スタッフではなく端末専用のログインアカウントです。シフト・人件費・レポートには含まれません。</p>
+      <div id="device-list"></div>
     </div>
 
     <!-- 監査ログ -->
@@ -312,9 +321,7 @@
       <div class="panel-header">
         <h2 class="panel-header__title">AIアシスタント</h2>
       </div>
-      <div class="card" id="ai-assistant-container">
-        <p style="padding:2rem;color:#888;text-align:center;">準備中</p>
-      </div>
+      <div class="card" id="ai-assistant-container"></div>
     </div>
 
     <!-- 領収書設定 -->
@@ -398,14 +405,14 @@
   <!-- JS -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="../shared/js/utils.js"></script>
-  <script src="js/admin-api.js?v=20260405b"></script>
+  <script src="js/admin-api.js?v=20260408p1a"></script>
   <script src="js/store-selector.js"></script>
   <script src="js/category-editor.js"></script>
-  <script src="js/menu-override-editor.js"></script>
+  <script src="js/menu-override-editor.js?v=20260408p130"></script>
   <script src="js/local-item-editor.js"></script>
   <script src="js/daily-recommendation-editor.js"></script>
   <script src="js/table-editor.js"></script>
-  <script src="js/floor-map.js"></script>
+  <script src="js/floor-map.js?v=20260408p1be"></script>
   <script src="js/sales-report.js"></script>
   <script src="js/register-report.js"></script>
   <script src="js/order-history.js"></script>
@@ -415,17 +422,18 @@
   <script src="js/time-limit-plan-editor.js"></script>
   <script src="js/course-editor.js"></script>
   <script src="js/inventory-manager.js"></script>
-  <script src="js/settings-editor.js"></script>
+  <script src="js/settings-editor.js?v=20260408p110b"></script>
   <script src="js/option-group-editor.js"></script>
   <script src="js/kds-station-editor.js"></script>
   <script src="js/user-editor.js?v=20260406b"></script>
+  <script src="js/device-editor.js?v=20260408p1a"></script>
   <script src="js/audit-log-viewer.js"></script>
   <script src="js/receipt-settings.js?v=20260405c"></script>
   <script src="js/takeout-manager.js"></script>
-  <script src="js/ai-assistant.js?v=20260407p15"></script>
+  <script src="js/ai-assistant.js?v=20260408bF"></script>
   <script src="../js/shift-manager.js?v=20260406b"></script>
-  <script src="../js/shift-calendar.js?v=20260406b"></script>
-  <script src="js/shift-help.js?v=20260406"></script>
+  <script src="../js/shift-calendar.js?v=20260408bF"></script>
+  <script src="js/shift-help.js?v=20260408p1be"></script>
   <script src="../js/attendance-clock.js?v=20260406"></script>
   <script>
   (function () {
@@ -455,6 +463,27 @@
       // ownerはowner-dashboard.htmlへリダイレクト
       if (_role === 'owner') {
         window.location.href = 'owner-dashboard.html';
+        return;
+      }
+
+      // P1a: device ロールは KDS / レジ画面に直接リダイレクト
+      // dashboard.html（管理画面）には絶対に入れない
+      if (_role === 'device') {
+        var firstStore = (stores && stores.length > 0) ? stores[0] : null;
+        // visible_tools は store レベル: userVisibleTools (個別) > staffVisibleTools (店舗) > null
+        var devTools = null;
+        if (firstStore) {
+          devTools = (firstStore.userVisibleTools !== undefined && firstStore.userVisibleTools !== null)
+            ? firstStore.userVisibleTools
+            : firstStore.staffVisibleTools;
+        }
+        var devToolsStr = devTools || '';
+        if (devToolsStr.indexOf('register') >= 0) {
+          window.location.href = '../kds/cashier.html';
+        } else {
+          // デフォルトは KDS（kds 指定 or 設定なし）
+          window.location.href = '../kds/index.html';
+        }
         return;
       }
 
@@ -524,6 +553,20 @@
             var sBtn = document.querySelector('.sub-tab-nav__btn[data-tab="' + sKeys[si] + '"]');
             if (sBtn) sBtn.classList.add('plan-hidden');
           }
+        }
+
+        // P1-29: enterprise の店舗側では本部マスタへの新規追加を禁止
+        if (_planFeatures.hq_menu_broadcast === true) {
+          var btnAddOvr = document.getElementById('btn-add-store-menu');
+          if (btnAddOvr) btnAddOvr.style.display = 'none';
+          // P1-30: enterprise では本部マスタの一括書込/翻訳キャッシュ波及操作も非表示
+          var btnOvrCsvImport = document.getElementById('btn-override-csv-import');
+          if (btnOvrCsvImport) btnOvrCsvImport.style.display = 'none';
+          var btnTranslateMenu = document.getElementById('btn-translate-menu');
+          if (btnTranslateMenu) btnTranslateMenu.style.display = 'none';
+          // P1-31: 強制再翻訳ボタンも同じく非表示
+          var btnRetranslate = document.getElementById('btn-retranslate-menu');
+          if (btnRetranslate) btnRetranslate.style.display = 'none';
         }
       })();
 
@@ -656,7 +699,7 @@
         document.getElementById('category-list'),
         document.getElementById('category-count')
       );
-      MenuOverrideEditor.init(document.getElementById('override-list'));
+      MenuOverrideEditor.init(document.getElementById('override-list'), _planFeatures);
       DailyRecommendationEditor.init(document.getElementById('recommend-editor-container'));
       LocalItemEditor.init(document.getElementById('local-list'));
       TableEditor.init(
@@ -689,6 +732,10 @@
       );
       KdsStationEditor.init(document.getElementById('kds-station-list'));
       UserEditor.init(document.getElementById('staff-list'), _role);
+      // P1a: DeviceEditor 初期化（KDS / レジ端末アカウント管理）
+      if (typeof DeviceEditor !== 'undefined') {
+        DeviceEditor.init(document.getElementById('device-list'));
+      }
       AuditLogViewer.init(document.getElementById('audit-log-container'));
       ReceiptSettings.init(document.getElementById('receipt-settings-container'));
       AiAssistant.init(document.getElementById('ai-assistant-container'));
@@ -1032,7 +1079,11 @@
         case 'inventory': InventoryManager.load(); break;
         case 'settings': SettingsEditor.load(); break;
         case 'kds-stations': KdsStationEditor.load(); break;
-        case 'staff-mgmt': UserEditor.load(); break;
+        case 'staff-mgmt':
+          UserEditor.load();
+          // P1a: 同じパネルにデバイスアカウント一覧も読み込む
+          if (typeof DeviceEditor !== 'undefined') DeviceEditor.load();
+          break;
         case 'audit-log': AuditLogViewer.load(); break;
         case 'receipt-settings': ReceiptSettings.load(); break;
         case 'takeout-orders': TakeoutManager.load(); break;
@@ -1117,6 +1168,15 @@
         roleSelect.innerHTML = '<option value="staff" selected>\u30B9\u30BF\u30C3\u30D5</option>';
       }
     });
+    // P1a: デバイス追加ボタン
+    var btnAddDevice = document.getElementById('btn-add-device');
+    if (btnAddDevice) {
+      btnAddDevice.addEventListener('click', function () {
+        if (typeof DeviceEditor !== 'undefined') {
+          DeviceEditor.openAddModal();
+        }
+      });
+    }
     document.getElementById('btn-add-time-plan').addEventListener('click', function () { TimeLimitPlanEditor.openAddModal(); });
     document.getElementById('btn-add-course').addEventListener('click', function () { CourseEditor.openAddModal(); });
     document.getElementById('btn-add-ingredient').addEventListener('click', function () { InventoryManager.openAddModal(); });
@@ -1162,17 +1222,19 @@
     // 店舗メニュー追加ボタン
     document.getElementById('btn-add-store-menu').addEventListener('click', function () { MenuOverrideEditor.openAddModal(); });
 
-    // L-4: メニュー一括翻訳ボタン
-    document.getElementById('btn-translate-menu').addEventListener('click', function () {
+    // L-4 / P1-31: メニュー一括翻訳 + 強制再翻訳
+    // 共通実行関数: force=false=既存スキップ / force=true=全件上書き
+    function _runTranslateMenu(force, btn, originalLabel) {
       var storeId = document.getElementById('store-select').value;
       if (!storeId) { showToast('店舗を選択してください', 'error'); return; }
-      var btn = this;
       btn.disabled = true;
-      btn.textContent = '🌐 翻訳中...';
+      btn.textContent = force ? '🔄 再翻訳中...' : '🌐 翻訳中...';
+      var body = { store_id: storeId, langs: ['en', 'zh-Hans', 'ko'] };
+      if (force) body.force = true;
       fetch('../../api/store/translate-menu.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ store_id: storeId, langs: ['zh-Hans', 'zh-Hant', 'ko'] })
+        body: JSON.stringify(body)
       })
       .then(function (r) { return r.text(); })
       .then(function (text) {
@@ -1191,8 +1253,19 @@
       })
       .finally(function () {
         btn.disabled = false;
-        btn.textContent = '🌐 一括翻訳';
+        btn.textContent = originalLabel;
       });
+    }
+
+    // 通常一括翻訳: 未翻訳品目のみ
+    document.getElementById('btn-translate-menu').addEventListener('click', function () {
+      _runTranslateMenu(false, this, '🌐 一括翻訳');
+    });
+
+    // P1-31: 強制再翻訳: 全品目上書き
+    document.getElementById('btn-retranslate-menu').addEventListener('click', function () {
+      if (!confirm('既存の翻訳をすべて上書きします。よろしいですか？\n（手動で入力した英語名・説明も AI 翻訳で置き換えられます）')) return;
+      _runTranslateMenu(true, this, '🔄 強制再翻訳');
     });
 
     // 店舗メニューオーバーライドCSV
@@ -1477,7 +1550,7 @@
         var json;
         try { json = JSON.parse(r.text); } catch (e) { json = null; }
         if (r.status === 200 && json && json.ok) {
-          alert('パスワードを変更しました。');
+          if (typeof showToast === 'function') showToast('パスワードを変更しました。', 'success');
           closeModal();
         } else {
           var msg = (json && json.error && json.error.message) || 'パスワード変更に失敗しました';

@@ -1,7 +1,7 @@
 # 松の屋MT（matsunoya-mt）システム完全仕様書
 
-> **バージョン:** 2.10.0
-> **最終更新:** 2026-04-06（L-3 Phase 3 マルチ店舗シフト管理・統合シフトビュー追加）
+> **バージョン:** 2.11.0
+> **最終更新:** 2026-04-08（Bundle G/H + P1-12 観測チャネル + P1-19/19b/19c 決済 i18n + P1-20 smaregi 自動翻訳 + P1-25 webhook 堅牢化 + B-09 照合順序修正 + order_items 定義追加）
 > **対象:** AI・開発者向け超詳細ドキュメント
 
 ---
@@ -420,7 +420,7 @@ matsunoya-mt/
 │       └── js/
 │           └── utils.js               # 共有ユーティリティ
 ├── sql/
-│   ├── schema.sql                     # 基本スキーマ（13テーブル + ai_api_keyカラム統合済）
+│   ├── schema.sql                     # 基本スキーマ（13テーブル）※ai_api_key/google_places_api_keyはP1-6c/P1-22でDROP済
 │   ├── seed.sql                       # 基本シードデータ
 │   ├── seed-a1-options.sql            # オプションサンプル
 │   ├── seed-a3-kds-stations.sql       # KDSステーションサンプル
@@ -436,8 +436,8 @@ matsunoya-mt/
 │   ├── migration-c4-payments.sql      # 決済テーブル（1テーブル）
 │   ├── migration-c5-inventory.sql     # 在庫管理（2テーブル）
 │   ├── migration-c5-cart-events.sql   # カートイベント（1テーブル）
-│   ├── migration-d1-ai-settings.sql  # tenants ALTER (ai_api_key) ※schema.sqlに統合済
-│   ├── migration-d2-places-api-key.sql # tenants ALTER (google_places_api_key)
+│   ├── migration-d1-ai-settings.sql  # tenants ALTER (ai_api_key) ※P1-6cでDROP（履歴保持目的のみ）
+│   ├── migration-d2-places-api-key.sql # tenants ALTER (google_places_api_key) ※P1-22でDROP（履歴保持目的のみ）
 │   ├── migration-e1-username.sql      # users ALTER
 │   ├── migration-e2-override-image.sql # store_menu_overrides ALTER (image_url)
 │   ├── migration-e3-call-alerts.sql   # スタッフ呼び出しアラート（1テーブル）
@@ -474,7 +474,17 @@ matsunoya-mt/
 │   ├── migration-l3b-gps-staff-control.sql # L-3b: shift_settings ALTER (store_lat, store_lng, gps_radius_meters, gps_required, staff_visible_tools)
 │   ├── migration-l3b2-user-visible-tools.sql # L-3b2: user_stores ALTER (visible_tools VARCHAR(100) NULL)
 │   ├── migration-l3p2-labor-cost.sql    # L-3 Phase 2: shift_settings ALTER (default_hourly_rate) + user_stores ALTER (hourly_rate)
-│   └── migration-l3p3-multi-store-shift.sql # L-3 Phase 3: shift_help_requests + shift_help_assignments + shift_assignments ALTER (help_request_id)
+│   ├── migration-l3p3-multi-store-shift.sql # L-3 Phase 3: shift_help_requests + shift_help_assignments + shift_assignments ALTER (help_request_id)
+│   ├── migration-p1-6c-drop-tenants-ai-key.sql       # P1-6c: tenants DROP COLUMN ai_api_key
+│   ├── migration-p1-22-drop-tenants-google-places-key.sql # P1-22: tenants DROP COLUMN google_places_api_key
+│   ├── migration-p1-11-subscription-events-unique.sql     # P1-11: subscription_events.stripe_event_id UNIQUE
+│   ├── migration-p1-6d-posla-admin-sessions.sql           # P1-6d: posla_admin_sessions テーブル新設
+│   ├── migration-p1-remove-square.sql                     # P1-2: tenants.payment_gateway ENUM から square 削除
+│   ├── migration-p1-27-torimaru-demo-tenant.sql           # P1-27: 鳥丸グループ enterprise デモテナント（5店舗）seed
+│   ├── migration-p119-checkout-i18n.sql                   # P1-19: ui_translations INSERT（アレルギー7キー + gap 2キー × 4言語）
+│   ├── migration-p119b-receipt-rollback.sql               # P1-19b: ui_translations DELETE（receipt_* 13キー × 4言語 = 52行、領収書は日本語固定化）
+│   ├── migration-p119c-fix-encoding.sql                   # P1-19c: ui_translations DELETE+INSERT（zh-Hans/ko 二重エンコード修正、SET NAMES utf8mb4 明示）
+│   └── migration-p133-collation-fix.sql                   # B-2026-04-08-09: daily_recommendations/call_alerts/satisfaction_ratings を utf8mb4_unicode_ci に CONVERT
 ├── uploads/
 │   └── menu/                          # メニュー画像保存先
 ├── tools/
@@ -531,7 +541,7 @@ ui_translations (lang, msg_key)     ← テナント非依存
 stores ──── receipts → payments (L-5)
 ```
 
-**合計 46 テーブル**（schema.sql 13テーブル + マイグレーションで追加 33テーブル）
+**合計 52 テーブル**（schema.sql 13テーブル + マイグレーションで追加 39テーブル。2026-04-08 時点）
 
 ### 4.2 SQL実行順序
 
@@ -591,7 +601,19 @@ stores ──── receipts → payments (L-5)
 53. migration-l3b2-user-visible-tools.sql — user_stores ALTER (visible_tools: ユーザー単位ツール表示制御)
 54. migration-l3p2-labor-cost.sql — shift_settings ALTER (default_hourly_rate) + user_stores ALTER (hourly_rate)
 55. migration-l3p3-multi-store-shift.sql — shift_help_requests + shift_help_assignments 新設、shift_assignments ALTER (help_request_id)、plan_features INSERT (shift_help_request)
+56. migration-p1-6c-drop-tenants-ai-key.sql — tenants DROP COLUMN ai_api_key（P1-6c、posla_settings.gemini_api_key へ完全移行）
+57. migration-p1-22-drop-tenants-google-places-key.sql — tenants DROP COLUMN google_places_api_key（P1-22、posla_settings.google_places_api_key へ完全移行）
+58. migration-p1-11-subscription-events-unique.sql — subscription_events ALTER (stripe_event_id に UNIQUE INDEX 追加。P1-11、webhook 重複イベントの冪等性確保)
+59. migration-p1-6d-posla-admin-sessions.sql — posla_admin_sessions テーブル新設（P1-6d、POSLA管理者の他セッション無効化サポート）
+60. migration-p1-remove-square.sql — tenants.payment_gateway ENUM から 'square' 削除（P1-2、Square 決済ゲートウェイ廃止）
+61. migration-p1-27-torimaru-demo-tenant.sql — 鳥丸グループ enterprise デモテナント seed（5店舗: 渋谷/新宿/池袋/銀座/恵比寿）
+62. migration-p119-checkout-i18n.sql — ui_translations INSERT（P1-19、アレルギー7キー [Group A] + checkout_not_confirmed/btn_close [Group C] × 4言語 = 36行）
+63. migration-p119b-receipt-rollback.sql — ui_translations DELETE（P1-19b、receipt_* 13キー × 4言語 = 52行。領収書は日本語固定化、Blob URL 方式で文字化け回避）
+64. migration-p119c-fix-encoding.sql — ui_translations DELETE+INSERT（P1-19c、zh-Hans/ko の btn_close/allergen_*/checkout_not_confirmed 二重エンコード修正。SET NAMES utf8mb4 を先頭明示）
+65. migration-p133-collation-fix.sql — daily_recommendations/call_alerts/satisfaction_ratings を utf8mb4_unicode_ci に CONVERT（B-2026-04-08-09、MySQL 8.0 デフォルト utf8mb4_0900_ai_ci からの混入修正）
 ```
+
+> **恒久対策（2026-04-08 以降）:** 今後追加する全マイグレーション SQL は先頭に `SET NAMES utf8mb4;` を明示する（P1-19c 教訓）。MySQL クライアント接続のデフォルト charset が utf8mb4 でない環境で INSERT すると、zh-Hans/ko 等の多バイト文字列が二重エンコードされる事故を防止。
 
 ### 4.3 テーブル定義詳細
 
@@ -606,8 +628,8 @@ stores ──── receipts → payments (L-5)
 | `plan` | ENUM('standard','pro','enterprise') | NOT NULL, DEFAULT 'standard' | 契約プラン（3段階: standard/pro/enterprise） |
 | `is_active` | TINYINT(1) | NOT NULL, DEFAULT 1 | 有効フラグ |
 | `created_at` | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP | |
-| `ai_api_key` | VARCHAR(200) | DEFAULT NULL | ※廃止予定。現在はposla_settingsで一元管理（L-10b） |
-| `google_places_api_key` | VARCHAR(200) | DEFAULT NULL | ※廃止予定。現在はposla_settingsで一元管理（L-10b） |
+| ~~`ai_api_key`~~ | ~~VARCHAR(200)~~ | ~~DROPPED~~ | ※廃止済み（P1-6c で DROP）。現在は `posla_settings.gemini_api_key` で一元管理（L-10b） |
+| ~~`google_places_api_key`~~ | ~~VARCHAR(200)~~ | ~~DROPPED~~ | ※廃止済み（P1-22 で DROP）。現在は `posla_settings.google_places_api_key` で一元管理（L-10b） |
 | `payment_gateway` | ENUM('none','stripe') | NOT NULL, DEFAULT 'none' | 使用する決済ゲートウェイ（C-3、P1-2でsquare削除） |
 | `stripe_secret_key` | VARCHAR(200) | DEFAULT NULL | Stripe Secret Key（C-3、店舗自前＝パターンA） |
 | `stripe_customer_id` | VARCHAR(100) | DEFAULT NULL | Stripe Customer ID（L-11サブスクリプション） |
@@ -630,11 +652,12 @@ stores ──── receipts → payments (L-5)
 | `id` | VARCHAR(36) | PK | UUID |
 | `tenant_id` | VARCHAR(36) | NOT NULL | テナントID |
 | `event_type` | VARCHAR(50) | NOT NULL | イベント種別（checkout.session.completed等） |
-| `stripe_event_id` | VARCHAR(100) | DEFAULT NULL | StripeイベントID（evt_...） |
+| `stripe_event_id` | VARCHAR(100) | DEFAULT NULL, **UNIQUE** (P1-11) | StripeイベントID（evt_...）。P1-11で UNIQUE INDEX 追加（webhook 重複イベントの冪等性確保） |
 | `data` | TEXT | DEFAULT NULL | イベントデータ（JSON） |
 | `created_at` | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP | |
 
 **FK:** `tenant_id` → `tenants.id`
+**INDEX:** `stripe_event_id` UNIQUE（P1-11、`api/subscription/webhook.php` で `INSERT IGNORE` パターンによる冪等性チェック）
 
 ---
 
@@ -723,7 +746,7 @@ stores ──── receipts → payments (L-5)
 | `brand_display_name` | VARCHAR(100) | NULL | ヘッダー表示名（上書き）※ migration-n12 |
 | `registration_number` | VARCHAR(20) | NULL | 適格請求書発行事業者登録番号（T+13桁）※ migration-l5 |
 | `business_name` | VARCHAR(100) | NULL | 事業者正式名称 ※ migration-l5 |
-| `self_checkout_enabled` | TINYINT(1) | NOT NULL, DEFAULT 0 | セルフレジ有効フラグ ※ migration-l8 |
+| `self_checkout_enabled` | TINYINT(1) | NOT NULL, DEFAULT 0 | セルフレジ有効フラグ ※ migration-l8。P1-10b で管理UI追加（管理画面「設定」タブ→「レジ設定」セクション、`api/store/settings.php` PATCH 経由で manager+ が変更可、audit_log 記録あり） |
 
 ---
 
@@ -883,6 +906,34 @@ stores ──── receipts → payments (L-5)
 **特殊遷移:** 任意のステータスから `cancelled` へ遷移可能
 
 **INDEX:** `(store_id)`, `(table_id)`, `(status)`, `(store_id, created_at)`, `(order_type)`, `(pickup_at)`, `(staff_id)`, `(idempotency_key)` UNIQUE
+
+---
+
+#### 4.3.11b `order_items` — 注文品目（行単位ステータス管理） ※ migration-f2 (C-4)
+
+| カラム | 型 | 制約 | 説明 |
+|--------|-----|------|------|
+| `id` | VARCHAR(36) | PK | UUID |
+| `order_id` | VARCHAR(36) | NOT NULL, FK → orders(id) ON DELETE CASCADE | 親注文 |
+| `payment_id` | VARCHAR(36) | DEFAULT NULL | 支払済み追跡（migration-i6、テーブル合流分割会計で使用）|
+| `store_id` | VARCHAR(36) | NOT NULL | マルチテナント境界確保用の冗長カラム |
+| `menu_item_id` | VARCHAR(36) | DEFAULT NULL | `menu_templates.id` または `store_local_items.id`（スナップショット優先のため FK なし）|
+| `name` | VARCHAR(100) | NOT NULL | 品目名（注文時点スナップショット）|
+| `price` | INT | NOT NULL, DEFAULT 0 | 単価（注文時点）|
+| `qty` | INT | NOT NULL, DEFAULT 1 | 数量 |
+| `options` | JSON | DEFAULT NULL | オプション情報（選択肢配列）|
+| `allergen_selections` | JSON | NULL | アレルギー選択（migration-i1 / migration-f2）。特定原材料7品目 egg/milk/wheat/shrimp/crab/buckwheat/peanut |
+| `status` | ENUM('pending','preparing','ready','served','cancelled') | NOT NULL, DEFAULT 'pending' | KDS品目単位ステータス（C-4）|
+| `prepared_at` | DATETIME | DEFAULT NULL | 調理開始時刻 |
+| `ready_at` | DATETIME | DEFAULT NULL | 完成時刻 |
+| `served_at` | DATETIME | DEFAULT NULL | 提供時刻 |
+| `created_at` | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP | |
+| `updated_at` | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE | |
+
+**FK:** `order_id` → `orders(id)` ON DELETE CASCADE
+**INDEX:** `idx_oi_order (order_id)`, `idx_oi_store_status (store_id, status)`, `idx_order_items_payment_id (payment_id)`
+
+**用途:** C-4（KDS品目単位ステータス管理）で orders.items JSON と並行運用。KDS の品目単位完成/提供操作、テーブル合流分割会計時の支払済み追跡、バスケット分析、回転率レポート（品目別調理時間）、スタッフレポートで参照。レシピ連動の在庫減算（`inventory-sync.php`）も order_items ベース。孤立レコードは履歴保全の副産物で UI フォールバック `oi.item_name` で吸収（B-2026-04-08-11 対応不要判定）。
 
 ---
 
@@ -1369,7 +1420,24 @@ POSLA運営が一元管理する共通設定。初期キー: `gemini_api_key`, `
 | `created_at` | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP | 作成日時 |
 | `updated_at` | DATETIME | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE | 更新日時 |
 
-POSLA運営専用の管理者アカウント。テナント管理者とは完全分離。`/api/posla/auth.php` で認証。
+POSLA運営専用の管理者アカウント。テナント管理者とは完全分離。認証は `api/posla/login.php`（ログイン）/ `api/posla/logout.php`（ログアウト）/ `api/posla/me.php`（現在のユーザー）/ `api/posla/auth-helper.php`（`require_posla_admin()` ヘルパー）の4ファイルで構成。
+
+#### 4.3.41b `posla_admin_sessions` — POSLA管理者セッション ※ migration-p1-6d
+
+| カラム | 型 | 制約 | 説明 |
+|--------|-----|------|------|
+| `id` | BIGINT UNSIGNED | PK, AUTO_INCREMENT | |
+| `admin_id` | VARCHAR(36) | NOT NULL | `posla_admins.id` 参照（FK 制約はなし、ロール分離のため明示的な FK は付けない） |
+| `session_id` | VARCHAR(128) | NOT NULL, UNIQUE | PHP `session_id()` の値 |
+| `ip_address` | VARCHAR(45) | DEFAULT NULL | IPv4/IPv6 両対応 |
+| `user_agent` | TEXT | DEFAULT NULL | リクエストヘッダ |
+| `login_at` | DATETIME | DEFAULT CURRENT_TIMESTAMP | |
+| `last_active_at` | DATETIME | DEFAULT CURRENT_TIMESTAMP | |
+| `is_active` | TINYINT(1) | DEFAULT 1 | （現状 INSERT/DELETE 運用のため 0 化はしない） |
+
+**INDEX:** `uk_posla_session` UNIQUE(session_id), `idx_admin` (admin_id), `idx_admin_active` (admin_id, is_active)
+
+P1-6d 新設。`api/posla/login.php` でログイン成功時に INSERT、`api/posla/change-password.php` でパスワード変更成功時に「現セッション以外」のレコードを DELETE。失敗時もログイン/パスワード変更フロー自体は止めない（try-catch で error_log）。
 
 #### 4.3.42 `shift_settings` — シフト設定（1:1 店舗） ※ migration-l3
 
@@ -1775,6 +1843,14 @@ require_store_access(store_id):
 ```
 - **エラー:** `MISSING_FIELDS`(400), `INVALID_SESSION`(403)
 
+#### POST `/api/customer/satisfaction-rating.php`
+- **認証:** 不要（セッショントークン検証）
+- **Body:** `{ store_id, table_id, session_token, rating: 1-5, comment?: string }`
+- **処理:** 5段階満足度評価を `satisfaction_ratings` テーブルに INSERT。セッション終了前の会計モーダルから送信。同一セッションで重複送信された場合は最新を優先（INSERT → 集計側 `MAX(created_at)` or 最新1件で扱う）
+- **レスポンス:** `{ "ok": true }`
+- **エラー:** `MISSING_FIELDS`(400), `INVALID_SESSION`(403), `INVALID_RATING`(400)
+- **プラン制限:** `plan_features.satisfaction_rating` が有効なテナントのみ表示（フロントエンド側でもフィルタ）。集計は owner/manager 側 `staff-report.php` から参照
+
 #### GET `/api/customer/ui-translations.php`
 - **認証:** 不要
 - **パラメータ:** `?lang=ja|en|zh-Hans|zh-Hant|ko`（省略時 `ja`）
@@ -2095,7 +2171,7 @@ require_store_access(store_id):
 | `menu-overrides.php` | GET/PATCH | manager+ | テンプレートの店舗上書き（UPSERT）。画像オーバーライド対応（migration-e2）。PATCH時にcalories/allergensを含めるとmenu_templatesを直接更新（migration-i2）|
 | `daily-recommendations.php` | GET/POST/DELETE | staff+ | 今日のおすすめ管理。日付指定で取得、品目+バッジ種別+コメントで追加、ID指定で削除 |
 | `upload-image.php` | POST | manager+ | 画像アップロード |
-| `translate-menu.php` | POST | manager+ | メニュー一括翻訳（L-4）。全カテゴリ・品目・オプションを指定言語に翻訳。Gemini 2.0 Flash APIで30件/バッチ。menu_translationsテーブルにON DUPLICATE KEY UPDATEでキャッシュ保存 |
+| `translate-menu.php` | POST | manager+ | メニュー一括翻訳（L-4）。全カテゴリ・品目・オプションを指定言語に翻訳。Gemini 2.0 Flash APIで30件/バッチ。menu_translationsテーブルにON DUPLICATE KEY UPDATEでキャッシュ保存。**P1-20 で関数抽出**: メインロジックを `translate_menu_core(PDO $pdo, string $tenantId, string $storeId, array $langs, bool $force): array` 関数として切り出し、`TranslateMenuException` private クラス + `TRANSLATE_MENU_CORE_ONLY` 定数ガードで POST ハンドラ二重起動を防止。`api/smaregi/import-menu.php` から直接呼び出し可能にし、スマレジインポート自動翻訳を実現 |
 
 #### 注文
 | エンドポイント | メソッド | 認証 | 説明 |
@@ -2208,6 +2284,7 @@ require_store_access(store_id):
 | `attendance.php` | POST/PATCH/GET | staff+ | 勤怠打刻。POST=出勤、PATCH=退勤/休憩。GET=自分の勤怠状況。GPS座標記録（gps_required時）。Haversine距離で店舗圏内判定 |
 | `summary.php` | GET | manager+ | 勤務サマリー。`?period=weekly\|monthly&start_date=YYYY-MM-DD`。staff_summary（スタッフ別集計）+ daily_summary（日別集計）+ assigned_map。Phase 2: labor_cost（人件費）+ night_premium（深夜割増25%）+ labor_warnings（労基法警告6ルール） |
 | `ai-suggest-data.php` | GET | manager+ | L-3 Phase 2: AI提案用データ集計。templates, availabilities, staffList（時給・実績・連続勤務日数）, salesByDayHour（過去4週平均）を一括返却。フロントエンドがGemini APIに送信するデータソース |
+| `apply-ai-suggestions.php` | POST | manager+ | P1-21: AI提案シフトを `shift_assignments` に一括反映。DELETE + INSERT トランザクション、`note='AI提案'` タグで手動追加シフトを保護（既存手動シフトは削除しない）。マルチテナント境界 + staff 403 ガード + 監査ログ記録。`shift-calendar.js` から呼出 |
 | `help-requests.php` | GET/POST/PATCH | manager+ | L-3 Phase 3: 店舗間ヘルプ要請。GET=送信/受信一覧（?action=list-stores で他店舗一覧、?action=list-staff で対象店舗スタッフ一覧も取得可）。POST=要請作成。PATCH=承認（スタッフ指名→shift_assignments自動作成）/却下/キャンセル。enterprise限定（shift_help_request） |
 
 ### 6.7 サブスクリプション API (`api/subscription/`)（L-11）
@@ -2220,6 +2297,8 @@ require_store_access(store_id):
 | `webhook.php` | POST | なし | Stripeからのwebhookイベント受信（署名検証あり）。checkout.session.completed / customer.subscription.updated / customer.subscription.deleted / invoice.paid / invoice.payment_failed |
 
 **ヘルパー:** `api/lib/stripe-billing.php` — Stripe Billing共通関数（get_stripe_config / create_stripe_customer / create_checkout_session / create_portal_session / get_subscription / verify_webhook_signature）
+
+**P1-25 webhook 堅牢化（2026-04-08）:** `api/subscription/webhook.php` の switch ブロック全体を try-catch で包み `\Exception` を捕捉 → 500 で Stripe のリトライを誘発（DB一時障害向け、P1-11 の `stripe_event_id` UNIQUE により再送安全）。`INSERT subscription_events` は別の try-catch で包み、失敗時は 200 + `error_log()` で継続（構造的バグによるリトライループ回避）。`if (!$tenant) break;` 3箇所（checkout.session.completed / customer.subscription.updated / customer.subscription.deleted）に `[P1-25] *_tenant_not_found` ログを追加し、tenant 未特定時は INSERT 自体をスキップ（`subscription_events.tenant_id` NOT NULL への空文字フォールバック廃止）。既存 idempotency check の `error_log` 2件も `[P1-25]` プレフィックスで統一。なお P1-25 以前に記録された `tenant_id=''` のゴーストレコード 5件（全て checkout.session.completed）は監査ログのため保持し、改変しない。
 
 ### 6.8 Stripe Connect API (`api/connect/`)（L-13）
 
@@ -2242,7 +2321,7 @@ require_store_access(store_id):
 | `disconnect.php` | POST | owner | スマレジ連携解除（トークン・contract_id削除） |
 | `stores.php` | GET | owner | スマレジ店舗一覧取得（`GET /pos/stores`） |
 | `store-mapping.php` | GET/POST | owner | 店舗マッピング一覧取得/保存（POSLA店舗↔スマレジ店舗） |
-| `import-menu.php` | POST | owner | スマレジ商品→POSLAメニューインポート（`GET /pos/products`→menu_templates+smaregi_product_mapping） |
+| `import-menu.php` | POST | owner | スマレジ商品→POSLAメニューインポート（`GET /pos/products`→menu_templates+smaregi_product_mapping）。**P1-20 で自動翻訳統合**: インポート成功時（`$imported > 0`）に `translate_menu_core($pdo, $tenantId, $storeId, ['en'], false)` を呼び出し、新規取り込み品目を英語に自動翻訳。失敗時は `[P1-20] auto_translate_failed` ログ + レスポンスに `auto_translate: {ok:false, warning:'auto_translate_failed'}` を含めて継続。zh-Hans/ko は手動一括翻訳ボタンのまま（owner-dashboard の「メニュー翻訳」タブ） |
 | `sync-order.php` | POST | any | 注文→スマレジ仮販売送信（`POST /pos/transactions/temporaries`）。require_onceで関数としても利用可能 |
 
 **ヘルパー:** `api/lib/smaregi-client.php` — スマレジAPI共通関数（get_tenant_smaregi / refresh_token_if_needed / smaregi_api_request）
@@ -2306,8 +2385,8 @@ POSLA運営専用API。テナント管理者とは完全分離された認証体
   5. パスワード変更イベントを `error_log()` で記録
 - **レスポンス:** `{ "ok": true, "data": { "message": "パスワードを変更しました" } }`
 - **エラー:** `MISSING_FIELDS`(400), `INVALID_CURRENT_PASSWORD`(401), `SAME_PASSWORD`(400), `WEAK_PASSWORD`(400)
-- **実装メモ（プロンプト仕様との差異）:**
-  - 他セッション無効化: プロンプト仕様では「`posla_admin_sessions` から削除」だったが、現状その専用テーブルは存在せず（POSLA管理者は単一PHPセッションのみ）他セッション無効化処理は実装していない
+- **実装メモ:**
+  - 他セッション無効化: P1-6d で `posla_admin_sessions` テーブルを新設し実装済み。`api/posla/login.php` でログイン時に `session_id` を INSERT、`api/posla/change-password.php` でパスワード変更時に「現セッション以外」の同一 admin_id レコードを DELETE する。攻撃者がセッションを窃取済みの場合の乗っ取り防止。失敗してもログイン/パスワード変更処理は止めない（既存挙動を壊さない）
   - 監査ログ: プロンプト仕様では `audit_log` への記録だったが、`audit_log` テーブルはテナントスコープ前提（`tenant_id` NOT NULL）のため使用不可。代わりに `error_log()` でサーバーログに出力
 
 - **認証ヘルパー:** `auth-helper.php` — `start_posla_session()` + `require_posla_admin()` を提供。Secure Cookie（httponly, SameSite=Lax）
@@ -2344,6 +2423,48 @@ POSLA運営専用API。テナント管理者とは完全分離された認証体
 6. カテゴリマップ構築 → テンプレート品目マージ → ローカル品目マージ
 7. 空カテゴリ除外
 ```
+
+### 7.1.1 メニュー編集経路（プラン別運用ルール）
+
+POSLAのメニューは3層構造：
+
+| テーブル | 所有 | 役割 |
+|---|---|---|
+| `menu_templates` | テナント単位 | 本部マスタ。全店共通の name / name_en / category_id / base_price / image_url / calories / allergens を保持 |
+| `store_menu_overrides` | 店舗単位 | 店舗差分。NULL=本部継承、値あり=店舗上書き。`is_sold_out` / `price` / `is_hidden` / `image_url` |
+| `store_local_items` | 店舗単位 | 店舗限定品。本部マスタに紐づかない、その店舗だけのオリジナル品目 |
+
+お客さん側のセルフメニューでは `api/lib/menu-resolver.php` の `resolve_store_menu()` が3層を統合してから返す（7.1 参照）。
+
+#### enterprise の編集ルール（厳守、P1-28 / P1-29 で実装）
+
+| やりたいこと | 編集する画面 | 編集できる人 | 書き込み先テーブル |
+|---|---|---|---|
+| 全店共通の品目を追加・編集（name / name_en / category / base_price / image / calories / allergens） | owner-dashboard 「**本部メニュー**」タブ | owner ロールのみ | `menu_templates` |
+| 店舗価格上書き / 非表示 | dashboard 「**店舗メニュー**」タブ | manager | `store_menu_overrides.price` / `is_hidden` |
+| 店舗の売り切れトグル | dashboard 「**店舗メニュー**」タブ | manager / staff | `store_menu_overrides.is_sold_out` |
+| 店舗独自の画像 | dashboard 「**店舗メニュー**」タブ | manager | `store_menu_overrides.image_url` |
+| 店舗独自の品目追加（その店だけのメニュー） | dashboard 「**限定メニュー**」タブ | manager | `store_local_items` |
+
+**制限**:
+- enterprise では店舗側「店舗メニュー」タブから本部マスタ項目（name / name_en / category_id / calories / allergens / base_price）は readonly。フィールドが disabled 表示され、保存時も `updateMenuTemplate` API は呼ばれない（P1-29）。
+- API レベルでも防御線あり: `api/owner/menu-templates.php` の POST/PATCH/DELETE は enterprise テナントの場合 owner ロール以外を 403 で拒否。`api/store/menu-overrides.php` の calories/allergens 直接更新ブロックは enterprise ではスキップされる（P1-29）。
+- 判定基準は `plan_features.hq_menu_broadcast`（プラン名のハードコード禁止）。
+
+#### standard / pro の編集ルール
+
+| やりたいこと | 編集する画面 |
+|---|---|
+| 品目の追加・編集（全項目） | dashboard 「**店舗メニュー**」タブ（owner / manager 兼用） |
+| 店舗独自品の追加 | dashboard 「**限定メニュー**」タブ |
+
+- standard / pro では owner-dashboard に「本部メニュー」タブは出ない（プラン制限、`features.hq_menu_broadcast=0`）。
+- dashboard 「店舗メニュー」タブから事実上 `menu_templates` を全項目編集できる（既存運用、変更しない）。
+
+#### 全プラン共通
+
+- **店舗独自メニューの作成は「限定メニュー」タブを使う**。「店舗メニュー」タブで新規追加するのではない（こちらは本部マスタ + 店舗オーバーライド統合表示）。
+- お客さん側のセルフメニューでは「本部由来」「店舗由来」の区別はなく、同じカテゴリ内に並んで表示される。
 
 ### 7.2 営業日計算（business-day.php）
 
@@ -3125,10 +3246,28 @@ SOURCE migration-l3b2-user-visible-tools.sql;
 SOURCE migration-l3p2-labor-cost.sql;
 SOURCE migration-l3p3-multi-store-shift.sql;
 
+-- P1 プリリリースクリーンアップ
+SOURCE migration-p1-6c-drop-tenants-ai-key.sql;       -- tenants.ai_api_key DROP
+SOURCE migration-p1-22-drop-tenants-google-places-key.sql; -- tenants.google_places_api_key DROP
+SOURCE migration-p1-11-subscription-events-unique.sql;     -- subscription_events.stripe_event_id UNIQUE
+SOURCE migration-p1-6d-posla-admin-sessions.sql;           -- posla_admin_sessions 新設
+SOURCE migration-p1-remove-square.sql;                     -- P1-2: payment_gateway ENUM から square 削除
+
+-- P1-19 / P1-19b / P1-19c セルフメニュー「お会計」i18n + 領収書修正 + 文字化け修正
+SOURCE migration-p119-checkout-i18n.sql;              -- ui_translations INSERT（アレルギー + gap キー × 4言語）
+SOURCE migration-p119b-receipt-rollback.sql;          -- ui_translations DELETE（receipt_* 52行、領収書日本語固定化）
+SOURCE migration-p119c-fix-encoding.sql;              -- ui_translations DELETE+INSERT（zh-Hans/ko 二重エンコード修正、SET NAMES utf8mb4 明示）
+
+-- B-2026-04-08-09 照合順序ミスマッチ修正
+SOURCE migration-p133-collation-fix.sql;              -- daily_recommendations/call_alerts/satisfaction_ratings を utf8mb4_unicode_ci に CONVERT
+
 -- 4. テスト用2テナント目（任意）
 SOURCE seed-tenant-momonoya.sql;
 
--- 5. デモ用テストユーザー（任意）
+-- 5. 鳥丸グループ enterprise デモテナント（任意、5店舗）
+SOURCE migration-p1-27-torimaru-demo-tenant.sql;
+
+-- 6. デモ用テストユーザー（任意）
 SOURCE migration-demo-test-users.sql;
 ```
 
@@ -3165,6 +3304,8 @@ try {
 | **同時セッション制限** | ロール別上限（owner:5, manager:3, staff:2）。超過時は最古セッションを強制無効化 |
 | **アイドルタイムアウト** | 25分無操作で警告モーダル表示 → 30分で自動ログアウト（`session-monitor.js` + `auth/check.php` + `api/lib/auth.php` の `SESSION_IDLE_TIMEOUT = 1800`） |
 | **セッショントークン検証** | 顧客メニューの30秒ポーリングで会計後のトークン無効化を検出 |
+| **例外観測チャネル（P1-12）** | `catch (\Exception $e) { }` 空ブロックを一掃し、42ファイル / 66箇所に `error_log('[P1-12][<path>:<line>] <snake_case_label>: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log')` を追加（Stage 1+2+3、High 50/50 + Medium 17/17 カバー）。Low 34件は `LIMIT 0` スキーマスニッフ等の設計意図ブロックのため対象外。発見実績: B-2026-04-08-12（turnover-report dead branch、Stage 2 で即座に検出）。`.user.ini` が Sakura mod_php で無効のため、`error_log()` 第3引数で絶対パスを直接指定する方式（A2）を採用 |
+| **マイグレーション SQL charset（P1-19c）** | 全マイグレーション SQL の先頭に `SET NAMES utf8mb4;` を明示。MySQL クライアント接続のデフォルト charset が utf8mb4 でない環境での二重エンコード事故を防止 |
 
 ### 10.6 cronジョブ
 
@@ -3204,7 +3345,21 @@ try {
 
 ### 10.8 既知の未解決バグ
 
-現在、既知の未解決バグはありません。
+2026-04-08 時点、既知の未解決バグはありません。
+
+**2026-04-08 セッションで解決したバグ:**
+- B-2026-04-08-01 owner/store dashboard 分離リファクタで本部メニュータブ消失 → P1-28
+- B-2026-04-08-02 本部メニュータブに CSV I/O ボタン欠落 → P1-28b
+- B-2026-04-08-03 enterprise 店舗側で本部マスタ項目が編集可能 → P1-29
+- B-2026-04-08-04 enterprise 店舗側に追加/CSVインポート/一括翻訳/削除ボタンが残存 → P1-30
+- B-2026-04-08-05 店舗メニュー CSV エクスポート HTTP 500（`FROM menu_items` typo）→ P1-30c
+- B-2026-04-08-06 一括翻訳機能で再翻訳ができない（`force=true` 未送信）→ P1-31
+- B-2026-04-08-07 カテゴリ名「スマレジインポート」が中国語化されない → P1-31b
+- B-2026-04-08-08 `cart_events` テーブル未作成 → 全顧客カート操作 503 → P1-33（migration-c5-cart-events.sql 適用）
+- B-2026-04-08-09 照合順序ミスマッチ 3テーブル → P1-33（migration-p133-collation-fix.sql）
+- B-2026-04-08-10 matsunoya 渋谷店 manager パスワード Demo1234 不一致 → 手動リセット
+- B-2026-04-08-11 `order_items` 孤立レコード 13件 → 対応不要判定（UI フォールバック `oi.item_name` で吸収）
+- B-2026-04-08-12 `turnover-report.php` dead branch（`target_cook_time_sec` 未実装カラム参照）→ P1-12 Stage 2 が発見 → 該当 try-catch ブロック 13 行削除
 
 ---
 

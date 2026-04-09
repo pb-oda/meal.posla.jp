@@ -89,6 +89,7 @@ if ($newStatus === 'ready') {
         }
     } catch (PDOException $e) {
         // call_alerts に type カラムがない場合は無視（グレースフルデグラデーション）
+        error_log('[P1-12][api/kds/update-item-status.php:90] notify_call_alert: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 }
 

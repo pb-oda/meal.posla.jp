@@ -76,6 +76,7 @@ try {
     }
 } catch (Exception $e) {
     // table_sessions 未作成時はスキップ
+    error_log('[P1-12][customer/orders.php:77] check_plan_session: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 // 店舗設定チェック
@@ -118,6 +119,7 @@ try {
     }
 } catch (PDOException $e) {
     // table_sessions 未作成時はスキップ
+    error_log('[P1-12][customer/orders.php:119] check_last_order_session: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 // O-3: 店舗全体のラストオーダーチェック
@@ -136,6 +138,7 @@ try {
     }
 } catch (PDOException $e) {
     // カラム未存在時はスキップ（グレースフルデグラデーション）
+    error_log('[P1-12][customer/orders.php:137] check_last_order_store: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 // 品切れチェック（レースコンディション防止）

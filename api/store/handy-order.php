@@ -152,6 +152,7 @@ if (!empty($itemIds)) {
         }
     } catch (PDOException $e) {
         // テーブル未作成時はスキップ
+        error_log('[P1-12][api/store/handy-order.php:153] check_template_soldout: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 
     // 店舗限定メニューの品切れチェック
@@ -167,6 +168,7 @@ if (!empty($itemIds)) {
         }
     } catch (PDOException $e) {
         // テーブル未作成時はスキップ
+        error_log('[P1-12][api/store/handy-order.php:168] check_local_item_soldout: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 
     if (!empty($soldOutNames)) {

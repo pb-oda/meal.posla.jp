@@ -37,26 +37,30 @@
             .catch(function(err) { callback(null, { message: err.message }); });
     }
 
-    // ── Gemini API呼び出し（ai-assistant.jsと同パターン） ──
-    function callGemini(apiKey, prompt, maxTokens, onSuccess, onError) {
-        var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(apiKey);
-        fetch(url, {
+    // ── Gemini API呼び出し（ai-generate.php プロキシ経由 / P1-6b） ──
+    function callGemini(prompt, maxTokens, onSuccess, onError) {
+        fetch('/api/store/ai-generate.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.8, maxOutputTokens: maxTokens }
+                prompt: prompt,
+                temperature: 0.8,
+                max_tokens: maxTokens
             })
         })
         .then(function(r) { return r.text(); })
         .then(function(text) {
             var json = JSON.parse(text);
-            if (json.error) { onError(json.error.message || 'Gemini APIエラー'); return; }
-            var t = '';
-            if (json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) {
-                t = json.candidates[0].content.parts[0].text || '';
+            if (!json.ok) {
+                var msg = (json.error && json.error.message) || 'AIプロキシエラー';
+                if (json.error && json.error.code === 'AI_NOT_CONFIGURED') {
+                    msg = 'POSLA管理画面でGemini APIキーを設定してください';
+                }
+                onError(msg);
+                return;
             }
-            onSuccess(t);
+            onSuccess((json.data && json.data.text) || '');
         })
         .catch(function(err) { onError(err.message); });
     }
@@ -103,7 +107,6 @@
         availabilities: [],
         hourlyRates: null,
         _initialized: false,
-        _aiApiKey: null,
 
         init: function(containerId, storeId) {
             this.containerId = containerId;
@@ -588,45 +591,32 @@
                 document.body.removeChild(overlay);
             });
 
-            // 1. APIキー取得
-            var settingsUrl = '/api/store/settings.php?store_id=' + encodeURIComponent(self.storeId) + '&include_ai_key=1';
-            fetch(settingsUrl).then(function(r) { return r.text(); }).then(function(text) {
-                var json = JSON.parse(text);
-                if (!json.ok || !json.data || !json.data.ai_api_key) {
-                    document.getElementById('ai-suggest-content').innerHTML = '<p class="error">AIのAPIキーが設定されていません。POSLA管理画面でAPIキーを設定してください。</p>';
+            // 1. データ収集（APIキーチェックは ai-generate.php 側で行うため事前取得不要 / P1-6b）
+            document.getElementById('ai-suggest-content').innerHTML = '<p>AI提案用データを収集中...</p>';
+            apiCall('GET', 'ai-suggest-data.php?store_id=' + self.storeId + '&start_date=' + startDate + '&end_date=' + endDate, null, function(suggestData, err) {
+                if (err) {
+                    document.getElementById('ai-suggest-content').innerHTML = '<p class="error">データ取得に失敗しました: ' + esc(err.message || '') + '</p>';
                     return;
                 }
-                self._aiApiKey = json.data.ai_api_key;
 
-                // 2. データ収集
-                document.getElementById('ai-suggest-content').innerHTML = '<p>AI提案用データを収集中...</p>';
-                apiCall('GET', 'ai-suggest-data.php?store_id=' + self.storeId + '&start_date=' + startDate + '&end_date=' + endDate, null, function(suggestData, err) {
-                    if (err) {
-                        document.getElementById('ai-suggest-content').innerHTML = '<p class="error">データ取得に失敗しました: ' + esc(err.message || '') + '</p>';
+                // 2. Geminiプロンプト構築
+                document.getElementById('ai-suggest-content').innerHTML = '<p>AIが最適なシフトを提案中...</p>';
+                var prompt = self._buildAiPrompt(suggestData, startDate, endDate);
+
+                callGemini(prompt, 4096, function(responseText) {
+                    // 3. JSON解析
+                    var jsonStr = extractJson(responseText);
+                    try {
+                        var result = JSON.parse(jsonStr);
+                    } catch (e) {
+                        document.getElementById('ai-suggest-content').innerHTML = '<p class="error">AIの応答をパースできませんでした。再試行してください。</p>' +
+                            '<details><summary>生データ</summary><pre style="font-size:0.75rem;max-height:200px;overflow:auto;">' + esc(responseText) + '</pre></details>';
                         return;
                     }
-
-                    // 3. Geminiプロンプト構築
-                    document.getElementById('ai-suggest-content').innerHTML = '<p>AIが最適なシフトを提案中...</p>';
-                    var prompt = self._buildAiPrompt(suggestData, startDate, endDate);
-
-                    callGemini(self._aiApiKey, prompt, 4096, function(responseText) {
-                        // 4. JSON解析
-                        var jsonStr = extractJson(responseText);
-                        try {
-                            var result = JSON.parse(jsonStr);
-                        } catch (e) {
-                            document.getElementById('ai-suggest-content').innerHTML = '<p class="error">AIの応答をパースできませんでした。再試行してください。</p>' +
-                                '<details><summary>生データ</summary><pre style="font-size:0.75rem;max-height:200px;overflow:auto;">' + esc(responseText) + '</pre></details>';
-                            return;
-                        }
-                        self._renderAiSuggestResult(overlay, result, suggestData, startDate, endDate);
-                    }, function(errMsg) {
-                        document.getElementById('ai-suggest-content').innerHTML = '<p class="error">AI提案エラー: ' + esc(errMsg) + '</p>';
-                    });
+                    self._renderAiSuggestResult(overlay, result, suggestData, startDate, endDate);
+                }, function(errMsg) {
+                    document.getElementById('ai-suggest-content').innerHTML = '<p class="error">AI提案エラー: ' + esc(errMsg) + '</p>';
                 });
-            }).catch(function(err) {
-                document.getElementById('ai-suggest-content').innerHTML = '<p class="error">設定取得エラー: ' + esc(err.message) + '</p>';
             });
         },
 
@@ -736,33 +726,48 @@
 
         _applyAiSuggestions: function(overlay, suggestions) {
             var self = this;
-            var completed = 0;
-            var errors = 0;
 
-            function next() {
-                if (completed + errors >= suggestions.length) {
-                    alert('AI提案を適用しました（' + completed + '件成功、' + errors + '件失敗）');
-                    document.body.removeChild(overlay);
-                    self.loadWeek();
+            // 既存 AI 提案の削除を伴うため確認
+            var msg = 'AI提案 ' + suggestions.length + ' 件を適用します。\n' +
+                      '同期間の既存AI提案は削除されます（手動作成分は維持）。\nよろしいですか？';
+            if (!confirm(msg)) {
+                var applyBtn = document.getElementById('ai-suggest-apply');
+                if (applyBtn) {
+                    applyBtn.disabled = false;
+                    applyBtn.textContent = '全て採用';
+                }
+                return;
+            }
+
+            // 期間計算（suggestions の shift_date から min/max を取得）
+            var dates = suggestions.map(function(s) { return s.shift_date; }).sort();
+            var startDate = dates[0];
+            var endDate = dates[dates.length - 1];
+
+            var payload = {
+                store_id: self.storeId,
+                start_date: startDate,
+                end_date: endDate,
+                suggestions: suggestions,
+                replace_existing: true
+            };
+
+            apiCall('POST', 'apply-ai-suggestions.php?store_id=' + encodeURIComponent(self.storeId), payload, function(result, err) {
+                if (err) {
+                    alert('AI提案の適用に失敗しました: ' + (err.message || '不明なエラー'));
+                    var applyBtn = document.getElementById('ai-suggest-apply');
+                    if (applyBtn) {
+                        applyBtn.disabled = false;
+                        applyBtn.textContent = '全て採用';
+                    }
                     return;
                 }
-                var sg = suggestions[completed + errors];
-                var data = {
-                    store_id: self.storeId,
-                    user_id: sg.user_id,
-                    shift_date: sg.shift_date,
-                    start_time: sg.start_time,
-                    end_time: sg.end_time,
-                    break_minutes: 0,
-                    role_type: sg.role_type || null,
-                    note: 'AI提案'
-                };
-                apiCall('POST', 'assignments.php?store_id=' + encodeURIComponent(self.storeId), data, function(result, err) {
-                    if (err) { errors++; } else { completed++; }
-                    next();
-                });
-            }
-            next();
+                alert('AI提案を適用しました（削除 ' + (result.deleted || 0) + ' 件 / 新規 ' + (result.inserted || 0) + ' 件）');
+                if (overlay && overlay.parentNode) {
+                    document.body.removeChild(overlay);
+                }
+                self.loadWeek();
+            });
         },
 
         // ── 外部API ──

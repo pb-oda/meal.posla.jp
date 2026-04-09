@@ -115,6 +115,7 @@ try {
     }
 } catch (PDOException $e) {
     // recipes/ingredients 未作成時はスキップ（原価 = 0で計算）
+    error_log('[P1-12][api/owner/analytics-abc.php:116] load_recipe_costs: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 // ── 品目ごとの集計 ──

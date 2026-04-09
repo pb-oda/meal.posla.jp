@@ -244,7 +244,10 @@ var ShiftHelp = (function() {
 
         document.getElementById('help-send-btn').addEventListener('click', function() {
             var toStore = document.getElementById('help-to-store').value;
-            if (!toStore) { alert('送信先店舗を選択してください'); return; }
+            if (!toStore) {
+                if (typeof showToast === 'function') showToast('送信先店舗を選択してください', 'error');
+                return;
+            }
 
             var data = {
                 store_id: _storeId,
@@ -258,7 +261,10 @@ var ShiftHelp = (function() {
             };
 
             apiCall('POST', API_BASE + 'help-requests.php?store_id=' + encodeURIComponent(_storeId), data, function(result, err) {
-                if (err) { alert('要請の送信に失敗しました: ' + (err.message || '')); return; }
+                if (err) {
+                    if (typeof showToast === 'function') showToast('要請の送信に失敗しました: ' + (err.message || ''), 'error');
+                    return;
+                }
                 document.body.removeChild(overlay);
                 if (typeof showToast === 'function') showToast('ヘルプ要請を送信しました', 'success');
                 loadRequests();
@@ -270,7 +276,10 @@ var ShiftHelp = (function() {
     function _approveRequest(requestId) {
         // to_store のスタッフ一覧を取得
         apiCall('GET', API_BASE + 'help-requests.php?action=list-staff&store_id=' + encodeURIComponent(_storeId) + '&target_store_id=' + encodeURIComponent(_storeId), null, function(data, err) {
-            if (err) { alert('スタッフ一覧の取得に失敗しました'); return; }
+            if (err) {
+                if (typeof showToast === 'function') showToast('スタッフ一覧の取得に失敗しました', 'error');
+                return;
+            }
             var staffList = (data && data.staff) ? data.staff : [];
 
             var overlay = document.createElement('div');
@@ -311,7 +320,10 @@ var ShiftHelp = (function() {
                 for (var c = 0; c < checks.length; c++) {
                     userIds.push(checks[c].value);
                 }
-                if (userIds.length === 0) { alert('スタッフを選択してください'); return; }
+                if (userIds.length === 0) {
+                    if (typeof showToast === 'function') showToast('スタッフを選択してください', 'error');
+                    return;
+                }
 
                 var patchData = {
                     store_id: _storeId,
@@ -321,11 +333,15 @@ var ShiftHelp = (function() {
                 };
 
                 apiCall('PATCH', API_BASE + 'help-requests.php?id=' + encodeURIComponent(requestId) + '&store_id=' + encodeURIComponent(_storeId), patchData, function(result, err) {
-                    if (err) { alert('承認に失敗しました: ' + (err.message || '')); return; }
+                    if (err) {
+                        if (typeof showToast === 'function') showToast('承認に失敗しました: ' + (err.message || ''), 'error');
+                        return;
+                    }
                     document.body.removeChild(overlay);
                     // 警告表示
                     if (result && result.warnings && result.warnings.length > 0) {
-                        alert('承認しました。\n\n注意:\n' + result.warnings.join('\n'));
+                        if (typeof showToast === 'function') showToast('承認しました（警告: ' + result.warnings.join(' / ') + '）', 'success');
+                        if (window.console && console.warn) console.warn('Help approve warnings:', result.warnings);
                     } else {
                         if (typeof showToast === 'function') showToast('承認しました', 'success');
                     }
@@ -362,7 +378,10 @@ var ShiftHelp = (function() {
             };
 
             apiCall('PATCH', API_BASE + 'help-requests.php?id=' + encodeURIComponent(requestId) + '&store_id=' + encodeURIComponent(_storeId), patchData, function(result, err) {
-                if (err) { alert('却下に失敗しました: ' + (err.message || '')); return; }
+                if (err) {
+                    if (typeof showToast === 'function') showToast('却下に失敗しました: ' + (err.message || ''), 'error');
+                    return;
+                }
                 document.body.removeChild(overlay);
                 if (typeof showToast === 'function') showToast('却下しました');
                 loadRequests();
@@ -380,7 +399,10 @@ var ShiftHelp = (function() {
         };
 
         apiCall('PATCH', API_BASE + 'help-requests.php?id=' + encodeURIComponent(requestId) + '&store_id=' + encodeURIComponent(_storeId), patchData, function(result, err) {
-            if (err) { alert('キャンセルに失敗しました: ' + (err.message || '')); return; }
+            if (err) {
+                if (typeof showToast === 'function') showToast('キャンセルに失敗しました: ' + (err.message || ''), 'error');
+                return;
+            }
             if (typeof showToast === 'function') showToast('キャンセルしました');
             loadRequests();
         });

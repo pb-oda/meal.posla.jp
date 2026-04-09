@@ -104,7 +104,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     }
 
     // N-7: calories/allergens は menu_templates を直接更新
-    if (array_key_exists('calories', $data) || array_key_exists('allergens', $data)) {
+    // P1-29: enterprise (hq_menu_broadcast=true) では本部マスタを店舗側から書き換え不可
+    $tenantStmt = $pdo->prepare('SELECT tenant_id FROM stores WHERE id = ?');
+    $tenantStmt->execute([$storeId]);
+    $tenantIdForCheck = $tenantStmt->fetchColumn();
+    $isEnterpriseHq = $tenantIdForCheck && check_plan_feature($pdo, $tenantIdForCheck, 'hq_menu_broadcast');
+
+    if (!$isEnterpriseHq && (array_key_exists('calories', $data) || array_key_exists('allergens', $data))) {
         try {
             $tplFields = [];
             $tplParams = [];
@@ -123,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
             }
         } catch (PDOException $e) {
             // カラム未作成時はスキップ
+            error_log('[P1-12][api/store/menu-overrides.php:130] non_hq_master_update: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
         }
     }
 

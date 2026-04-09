@@ -26,12 +26,13 @@ $to   = $_GET['to']   ?? date('Y-m-d');
 $range = get_business_day_range($pdo, $storeId, $from, $to);
 
 // ===== スタッフ一覧取得 =====
+// P1a: device ロールはレポート対象外（KDS/レジ端末専用アカウント）
 $stmt = $pdo->prepare(
-    'SELECT u.id, u.display_name, u.role
+    "SELECT u.id, u.display_name, u.role
      FROM users u
      JOIN user_stores us ON us.user_id = u.id
-     WHERE us.store_id = ? AND u.tenant_id = ? AND u.is_active = 1
-     ORDER BY u.display_name'
+     WHERE us.store_id = ? AND u.tenant_id = ? AND u.is_active = 1 AND u.role != 'device'
+     ORDER BY u.display_name"
 );
 $stmt->execute([$storeId, $tenantId]);
 $staffRows = $stmt->fetchAll();
@@ -86,6 +87,7 @@ try {
     }
 } catch (PDOException $e) {
     // satisfaction_ratings テーブルが存在しない場合
+    error_log('[P1-12][staff-report.php:87] fetch_rating_by_staff: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
 // スタッフ別実績を統合
