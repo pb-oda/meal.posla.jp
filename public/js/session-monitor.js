@@ -12,7 +12,7 @@
 
   var WARNING_MS  = 25 * 60 * 1000; // 25分
   var CHECK_API   = '/api/auth/check.php';
-  var LOGIN_PATH  = '/admin/index.html';
+  var LOGIN_PATH  = '/public/admin/index.html';
 
   var warningTimer = null;
   var overlay      = null;

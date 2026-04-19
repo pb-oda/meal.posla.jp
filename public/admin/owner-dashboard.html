@@ -30,6 +30,9 @@
       color: var(--text-primary, #333);
     }
   </style>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 </head>
 <body>
 
@@ -40,6 +43,7 @@
     </div>
     <div class="admin-header__actions">
       <span class="admin-header__user" id="owner-header-user">-</span>
+      <a class="btn-change-password" href="/public/docs-tenant/" target="_blank" rel="noopener" title="取扱説明書を開く" style="text-decoration:none;">📖 取扱説明書</a>
       <button class="btn-change-password" id="owner-btn-change-password" type="button" title="パスワード変更">パスワード変更</button>
       <button class="btn-logout" id="owner-btn-logout">ログアウト</button>
     </div>
@@ -223,18 +227,19 @@
   <div class="admin-toast" id="admin-toast"></div>
 
   <!-- JS -->
-  <script src="../shared/js/utils.js"></script>
+  <script src="../shared/js/utils.js?v=20260419-phaseB"></script>
   <script src="js/admin-api.js"></script>
   <script src="js/store-selector.js"></script>
   <script src="js/cross-store-report.js"></script>
   <script src="js/abc-analytics.js"></script>
-  <script src="js/user-editor.js?v=20260406b"></script>
+  <script src="js/user-editor.js?v=20260419-cp1"></script>
   <script src="js/store-editor.js"></script>
   <script src="js/category-editor.js?v=20260408a"></script>
   <script src="js/menu-template-editor.js?v=20260408a"></script>
   <script src="js/ai-assistant.js?v=20260408bF"></script>
   <script src="../js/shift-manager.js?v=20260406b"></script>
-  <script src="js/owner-app.js?v=20260408p120"></script>
+  <script src="js/owner-app.js?v=20260409p135"></script>
+  <script src="../shared/js/posla-helpdesk-fab.js?v=20260419-cb1c"></script>
 
   <!-- グローバルトースト（dashboard.htmlと同一パターン） -->
   <script>
@@ -250,7 +255,7 @@
   }
   </script>
   <script src="../js/offline-detector.js"></script>
-  <script src="../js/session-monitor.js"></script>
+  <script src="../js/session-monitor.js?v=20260419-fixurl"></script>
 
   <!-- パスワード変更モーダル（P1-5） -->
   <div class="modal-overlay" id="password-change-overlay" style="display:none;opacity:1;visibility:visible;">
@@ -390,5 +395,6 @@
     });
   })();
   </script>
+  <script src="pwa-register.js"></script>
 </body>
 </html>

@@ -72,16 +72,17 @@ if ($stripeEventId) {
 }
 
 // テナント特定用関数
+// P1-35: plan 列は α-1 化で書き換えなくなった (auth.php / UI も参照しない)。SELECT のみ残置可
 $findTenantByCustomerId = function($customerId) use ($pdo) {
     if (!$customerId) return null;
-    $stmt = $pdo->prepare('SELECT id, plan FROM tenants WHERE stripe_customer_id = ?');
+    $stmt = $pdo->prepare('SELECT id FROM tenants WHERE stripe_customer_id = ?');
     $stmt->execute([$customerId]);
     return $stmt->fetch();
 };
 
 $findTenantBySubscriptionId = function($subscriptionId) use ($pdo) {
     if (!$subscriptionId) return null;
-    $stmt = $pdo->prepare('SELECT id, plan FROM tenants WHERE stripe_subscription_id = ?');
+    $stmt = $pdo->prepare('SELECT id FROM tenants WHERE stripe_subscription_id = ?');
     $stmt->execute([$subscriptionId]);
     return $stmt->fetch();
 };
@@ -106,42 +107,29 @@ switch ($eventType) {
         $tenantId = $tenant['id'];
 
         if ($subscriptionId) {
-            // Stripe API でサブスクリプション詳細を取得
+            // P1-35: Stripe API で subscription 詳細を取得 (checkout.session.completed payload は items を含まないため必須)
             $secretKey = isset($config['stripe_secret_key']) ? $config['stripe_secret_key'] : '';
-            $newPlan = null;
-            $periodEnd = null;
+            $state = null;
 
             if ($secretKey) {
                 $subResult = get_subscription($secretKey, $subscriptionId);
                 if ($subResult['success'] && $subResult['data']) {
-                    $subData = $subResult['data'];
-
-                    // price_id からプラン判定
-                    $priceId = null;
-                    if (isset($subData['items']['data'][0]['price']['id'])) {
-                        $priceId = $subData['items']['data'][0]['price']['id'];
-                    }
-                    if ($priceId) {
-                        $newPlan = resolve_plan_from_price($priceId, $config);
-                    }
-
-                    if (isset($subData['current_period_end'])) {
-                        $periodEnd = date('Y-m-d H:i:s', (int)$subData['current_period_end']);
-                    }
+                    $state = extract_alpha1_state_from_subscription($subResult['data'], $config);
                 }
             }
 
-            // DB更新
-            $sets = ['stripe_subscription_id = ?', 'subscription_status = ?'];
-            $params = [$subscriptionId, 'active'];
+            // DB更新 — plan 列は触らない
+            // status は Stripe の値をそのまま反映 (trialing 維持)
+            $newStatus = $state ? $state['status'] : 'active';
+            $newPeriodEnd = $state ? $state['current_period_end'] : null;
+            $newHqBroadcast = ($state && $state['has_hq_broadcast']) ? 1 : 0;
 
-            if ($newPlan) {
-                $sets[] = 'plan = ?';
-                $params[] = $newPlan;
-            }
-            if ($periodEnd) {
+            $sets = ['stripe_subscription_id = ?', 'subscription_status = ?', 'hq_menu_broadcast = ?'];
+            $params = [$subscriptionId, $newStatus, $newHqBroadcast];
+
+            if ($newPeriodEnd) {
                 $sets[] = 'current_period_end = ?';
-                $params[] = $periodEnd;
+                $params[] = $newPeriodEnd;
             }
 
             $params[] = $tenantId;
@@ -161,47 +149,21 @@ switch ($eventType) {
         }
         $tenantId = $tenant['id'];
 
-        $sets = [];
-        $params = [];
+        // P1-35: webhook payload の data.object は subscription オブジェクトと同じスキーマなので
+        //        extract_alpha1_state_from_subscription にそのまま渡せる (items.data も含まれる)
+        $state = extract_alpha1_state_from_subscription($dataObject, $config);
 
-        // status更新
-        $stripeStatus = isset($dataObject['status']) ? $dataObject['status'] : null;
-        if ($stripeStatus) {
-            $statusMap = [
-                'active'   => 'active',
-                'past_due' => 'past_due',
-                'canceled' => 'canceled',
-                'trialing' => 'trialing',
-            ];
-            $mappedStatus = isset($statusMap[$stripeStatus]) ? $statusMap[$stripeStatus] : 'none';
-            $sets[] = 'subscription_status = ?';
-            $params[] = $mappedStatus;
-        }
+        $sets = ['subscription_status = ?', 'hq_menu_broadcast = ?'];
+        $params = [$state['status'], $state['has_hq_broadcast'] ? 1 : 0];
 
-        // current_period_end更新
-        if (isset($dataObject['current_period_end'])) {
+        if ($state['current_period_end']) {
             $sets[] = 'current_period_end = ?';
-            $params[] = date('Y-m-d H:i:s', (int)$dataObject['current_period_end']);
+            $params[] = $state['current_period_end'];
         }
 
-        // price_id からプラン判定
-        $priceId = null;
-        if (isset($dataObject['items']['data'][0]['price']['id'])) {
-            $priceId = $dataObject['items']['data'][0]['price']['id'];
-        }
-        if ($priceId) {
-            $newPlan = resolve_plan_from_price($priceId, $config);
-            if ($newPlan) {
-                $sets[] = 'plan = ?';
-                $params[] = $newPlan;
-            }
-        }
-
-        if (!empty($sets)) {
-            $params[] = $tenantId;
-            $sql = 'UPDATE tenants SET ' . implode(', ', $sets) . ' WHERE id = ?';
-            $pdo->prepare($sql)->execute($params);
-        }
+        $params[] = $tenantId;
+        $sql = 'UPDATE tenants SET ' . implode(', ', $sets) . ' WHERE id = ?';
+        $pdo->prepare($sql)->execute($params);
         break;
 
     // ── customer.subscription.deleted ──

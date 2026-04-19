@@ -1,0 +1,79 @@
+/* L-9 予約管理 — 店舗側ガント台帳 */
+
+.rb-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px; background: #fafafa; border-bottom: 1px solid #e0e0e0; }
+.rb-toolbar__date { display: flex; align-items: center; gap: 4px; }
+.rb-toolbar input[type="date"] { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; }
+.rb-toolbar button { padding: 6px 14px; border: 1px solid #ccc; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+.rb-toolbar button.rb-btn--primary { background: #1976d2; color: #fff; border-color: #1976d2; }
+.rb-summary { display: flex; gap: 16px; margin-left: auto; flex-wrap: wrap; }
+.rb-summary__item { font-size: 0.85rem; color: #555; }
+.rb-summary__item strong { font-size: 1.1rem; color: #212121; margin-right: 4px; }
+.rb-tab-nav { display: flex; gap: 0; border-bottom: 1px solid #e0e0e0; padding: 0 12px; }
+.rb-tab-nav button { background: none; border: none; padding: 12px 16px; cursor: pointer; font-size: 0.95rem; color: #666; border-bottom: 3px solid transparent; }
+.rb-tab-nav button.rb-tab--active { color: #1976d2; border-bottom-color: #1976d2; font-weight: 600; }
+
+.rb-gantt { position: relative; overflow: auto; border: 1px solid #e0e0e0; max-height: 70vh; background: #fff; }
+.rb-gantt__inner { position: relative; }
+.rb-gantt__header { position: sticky; top: 0; background: #fafafa; z-index: 10; display: flex; border-bottom: 2px solid #ccc; }
+.rb-gantt__corner { position: sticky; left: 0; min-width: 140px; max-width: 140px; padding: 8px; background: #fafafa; border-right: 2px solid #ccc; font-weight: 600; z-index: 11; }
+.rb-gantt__hours { display: flex; }
+.rb-gantt__hour { min-width: 60px; padding: 8px 4px; text-align: center; border-right: 1px solid #eee; font-size: 0.85rem; color: #666; }
+.rb-gantt__row { display: flex; border-bottom: 1px solid #eee; min-height: 48px; position: relative; }
+.rb-gantt__row-label { position: sticky; left: 0; min-width: 140px; max-width: 140px; padding: 8px; background: #fafafa; border-right: 2px solid #ccc; font-size: 0.9rem; z-index: 5; }
+.rb-gantt__row-label small { display: block; color: #888; font-size: 0.75rem; }
+.rb-gantt__row-area { position: relative; flex: 1; }
+.rb-gantt__row-area > .rb-gantt__cell { position: absolute; top: 0; bottom: 0; border-right: 1px solid #f0f0f0; }
+.rb-gantt__row-area > .rb-gantt__cell--hour { border-right-color: #ddd; }
+
+.rb-rsv { position: absolute; top: 4px; bottom: 4px; border-radius: 6px; padding: 4px 8px; cursor: pointer; overflow: hidden; font-size: 0.78rem; line-height: 1.2; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.rb-rsv--confirmed { background: #bbdefb; border: 1px solid #1976d2; color: #0d47a1; }
+.rb-rsv--pending { background: #fff9c4; border: 1px solid #f57c00; color: #e65100; }
+.rb-rsv--seated { background: #c8e6c9; border: 1px solid #2e7d32; color: #1b5e20; }
+.rb-rsv--no_show { background: #ffcdd2; border: 1px solid #c62828; color: #b71c1c; opacity: 0.8; }
+.rb-rsv--cancelled { background: #cfd8dc; border: 1px solid #607d8b; color: #455a64; opacity: 0.6; }
+.rb-rsv--completed { background: #d1c4e9; border: 1px solid #5e35b1; color: #311b92; }
+.rb-rsv__name { font-weight: 700; }
+.rb-rsv__meta { display: flex; gap: 6px; }
+.rb-rsv__tags { font-size: 0.7rem; }
+.rb-rsv--vip::before { content: '★'; color: #ffd600; margin-right: 2px; }
+
+.rb-empty { padding: 32px; text-align: center; color: #888; }
+
+/* Detail panel (modal) */
+.rb-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.rb-modal__content { background: #fff; border-radius: 8px; padding: 20px; max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; }
+.rb-modal__close { position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888; }
+.rb-modal h3 { margin: 0 0 12px; }
+.rb-modal__row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 0.9rem; }
+.rb-modal__row > span:first-child { color: #777; }
+.rb-modal__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.rb-modal__actions button { padding: 10px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem; }
+.rb-btn-seat { background: #2e7d32; color: #fff; }
+.rb-btn-noshow { background: #c62828; color: #fff; }
+.rb-btn-cancel { background: #607d8b; color: #fff; }
+.rb-btn-edit { background: #1976d2; color: #fff; }
+.rb-btn-resend { background: #ef6c00; color: #fff; }
+.rb-modal__form-group { margin-bottom: 12px; }
+.rb-modal__form-group label { display: block; font-size: 0.85rem; color: #555; margin-bottom: 4px; }
+.rb-modal__form-group input, .rb-modal__form-group select, .rb-modal__form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; box-sizing: border-box; font-family: inherit; }
+
+.rb-table-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+.rb-table-list label { display: flex; align-items: center; gap: 4px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
+.rb-table-list input { margin: 0; }
+
+.rb-qr-img { display: block; margin: 12px auto; max-width: 200px; }
+.rb-qr-url { word-break: break-all; font-family: monospace; font-size: 0.8rem; background: #f5f5f5; padding: 8px; border-radius: 4px; }
+
+/* Customer list */
+.rb-customers { padding: 12px; }
+.rb-customers__filters { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.rb-customers__filters input, .rb-customers__filters select { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; }
+.rb-customers__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.rb-customer-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; cursor: pointer; }
+.rb-customer-card:hover { border-color: #1976d2; }
+.rb-customer-card__name { font-weight: 700; }
+.rb-customer-card__meta { color: #666; font-size: 0.85rem; margin-top: 4px; }
+.rb-customer-card__tags { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.rb-tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: #e0e0e0; }
+.rb-tag--vip { background: #ffd600; color: #000; }
+.rb-tag--blacklist { background: #c62828; color: #fff; }

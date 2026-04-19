@@ -50,9 +50,10 @@ if ($method === 'GET') {
         require_store_access($receipt['store_id']);
 
         // payment 取得（明細用）
+        // S3 #15: store_id 境界 — receipt.store_id を二重チェック
         $paymentId = $receipt['payment_id'];
-        $stmt = $pdo->prepare('SELECT * FROM payments WHERE id = ?');
-        $stmt->execute([$paymentId]);
+        $stmt = $pdo->prepare('SELECT * FROM payments WHERE id = ? AND store_id = ?');
+        $stmt->execute([$paymentId, $receipt['store_id']]);
         $payment = $stmt->fetch();
         if (!$payment) {
             json_error('PAYMENT_NOT_FOUND', '支払い情報が見つかりません', 404);
@@ -64,11 +65,12 @@ if ($method === 'GET') {
             $orderIds = json_decode($payment['order_ids'], true);
             if (!empty($orderIds)) {
                 $placeholders = implode(',', array_fill(0, count($orderIds), '?'));
+                // S3 #15: store_id 境界 — 同店舗の order_items のみ取得
                 $stmt = $pdo->prepare(
                     "SELECT name, price, qty, options FROM order_items
-                     WHERE order_id IN ($placeholders) AND status != 'cancelled'"
+                     WHERE order_id IN ($placeholders) AND store_id = ? AND status != 'cancelled'"
                 );
-                $stmt->execute($orderIds);
+                $stmt->execute(array_merge($orderIds, [$receipt['store_id']]));
                 $paidItems = $stmt->fetchAll();
             }
         }
@@ -146,8 +148,16 @@ if ($method === 'GET') {
         $paymentId = $_GET['payment_id'];
 
         // payment の store_id を取得してアクセス権限確認
-        $pStmt = $pdo->prepare('SELECT store_id FROM payments WHERE id = ?');
-        $pStmt->execute([$paymentId]);
+        // S3 #15: store_id を必須化 (クエリで指定された場合は境界チェック)
+        $pStoreId = isset($_GET['store_id']) ? $_GET['store_id'] : null;
+        if ($pStoreId) {
+            require_store_access($pStoreId);
+            $pStmt = $pdo->prepare('SELECT store_id FROM payments WHERE id = ? AND store_id = ?');
+            $pStmt->execute([$paymentId, $pStoreId]);
+        } else {
+            $pStmt = $pdo->prepare('SELECT store_id FROM payments WHERE id = ?');
+            $pStmt->execute([$paymentId]);
+        }
         $pRow = $pStmt->fetch();
         if (!$pRow) {
             json_error('PAYMENT_NOT_FOUND', '支払い情報が見つかりません', 404);
@@ -229,11 +239,12 @@ if ($method === 'POST') {
         $orderIds = json_decode($payment['order_ids'], true);
         if (!empty($orderIds)) {
             $placeholders = implode(',', array_fill(0, count($orderIds), '?'));
+            // S3 #15: store_id 境界 — 同店舗の order_items のみ取得
             $stmt = $pdo->prepare(
                 "SELECT name, price, qty, options FROM order_items
-                 WHERE order_id IN ($placeholders) AND status != 'cancelled'"
+                 WHERE order_id IN ($placeholders) AND store_id = ? AND status != 'cancelled'"
             );
-            $stmt->execute($orderIds);
+            $stmt->execute(array_merge($orderIds, [$storeId]));
             $paidItems = $stmt->fetchAll();
         }
     }

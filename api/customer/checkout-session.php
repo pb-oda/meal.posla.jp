@@ -32,7 +32,7 @@ $stmt = $pdo->prepare(
 $stmt->execute([$tableId, $storeId]);
 $tableRow = $stmt->fetch();
 
-if (!$tableRow || $tableRow['session_token'] !== $sessionToken) {
+if (!$tableRow || !$tableRow['session_token'] || !hash_equals($tableRow['session_token'], (string)$sessionToken)) {
     json_error('INVALID_SESSION', 'セッションが無効です', 403);
 }
 if ($tableRow['session_token_expires_at'] && strtotime($tableRow['session_token_expires_at']) < time()) {
@@ -108,6 +108,21 @@ $cancelUrl = $base . '/public/customer/menu.html?store_id=' . urlencode($storeId
 $orderName = $storeName . ' お会計';
 $currency = 'jpy';
 
+// ── P0 #5: Stripe Session metadata (サーバー側期待値をクライアント介さず保持) ──
+$orderIds = array();
+foreach ($orders as $o) {
+    $orderIds[] = $o['id'];
+}
+$stripeMetadata = array(
+    'tenant_id'        => (string)$tenantId,
+    'store_id'         => (string)$storeId,
+    'table_id'         => (string)$tableId,
+    'expected_amount'  => (string)$totalAmount,
+    'expected_currency' => $currency,
+    'order_ids'        => implode(',', $orderIds),
+    'purpose'          => 'dine_in_self_payment',
+);
+
 // ── Stripe 決済設定を取得して Checkout Session 作成 ──
 $checkoutResult = null;
 
@@ -129,7 +144,8 @@ try {
                 $applicationFee,
                 $orderName,
                 $successUrl,
-                $cancelUrl
+                $cancelUrl,
+                $stripeMetadata
             );
         }
     }
@@ -154,7 +170,8 @@ if (!$checkoutResult) {
         $currency,
         $orderName,
         $successUrl,
-        $cancelUrl
+        $cancelUrl,
+        $stripeMetadata
     );
 }
 

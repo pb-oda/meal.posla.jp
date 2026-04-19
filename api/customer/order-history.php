@@ -28,7 +28,7 @@ $stmt = $pdo->prepare('SELECT session_token, session_token_expires_at FROM table
 $stmt->execute([$tableId, $storeId]);
 $tokenRow = $stmt->fetch();
 
-if (!$tokenRow || !$tokenRow['session_token'] || $sessionToken !== $tokenRow['session_token']) {
+if (!$tokenRow || !$tokenRow['session_token'] || !hash_equals($tokenRow['session_token'], (string)$sessionToken)) {
     json_error('INVALID_SESSION', 'このQRコードは無効です。スタッフにお声がけください。', 403);
 }
 if ($tokenRow['session_token_expires_at'] && strtotime($tokenRow['session_token_expires_at']) < time()) {

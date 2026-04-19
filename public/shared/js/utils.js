@@ -67,6 +67,24 @@ var Utils = (function () {
     return { from: from, to: to };
   }
 
+  /**
+   * Phase B: API エラーを「[E3024] PIN が…」形式の文字列に整形する。
+   * 入力は API レスポンスの error オブジェクト ({ code, message, errorNo })
+   * もしくはレスポンス全体 ({ ok:false, error: {...} })
+   * もしくは Error インスタンス。
+   */
+  function formatError(input) {
+    if (!input) return 'エラー';
+    // Response 全体が渡された場合
+    if (input.error && typeof input.error === 'object') input = input.error;
+    // Error インスタンス
+    if (input.message && !input.code) return String(input.message);
+    var msg = input.message || input.code || 'エラー';
+    var tag = input.errorNo || input.code || '';
+    if (!tag) return String(msg);
+    return '[' + tag + '] ' + msg;
+  }
+
   return {
     formatYen: formatYen,
     escapeHtml: escapeHtml,
@@ -75,5 +93,6 @@ var Utils = (function () {
     formatShortDate: formatShortDate,
     formatDuration: formatDuration,
     getPresetRange: getPresetRange,
+    formatError: formatError,
   };
 })();

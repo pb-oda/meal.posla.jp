@@ -1,0 +1,11 @@
+# S3 (Q2=A): DB 認証情報を環境変数で渡す
+# 本番デプロイ時にこの 4 行を実値に書き換える (リポジトリには空テンプレートを置く)
+SetEnv POSLA_DB_HOST mysql80.odah.sakura.ne.jp
+SetEnv POSLA_DB_NAME odah_eat-posla
+SetEnv POSLA_DB_USER odah_eat-posla
+SetEnv POSLA_DB_PASS odah_eat-posla
+
+# config/ への直接アクセス禁止
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>

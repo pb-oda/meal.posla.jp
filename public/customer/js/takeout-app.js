@@ -45,7 +45,7 @@
         var json;
         try { json = JSON.parse(body); } catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
         if (!res.ok || !json.ok) {
-          var msg = (json.error && json.error.message) || 'エラーが発生しました';
+          var msg = (window.Utils && Utils.formatError) ? Utils.formatError(json) : ((json.error && json.error.message) || 'エラーが発生しました');
           return Promise.reject(new Error(msg));
         }
         return json.data;
@@ -64,7 +64,7 @@
         var json;
         try { json = JSON.parse(body); } catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
         if (!res.ok || !json.ok) {
-          var msg = (json.error && json.error.message) || 'エラーが発生しました';
+          var msg = (window.Utils && Utils.formatError) ? Utils.formatError(json) : ((json.error && json.error.message) || 'エラーが発生しました');
           return Promise.reject(new Error(msg));
         }
         return json.data;
@@ -500,25 +500,25 @@
     var sec = document.getElementById('to-section-3');
     var html = '<h2 class="to-section__title">お支払い方法</h2>';
     html += '<div class="to-form">';
-    html += '<label class="to-radio-card to-radio-card--selected"><input type="radio" name="to-payment" value="cash" checked> 店頭でお支払い<span class="to-radio-desc">受取時にレジでお支払いください</span></label>';
     if (_onlinePaymentAvailable) {
-      html += '<label class="to-radio-card"><input type="radio" name="to-payment" value="online"> オンライン決済<span class="to-radio-desc">決済ページに移動します</span></label>';
+      html += '<label class="to-radio-card to-radio-card--selected"><input type="radio" name="to-payment" value="online" checked> オンライン決済<span class="to-radio-desc">決済ページに移動します（事前決済）</span></label>';
+    } else {
+      html += '<div class="to-notice" style="padding:16px;background:#fff3cd;border-radius:8px;color:#856404;">現在テイクアウトのオンライン決済が設定されていないため、ご注文いただけません。店舗にお問い合わせください。</div>';
     }
     html += '</div>';
     html += '<div class="to-nav-btns">';
     html += '<button class="to-btn to-btn--secondary" id="to-back-2">戻る</button>';
-    html += '<button class="to-btn to-btn--primary" id="to-next-4">次へ</button>';
+    if (_onlinePaymentAvailable) {
+      html += '<button class="to-btn to-btn--primary" id="to-next-4">次へ</button>';
+    }
     html += '</div>';
     sec.innerHTML = html;
 
-    sec.querySelectorAll('input[name="to-payment"]').forEach(function (radio) {
-      radio.addEventListener('change', function () {
-        sec.querySelectorAll('.to-radio-card').forEach(function (card) { card.classList.remove('to-radio-card--selected'); });
-        this.closest('.to-radio-card').classList.add('to-radio-card--selected');
-      });
-    });
     document.getElementById('to-back-2').addEventListener('click', function () { goToSection(2); });
-    document.getElementById('to-next-4').addEventListener('click', function () { goToSection(4); });
+    var nextBtn = document.getElementById('to-next-4');
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function () { goToSection(4); });
+    }
   }
 
   // ===== セクション4: 確認 =====
@@ -528,7 +528,7 @@
     var phone = document.getElementById('to-phone') ? document.getElementById('to-phone').value.trim() : '';
     var memo = document.getElementById('to-memo') ? document.getElementById('to-memo').value.trim() : '';
     var payEl = document.querySelector('input[name="to-payment"]:checked');
-    var payMethod = payEl ? payEl.value : 'cash';
+    var payMethod = payEl ? payEl.value : 'online';
 
     var html = '<h2 class="to-section__title">ご注文確認</h2>';
 
@@ -547,7 +547,7 @@
     html += '<div class="to-confirm-row"><span>電話番号</span><span>' + escapeHtml(phone) + '</span></div>';
     if (memo) html += '<div class="to-confirm-row"><span>メモ</span><span>' + escapeHtml(memo) + '</span></div>';
     html += '<div class="to-confirm-row"><span>受取時間</span><span>' + escapeHtml(_selectedSlot) + '</span></div>';
-    html += '<div class="to-confirm-row"><span>支払方法</span><span>' + (payMethod === 'online' ? 'オンライン決済' : '店頭でお支払い') + '</span></div>';
+    html += '<div class="to-confirm-row"><span>支払方法</span><span>オンライン決済</span></div>';
     html += '</div>';
 
     html += '<div class="to-nav-btns">';
@@ -593,7 +593,7 @@
       _orderId = data.order_id;
       _orderPhone = phone;
 
-      if (payMethod === 'online' && data.checkout_url) {
+      if (data.checkout_url) {
         window.location.href = data.checkout_url;
         return;
       }
@@ -639,7 +639,7 @@
     } else if (status === 'cancel') {
       app.innerHTML = '<div style="text-align:center;padding:3rem;">'
         + '<div style="font-size:1.2rem;color:#FF9800;margin-bottom:1rem;">決済がキャンセルされました</div>'
-        + '<p style="color:#666;margin-bottom:2rem;">注文は保持されています。もう一度お試しいただくか、店頭でお支払いください。</p>'
+        + '<p style="color:#666;margin-bottom:2rem;">注文は保持されています。もう一度お試しいただくか、店舗にお問い合わせください。</p>'
         + '<a href="takeout.html?store_id=' + encodeURIComponent(_storeId) + '" class="to-btn to-btn--primary" style="text-decoration:none;display:inline-block;">新しい注文を作成</a>'
         + '</div>';
     }

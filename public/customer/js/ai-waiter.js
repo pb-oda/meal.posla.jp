@@ -350,7 +350,7 @@
       removeTyping(typingEl);
 
       if (!json.ok) {
-        var errMsg = (json.error && json.error.message) || 'エラーが発生しました';
+        var errMsg = (window.Utils && Utils.formatError) ? Utils.formatError(json) : ((json.error && json.error.message) || 'エラーが発生しました');
         appendBubble('ai', errMsg);
         return;
       }

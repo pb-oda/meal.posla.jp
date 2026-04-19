@@ -36,6 +36,9 @@
     .so-voice-overlay__none { color: #4CAF50; font-weight: 700; font-size: 1.1rem; }
     @keyframes so-pop-in { 0% { opacity:0; transform:translate(-50%,-50%) scale(0.7); } 100% { opacity:1; transform:translate(-50%,-50%) scale(1); } }
   </style>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 </head>
 <body>
 
@@ -771,5 +774,6 @@
     })();
   })();
   </script>
+  <script src="pwa-register.js"></script>
 </body>
 </html>

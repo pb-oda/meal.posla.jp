@@ -70,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'courseName'         => $s['course_name'] ?? null,
             'coursePrice'        => $s['course_price'] !== null ? (int)$s['course_price'] : null,
             'currentPhaseNumber' => $s['current_phase_number'] !== null ? (int)$s['current_phase_number'] : null,
+            'sessionPin'         => $s['session_pin'] ?? null,
         ];
     }
 
@@ -188,11 +189,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         fire_course_phase_orders($pdo, $storeId, $tableId, $courseId, $phase1);
     }
 
+    // S6: セッションPIN生成（4桁）
+    $sessionPin = null;
+    try {
+        $sessionPin = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+        $pdo->prepare('UPDATE table_sessions SET session_pin = ? WHERE id = ?')
+            ->execute([$sessionPin, $id]);
+    } catch (PDOException $e) {
+        // session_pin カラム未作成時はスキップ
+        $sessionPin = null;
+    }
+
     json_response([
         'id'          => $id,
         'expiresAt'   => $expiresAt,
         'lastOrderAt' => $lastOrderAt,
         'courseId'     => $courseId,
+        'sessionPin'  => $sessionPin,
     ], 201);
 }
 

@@ -1,0 +1,17 @@
+{
+  "name": "POSLA KDS",
+  "short_name": "POSLA KDS",
+  "description": "POSLA キッチンディスプレイ・レジ",
+  "start_url": "/public/kds/index.html",
+  "scope": "/public/kds/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0a0a0a",
+  "theme_color": "#2e7d32",
+  "lang": "ja",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon.svg",     "sizes": "any",     "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

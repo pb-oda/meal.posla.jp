@@ -4,6 +4,13 @@
  *
  * orders.items JSON と order_items テーブルの二重書き込みを行う。
  * order_items テーブルが存在しない場合はサイレントにスキップする（移行期間対応）。
+ *
+ * ⚠️ セキュリティ契約 (P0 #1+#2 — 2026-04-19):
+ *   このヘルパーは渡された $items の price / qty / id を**そのまま** DB に書き込む。
+ *   呼び出し側は必ず事前に api/lib/order-validator.php の
+ *   validate_and_recompute_items() を通し、サーバー側で正規価格・商品存在・
+ *   数量妥当性を検証済みの items のみ渡すこと。
+ *   未検証の items を直接渡すと、価格/商品名/数量の改ざん攻撃に晒される。
  */
 
 /**
@@ -13,6 +20,7 @@
  * @param string $orderId  orders.id
  * @param string $storeId  store_id
  * @param array  $items    品目配列 [{id, name, price, qty, options?}]
+ *                         ※ validate_and_recompute_items() を通した正規化済みデータが前提
  */
 function insert_order_items(PDO $pdo, string $orderId, string $storeId, array $items): void
 {

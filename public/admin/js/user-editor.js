@@ -79,29 +79,6 @@ var UserEditor = (function () {
     }).join('');
   }
 
-  // L-3b2: ツール表示チェックボックス生成
-  function toolCheckboxesHtml(visibleTools) {
-    // visibleTools: "handy,kds,register" or null (null=店舗設定に従う)
-    var useDefault = (visibleTools === null || visibleTools === undefined);
-    var allowed = useDefault ? [] : visibleTools.split(',');
-    var tools = [
-      { key: 'handy', label: 'ハンディPOS' },
-      { key: 'kds', label: 'KDS' },
-      { key: 'register', label: 'POSレジ' }
-    ];
-    var html = '<div class="form-group" id="user-visible-tools-group">'
-      + '<label class="form-label">表示ツール</label>'
-      + '<label class="settings-toggle" style="margin-bottom:8px"><input type="checkbox" class="settings-toggle__input" id="user-vt-default"'
-      + (useDefault ? ' checked' : '') + '> 店舗設定に従う</label>'
-      + '<div id="user-vt-items" style="' + (useDefault ? 'opacity:0.4;pointer-events:none' : '') + '">';
-    for (var i = 0; i < tools.length; i++) {
-      var checked = useDefault || allowed.indexOf(tools[i].key) >= 0 ? ' checked' : '';
-      html += '<label class="settings-toggle"><input type="checkbox" class="settings-toggle__input vt-cb" value="' + tools[i].key + '"' + checked + '> ' + tools[i].label + '</label>';
-    }
-    html += '</div></div>';
-    return html;
-  }
-
   // L-3 Phase 2: 時給入力欄HTML生成
   function hourlyRateHtml(hourlyRate) {
     var val = (hourlyRate !== null && hourlyRate !== undefined) ? hourlyRate : '';
@@ -119,32 +96,6 @@ var UserEditor = (function () {
     return isNaN(v) ? null : v;
   }
 
-  function bindToolCheckboxEvents() {
-    var defCb = document.getElementById('user-vt-default');
-    if (!defCb) return;
-    defCb.addEventListener('change', function () {
-      var items = document.getElementById('user-vt-items');
-      if (this.checked) {
-        items.style.opacity = '0.4';
-        items.style.pointerEvents = 'none';
-      } else {
-        items.style.opacity = '';
-        items.style.pointerEvents = '';
-      }
-    });
-  }
-
-  function getVisibleToolsValue() {
-    var defCb = document.getElementById('user-vt-default');
-    if (!defCb || defCb.checked) return null; // 店舗設定に従う
-    var checked = [];
-    var cbs = document.querySelectorAll('.vt-cb:checked');
-    for (var i = 0; i < cbs.length; i++) {
-      checked.push(cbs[i].value);
-    }
-    return checked.length > 0 ? checked.join(',') : '';
-  }
-
   function openAddModal() {
     var overlay = document.getElementById('admin-modal-overlay');
     overlay.querySelector('.modal__title').textContent = _isManager() ? 'スタッフを追加' : 'ユーザーを追加';
@@ -160,10 +111,8 @@ var UserEditor = (function () {
         + '<div class="form-group" id="user-stores-group"><label class="form-label">担当店舗</label><div class="settings-toggle-group">' + storeCheckboxes([]) + '</div></div>';
     }
 
-    // L-3b2: ツール表示チェックボックス（staff/manager向け）
+    // L-3 Phase 2: 時給入力欄
     if (_isManager()) {
-      bodyHtml += toolCheckboxesHtml(null);
-      // L-3 Phase 2: 時給入力欄
       bodyHtml += hourlyRateHtml(null);
     }
 
@@ -179,7 +128,6 @@ var UserEditor = (function () {
         document.getElementById('user-stores-group').style.display = this.value === 'owner' ? 'none' : '';
       });
     }
-    bindToolCheckboxEvents();
 
     document.getElementById('btn-save-user').onclick = function () {
       var username = document.getElementById('user-username').value.trim();
@@ -198,9 +146,6 @@ var UserEditor = (function () {
           store_id: AdminApi.getCurrentStore()
         };
         if (email) payload.email = email;
-        // L-3b2: visible_tools
-        var vt = getVisibleToolsValue();
-        if (vt !== null) payload.visible_tools = vt;
         // L-3 Phase 2: hourly_rate
         var hr = getHourlyRateValue();
         if (hr !== null) payload.hourly_rate = hr;
@@ -256,7 +201,11 @@ var UserEditor = (function () {
       '<div class="form-group"><label class="form-label">表示名</label><input class="form-input" id="user-name" value="' + Utils.escapeHtml(u.display_name || '') + '"></div>'
       + '<div class="form-group"><label class="form-label">ユーザー名</label><input class="form-input" id="user-username" type="text" value="' + Utils.escapeHtml(u.username || '') + '" pattern="[a-zA-Z0-9_-]{3,50}"></div>'
       + '<div class="form-group"><label class="form-label">メール</label><input class="form-input" id="user-email" type="email" value="' + Utils.escapeHtml(u.email || '') + '" disabled></div>'
-      + '<div class="form-group"><label class="form-label">新しいパスワード（変更する場合のみ）</label><input class="form-input" id="user-password" type="password" placeholder="空欄のまま＝変更なし"></div>';
+      + '<div class="form-group"><label class="form-label">新しいパスワード（変更する場合のみ）</label><input class="form-input" id="user-password" type="password" placeholder="空欄のまま＝変更なし"></div>'
+      + '<div class="form-group"><label class="form-label">レジ担当 PIN（CP1）</label>'
+      + '<input class="form-input" id="user-cashier-pin" type="password" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" placeholder="空欄＝変更なし、4〜8桁の数字"' + (u.cashier_pin_set ? ' aria-describedby="pin-hint"' : '') + '>'
+      + '<small id="pin-hint" style="color:#666;display:block;margin-top:0.25rem;">' + (u.cashier_pin_set ? '✅ PIN 設定済み（変更する場合のみ入力）' : '⚠️ PIN 未設定（POSレジ会計のため設定推奨）') + '</small>'
+      + '</div>';
 
     if (!_isManager()) {
       bodyHtml += '<div class="form-group"><label class="form-label">ロール</label><select class="form-input" id="user-role">'
@@ -271,26 +220,17 @@ var UserEditor = (function () {
     bodyHtml += '<div class="form-group"><label class="form-label">有効</label>'
       + '<label class="toggle"><input type="checkbox" id="user-active" ' + (u.is_active == 1 ? 'checked' : '') + '><span class="toggle__slider"></span></label></div>';
 
-    // L-3b2: ツール表示チェックボックス（staff/managerのみ）
+    // L-3 Phase 2: 時給入力欄（staff/managerのみ）
     if (u.role === 'staff' || u.role === 'manager') {
-      var currentVt = null;
       var currentHr = null;
       if (_isManager()) {
-        // manager画面: visible_tools / hourly_rate はGETで直接返される
-        currentVt = u.visible_tools !== undefined ? u.visible_tools : null;
         currentHr = u.hourly_rate !== undefined ? u.hourly_rate : null;
       } else {
-        // owner画面: visible_tools_by_store / hourly_rate_by_store マップから現在選択中の店舗のものを取得
         var curStore = AdminApi.getCurrentStore ? AdminApi.getCurrentStore() : null;
-        if (curStore && u.visible_tools_by_store && u.visible_tools_by_store[curStore] !== undefined) {
-          currentVt = u.visible_tools_by_store[curStore];
-        }
         if (curStore && u.hourly_rate_by_store && u.hourly_rate_by_store[curStore] !== undefined) {
           currentHr = u.hourly_rate_by_store[curStore];
         }
       }
-      bodyHtml += toolCheckboxesHtml(currentVt);
-      // L-3 Phase 2: 時給入力欄
       bodyHtml += hourlyRateHtml(currentHr);
     }
 
@@ -305,30 +245,34 @@ var UserEditor = (function () {
         document.getElementById('user-stores-group').style.display = this.value === 'owner' ? 'none' : '';
       });
     }
-    bindToolCheckboxEvents();
 
     document.getElementById('btn-save-user').onclick = function () {
       this.disabled = true;
 
+      // CP1: PIN 入力値を取得（manager/owner 共通）
+      var newPin = (document.getElementById('user-cashier-pin') || {}).value || '';
+
       if (_isManager()) {
-        // manager: username, display_name, password, is_active + visible_tools
+        // manager: username, display_name, password, is_active
         var data = {
           username: document.getElementById('user-username').value.trim(),
           display_name: document.getElementById('user-name').value.trim(),
           is_active: document.getElementById('user-active').checked,
           store_id: AdminApi.getCurrentStore()
         };
-        // L-3b2: visible_tools（null=店舗設定に従う）
-        var vt = getVisibleToolsValue();
-        data.visible_tools = vt;
         // L-3 Phase 2: hourly_rate
         data.hourly_rate = getHourlyRateValue();
         var pw = document.getElementById('user-password').value;
         if (pw) data.password = pw;
 
         AdminApi.updateStaff(id, data).then(function () {
+          // CP1: PIN 入力があれば別 API で保存
+          if (newPin) {
+            return _saveCashierPin(id, newPin);
+          }
+        }).then(function () {
           overlay.classList.remove('open');
-          showToast('スタッフを更新しました', 'success');
+          showToast('スタッフを更新しました' + (newPin ? '（PIN も設定）' : ''), 'success');
           load();
         }).catch(function (err) {
           showToast(err.message, 'error');
@@ -352,25 +296,22 @@ var UserEditor = (function () {
         };
         var pw = document.getElementById('user-password').value;
         if (pw) data.password = pw;
-        // L-3b2: visible_tools_by_store（staff/managerのみ）
-        var vtEl = document.getElementById('user-vt-default');
-        if (vtEl) {
-          var vt = getVisibleToolsValue();
-          var curStore = AdminApi.getCurrentStore ? AdminApi.getCurrentStore() : null;
-          if (curStore) {
-            var vtMap = {};
-            vtMap[curStore] = vt;
-            data.visible_tools_by_store = vtMap;
-            // L-3 Phase 2: hourly_rate_by_store
-            var hrMap = {};
-            hrMap[curStore] = getHourlyRateValue();
-            data.hourly_rate_by_store = hrMap;
-          }
+        // L-3 Phase 2: hourly_rate_by_store
+        var curStore = AdminApi.getCurrentStore ? AdminApi.getCurrentStore() : null;
+        if (curStore) {
+          var hrMap = {};
+          hrMap[curStore] = getHourlyRateValue();
+          data.hourly_rate_by_store = hrMap;
         }
 
         AdminApi.updateUser(id, data).then(function () {
+          // CP1: PIN 入力があれば別 API で保存
+          if (newPin) {
+            return _saveCashierPin(id, newPin);
+          }
+        }).then(function () {
           overlay.classList.remove('open');
-          showToast('ユーザーを更新しました', 'success');
+          showToast('ユーザーを更新しました' + (newPin ? '（PIN も設定）' : ''), 'success');
           load();
         }).catch(function (err) {
           showToast(err.message, 'error');
@@ -380,6 +321,26 @@ var UserEditor = (function () {
         });
       }
     };
+  }
+
+  /**
+   * CP1: 担当スタッフ PIN 設定
+   */
+  function _saveCashierPin(userId, pin) {
+    return fetch('../../api/store/set-cashier-pin.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, pin: pin }),
+      credentials: 'same-origin'
+    }).then(function (r) {
+      return r.text().then(function (text) {
+        var json;
+        try { json = JSON.parse(text); }
+        catch (e) { throw new Error('PIN 設定 API のレスポンス解析失敗'); }
+        if (!json.ok) throw new Error((json.error && json.error.message) || 'PIN 設定エラー');
+        return json;
+      });
+    });
   }
 
   function confirmDelete(id) {

@@ -1173,6 +1173,55 @@ html { font-size: 16px; }
   font-size: 0.8125rem;
 }
 
+/* 返金済み�� */
+.ca-journal__item--refunded {
+  background: rgba(231, 76, 60, 0.1);
+  border-left: 3px solid #e74c3c;
+}
+.ca-journal__item--refunded .ca-journal__item-amount {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* 返金バッジ */
+.ca-journal__refund-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* 返金ボタン */
+.ca-journal__refund-btn {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  background: transparent;
+  color: #e74c3c;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1.5px solid #e74c3c;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-left: auto;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.ca-journal__refund-btn:hover {
+  background: #e74c3c;
+  color: #fff;
+}
+
+/* 返金サマリー */
+.ca-journal__stat--refund .ca-journal__stat-value {
+  color: #e74c3c;
+}
+
 /* ── レジ開閉パネル ── */
 .ca-register-ctrl__status {
   background: var(--ca-bg-card);

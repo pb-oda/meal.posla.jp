@@ -1,0 +1,64 @@
+# ============================================================
+# .dockerignore — Docker build context から除外するもの
+# ============================================================
+# build context が小さいほど build 時間が短くなる。
+# また、本番秘匿情報・バックアップ・大型ファイルを誤って
+# イメージに含めないようガードする目的もある。
+# ============================================================
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Claude Code 内部
+.claude/
+.claude.json
+
+# SSH 鍵 / 秘匿情報（絶対にイメージに入れない）
+id_ecdsa.pem
+id_ecdsa
+*.pem
+sshkey.txt
+
+# DB 認証情報（環境変数で渡す）
+api/config/database.php
+
+# Sakura 本番からのバックアップ群（巨大）
+_backup_*/
+_scan_*/
+
+# ユーザーアップロード（ローカルでは個別ボリュームにする）
+uploads/
+
+# ビジネスドキュメント
+*.docx
+*.xlsx
+*.pdf
+*.pptx
+
+# 内部資料 / 社外秘
+docs/internal/
+
+# Node
+node_modules/
+npm-debug.log
+
+# VitePress build artifacts
+docs/manual/.vitepress/dist/
+docs/manual/.vitepress/cache/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Docker 自身（ビルドコンテキストに含めない）
+docker/db/data/
+docker-compose.override.yml

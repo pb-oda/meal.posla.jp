@@ -10,8 +10,14 @@
 
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
 
 $method = require_method(['GET', 'POST']);
+
+// S1: レートリミット — 1IP あたり 10回/10分
+if ($method === 'POST') {
+    check_rate_limit('call-staff', 10, 600);
+}
 
 // ── GET: アラートステータス確認 ──
 if ($method === 'GET') {

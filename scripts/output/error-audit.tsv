@@ -1,0 +1,926 @@
+code	http_status	file	line	message
+SMAREGI_NOT_CONFIGURED	500	api/smaregi/auth.php	24	スマレジ Client ID が未設定です。POSLA管理者に連絡してください。
+NOT_CONNECTED	400	api/smaregi/stores.php	23	スマレジ未連携です
+SMAREGI_API_ERROR	502	api/smaregi/stores.php	31	$errMsg . ' (HTTP=' . $result['status'] . ' detail=' . $detail . ')'
+MISSING_STORE	400	api/smaregi/import-menu.php	35	store_id は必須です
+STORE_NOT_FOUND	404	api/smaregi/import-menu.php	42	店舗が見つかりません
+NO_MAPPING	400	api/smaregi/import-menu.php	53	この店舗はスマレジ店舗にマッピングされていません
+NOT_CONNECTED	400	api/smaregi/import-menu.php	60	スマレジ未連携です
+SMAREGI_API_ERROR	502	api/smaregi/import-menu.php	69	$errMsg . ' (HTTP=' . $result['status'] . ' detail=' . $detail . ')'
+INVALID_INPUT	400	api/smaregi/store-mapping.php	46	mappings 配列が必要です
+DB_ERROR	500	api/smaregi/store-mapping.php	93	マッピング更新に失敗しました
+MISSING_ORDER_ID	400	api/smaregi/sync-order.php	235	order_id は必須です
+ORDER_NOT_FOUND	404	api/smaregi/sync-order.php	247	注文が見つかりません
+SYNC_FAILED	400	api/smaregi/sync-order.php	253	$result['error']
+MISSING_STORE	400	api/kds/ai-kitchen.php	30	store_id は必須です
+GEMINI_NETWORK	502	api/kds/ai-kitchen.php	111	'AI通信エラー: ' . $curlError
+GEMINI_PARSE	502	api/kds/ai-kitchen.php	116	AIレスポンスの解析に失敗しました
+GEMINI_ERROR	502	api/kds/ai-kitchen.php	120	$geminiJson['error']['message'] ?? 'AI APIエラー'
+VALIDATION	400	api/kds/close-table.php	27	store_id は必須です
+VALIDATION	400	api/kds/close-table.php	28	table_id または order_ids が必要です
+NOT_FOUND	404	api/kds/close-table.php	82	未会計の注文またはアクティブなセッションがありません
+DB_ERROR	500	api/kds/close-table.php	137	'会計処理に失敗しました: ' . $e->getMessage()
+VALIDATION	400	api/kds/advance-phase.php	25	store_id と table_id は必須です
+NO_COURSE_SESSION	404	api/kds/advance-phase.php	43	アクティブなコースセッションが見つかりません
+MISSING_STORE	400	api/kds/call-alerts.php	25	store_id は必須です
+MISSING_ALERT_ID	400	api/kds/call-alerts.php	83	alert_id は必須です
+INVALID_STATUS	400	api/kds/call-alerts.php	87	status は acknowledged のみ指定可能です
+UPDATE_FAILED	500	api/kds/call-alerts.php	116	アラートの更新に失敗しました
+MISSING_STORE	400	api/kds/call-alerts.php	169	store_id は必須です
+MISSING_FIELDS	400	api/kds/cash-log.php	50	store_id と type は必須です
+INVALID_TYPE	400	api/kds/cash-log.php	56	無効な種別です
+PIN_REQUIRED	400	api/kds/cash-log.php	65	レジ金庫の操作には担当スタッフ PIN の入力が必要です
+INVALID_PIN	400	api/kds/cash-log.php	68	担当 PIN は 4〜8 桁の数字で入力してください
+MIGRATION	500	api/kds/cash-log.php	85	PIN 機能のマイグレーションが未適用です (migration-cp1-cashier-pin.sql / migration-l3-shift-management.sql)
+PIN_INVALID	401	api/kds/cash-log.php	98	PIN が一致しないか、対象スタッフが出勤中ではありません
+MISSING_FIELDS	400	api/kds/update-item-status.php	26	item_id, status, store_id は必須です
+INVALID_STATUS	400	api/kds/update-item-status.php	33	無効なステータスです
+ITEM_NOT_FOUND	404	api/kds/update-item-status.php	42	品目が見つかりません
+MISSING_FIELDS	400	api/kds/update-status.php	25	order_id, status, store_id は必須です
+INVALID_STATUS	400	api/kds/update-status.php	32	無効なステータスです
+ORDER_NOT_FOUND	404	api/kds/update-status.php	41	注文が見つかりません
+MISSING_FIELDS	400	api/kds/sold-out.php	35	store_id, menu_item_id, source, is_sold_out は必須です
+INVALID_SOURCE	400	api/kds/sold-out.php	59	source は "template" または "local" です
+DB_ERROR	500	api/kds/orders.php	33	'orders テーブルが見つかりません: ' . $e->getMessage()
+MISSING_FIELDS	400	api/posla/login.php	18	メールアドレスとパスワードは必須です
+INVALID_CREDENTIALS	401	api/posla/login.php	32	メールアドレスまたはパスワードが正しくありません
+NOT_FOUND	404	api/posla/tenants.php	39	テナントが見つかりません
+MISSING_ID	400	api/posla/tenants.php	70	テナントIDは必須です
+NOT_FOUND	404	api/posla/tenants.php	77	テナントが見つかりません
+INVALID_PLAN	400	api/posla/tenants.php	87	プランが不正です
+NO_CHANGES	400	api/posla/tenants.php	106	更新項目がありません
+MISSING_SLUG	400	api/posla/tenants.php	126	slugは必須です
+INVALID_SLUG	400	api/posla/tenants.php	129	slugは半角英小文字・数字・ハイフンのみ使用できます
+MISSING_NAME	400	api/posla/tenants.php	132	テナント名は必須です
+INVALID_PLAN	400	api/posla/tenants.php	135	プランが不正です
+DUPLICATE_SLUG	409	api/posla/tenants.php	142	このslugは既に使用されています
+NO_CHANGES	400	api/posla/settings.php	72	更新項目がありません
+MISSING_FIELDS	400	api/posla/change-password.php	25	現在のパスワードを入力してください
+MISSING_FIELDS	400	api/posla/change-password.php	28	新しいパスワードを入力してください
+ADMIN_NOT_FOUND	404	api/posla/change-password.php	40	管理者が見つかりません
+INVALID_CURRENT_PASSWORD	401	api/posla/change-password.php	44	現在のパスワードが正しくありません
+SAME_PASSWORD	400	api/posla/change-password.php	48	新しいパスワードは現在のパスワードと異なるものを設定してください
+FORBIDDEN	403	api/posla/monitor-events.php	17	POSLA管理者のみアクセス可能です
+MISSING_ID	400	api/posla/monitor-events.php	53	id が必要です
+UNAUTHORIZED	401	api/posla/auth-helper.php	40	POSLA管理者ログインが必要です
+ALREADY_SETUP	403	api/posla/setup.php	26	初期セットアップは完了済みです
+MISSING_EMAIL	400	api/posla/setup.php	35	メールアドレスは必須です
+MISSING_PASSWORD	400	api/posla/setup.php	38	パスワードは必須です
+MISSING_NAME	400	api/posla/setup.php	42	表示名は必須です
+STORE_NOT_FOUND	404	api/owner/stores.php	45	店舗が見つかりません
+MISSING_FIELDS	400	api/owner/stores.php	60	店舗名とスラッグは必須です
+INVALID_SLUG	400	api/owner/stores.php	61	スラッグは英小文字・数字・ハイフンのみ使用可能です
+DUPLICATE_SLUG	409	api/owner/stores.php	66	このスラッグは既に使用されています
+MISSING_ID	400	api/owner/stores.php	86	idが必要です
+STORE_NOT_FOUND	404	api/owner/stores.php	91	店舗が見つかりません
+INVALID_SLUG	400	api/owner/stores.php	105	スラッグは英小文字・数字・ハイフンのみ使用可能です
+DUPLICATE_SLUG	409	api/owner/stores.php	108	このスラッグは既に使用されています
+NO_FIELDS	400	api/owner/stores.php	117	更新項目がありません
+MISSING_ID	400	api/owner/stores.php	133	idが必要です
+STORE_NOT_FOUND	404	api/owner/stores.php	137	店舗が見つかりません
+NOT_FOUND	404	api/owner/tenants.php	41	テナントが見つかりません
+NO_FIELDS	400	api/owner/tenants.php	93	更新項目がありません
+FORBIDDEN	403	api/owner/analytics-abc.php	40	アクセス可能な店舗がありません
+MIGRATION	500	api/owner/recipes.php	24	recipes テーブルが未作成です。migration-c5-inventory.sql を実行してください。
+MISSING_FIELDS	400	api/owner/recipes.php	30	menu_template_id は必須です
+NOT_FOUND	404	api/owner/recipes.php	35	メニューが見つかりません
+MISSING_FIELDS	400	api/owner/recipes.php	58	menu_template_id と ingredient_id は必須です
+NOT_FOUND	404	api/owner/recipes.php	64	メニューが見つかりません
+NOT_FOUND	404	api/owner/recipes.php	68	原材料が見つかりません
+DUPLICATE	409	api/owner/recipes.php	73	この原材料は既にレシピに登録されています
+MISSING_ID	400	api/owner/recipes.php	86	id が必要です
+NOT_FOUND	404	api/owner/recipes.php	95	レシピが見つかりません
+MISSING_FIELDS	400	api/owner/recipes.php	98	quantity は必須です
+MISSING_ID	400	api/owner/recipes.php	109	id が必要です
+NOT_FOUND	404	api/owner/recipes.php	117	レシピが見つかりません
+MIGRATION	500	api/owner/recipes-csv.php	22	recipes/ingredients テーブルが未作成です
+NO_FILE	400	api/owner/recipes-csv.php	60	CSVファイルをアップロードしてください
+FILE_READ_ERROR	500	api/owner/recipes-csv.php	64	ファイルの読み込みに失敗しました
+EMPTY_CSV	400	api/owner/recipes-csv.php	70	CSVが空です
+MISSING_COLUMN	400	api/owner/recipes-csv.php	76	必須カラム "' . $req . '" がありません
+IMPORT_FAILED	500	api/owner/recipes-csv.php	144	'インポートに失敗しました: ' . $e->getMessage()
+FORBIDDEN_HQ_MENU	403	api/owner/menu-templates.php	46	本部メニューは owner ロールでのみ編集できます
+MISSING_FIELDS	400	api/owner/menu-templates.php	53	メニュー名は必須です
+MISSING_FIELDS	400	api/owner/menu-templates.php	54	カテゴリは必須です
+INVALID_CATEGORY	400	api/owner/menu-templates.php	59	無効なカテゴリです
+FORBIDDEN_HQ_MENU	403	api/owner/menu-templates.php	89	本部メニューは owner ロールでのみ編集できます
+MISSING_ID	400	api/owner/menu-templates.php	92	idが必要です
+NOT_FOUND	404	api/owner/menu-templates.php	96	メニューが見つかりません
+INVALID_CATEGORY	400	api/owner/menu-templates.php	116	無効なカテゴリです
+NO_FIELDS	400	api/owner/menu-templates.php	129	更新項目がありません
+FORBIDDEN_HQ_MENU	403	api/owner/menu-templates.php	141	本部メニューは owner ロールでのみ編集できます
+MISSING_ID	400	api/owner/menu-templates.php	144	idが必要です
+NOT_FOUND	404	api/owner/menu-templates.php	148	メニューが見つかりません
+DELETE_FAILED	500	api/owner/menu-templates.php	158	削除に失敗しました
+NO_FILE	400	api/owner/menu-csv.php	66	CSVファイルをアップロードしてください
+FILE_READ_ERROR	500	api/owner/menu-csv.php	72	ファイルの読み込みに失敗しました
+EMPTY_CSV	400	api/owner/menu-csv.php	85	CSVが空です
+MISSING_COLUMN	400	api/owner/menu-csv.php	94	必須カラム "' . $col . '" がありません
+IMPORT_FAILED	500	api/owner/menu-csv.php	196	'インポートに失敗しました: ' . $e->getMessage()
+MISSING_FIELDS	400	api/owner/users.php	104	ユーザー名とパスワードは必須です
+INVALID_USERNAME	400	api/owner/users.php	105	ユーザー名は半角英数字・ハイフン・アンダースコア（3〜50文字）で入力してください
+INVALID_ROLE	400	api/owner/users.php	107	無効なロールです
+INVALID_EMAIL	400	api/owner/users.php	110	メールアドレスの形式が正しくありません
+FORBIDDEN	403	api/owner/users.php	114	マネージャーはスタッフのみ作成できます
+FORBIDDEN	403	api/owner/users.php	121	この店舗へのアクセス権がありません
+DUPLICATE_USERNAME	409	api/owner/users.php	129	このユーザー名は既に使用されています
+DUPLICATE_EMAIL	409	api/owner/users.php	135	このメールアドレスは既に登録されています
+CREATE_FAILED	500	api/owner/users.php	169	ユーザー作成に失敗しました
+MISSING_ID	400	api/owner/users.php	178	idが必要です
+NOT_FOUND	404	api/owner/users.php	183	ユーザーが見つかりません
+FORBIDDEN	403	api/owner/users.php	187	権限が不足しています
+FORBIDDEN	403	api/owner/users.php	194	このユーザーへのアクセス権がありません
+FORBIDDEN	403	api/owner/users.php	202	ロールの変更はオーナーのみ可能です
+INVALID_USERNAME	400	api/owner/users.php	211	ユーザー名は半角英数字・ハイフン・アンダースコア（3〜50文字）で入力してください
+DUPLICATE_USERNAME	409	api/owner/users.php	215	このユーザー名は既に使用されています
+FORBIDDEN	403	api/owner/users.php	251	この店舗へのアクセス権がありません
+UPDATE_FAILED	500	api/owner/users.php	295	更新に失敗しました
+MISSING_ID	400	api/owner/users.php	304	idが必要です
+CANNOT_DELETE_SELF	400	api/owner/users.php	305	自分自身は削除できません
+NOT_FOUND	404	api/owner/users.php	310	ユーザーが見つかりません
+FORBIDDEN	403	api/owner/users.php	314	権限が不足しています
+FORBIDDEN	403	api/owner/users.php	321	このユーザーへのアクセス権がありません
+DELETE_FAILED	500	api/owner/users.php	332	削除に失敗しました
+NO_FILE	400	api/owner/upload-image.php	17	画像ファイルが送信されていません
+INVALID_FORMAT	400	api/owner/upload-image.php	26	許可されていないファイル形式です（JPEG/PNG/WebP/GIF のみ）
+FILE_TOO_LARGE	400	api/owner/upload-image.php	31	ファイルサイズは5MB以下にしてください
+SAVE_FAILED	500	api/owner/upload-image.php	44	ファイルの保存に失敗しました
+MIGRATION	500	api/owner/ingredients.php	30	ingredients テーブルが未作成です。migration-c5-inventory.sql を実行してください。
+NOT_FOUND	404	api/owner/ingredients.php	44	原材料が見つかりません
+MISSING_FIELDS	400	api/owner/ingredients.php	60	原材料名は必須です
+MISSING_FIELDS	400	api/owner/ingredients.php	86	items が必要です
+DB_ERROR	500	api/owner/ingredients.php	113	棚卸し更新に失敗しました
+MISSING_ID	400	api/owner/ingredients.php	119	id が必要です
+NOT_FOUND	404	api/owner/ingredients.php	123	原材料が見つかりません
+NO_FIELDS	400	api/owner/ingredients.php	148	更新項目がありません
+MISSING_ID	400	api/owner/ingredients.php	170	id が必要です
+NOT_FOUND	404	api/owner/ingredients.php	174	原材料が見つかりません
+DELETE_FAILED	500	api/owner/ingredients.php	184	削除に失敗しました
+MISSING_FIELDS	400	api/owner/option-groups.php	38	グループIDと名前は必須です
+NOT_FOUND	404	api/owner/option-groups.php	43	グループが見つかりません
+MISSING_ID	400	api/owner/option-groups.php	67	idが必要です
+NOT_FOUND	404	api/owner/option-groups.php	76	選択肢が見つかりません
+NO_FIELDS	400	api/owner/option-groups.php	91	更新項目がありません
+MISSING_ID	400	api/owner/option-groups.php	101	idが必要です
+NOT_FOUND	404	api/owner/option-groups.php	109	選択肢が見つかりません
+MISSING_ID	400	api/owner/option-groups.php	121	template_idが必要です
+NOT_FOUND	404	api/owner/option-groups.php	126	メニューテンプレートが見つかりません
+MISSING_FIELDS	400	api/owner/option-groups.php	147	template_idは必須です
+NOT_FOUND	404	api/owner/option-groups.php	152	メニューテンプレートが見つかりません
+SYNC_FAILED	500	api/owner/option-groups.php	174	紐付けの保存に失敗しました
+MISSING_ID	400	api/owner/option-groups.php	183	local_item_idが必要です
+NOT_FOUND	404	api/owner/option-groups.php	192	限定メニューが見つかりません
+MISSING_FIELDS	400	api/owner/option-groups.php	213	local_item_idは必須です
+NOT_FOUND	404	api/owner/option-groups.php	222	限定メニューが見つかりません
+SYNC_FAILED	500	api/owner/option-groups.php	243	紐付けの保存に失敗しました
+TABLE_NOT_FOUND	500	api/owner/option-groups.php	261	オプション機能のデータベースが未設定です。migration-a1-options.sql を実行してください。
+MISSING_FIELDS	400	api/owner/option-groups.php	318	グループ名は必須です
+MISSING_ID	400	api/owner/option-groups.php	346	idが必要です
+NOT_FOUND	404	api/owner/option-groups.php	350	グループが見つかりません
+NO_FIELDS	400	api/owner/option-groups.php	365	更新項目がありません
+MISSING_ID	400	api/owner/option-groups.php	376	idが必要です
+NOT_FOUND	404	api/owner/option-groups.php	380	グループが見つかりません
+DELETE_FAILED	500	api/owner/option-groups.php	406	削除に失敗しました
+MISSING_FIELDS	400	api/owner/categories.php	33	カテゴリ名は必須です
+MISSING_ID	400	api/owner/categories.php	52	idが必要です
+NOT_FOUND	404	api/owner/categories.php	56	カテゴリが見つかりません
+NO_FIELDS	400	api/owner/categories.php	75	更新項目がありません
+MISSING_ID	400	api/owner/categories.php	86	idが必要です
+NOT_FOUND	404	api/owner/categories.php	90	カテゴリが見つかりません
+HAS_REFERENCES	409	api/owner/categories.php	95	メニューが紐付いているカテゴリは削除できません
+MIGRATION	500	api/owner/ingredients-csv.php	22	ingredients テーブルが未作成です
+NO_FILE	400	api/owner/ingredients-csv.php	57	CSVファイルをアップロードしてください
+FILE_READ_ERROR	500	api/owner/ingredients-csv.php	61	ファイルの読み込みに失敗しました
+EMPTY_CSV	400	api/owner/ingredients-csv.php	68	CSVが空です
+MISSING_COLUMN	400	api/owner/ingredients-csv.php	73	必須カラム "name" がありません
+IMPORT_FAILED	500	api/owner/ingredients-csv.php	119	'インポートに失敗しました: ' . $e->getMessage()
+PLAN_REQUIRED	403	api/owner/shift/unified-view.php	25	この機能はenterpriseプランで利用可能です
+INVALID_DATE	400	api/owner/shift/unified-view.php	34	date を YYYY-MM-DD 形式で指定してください
+INVALID_DATE	400	api/owner/shift/unified-view.php	43	date を YYYY-MM 形式で指定してください
+INVALID_PERIOD	400	api/owner/shift/unified-view.php	50	period は weekly / monthly のいずれかです
+MISSING_FIELDS	400	api/auth/login.php	24	ユーザー名とパスワードは必須です
+INVALID_CREDENTIALS	401	api/auth/login.php	41	ユーザー名またはパスワードが正しくありません
+ACCOUNT_DISABLED	403	api/auth/login.php	45	このアカウントは無効化されています
+TENANT_DISABLED	403	api/auth/login.php	49	このテナントは無効化されています
+MISSING_FIELDS	400	api/auth/change-password.php	28	現在のパスワードを入力してください
+MISSING_FIELDS	400	api/auth/change-password.php	31	新しいパスワードを入力してください
+USER_NOT_FOUND	404	api/auth/change-password.php	43	ユーザーが見つかりません
+INVALID_CURRENT_PASSWORD	401	api/auth/change-password.php	47	現在のパスワードが正しくありません
+SAME_PASSWORD	400	api/auth/change-password.php	51	新しいパスワードは現在のパスワードと異なるものを設定してください
+VALIDATION	400	api/auth/device-register.php	23	token は必須です
+MIGRATION_REQUIRED	500	api/auth/device-register.php	32	デバイス登録トークン機能のマイグレーションが未適用です
+INVALID_TOKEN	404	api/auth/device-register.php	51	無効なトークンです
+TOKEN_ALREADY_USED	409	api/auth/device-register.php	56	このトークンは既に使用済みです
+TOKEN_EXPIRED	410	api/auth/device-register.php	61	このトークンは有効期限切れです
+TENANT_INACTIVE	403	api/auth/device-register.php	75	テナントが無効です
+STORE_INACTIVE	403	api/auth/device-register.php	83	店舗が無効です
+DEVICE_CREATION_FAILED	500	api/auth/device-register.php	130	デバイスアカウントの作成に失敗しました
+MISSING_FIELDS	400	api/signup/register.php	54	必須項目が未入力です
+INVALID_EMAIL	400	api/signup/register.php	56	メールアドレスが不正です
+INVALID_USERNAME	400	api/signup/register.php	57	ユーザー名は半角英数3文字以上
+INVALID_PHONE	400	api/signup/register.php	58	電話番号が不正です
+USERNAME_TAKEN	409	api/signup/register.php	65	このユーザー名は既に使用されています
+EMAIL_TAKEN	409	api/signup/register.php	69	このメールアドレスは既に登録されています
+STRIPE_NOT_CONFIGURED	503	api/signup/register.php	74	決済設定が未完了です。運営までお問い合わせください
+PRICE_NOT_CONFIGURED	503	api/signup/register.php	77	料金プラン設定が未完了です
+DB_ERROR	500	api/signup/register.php	134	処理に失敗しました。時間を置いて再試行してください。
+STRIPE_ERROR	502	api/signup/register.php	142	'Stripe顧客登録に失敗: ' . $custResult['error']
+STRIPE_ERROR	502	api/signup/register.php	168	'決済セッション作成に失敗: ' . $checkoutResult['error']
+MISSING_TOKEN	400	api/signup/activate.php	26	signup_token が必要です
+INVALID_TOKEN	404	api/signup/activate.php	42	不明なトークンです
+STRIPE_NOT_CONFIGURED	503	api/signup/activate.php	57	決済設定が未完了です。運営までお問い合わせください
+PAYMENT_NOT_CONFIRMED	402	api/signup/activate.php	62	決済情報が見つかりません
+PAYMENT_NOT_CONFIRMED	402	api/signup/activate.php	67	決済が完了していません。Stripe決済画面で支払いを完了してください
+PAYMENT_NOT_CONFIRMED	402	api/signup/activate.php	73	決済が完了していません (status=' . $subStatus . ')
+PAYMENT_NOT_CONFIRMED	402	api/signup/activate.php	78	決済情報が不正です
+ACTIVATE_FAILED	500	api/signup/activate.php	93	有効化に失敗しました
+STRIPE_NOT_CONFIGURED	500	api/subscription/checkout.php	35	Stripe APIキーが設定されていません
+TENANT_NOT_FOUND	404	api/subscription/checkout.php	48	テナントが見つかりません
+ALREADY_SUBSCRIBED	400	api/subscription/checkout.php	55	既にサブスクリプションがあります。Customer Portal から変更してください
+NO_STORES	400	api/subscription/checkout.php	64	店舗を1つ以上登録してください
+PRICE_NOT_CONFIGURED	500	api/subscription/checkout.php	70	Stripe Price ID (基本/追加店舗/本部一括配信) が設定されていません
+STRIPE_ERROR	500	api/subscription/checkout.php	80	$createResult['error']
+STRIPE_ERROR	500	api/subscription/checkout.php	110	$checkoutResult['error']
+METHOD_NOT_ALLOWED	405	api/subscription/webhook.php	21	POST のみ対応しています
+EMPTY_BODY	400	api/subscription/webhook.php	29	リクエストボディが空です
+INVALID_SIGNATURE	400	api/subscription/webhook.php	38	Webhook署名の検証に失敗しました
+INVALID_PAYLOAD	400	api/subscription/webhook.php	44	イベントデータが不正です
+STRIPE_NOT_CONFIGURED	500	api/subscription/portal.php	24	Stripe APIキーが設定されていません
+NO_SUBSCRIPTION	400	api/subscription/portal.php	34	サブスクリプションが未設定です。先にCheckoutを完了してください
+STRIPE_ERROR	500	api/subscription/portal.php	46	$portalResult['error']
+TENANT_NOT_FOUND	404	api/subscription/status.php	51	テナントが見つかりません
+MISSING_STORE	400	api/public/store-status.php	20	store_id は必須です
+STORE_NOT_FOUND	404	api/public/store-status.php	37	店舗が見つかりません
+UNAUTHORIZED	401	api/lib/auth.php	42	ログインが必要です
+FORBIDDEN	403	api/lib/auth.php	72	権限が不足しています
+STORE_NOT_FOUND	404	api/lib/auth.php	95	店舗が見つかりません
+FORBIDDEN	403	api/lib/auth.php	102	この店舗へのアクセス権がありません
+MISSING_STORE	400	api/lib/auth.php	131	store_id は必須です
+SESSION_REVOKED	401	api/lib/auth.php	184	セッションが無効化されました。再ログインしてください。
+SESSION_TIMEOUT	401	api/lib/auth.php	206	セッションがタイムアウトしました。再度ログインしてください。
+NO_ITEMS	400	api/lib/order-validator.php	45	注文に品目がありません
+INVALID_QUANTITY	400	api/lib/order-validator.php	95	数量が不正です
+INVALID_QUANTITY	400	api/lib/order-validator.php	100	数量は1〜100の整数で指定してください
+INVALID_ITEM	404	api/lib/order-validator.php	105	存在しないメニュー品目が含まれています
+INVALID_OPTION	404	api/lib/order-validator.php	144	存在しないオプションが含まれています
+SOLD_OUT	409	api/lib/order-validator.php	184	implode('、', $soldOutNames) . 'は品切れです。カートから削除してください。'
+NO_ITEMS	400	api/lib/order-validator.php	188	注文に有効な品目がありません
+string $code	int $status_code = 400	api/lib/response.php	80	string $message
+EMPTY_BODY	400	api/lib/response.php	179	リクエストボディが空です
+INVALID_JSON	400	api/lib/response.php	185	リクエストのJSONが不正です
+METHOD_NOT_ALLOWED	405	api/lib/response.php	201	このエンドポイントは " . implode(', ', $allowed) . " のみ対応しています
+WEAK_PASSWORD	400	api/lib/password-policy.php	19	パスワードは8文字以上で入力してください
+WEAK_PASSWORD	400	api/lib/password-policy.php	22	パスワードには英字を1文字以上含めてください
+WEAK_PASSWORD	400	api/lib/password-policy.php	25	パスワードには数字を1文字以上含めてください
+AI_NOT_CONFIGURED	503	api/lib/posla-settings.php	44	AI機能が設定されていません
+RATE_LIMITED	429	api/lib/rate-limiter.php	62	リクエスト回数の上限に達しました。しばらくしてからお試しください。
+STRIPE_NOT_CONFIGURED	500	api/connect/terminal-token.php	37	プラットフォームのStripe APIキーが設定されていません
+NOT_CONNECTED	400	api/connect/terminal-token.php	44	Stripe Terminal が利用できる設定がありません
+STRIPE_ERROR	500	api/connect/terminal-token.php	50	$tokenResult['error']
+NOT_FOUND	404	api/connect/disconnect.php	30	テナントが見つかりません
+STRIPE_NOT_CONFIGURED	500	api/connect/onboard.php	25	プラットフォームのStripe APIキーが設定されていません
+TENANT_NOT_FOUND	404	api/connect/onboard.php	33	テナントが見つかりません
+ALREADY_ONBOARDED	400	api/connect/onboard.php	48	オンボーディングは既に完了しています
+STRIPE_ERROR	500	api/connect/onboard.php	56	$createResult['error']
+STRIPE_ERROR	500	api/connect/onboard.php	68	$linkResult['error']
+MISSING_STORE	400	api/customer/takeout-orders.php	28	store_idが必要です
+STORE_NOT_FOUND	404	api/customer/takeout-orders.php	34	店舗が見つかりません
+MISSING_STORE	400	api/customer/takeout-orders.php	103	store_idが必要です
+INVALID_DATE	400	api/customer/takeout-orders.php	104	日付形式が不正です
+MISSING_ORDER	400	api/customer/takeout-orders.php	180	order_idが必要です
+MISSING_PHONE	400	api/customer/takeout-orders.php	181	電話番号が必要です
+NOT_FOUND	404	api/customer/takeout-orders.php	190	注文が見つかりません
+INVALID_ACTION	400	api/customer/takeout-orders.php	218	actionパラメータが不正です
+MISSING_STORE	400	api/customer/takeout-orders.php	237	store_idが必要です
+EMPTY_CART	400	api/customer/takeout-orders.php	238	カートが空です
+MISSING_NAME	400	api/customer/takeout-orders.php	239	お名前を入力してください
+MISSING_PHONE	400	api/customer/takeout-orders.php	240	電話番号を入力してください
+INVALID_PHONE	400	api/customer/takeout-orders.php	241	電話番号はハイフンなしの10〜11桁で入力してください
+MISSING_PICKUP	400	api/customer/takeout-orders.php	242	受取時間を選択してください
+ONLINE_PAYMENT_REQUIRED	400	api/customer/takeout-orders.php	243	テイクアウトはオンライン決済のみご利用いただけます
+STORE_NOT_FOUND	404	api/customer/takeout-orders.php	249	店舗が見つかりません
+TAKEOUT_DISABLED	400	api/customer/takeout-orders.php	261	現在テイクアウトは受け付けていません
+PICKUP_TOO_EARLY	400	api/customer/takeout-orders.php	279	受取時間は現在から' . $minPrepMinutes . '分以降を指定してください
+SLOT_FULL	409	api/customer/takeout-orders.php	295	この時間枠は満席です。別の時間を選択してください
+TOO_MANY_ITEMS	400	api/customer/takeout-orders.php	324	品数が上限（' . $maxItems . '品）を超えています
+AMOUNT_EXCEEDED	400	api/customer/takeout-orders.php	325	金額が上限（¥' . number_format($maxAmount) . '）を超えています
+SLOT_FULL	409	api/customer/takeout-orders.php	352	この時間枠は満席になりました。別の時間を選択してください
+DB_ERROR	500	api/customer/takeout-orders.php	388	注文作成に失敗しました
+PAYMENT_NOT_AVAILABLE	503	api/customer/takeout-orders.php	446	決済処理に失敗しました。お手数ですが店舗にお問い合わせください
+PAYMENT_NOT_AVAILABLE	503	api/customer/takeout-orders.php	460	この店舗ではオンライン決済が設定されていません
+PAYMENT_NOT_AVAILABLE	503	api/customer/takeout-orders.php	480	決済処理に失敗しました。お手数ですが店舗にお問い合わせください
+MISSING_ORDER	400	api/customer/takeout-payment.php	19	order_idが必要です
+NOT_FOUND	404	api/customer/takeout-payment.php	31	注文が見つかりません
+PAYMENT_NOT_CONFIRMED	402	api/customer/takeout-payment.php	72	$result['error'] ?: '決済が確認できませんでした'
+NO_GATEWAY	500	api/customer/takeout-payment.php	85	決済ゲートウェイが設定されていません
+MISSING_SESSION	400	api/customer/takeout-payment.php	95	session_idが必要です
+PAYMENT_NOT_CONFIRMED	402	api/customer/takeout-payment.php	105	$result['error'] ?: '決済が確認できませんでした'
+VERIFICATION_FAILED	500	api/customer/takeout-payment.php	110	決済の確認に失敗しました
+STRIPE_MISMATCH	403	api/customer/takeout-payment.php	126	決済情報が一致しません (metadata 不足)
+STRIPE_MISMATCH	403	api/customer/takeout-payment.php	130	決済情報が一致しません (テナント/店舗)
+STRIPE_MISMATCH	403	api/customer/takeout-payment.php	134	決済情報が一致しません (用途)
+STRIPE_MISMATCH	403	api/customer/takeout-payment.php	138	決済情報が一致しません (通貨)
+STRIPE_MISMATCH	403	api/customer/takeout-payment.php	142	決済情報が一致しません (金額)
+STRIPE_MISMATCH	403	api/customer/takeout-payment.php	147	決済情報が一致しません (注文ID)
+MISSING_FIELDS	400	api/customer/cart-event.php	29	store_id, item_id, item_name, action は必須です
+INVALID_ACTION	400	api/customer/cart-event.php	33	action は add または remove のみ有効です
+CART_LOG_FAILED	503	api/customer/cart-event.php	46	カートログ記録に失敗しました
+MISSING_FIELDS	400	api/customer/checkout-confirm.php	27	store_id, table_id, session_token, stripe_session_id は必須です
+INVALID_SESSION	403	api/customer/checkout-confirm.php	40	セッションが無効です
+INVALID_SESSION	403	api/customer/checkout-confirm.php	43	セッションの有効期限が切れています
+STORE_NOT_FOUND	404	api/customer/checkout-confirm.php	51	店舗が見つかりません
+PAYMENT_NOT_CONFIRMED	402	api/customer/checkout-confirm.php	80	決済が完了していません (status: ' . $pStatus . ')
+PAYMENT_GATEWAY_ERROR	502	api/customer/checkout-confirm.php	97	Stripe設定が見つかりません
+PAYMENT_GATEWAY_ERROR	502	api/customer/checkout-confirm.php	102	$result['error'] ?: '決済検証に失敗しました'
+PAYMENT_NOT_CONFIRMED	402	api/customer/checkout-confirm.php	107	決済が完了していません (status: ' . $pStatus . ')
+STRIPE_MISMATCH	403	api/customer/checkout-confirm.php	134	決済情報が一致しません (metadata 不足)
+STRIPE_MISMATCH	403	api/customer/checkout-confirm.php	139	決済情報が一致しません (テナント/店舗/テーブル)
+STRIPE_MISMATCH	403	api/customer/checkout-confirm.php	144	決済情報が一致しません (用途)
+STRIPE_MISMATCH	403	api/customer/checkout-confirm.php	149	決済情報が一致しません (通貨)
+STRIPE_MISMATCH	403	api/customer/checkout-confirm.php	154	決済情報が一致しません (金額)
+NO_UNPAID_ORDERS	404	api/customer/checkout-confirm.php	194	未払いの注文がありません
+STRIPE_MISMATCH	403	api/customer/checkout-confirm.php	206	決済情報が一致しません (注文ID)
+STRIPE_MISMATCH	403	api/customer/checkout-confirm.php	211	決済情報が一致しません (注文ID不一致)
+STRIPE_MISMATCH	403	api/customer/checkout-confirm.php	250	決済情報が一致しません (合計金額)
+CONFLICT	409	api/customer/checkout-confirm.php	442	この注文は既に他の操作で確定されました。画面を更新してご確認ください。
+PAYMENT_GATEWAY_ERROR	502	api/customer/checkout-confirm.php	444	決済処理に失敗しました。時間を置いて再試行してください。
+MISSING_PARAM	400	api/customer/reservation-precheckin.php	19	id と t が必要です
+NOT_FOUND	404	api/customer/reservation-precheckin.php	24	予約が見つかりません
+FORBIDDEN	403	api/customer/reservation-precheckin.php	25	本人確認に失敗しました
+NOT_AVAILABLE	400	api/customer/reservation-precheckin.php	42	事前チェックインできない状態です
+TOO_EARLY	400	api/customer/reservation-precheckin.php	48	予約時刻 30 分前から利用できます
+MISSING_ID	400	api/customer/reservation-detail.php	19	id が必要です
+NOT_FOUND	404	api/customer/reservation-detail.php	24	予約が見つかりません
+FORBIDDEN	403	api/customer/reservation-detail.php	29	本人確認に失敗しました
+MISSING_PARAM	400	api/customer/reservation-ai-parse.php	24	store_id と text が必要です
+TEXT_TOO_LONG	400	api/customer/reservation-ai-parse.php	25	入力が長すぎます
+RESERVATION_DISABLED	403	api/customer/reservation-ai-parse.php	31	オンライン予約は受け付けていません
+AI_CHAT_DISABLED	403	api/customer/reservation-ai-parse.php	32	AI予約は無効です
+AI_NOT_CONFIGURED	503	api/customer/reservation-ai-parse.php	44	AI機能が設定されていません
+AI_FAILED	503	api/customer/reservation-ai-parse.php	70	AIの応答に失敗しました
+AI_PARSE_FAILED	500	api/customer/reservation-ai-parse.php	77	AI応答を解釈できませんでした
+MISSING_FIELDS	400	api/customer/get-bill.php	20	store_id, table_id, session_token は必須です
+INVALID_SESSION	403	api/customer/get-bill.php	33	セッションが無効です
+INVALID_SESSION	403	api/customer/get-bill.php	36	セッションの有効期限が切れています
+NO_UNPAID_ORDERS	404	api/customer/get-bill.php	51	未払いの注文がありません
+MISSING_FIELDS	400	api/customer/order-history.php	21	store_id, table_id, session_token は必須です
+INVALID_SESSION	403	api/customer/order-history.php	32	このQRコードは無効です。スタッフにお声がけください。
+INVALID_SESSION	403	api/customer/order-history.php	35	このQRコードは無効です。スタッフにお声がけください。
+MISSING_STORE	400	api/customer/reservation-create.php	36	store_id が必要です
+STORE_NOT_FOUND	404	api/customer/reservation-create.php	41	店舗が見つかりません
+RESERVATION_DISABLED	403	api/customer/reservation-create.php	44	オンライン予約は受け付けていません
+INVALID_NAME	400	api/customer/reservation-create.php	48	お名前を入力してください
+PHONE_REQUIRED	400	api/customer/reservation-create.php	51	電話番号を入力してください
+EMAIL_REQUIRED	400	api/customer/reservation-create.php	52	メールアドレスを入力してください
+INVALID_EMAIL	400	api/customer/reservation-create.php	53	メールアドレスが不正です
+INVALID_PHONE	400	api/customer/reservation-create.php	54	電話番号が不正です
+INVALID_PARTY_SIZE	400	api/customer/reservation-create.php	58	人数が範囲外です
+INVALID_DATETIME	400	api/customer/reservation-create.php	62	日時形式が不正です
+INVALID_DATETIME	400	api/customer/reservation-create.php	64	日時を解釈できません
+LEAD_TIME_VIOLATION	400	api/customer/reservation-create.php	69	予約締切時刻を過ぎています
+TOO_FAR	400	api/customer/reservation-create.php	74	受付期間を超えています
+CANNOT_RESERVE	403	api/customer/reservation-create.php	82	この番号からは予約できません。お電話で店舗へお問い合わせください
+SLOT_UNAVAILABLE	409	api/customer/reservation-create.php	94	お選びの時間は満席です。別の時間をお試しください
+COURSE_NOT_FOUND	404	api/customer/reservation-create.php	145	コースが見つかりません
+COURSE_PARTY_MISMATCH	400	api/customer/reservation-create.php	148	このコースの対象人数外です
+SLOT_FULL	409	api/customer/reservation-create.php	185	お選びの時間は満席になりました。別の時間をお試しください
+SLOT_FULL	409	api/customer/reservation-create.php	214	お選びの時間は同一の予約が既に登録されています
+DB_ERROR	500	api/customer/reservation-create.php	217	予約の登録に失敗しました
+DB_ERROR	500	api/customer/reservation-create.php	221	予約の登録に失敗しました
+DEPOSIT_CHECKOUT_FAILED	503	api/customer/reservation-create.php	253	'予約金決済の準備に失敗しました: ' . ($checkout['error'] ?: 'unknown')
+MISSING_STORE	400	api/customer/menu.php	17	store_idが必要です
+STORE_NOT_FOUND	404	api/customer/menu.php	25	店舗が見つかりません
+NOT_FOUND	404	api/customer/menu.php	40	プランが見つかりません
+COURSE_NOT_FOUND	404	api/customer/menu.php	100	コースが見つかりません
+MISSING_STORE	400	api/customer/ai-waiter.php	29	store_id は必須です
+MISSING_MESSAGE	400	api/customer/ai-waiter.php	32	メッセージを入力してください
+STORE_NOT_FOUND	404	api/customer/ai-waiter.php	47	店舗が見つかりません
+GEMINI_NETWORK	502	api/customer/ai-waiter.php	127	'AI通信エラー: ' . $curlError
+GEMINI_PARSE	502	api/customer/ai-waiter.php	132	AIレスポンスの解析に失敗しました
+GEMINI_ERROR	502	api/customer/ai-waiter.php	136	$geminiJson['error']['message'] ?? 'AI APIエラー'
+MISSING_FIELDS	400	api/customer/satisfaction-rating.php	28	必須フィールドが不足しています
+INVALID_RATING	400	api/customer/satisfaction-rating.php	32	評価は1〜5の整数で指定してください
+INVALID_SESSION	403	api/customer/satisfaction-rating.php	45	セッションが無効です
+INVALID_SESSION	403	api/customer/satisfaction-rating.php	48	セッションが期限切れです
+DB_ERROR	500	api/customer/satisfaction-rating.php	94	evaluation テーブルが未作成の可能性があります
+MISSING_PARAM	400	api/customer/reservation-cancel.php	24	id と edit_token が必要です
+NOT_FOUND	404	api/customer/reservation-cancel.php	29	予約が見つかりません
+FORBIDDEN	403	api/customer/reservation-cancel.php	30	本人確認に失敗しました
+ALREADY_FINAL	400	api/customer/reservation-cancel.php	31	この予約は既に確定状態です
+MISSING_STORE	400	api/customer/reservation-availability.php	20	store_id が必要です
+STORE_NOT_FOUND	404	api/customer/reservation-availability.php	26	店舗が見つかりません
+RESERVATION_DISABLED	403	api/customer/reservation-availability.php	30	この店舗ではオンライン予約を受け付けていません
+INVALID_DATE	400	api/customer/reservation-availability.php	69	日付形式が不正です
+INVALID_DATE	400	api/customer/reservation-availability.php	79	日付形式が不正です
+INVALID_PARTY_SIZE	400	api/customer/reservation-availability.php	80	人数が下限未満です
+INVALID_PARTY_SIZE	400	api/customer/reservation-availability.php	81	人数が上限超過です
+PAST_DATE	400	api/customer/reservation-availability.php	86	過去日は予約できません
+TOO_FAR	400	api/customer/reservation-availability.php	87	受付期間を超えています
+MISSING_PARAM	400	api/customer/reservation-deposit-checkout.php	23	id と edit_token が必要です
+NOT_FOUND	404	api/customer/reservation-deposit-checkout.php	28	予約が見つかりません
+FORBIDDEN	403	api/customer/reservation-deposit-checkout.php	29	本人確認に失敗しました
+NO_DEPOSIT	400	api/customer/reservation-deposit-checkout.php	30	この予約に予約金は不要です
+INVALID_STATUS	400	api/customer/reservation-deposit-checkout.php	31	'既に処理済みです: ' . $r['deposit_status']
+CHECKOUT_FAILED	503	api/customer/reservation-deposit-checkout.php	41	$checkout['error'] ?: '不明'
+MISSING_FIELDS	400	api/customer/order-status.php	20	store_id, table_id, session_token は必須です
+INVALID_SESSION	403	api/customer/order-status.php	33	セッションが無効です
+INVALID_SESSION	403	api/customer/order-status.php	36	セッションが期限切れです
+MISSING_FIELDS	400	api/customer/receipt-view.php	20	payment_id, store_id は必須です
+PAYMENT_NOT_FOUND	404	api/customer/receipt-view.php	33	支払い情報が見つかりません
+RECEIPT_EXPIRED	403	api/customer/receipt-view.php	39	領収書の表示期限が切れています。スタッフにお声がけください
+MISSING_ALERT_ID	400	api/customer/call-staff.php	26	alert_id は必須です
+MISSING_FIELDS	400	api/customer/call-staff.php	56	store_id, table_id は必須です
+TABLE_NOT_FOUND	404	api/customer/call-staff.php	74	テーブルが見つかりません
+MISSING_PARAMS	400	api/customer/table-session.php	23	store_idとtable_idが必要です
+TABLE_NOT_FOUND	404	api/customer/table-session.php	37	テーブルが見つかりません
+SESSION_COOLDOWN	403	api/customer/table-session.php	120	お会計が完了しています。新しいご注文はスタッフにお声がけください。
+NO_ACTIVE_SESSION	403	api/customer/table-session.php	124	スタッフが着席操作を行うまでお待ちください。
+PIN_REQUIRED	403	api/customer/table-session.php	151	着席PINを入力してください。
+INVALID_PIN	403	api/customer/table-session.php	156	PINが正しくありません。スタッフにお声がけください。
+MISSING_PARAM	400	api/customer/reservation-update.php	22	id と edit_token が必要です
+NOT_FOUND	404	api/customer/reservation-update.php	27	予約が見つかりません
+FORBIDDEN	403	api/customer/reservation-update.php	28	本人確認に失敗しました
+ALREADY_FINAL	400	api/customer/reservation-update.php	29	変更できない状態です
+CANCEL_DEADLINE_PASSED	400	api/customer/reservation-update.php	34	変更締切時刻を過ぎています
+INVALID_PARTY_SIZE	400	api/customer/reservation-update.php	42	人数が範囲外です
+INVALID_DATETIME	400	api/customer/reservation-update.php	45	日時形式が不正です
+INVALID_DATETIME	400	api/customer/reservation-update.php	47	日時を解釈できません
+LEAD_TIME_VIOLATION	400	api/customer/reservation-update.php	48	予約締切時刻を過ぎています
+SLOT_UNAVAILABLE	409	api/customer/reservation-update.php	59	お選びの時間は満席です
+NO_CHANGES	400	api/customer/reservation-update.php	69	変更項目がありません
+MISSING_FIELDS	400	api/customer/orders.php	33	store_id, table_id, items は必須です
+INVALID_SESSION	403	api/customer/orders.php	46	このQRコードは無効です。スタッフにお声がけください。
+INVALID_SESSION	403	api/customer/orders.php	49	このQRコードは無効です。スタッフにお声がけください。
+SESSION_ORDER_LIMIT	429	api/customer/orders.php	60	このセッションの注文上限に達しました。スタッフにお声がけください。
+TABLE_NOT_FOUND	404	api/customer/orders.php	77	テーブルが見つかりません
+MAX_ITEMS_EXCEEDED	400	api/customer/orders.php	121	1回の注文は' . $maxItems . '品までです。店員をお呼びください。
+MAX_AMOUNT_EXCEEDED	400	api/customer/orders.php	125	金額上限を超えています。店員をお呼びください。
+LAST_ORDER_PASSED	409	api/customer/orders.php	140	ラストオーダー時刻を過ぎています
+LAST_ORDER_PASSED	409	api/customer/orders.php	154	現在ラストオーダーのため注文を受け付けておりません
+LAST_ORDER_PASSED	409	api/customer/orders.php	158	現在ラストオーダーのため注文を受け付けておりません
+MISSING_FIELDS	400	api/customer/checkout-session.php	23	store_id, table_id, session_token は必須です
+INVALID_SESSION	403	api/customer/checkout-session.php	36	セッションが無効です
+INVALID_SESSION	403	api/customer/checkout-session.php	39	セッションの有効期限が切れています
+SELF_CHECKOUT_DISABLED	403	api/customer/checkout-session.php	54	セルフレジは有効になっていません
+NO_UNPAID_ORDERS	404	api/customer/checkout-session.php	69	未払いの注文がありません
+INVALID_AMOUNT	400	api/customer/checkout-session.php	79	合計金額が不正です
+STORE_NOT_FOUND	404	api/customer/checkout-session.php	93	店舗が見つかりません
+PAYMENT_NOT_CONFIGURED	503	api/customer/checkout-session.php	164	オンライン決済が設定されていません
+CHECKOUT_FAILED	502	api/customer/checkout-session.php	180	$errMsg
+MISSING_STORE	400	api/store/menu-overrides-csv.php	62	store_id は必須です
+NO_FILE	400	api/store/menu-overrides-csv.php	66	CSVファイルをアップロードしてください
+FILE_READ_ERROR	500	api/store/menu-overrides-csv.php	70	ファイルの読み込みに失敗しました
+EMPTY_CSV	400	api/store/menu-overrides-csv.php	76	CSVが空です
+MISSING_COLUMN	400	api/store/menu-overrides-csv.php	81	必須カラム "template_id" がありません
+IMPORT_FAILED	500	api/store/menu-overrides-csv.php	125	'インポートに失敗しました: ' . $e->getMessage()
+MIGRATION_REQUIRED	500	api/store/time-limit-plans.php	28	この機能にはデータベースの更新が必要です
+VALIDATION	400	api/store/time-limit-plans.php	50	store_id, name, duration_min（1以上）は必須です
+MISSING_ID	400	api/store/time-limit-plans.php	78	idが必要です
+MISSING_STORE	400	api/store/time-limit-plans.php	82	store_idが必要です
+NOT_FOUND	404	api/store/time-limit-plans.php	88	プランが見つかりません
+NO_FIELDS	400	api/store/time-limit-plans.php	100	更新項目がありません
+MISSING_PARAMS	400	api/store/time-limit-plans.php	111	idとstore_idが必要です
+MISSING_STORE	400	api/store/last-order.php	20	store_id は必須です
+MISSING_FIELDS	400	api/store/last-order.php	73	store_id と active は必須です
+MIGRATION_REQUIRED	500	api/store/last-order.php	90	'ラストオーダー機能にはデータベースの更新が必要です: ' . $e->getMessage()
+MISSING_FIELDS	400	api/store/menu-overrides.php	50	store_idとtemplate_idは必須です
+NOT_FOUND	404	api/store/menu-overrides.php	60	メニューが見つかりません
+DB_ERROR	500	api/store/tables-status.php	30	'テーブル取得に失敗しました: ' . $e->getMessage()
+MISSING_STORE	400	api/store/settings.php	59	store_idが必要です
+INVALID_COLOR	400	api/store/settings.php	87	カラーコードは #RRGGBB 形式で入力してください
+NO_FIELDS	400	api/store/settings.php	91	更新項目がありません
+SERVER_ERROR	500	api/store/settings.php	116	設定の更新に失敗しました
+MISSING_STORE	400	api/store/reservation-settings.php	20	store_id が必要です
+FORBIDDEN	403	api/store/reservation-settings.php	36	設定変更は manager 以上のみ可能です
+MISSING_STORE	400	api/store/reservation-settings.php	39	store_id が必要です
+INVALID_VALUE	400	api/store/reservation-settings.php	75	$key . ' は 1 以上'
+INVALID_VALUE	400	api/store/reservation-settings.php	76	$key . ' は 0 以上'
+INVALID_TIME	400	api/store/reservation-settings.php	78	$key . ' は HH:MM'
+INVALID_EMAIL	400	api/store/reservation-settings.php	81	通知メールが不正です
+NO_FIELDS	400	api/store/reservation-settings.php	85	更新項目がありません
+MISSING_PARAM	400	api/store/reservation-notify.php	20	reservation_id と store_id が必要です
+INVALID_TYPE	400	api/store/reservation-notify.php	22	不正な通知タイプ
+RESERVATION_NOT_FOUND	404	api/store/reservation-notify.php	29	予約が見つかりません
+NO_EMAIL	400	api/store/reservation-notify.php	30	メールアドレスが登録されていません
+SEND_FAILED	500	api/store/reservation-notify.php	37	$result['error'] ?: '送信失敗'
+MISSING_STORE	400	api/store/reservation-courses.php	22	store_id が必要です
+FORBIDDEN	403	api/store/reservation-courses.php	35	コース作成は manager 以上
+MISSING_STORE	400	api/store/reservation-courses.php	38	store_id が必要です
+MISSING_NAME	400	api/store/reservation-courses.php	41	コース名が必要です
+FORBIDDEN	403	api/store/reservation-courses.php	66	コース変更は manager 以上
+MISSING_PARAM	400	api/store/reservation-courses.php	70	id と store_id が必要です
+NO_FIELDS	400	api/store/reservation-courses.php	84	更新項目がありません
+FORBIDDEN	403	api/store/reservation-courses.php	96	コース削除は manager 以上
+MISSING_PARAM	400	api/store/reservation-courses.php	99	id と store_id が必要です
+VALIDATION	400	api/store/terminal-intent.php	33	金額は1以上を指定してください
+VALIDATION	400	api/store/terminal-intent.php	36	store_id は必須です
+VALIDATION	400	api/store/terminal-intent.php	39	table_id または order_ids が必要です
+NOT_FOUND	404	api/store/terminal-intent.php	67	対象の未会計注文が見つかりません
+AMOUNT_MISMATCH	400	api/store/terminal-intent.php	71	金額がサーバー側計算値と一致しません
+STRIPE_NOT_CONFIGURED	500	api/store/terminal-intent.php	99	プラットフォームのStripe APIキーが設定されていません
+NOT_CONNECTED	400	api/store/terminal-intent.php	107	Stripe Terminal が利用できる設定がありません
+STRIPE_ERROR	502	api/store/terminal-intent.php	113	$result['error'] ?: 'PaymentIntentの作成に失敗しました'
+MISSING_STORE	400	api/store/takeout-management.php	73	store_idが必要です
+MISSING_ORDER	400	api/store/takeout-management.php	74	order_idが必要です
+MISSING_STATUS	400	api/store/takeout-management.php	75	statusが必要です
+NOT_FOUND	404	api/store/takeout-management.php	84	注文が見つかりません
+INVALID_TRANSITION	400	api/store/takeout-management.php	96	$current . ' から ' . $newStatus . ' への遷移はできません'
+VALIDATION	400	api/store/set-cashier-pin.php	31	user_id は必須です
+VALIDATION	400	api/store/set-cashier-pin.php	32	pin は必須です
+INVALID_PIN	400	api/store/set-cashier-pin.php	34	PIN は 4〜8 桁の数字で入力してください
+WEAK_PIN	400	api/store/set-cashier-pin.php	39	同じ数字の繰り返しは PIN として使えません
+WEAK_PIN	400	api/store/set-cashier-pin.php	42	推測されやすい PIN は使えません
+NOT_FOUND	404	api/store/set-cashier-pin.php	55	対象ユーザーが見つかりません
+VALIDATION	400	api/store/set-cashier-pin.php	57	device ロールには PIN を設定できません
+FORBIDDEN	403	api/store/set-cashier-pin.php	65	他人の PIN は manager 以上でないと設定できません
+FORBIDDEN	403	api/store/set-cashier-pin.php	79	この店舗のスタッフではありません
+MIGRATION	500	api/store/set-cashier-pin.php	88	cashier_pin_hash カラムが未作成です。migration-cp1-cashier-pin.sql を実行してください。
+INVALID_VISIBLE_TOOLS	400	api/store/staff-management.php	33	visible_tools に不正な値: ' . $p . ' (kds/register/handy のみ可)
+INVALID_KIND	400	api/store/staff-management.php	61	kind は staff または device のみ指定可能です
+MISSING_STORE	400	api/store/staff-management.php	112	store_id は必須です
+MISSING_FIELDS	400	api/store/staff-management.php	121	ユーザー名とパスワードは必須です
+INVALID_USERNAME	400	api/store/staff-management.php	122	ユーザー名は半角英数字・ハイフン・アンダースコア（3〜50文字）で入力してください
+INVALID_EMAIL	400	api/store/staff-management.php	126	メールアドレスの形式が正しくありません
+DUPLICATE_USERNAME	409	api/store/staff-management.php	131	このユーザー名は既に使用されています
+DUPLICATE_EMAIL	409	api/store/staff-management.php	137	このメールアドレスは既に登録されています
+CREATE_FAILED	500	api/store/staff-management.php	164	スタッフ作成に失敗しました
+MISSING_ID	400	api/store/staff-management.php	175	idが必要です
+NOT_FOUND	404	api/store/staff-management.php	181	ユーザーが見つかりません
+FORBIDDEN	403	api/store/staff-management.php	183	($kind === 'device' ? 'デバイス' : 'スタッフ') . 'のみ編集可能です'
+FORBIDDEN	403	api/store/staff-management.php	192	この店舗へのアクセス権がありません
+INVALID_USERNAME	400	api/store/staff-management.php	202	ユーザー名は半角英数字・ハイフン・アンダースコア（3〜50文字）で入力してください
+DUPLICATE_USERNAME	409	api/store/staff-management.php	205	このユーザー名は既に使用されています
+FORBIDDEN	403	api/store/staff-management.php	235	指定された店舗への操作権限がありません
+MISSING_ID	400	api/store/staff-management.php	279	idが必要です
+MISSING_STORE	400	api/store/staff-management.php	280	store_id は必須です
+CANNOT_DELETE_SELF	400	api/store/staff-management.php	283	自分自身は削除できません
+NOT_FOUND	404	api/store/staff-management.php	289	ユーザーが見つかりません
+FORBIDDEN	403	api/store/staff-management.php	291	($kind === 'device' ? 'デバイス' : 'スタッフ') . 'のみ削除可能です'
+FORBIDDEN	403	api/store/staff-management.php	298	この店舗の' . ($kind === 'device' ? 'デバイス' : 'スタッフ') . 'ではありません
+DELETE_FAILED	500	api/store/staff-management.php	308	削除に失敗しました
+MIGRATION_REQUIRED	500	api/store/table-sessions.php	29	この機能にはデータベースの更新が必要です
+VALIDATION	400	api/store/table-sessions.php	91	store_id と table_id は必須です
+VALIDATION	400	api/store/table-sessions.php	97	プランとコースは同時に選択できません
+ALREADY_ACTIVE	409	api/store/table-sessions.php	107	このテーブルには既にアクティブなセッションがあります
+PLAN_NOT_FOUND	404	api/store/table-sessions.php	121	プランが見つかりません
+COURSE_NOT_FOUND	404	api/store/table-sessions.php	139	コースが見つかりません
+NO_PHASE	400	api/store/table-sessions.php	146	コースにフェーズが設定されていません
+MISSING_ID	400	api/store/table-sessions.php	215	idが必要です
+MISSING_STORE	400	api/store/table-sessions.php	219	store_idが必要です
+NOT_FOUND	404	api/store/table-sessions.php	225	セッションが見つかりません
+INVALID_STATUS	400	api/store/table-sessions.php	233	無効なステータスです
+NO_FIELDS	400	api/store/table-sessions.php	259	更新項目がありません
+MISSING_PARAMS	400	api/store/table-sessions.php	270	idとstore_idが必要です
+MIGRATION_REQUIRED	500	api/store/course-phases.php	24	この機能にはデータベースの更新が必要です
+VALIDATION	400	api/store/course-phases.php	35	store_id, course_id, name は必須です
+NOT_FOUND	404	api/store/course-phases.php	42	コースが見つかりません
+MISSING_ID	400	api/store/course-phases.php	77	idが必要です
+MISSING_STORE	400	api/store/course-phases.php	81	store_idが必要です
+NOT_FOUND	404	api/store/course-phases.php	91	フェーズが見つかりません
+NO_FIELDS	400	api/store/course-phases.php	109	更新項目がありません
+MISSING_PARAMS	400	api/store/course-phases.php	120	idとstore_idが必要です
+NOT_FOUND	404	api/store/course-phases.php	131	フェーズが見つかりません
+RECEIPT_NOT_FOUND	404	api/store/receipt.php	48	領収書が見つかりません
+PAYMENT_NOT_FOUND	404	api/store/receipt.php	59	支払い情報が見つかりません
+PAYMENT_NOT_FOUND	404	api/store/receipt.php	163	支払い情報が見つかりません
+INVALID_DATE	400	api/store/receipt.php	185	日付形式が不正です (YYYY-MM-DD)
+MISSING_PARAMS	400	api/store/receipt.php	199	payment_id または store_id+date を指定してください
+MISSING_PAYMENT	400	api/store/receipt.php	212	payment_id は必須です
+INVALID_TYPE	400	api/store/receipt.php	215	receipt_type は receipt または invoice を指定してください
+PAYMENT_NOT_FOUND	404	api/store/receipt.php	229	支払い情報が見つかりません
+NO_ITEMS	400	api/store/receipt.php	253	明細がありません
+NO_REG_NUMBER	400	api/store/receipt.php	276	適格簡易請求書の発行には登録番号の設定が必要です
+GENERATE_FAILED	500	api/store/receipt.php	329	'領収書の作成に失敗しました: ' . $e->getMessage()
+VALIDATION	400	api/store/device-registration-token.php	19	リクエストボディが不正です
+VALIDATION	400	api/store/device-registration-token.php	27	store_id と display_name は必須です
+MIGRATION_REQUIRED	500	api/store/device-registration-token.php	41	デバイス登録トークン機能のマイグレーションが未適用です
+MIGRATION	500	api/store/active-sessions.php	24	user_sessions テーブルが未作成です。migration-g2-user-sessions.sql を実行してください。
+MISSING_FIELDS	400	api/store/active-sessions.php	66	session_id は必須です
+NOT_FOUND	404	api/store/active-sessions.php	77	セッションが見つかりません
+FORBIDDEN	403	api/store/active-sessions.php	83	オーナーのセッションは無効化できません
+FORBIDDEN	403	api/store/active-sessions.php	89	このセッションへのアクセス権がありません
+VALIDATION	400	api/store/refund-payment.php	23	リクエストボディが不正です
+VALIDATION	400	api/store/refund-payment.php	31	payment_id と store_id は必須です
+PIN_REQUIRED	400	api/store/refund-payment.php	43	返金には担当スタッフ PIN の入力が必要です
+INVALID_PIN	400	api/store/refund-payment.php	46	担当 PIN は 4〜8 桁の数字で入力してください
+MIGRATION	500	api/store/refund-payment.php	63	PIN 機能のマイグレーションが未適用です (migration-cp1-cashier-pin.sql / migration-l3-shift-management.sql)
+PIN_INVALID	401	api/store/refund-payment.php	76	PIN が一致しないか、対象スタッフが出勤中ではありません
+MIGRATION_REQUIRED	500	api/store/refund-payment.php	85	返金機能のマイグレーションが未適用です
+NOT_FOUND	404	api/store/refund-payment.php	110	指定された決済が見つかりません
+CASH_REFUND	400	api/store/refund-payment.php	116	現金決済はシステム返金できません。手動で返金してください。
+NO_GATEWAY	400	api/store/refund-payment.php	122	この決済は外部決済ゲートウェイを使用していません
+ALREADY_REFUNDED	400	api/store/refund-payment.php	128	この決済は既に返金処理中または返金済みです
+INVALID_STATUS	400	api/store/refund-payment.php	134	決済が完了していないため返金できません
+ALREADY_REFUNDED	400	api/store/refund-payment.php	146	この決済は既に返金処理中または返金済みです
+MIGRATION_REQUIRED	500	api/store/refund-payment.php	154	返金用マイグレーション (migration-s3-refund-pending.sql) が未適用です
+DB_ERROR	500	api/store/refund-payment.php	156	返金処理の前段で失敗しました
+CONNECT_NOT_CONFIGURED	500	api/store/refund-payment.php	169	Stripe Connect が設定されていません
+PLATFORM_KEY_MISSING	500	api/store/refund-payment.php	181	プラットフォームの Stripe キーが設定されていません
+GATEWAY_NOT_CONFIGURED	500	api/store/refund-payment.php	196	Stripe が設定されていません
+REFUND_FAILED	502	api/store/refund-payment.php	218	'返金に失敗しました: ' . ($refundResult['error'] ?? '不明なエラー')
+DB_ERROR	500	api/store/refund-payment.php	253	'返金は完了しましたが DB 反映に失敗しました。サポートへご連絡ください。 refund_id=' . $refundResult['refund_id']
+MISSING_PARAM	400	api/store/reservation-seat.php	27	reservation_id と store_id が必要です
+RESERVATION_NOT_FOUND	404	api/store/reservation-seat.php	33	予約が見つかりません
+INVALID_STATUS	400	api/store/reservation-seat.php	35	'この予約は着席できません: ' . $r['status']
+NO_TABLE_ASSIGNED	400	api/store/reservation-seat.php	50	着席先テーブルが指定されていません
+INVALID_TABLE	400	api/store/reservation-seat.php	56	テーブルが店舗に属していません
+TABLE_OCCUPIED	409	api/store/reservation-seat.php	62	テーブルは既に使用中です
+SEAT_FAILED	500	api/store/reservation-seat.php	94	'着席処理に失敗しました: ' . $e->getMessage()
+MISSING_STORE	400	api/store/receipt-settings.php	59	store_id は必須です
+INVALID_REG_NUMBER	400	api/store/receipt-settings.php	69	登録番号は T + 13桁の数字で入力してください（例: T1234567890123）
+NO_FIELDS	400	api/store/receipt-settings.php	101	更新項目がありません
+MISSING_STORE	400	api/store/reservation-stats.php	17	store_id が必要です
+INVALID_DATE	400	api/store/reservation-stats.php	23	日付形式が不正です
+MISSING_PARAM	400	api/store/reservation-no-show.php	24	reservation_id と store_id が必要です
+RESERVATION_NOT_FOUND	404	api/store/reservation-no-show.php	30	予約が見つかりません
+INVALID_STATUS	400	api/store/reservation-no-show.php	32	'no-show 設定できないステータス: ' . $r['status']
+NO_FILE	400	api/store/upload-image.php	19	画像ファイルが送信されていません
+INVALID_FORMAT	400	api/store/upload-image.php	28	許可されていないファイル形式です
+FILE_TOO_LARGE	400	api/store/upload-image.php	32	ファイルサイズは5MB以下にしてください
+SAVE_FAILED	500	api/store/upload-image.php	42	ファイルの保存に失敗しました
+VALIDATION	400	api/store/handy-order.php	34	order_id と store_id は必須です
+NOT_FOUND	404	api/store/handy-order.php	42	注文が見つかりません
+CONFLICT	409	api/store/handy-order.php	44	会計済み・キャンセル済みの注文は修正できません
+VALIDATION	400	api/store/handy-order.php	91	更新項目がありません
+DB_ERROR	500	api/store/handy-order.php	101	処理に失敗しました。時間を置いて再試行してください。
+VALIDATION	400	api/store/handy-order.php	114	store_id と items は必須です
+VALIDATION	400	api/store/handy-order.php	128	店内注文にはテーブルIDが必要です
+NOT_FOUND	404	api/store/handy-order.php	133	テーブルが見つかりません
+VALIDATION	400	api/store/handy-order.php	144	テイクアウト注文には受取時間が必要です
+SOLD_OUT	409	api/store/handy-order.php	193	'品切れの品目が含まれています: ' . implode(', ', $soldOutNames)
+DB_ERROR	500	api/store/handy-order.php	251	処理に失敗しました。時間を置いて再試行してください。
+MIGRATION_REQUIRED	500	api/store/course-templates.php	28	この機能にはデータベースの更新が必要です
+VALIDATION	400	api/store/course-templates.php	89	store_id と name は必須です
+MISSING_ID	400	api/store/course-templates.php	115	idが必要です
+MISSING_STORE	400	api/store/course-templates.php	119	store_idが必要です
+NOT_FOUND	404	api/store/course-templates.php	124	コースが見つかりません
+NO_FIELDS	400	api/store/course-templates.php	136	更新項目がありません
+MISSING_PARAMS	400	api/store/course-templates.php	147	idとstore_idが必要です
+MISSING_FIELDS	400	api/store/local-items.php	42	store_id, メニュー名, カテゴリは必須です
+MISSING_ID	400	api/store/local-items.php	93	idが必要です
+MISSING_STORE	400	api/store/local-items.php	97	store_idが必要です
+NOT_FOUND	404	api/store/local-items.php	102	メニューが見つかりません
+NO_FIELDS	400	api/store/local-items.php	140	更新項目がありません
+MISSING_FIELDS	400	api/store/local-items.php	152	idとstore_idが必要です
+NOT_FOUND	404	api/store/local-items.php	157	メニューが見つかりません
+MIGRATION_REQUIRED	500	api/store/plan-menu-items.php	28	この機能にはデータベースの更新が必要です
+MISSING_PLAN	400	api/store/plan-menu-items.php	35	plan_idが必要です
+NOT_FOUND	404	api/store/plan-menu-items.php	40	プランが見つかりません
+VALIDATION	400	api/store/plan-menu-items.php	61	store_id, plan_id, name は必須です
+NOT_FOUND	404	api/store/plan-menu-items.php	68	プランが見つかりません
+MISSING_ID	400	api/store/plan-menu-items.php	93	idが必要です
+MISSING_STORE	400	api/store/plan-menu-items.php	97	store_idが必要です
+NOT_FOUND	404	api/store/plan-menu-items.php	107	メニューが見つかりません
+NO_FIELDS	400	api/store/plan-menu-items.php	119	更新項目がありません
+MISSING_PARAMS	400	api/store/plan-menu-items.php	130	idとstore_idが必要です
+MISSING_FIELDS	400	api/store/tables.php	40	store_idとテーブルコードは必須です
+DUPLICATE_CODE	409	api/store/tables.php	46	このテーブルコードは既に使用されています
+MISSING_ID	400	api/store/tables.php	60	idが必要です
+MISSING_STORE	400	api/store/tables.php	64	store_idが必要です
+NOT_FOUND	404	api/store/tables.php	69	テーブルが見つかりません
+INVALID_SHAPE	400	api/store/tables.php	83	無効なshapeです（' . implode('/', $allowedShapes) . '）
+NO_FIELDS	400	api/store/tables.php	89	更新項目がありません
+MISSING_FIELDS	400	api/store/tables.php	99	idとstore_idが必要です
+MISSING_STORE	400	api/store/places-proxy.php	23	store_idは必須です
+NO_API_KEY	400	api/store/places-proxy.php	30	Google Places APIキーが設定されていません（POSLA管理画面で設定してください）
+MISSING_ADDRESS	400	api/store/places-proxy.php	36	住所は必須です
+FETCH_FAILED	502	api/store/places-proxy.php	42	Geocoding APIの呼び出しに失敗しました
+PARSE_FAILED	502	api/store/places-proxy.php	45	Geocoding APIレスポンスの解析に失敗しました
+MISSING_PARAMS	400	api/store/places-proxy.php	55	lat, lngは必須です
+FETCH_FAILED	502	api/store/places-proxy.php	67	Places APIの呼び出しに失敗しました
+PARSE_FAILED	502	api/store/places-proxy.php	70	Places APIレスポンスの解析に失敗しました
+INVALID_ACTION	400	api/store/places-proxy.php	75	actionパラメータが不正です（geocode / nearby）
+MISSING_PROMPT	400	api/store/ai-generate.php	25	プロンプトが空です
+KNOWLEDGE_BASE_MISSING	503	api/store/ai-generate.php	45	ヘルプデスク knowledge base が未生成です。POSLA運営に連絡してください
+FORBIDDEN	403	api/store/ai-generate.php	51	POSLA運営モードはPOSLA管理者のみ利用可能です
+FETCH_FAILED	502	api/store/ai-generate.php	92	AI APIの呼び出しに失敗しました
+PARSE_FAILED	502	api/store/ai-generate.php	97	AI APIレスポンスの解析に失敗しました
+AI_ERROR	502	api/store/ai-generate.php	102	$msg
+MIGRATION	500	api/store/time-limit-plans-csv.php	21	time_limit_plans テーブルが未作成です
+MISSING_STORE	400	api/store/time-limit-plans-csv.php	58	store_id は必須です
+NO_FILE	400	api/store/time-limit-plans-csv.php	62	CSVファイルをアップロードしてください
+FILE_READ_ERROR	500	api/store/time-limit-plans-csv.php	66	ファイルの読み込みに失敗しました
+EMPTY_CSV	400	api/store/time-limit-plans-csv.php	72	CSVが空です
+MISSING_COLUMN	400	api/store/time-limit-plans-csv.php	78	必須カラム "' . $req . '" がありません
+IMPORT_FAILED	500	api/store/time-limit-plans-csv.php	134	'インポートに失敗しました: ' . $e->getMessage()
+VALIDATION	400	api/store/daily-recommendations.php	21	store_id は必須です
+VALIDATION	400	api/store/daily-recommendations.php	51	store_id は必須です
+VALIDATION	400	api/store/daily-recommendations.php	61	menu_item_id は必須です
+VALIDATION	400	api/store/daily-recommendations.php	62	source が不正です
+VALIDATION	400	api/store/daily-recommendations.php	64	badge_type が不正です
+VALIDATION	400	api/store/daily-recommendations.php	82	id と store_id は必須です
+MIGRATION_REQUIRED	500	api/store/sub-sessions.php	26	サブセッション機能のマイグレーションが未適用です
+VALIDATION	400	api/store/sub-sessions.php	32	table_session_id は必須です
+VALIDATION	400	api/store/sub-sessions.php	79	リクエストボディが不正です
+VALIDATION	400	api/store/sub-sessions.php	87	store_id, table_session_id, table_id は必須です
+SESSION_NOT_ACTIVE	404	api/store/sub-sessions.php	99	アクティブなセッションが見つかりません
+SUB_SESSION_LIMIT	400	api/store/sub-sessions.php	108	サブセッションの上限（10）に達しています
+VALIDATION	400	api/store/process-payment.php	41	store_id は必須です
+VALIDATION	400	api/store/process-payment.php	42	table_id または order_ids が必要です
+VALIDATION	400	api/store/process-payment.php	44	不正な payment_method です
+PIN_REQUIRED	400	api/store/process-payment.php	58	担当スタッフ PIN の入力が必要です
+INVALID_PIN	400	api/store/process-payment.php	61	担当 PIN は 4〜8 桁の数字で入力してください
+MIGRATION	500	api/store/process-payment.php	79	PIN 機能のマイグレーションが未適用です (migration-cp1-cashier-pin.sql / migration-l3-shift-management.sql)
+PIN_INVALID	401	api/store/process-payment.php	94	PIN が一致しないか、対象スタッフが出勤中ではありません
+MIGRATION	500	api/store/process-payment.php	101	payments テーブルが未作成です。migration-c4-payments.sql を実行してください。
+NOT_FOUND	404	api/store/process-payment.php	177	未会計の注文またはアクティブなセッションがありません
+VALIDATION	400	api/store/process-payment.php	197	個別会計には selected_item_ids が必要です
+VALIDATION	400	api/store/process-payment.php	200	対象注文がありません
+INVALID_ITEM	400	api/store/process-payment.php	218	指定された品目が現在の注文に存在しません
+ALREADY_PAID	409	api/store/process-payment.php	222	指定された品目には既に支払済みのものが含まれています
+VALIDATION	400	api/store/process-payment.php	299	現金決済では received_amount が必要です
+VALIDATION	400	api/store/process-payment.php	302	預かり金が不足しています
+STRIPE_NOT_CONFIGURED	500	api/store/process-payment.php	326	プラットフォームの Stripe キーが未設定です
+NOT_CONNECTED	400	api/store/process-payment.php	336	Stripe Terminal が利用できる設定がありません
+STRIPE_ERROR	502	api/store/process-payment.php	343	PaymentIntent の取得に失敗しました
+STRIPE_MISMATCH	403	api/store/process-payment.php	353	決済が完了状態ではありません (status=' . $piState . ')
+STRIPE_MISMATCH	403	api/store/process-payment.php	356	通貨が一致しません
+STRIPE_MISMATCH	403	api/store/process-payment.php	360	決済金額がサーバー側計算値と一致しません
+STRIPE_MISMATCH	403	api/store/process-payment.php	364	PaymentIntent のテナントが一致しません
+STRIPE_MISMATCH	403	api/store/process-payment.php	367	PaymentIntent の店舗が一致しません
+STRIPE_MISMATCH	403	api/store/process-payment.php	370	PaymentIntent の用途が POS Terminal ではありません
+GATEWAY_ERROR	502	api/store/process-payment.php	393	'決済に失敗しました: ' . ($gwResult['error'] ?? '不明なエラー')
+CONFLICT	409	api/store/process-payment.php	678	この注文は既に他のデバイスで会計処理されました。最新状態を再取得してください。
+DB_ERROR	500	api/store/process-payment.php	680	会計処理に失敗しました。時間を置いて再試行してください。
+FORBIDDEN	403	api/store/translate-menu.php	66	権限がありません
+MISSING_STORE	400	api/store/translate-menu.php	76	store_id は必須です
+$e->getErrorCode()	$e->getHttpStatus()	api/store/translate-menu.php	90	$e->getMessage()
+MISSING_STORE	400	api/store/local-items-csv.php	56	store_id は必須です
+NO_FILE	400	api/store/local-items-csv.php	60	CSVファイルをアップロードしてください
+FILE_READ_ERROR	500	api/store/local-items-csv.php	64	ファイルの読み込みに失敗しました
+EMPTY_CSV	400	api/store/local-items-csv.php	70	CSVが空です
+MISSING_COLUMN	400	api/store/local-items-csv.php	76	必須カラム "' . $req . '" がありません
+IMPORT_FAILED	500	api/store/local-items-csv.php	144	'インポートに失敗しました: ' . $e->getMessage()
+MIGRATION_REQUIRED	500	api/store/kds-stations.php	28	この機能にはデータベースの更新が必要です
+MISSING_FIELDS	400	api/store/kds-stations.php	69	ステーション名は必須です
+MISSING_ID	400	api/store/kds-stations.php	96	idが必要です
+NOT_FOUND	404	api/store/kds-stations.php	100	ステーションが見つかりません
+MISSING_ID	400	api/store/kds-stations.php	135	idが必要です
+NOT_FOUND	404	api/store/kds-stations.php	139	ステーションが見つかりません
+DELETE_FAILED	500	api/store/kds-stations.php	148	削除に失敗しました
+INVALID_PARTY_SIZE	400	api/store/reservations.php	30	人数が不正です
+INVALID_DATETIME	400	api/store/reservations.php	35	日時形式が不正です (YYYY-MM-DD HH:MM)
+INVALID_DATETIME	400	api/store/reservations.php	38	日時を解釈できません
+RESERVATION_NOT_FOUND	404	api/store/reservations.php	45	予約が見つかりません
+INVALID_TABLE_IDS	400	api/store/reservations.php	55	指定テーブルが店舗に属していません
+TABLE_CAPACITY_SHORT	400	api/store/reservations.php	58	指定テーブルの収容人数が不足です
+MISSING_STORE	400	api/store/reservations.php	122	store_id が必要です
+INVALID_DATE	400	api/store/reservations.php	134	日付形式が不正です
+MISSING_STORE	400	api/store/reservations.php	186	store_id が必要です
+STORE_NOT_FOUND	404	api/store/reservations.php	192	店舗が見つかりません
+MISSING_NAME	400	api/store/reservations.php	195	お客様名が必要です
+INVALID_EMAIL	400	api/store/reservations.php	198	メールアドレスが不正です
+BLACKLISTED_CUSTOMER	403	api/store/reservations.php	234	'この顧客は予約不可です: ' . ($bl['blacklist_reason'] ?: '')
+MISSING_PARAM	400	api/store/reservations.php	284	id と store_id が必要です
+MISSING_NAME	400	api/store/reservations.php	294	お客様名が空です
+INVALID_EMAIL	400	api/store/reservations.php	300	メールアドレスが不正です
+NO_FIELDS	400	api/store/reservations.php	329	変更する項目がありません
+MISSING_PARAM	400	api/store/reservations.php	345	id と store_id が必要です
+ALREADY_FINAL	400	api/store/reservations.php	350	'この予約は既に確定状態です: ' . $r['status']
+MISSING_PARAM	400	api/store/table-open.php	26	store_id と table_id が必要です
+TABLE_NOT_FOUND	404	api/store/table-open.php	33	テーブルが見つかりません
+TABLE_IN_USE	409	api/store/table-open.php	39	テーブルは使用中です
+MISSING_PARAM	400	api/store/table-open.php	60	store_id と table_id が必要です
+MISSING_STORE	400	api/store/menu-version.php	20	store_id は必須です
+MIGRATION	500	api/store/course-csv.php	24	course_templates テーブルが未作成です
+MISSING_STORE	400	api/store/course-csv.php	100	store_id は必須です
+NO_FILE	400	api/store/course-csv.php	104	CSVファイルをアップロードしてください
+FILE_READ_ERROR	500	api/store/course-csv.php	108	ファイルの読み込みに失敗しました
+EMPTY_CSV	400	api/store/course-csv.php	114	CSVが空です
+MISSING_COLUMN	400	api/store/course-csv.php	119	必須カラム "course_name" がありません
+IMPORT_FAILED	500	api/store/course-csv.php	260	'インポートに失敗しました: ' . $e->getMessage()
+MIGRATION	500	api/store/plan-menu-items-csv.php	21	plan_menu_items テーブルが未作成です
+MISSING_STORE	400	api/store/plan-menu-items-csv.php	64	store_id は必須です
+NO_FILE	400	api/store/plan-menu-items-csv.php	68	CSVファイルをアップロードしてください
+FILE_READ_ERROR	500	api/store/plan-menu-items-csv.php	72	ファイルの読み込みに失敗しました
+EMPTY_CSV	400	api/store/plan-menu-items-csv.php	78	CSVが空です
+MISSING_COLUMN	400	api/store/plan-menu-items-csv.php	84	必須カラム "' . $req . '" がありません
+IMPORT_FAILED	500	api/store/plan-menu-items-csv.php	158	'インポートに失敗しました: ' . $e->getMessage()
+MISSING_STORE	400	api/store/reservation-customers.php	19	store_id が必要です
+CUSTOMER_NOT_FOUND	404	api/store/reservation-customers.php	26	顧客が見つかりません
+MISSING_PARAM	400	api/store/reservation-customers.php	54	id と store_id が必要です
+FORBIDDEN	403	api/store/reservation-customers.php	65	ブラックリスト操作は manager 以上
+NO_FIELDS	400	api/store/reservation-customers.php	69	更新項目がありません
+PLAN_REQUIRED	403	api/store/shift/availabilities.php	25	シフト管理はProプラン以上で利用できます
+INVALID_DATE	400	api/store/shift/availabilities.php	41	start_date, end_date を YYYY-MM-DD 形式で指定してください
+NO_DATA	400	api/store/shift/availabilities.php	83	availabilities 配列を指定してください
+TOO_MANY	400	api/store/shift/availabilities.php	86	一度に提出できるのは最大31日分です
+INVALID_DATE	400	api/store/shift/availabilities.php	94	availabilities[$i].target_date が不正です
+INVALID_AVAILABILITY	400	api/store/shift/availabilities.php	97	availabilities[$i].availability は available / preferred / unavailable のいずれかです
+INVALID_TIME	400	api/store/shift/availabilities.php	103	availabilities[$i].preferred_start が不正です
+INVALID_TIME	400	api/store/shift/availabilities.php	106	availabilities[$i].preferred_end が不正です
+INVALID_TIME_RANGE	400	api/store/shift/availabilities.php	109	availabilities[$i]: 終了時刻は開始時刻より後にしてください
+MISSING_ID	400	api/store/shift/availabilities.php	169	id パラメータが必要です
+NOT_FOUND	404	api/store/shift/availabilities.php	189	希望が見つかりません
+INVALID_AVAILABILITY	400	api/store/shift/availabilities.php	198	availability は available / preferred / unavailable のいずれかです
+NO_FIELDS	400	api/store/shift/availabilities.php	220	更新するフィールドが指定されていません
+PLAN_REQUIRED	403	api/store/shift/settings.php	25	シフト管理はProプラン以上で利用できます
+INVALID_VALUE	400	api/store/shift/settings.php	100	submission_deadline_day は 1〜28 の範囲で指定してください
+INVALID_VALUE	400	api/store/shift/settings.php	108	default_break_minutes は 0〜120 の範囲で指定してください
+INVALID_VALUE	400	api/store/shift/settings.php	116	overtime_threshold_minutes は 60〜720 の範囲で指定してください
+INVALID_VALUE	400	api/store/shift/settings.php	124	early_clock_in_minutes は 0〜60 の範囲で指定してください
+INVALID_VALUE	400	api/store/shift/settings.php	132	auto_clock_out_hours は 1〜24 の範囲で指定してください
+INVALID_VALUE	400	api/store/shift/settings.php	142	store_lat は -90〜90 の範囲で指定してください
+INVALID_VALUE	400	api/store/shift/settings.php	154	store_lng は -180〜180 の範囲で指定してください
+INVALID_VALUE	400	api/store/shift/settings.php	165	gps_radius_meters は 50〜1000 の範囲で指定してください
+INVALID_VALUE	400	api/store/shift/settings.php	173	gps_required は 0 または 1 で指定してください
+INVALID_VALUE	400	api/store/shift/settings.php	185	staff_visible_tools は handy,kds,register のみ指定可能です
+INVALID_VALUE	400	api/store/shift/settings.php	199	default_hourly_rate は 1〜10000 の範囲で指定してください
+NO_FIELDS	400	api/store/shift/settings.php	208	更新するフィールドが指定されていません
+PLAN_REQUIRED	403	api/store/shift/templates.php	27	シフト管理はProプラン以上で利用できます
+INVALID_NAME	400	api/store/shift/templates.php	67	テンプレート名は1〜100文字で入力してください
+INVALID_DAY	400	api/store/shift/templates.php	72	day_of_week は 0（日）〜 6（土）で指定してください
+INVALID_TIME	400	api/store/shift/templates.php	79	時刻は HH:MM 形式で指定してください
+INVALID_TIME_RANGE	400	api/store/shift/templates.php	82	終了時刻は開始時刻より後にしてください
+INVALID_STAFF	400	api/store/shift/templates.php	87	required_staff は 1〜20 で指定してください
+INVALID_ROLE	400	api/store/shift/templates.php	92	role_hint は kitchen / hall のいずれかです
+MISSING_ID	400	api/store/shift/templates.php	132	id パラメータが必要です
+NOT_FOUND	404	api/store/shift/templates.php	143	テンプレートが見つかりません
+INVALID_NAME	400	api/store/shift/templates.php	154	テンプレート名は1〜100文字で入力してください
+INVALID_DAY	400	api/store/shift/templates.php	164	day_of_week は 0〜6 で指定してください
+INVALID_TIME	400	api/store/shift/templates.php	173	時刻は HH:MM 形式で指定してください
+INVALID_TIME	400	api/store/shift/templates.php	182	時刻は HH:MM 形式で指定してください
+INVALID_STAFF	400	api/store/shift/templates.php	192	required_staff は 1〜20 で指定してください
+INVALID_ROLE	400	api/store/shift/templates.php	202	role_hint は kitchen / hall のいずれかです
+NO_FIELDS	400	api/store/shift/templates.php	209	更新するフィールドが指定されていません
+INVALID_TIME_RANGE	400	api/store/shift/templates.php	216	終了時刻は開始時刻より後にしてください
+MISSING_ID	400	api/store/shift/templates.php	256	id パラメータが必要です
+NOT_FOUND	404	api/store/shift/templates.php	266	テンプレートが見つかりません
+PLAN_REQUIRED	403	api/store/shift/assignments.php	28	シフト管理はProプラン以上で利用できます
+INVALID_DATE	400	api/store/shift/assignments.php	42	start_date, end_date を YYYY-MM-DD 形式で指定してください
+INVALID_DATE	400	api/store/shift/assignments.php	150	start_date, end_date を YYYY-MM-DD 形式で指定してください
+INVALID_DATE	400	api/store/shift/assignments.php	185	start_date, end_date を YYYY-MM-DD 形式で指定してください
+NO_ASSIGNMENTS	400	api/store/shift/assignments.php	188	user_assignments を指定してください
+MISSING_USER	400	api/store/shift/assignments.php	293	user_id を指定してください
+INVALID_DATE	400	api/store/shift/assignments.php	296	shift_date を YYYY-MM-DD 形式で指定してください
+INVALID_TIME	400	api/store/shift/assignments.php	300	時刻は HH:MM 形式で指定してください
+INVALID_TIME_RANGE	400	api/store/shift/assignments.php	303	終了時刻は開始時刻より後にしてください
+INVALID_ROLE	400	api/store/shift/assignments.php	311	role_type は kitchen / hall のいずれかです
+USER_NOT_IN_STORE	400	api/store/shift/assignments.php	328	指定されたユーザーはこの店舗に所属していません
+MISSING_ID	400	api/store/shift/assignments.php	374	id パラメータが必要です
+NOT_FOUND	404	api/store/shift/assignments.php	384	シフト割当が見つかりません
+INVALID_TIME	400	api/store/shift/assignments.php	393	時刻は HH:MM 形式で指定してください
+INVALID_TIME	400	api/store/shift/assignments.php	401	時刻は HH:MM 形式で指定してください
+INVALID_ROLE	400	api/store/shift/assignments.php	415	role_type は kitchen / hall のいずれかです
+INVALID_STATUS	400	api/store/shift/assignments.php	429	status は draft / published / confirmed のいずれかです
+NO_FIELDS	400	api/store/shift/assignments.php	436	更新するフィールドが指定されていません
+INVALID_TIME_RANGE	400	api/store/shift/assignments.php	443	終了時刻は開始時刻より後にしてください
+MISSING_ID	400	api/store/shift/assignments.php	483	id パラメータが必要です
+NOT_FOUND	404	api/store/shift/assignments.php	493	シフト割当が見つかりません
+PLAN_REQUIRED	403	api/store/shift/attendance.php	35	シフト管理はProプラン以上で利用できます
+ALREADY_CLOCKED_IN	400	api/store/shift/attendance.php	57	既に出勤中です（' . $existing['clock_in'] . '〜）
+GPS_REQUIRED	400	api/store/shift/attendance.php	71	位置情報の取得が必要です。ブラウザの位置情報を許可してください
+OUT_OF_RANGE	400	api/store/shift/attendance.php	78	店舗から' . round($dist) . 'm離れています（許容: ' . $gpsSetting['gps_radius_meters'] . 'm）
+NOT_CLOCKED_IN	400	api/store/shift/attendance.php	159	出勤打刻がありません
+GPS_REQUIRED	400	api/store/shift/attendance.php	173	位置情報の取得が必要です。ブラウザの位置情報を許可してください
+OUT_OF_RANGE	400	api/store/shift/attendance.php	180	店舗から' . round($dist) . 'm離れています（許容: ' . $gpsSetting['gps_radius_meters'] . 'm）
+INVALID_DATE	400	api/store/shift/attendance.php	232	start_date, end_date を YYYY-MM-DD 形式で指定してください
+MISSING_ID	400	api/store/shift/attendance.php	294	id パラメータが必要です
+NOT_FOUND	404	api/store/shift/attendance.php	304	勤怠レコードが見つかりません
+INVALID_DATETIME	400	api/store/shift/attendance.php	313	clock_in は YYYY-MM-DD HH:MM 形式で指定してください
+INVALID_DATETIME	400	api/store/shift/attendance.php	321	clock_out は YYYY-MM-DD HH:MM 形式で指定してください
+INVALID_BREAK	400	api/store/shift/attendance.php	334	break_minutes は 0〜480 の範囲で指定してください
+NO_FIELDS	400	api/store/shift/attendance.php	346	更新するフィールドが指定されていません
+PLAN_REQUIRED	403	api/store/shift/ai-suggest-data.php	26	シフト管理はProプラン以上で利用できます
+INVALID_DATE	400	api/store/shift/ai-suggest-data.php	36	start_date, end_date を YYYY-MM-DD 形式で指定してください
+PLAN_REQUIRED	403	api/store/shift/help-requests.php	26	この機能はenterpriseプランで利用可能です
+MISSING_PARAM	400	api/store/shift/help-requests.php	53	target_store_id が必要です
+STORE_NOT_FOUND	404	api/store/shift/help-requests.php	61	店舗が見つかりません
+MISSING_TO_STORE	400	api/store/shift/help-requests.php	188	送信先店舗を指定してください
+SAME_STORE	400	api/store/shift/help-requests.php	191	自店舗には要請できません
+INVALID_STORE	400	api/store/shift/help-requests.php	200	送信先店舗が見つかりません
+INVALID_DATE	400	api/store/shift/help-requests.php	204	日付を YYYY-MM-DD 形式で指定してください
+PAST_DATE	400	api/store/shift/help-requests.php	207	過去の日付は指定できません
+INVALID_TIME	400	api/store/shift/help-requests.php	212	時刻は HH:MM 形式で指定してください
+INVALID_TIME_RANGE	400	api/store/shift/help-requests.php	215	終了時刻は開始時刻より後にしてください
+INVALID_COUNT	400	api/store/shift/help-requests.php	219	必要人数は1〜10の範囲で指定してください
+INVALID_ROLE	400	api/store/shift/help-requests.php	223	role_hint は kitchen / hall のいずれかです
+MISSING_ID	400	api/store/shift/help-requests.php	263	id パラメータが必要です
+NOT_FOUND	404	api/store/shift/help-requests.php	277	ヘルプ要請が見つかりません
+FORBIDDEN	403	api/store/shift/help-requests.php	284	承認は要請先の店舗マネージャーのみ可能です
+INVALID_STATUS	400	api/store/shift/help-requests.php	287	この要請は既に処理済みです
+NO_STAFF	400	api/store/shift/help-requests.php	294	派遣するスタッフを選択してください
+INVALID_USERS	400	api/store/shift/help-requests.php	308	一部のスタッフがこの店舗に所属していません
+DB_ERROR	500	api/store/shift/help-requests.php	387	'承認処理に失敗しました: ' . $e->getMessage()
+FORBIDDEN	403	api/store/shift/help-requests.php	409	却下は要請先の店舗マネージャーのみ可能です
+INVALID_STATUS	400	api/store/shift/help-requests.php	412	この要請は既に処理済みです
+FORBIDDEN	403	api/store/shift/help-requests.php	430	キャンセルは要請元の店舗マネージャーのみ可能です
+INVALID_STATUS	400	api/store/shift/help-requests.php	433	pending 以外の要請はキャンセルできません
+INVALID_ACTION	400	api/store/shift/help-requests.php	446	action は approve / reject / cancel のいずれかです
+PLAN_REQUIRED	403	api/store/shift/summary.php	23	シフト管理はProプラン以上で利用できます
+INVALID_DATE	400	api/store/shift/summary.php	35	date を YYYY-MM-DD 形式で指定してください
+INVALID_DATE	400	api/store/shift/summary.php	44	date を YYYY-MM 形式で指定してください
+INVALID_PERIOD	400	api/store/shift/summary.php	51	period は weekly / monthly のいずれかです
+PLAN_REQUIRED	403	api/store/shift/apply-ai-suggestions.php	31	シフト管理はProプラン以上で利用できます
+INVALID_INPUT	400	api/store/shift/apply-ai-suggestions.php	48	start_date, end_date を YYYY-MM-DD 形式で指定してください
+INVALID_INPUT	400	api/store/shift/apply-ai-suggestions.php	51	start_date は end_date 以前である必要があります
+INVALID_INPUT	400	api/store/shift/apply-ai-suggestions.php	54	suggestions が空です
+INVALID_INPUT	400	api/store/shift/apply-ai-suggestions.php	60	suggestions[' . $idx . '].user_id が指定されていません
+INVALID_INPUT	400	api/store/shift/apply-ai-suggestions.php	63	suggestions[' . $idx . '].shift_date を YYYY-MM-DD 形式で指定してください
+INVALID_INPUT	400	api/store/shift/apply-ai-suggestions.php	66	suggestions[' . $idx . '].shift_date が期間外です
+INVALID_INPUT	400	api/store/shift/apply-ai-suggestions.php	70	suggestions[' . $idx . '].start_time / end_time は HH:MM 形式で指定してください
+INVALID_INPUT	400	api/store/shift/apply-ai-suggestions.php	73	suggestions[' . $idx . '] の終了時刻は開始時刻より後にしてください
+INVALID_INPUT	400	api/store/shift/apply-ai-suggestions.php	77	suggestions[' . $idx . '].role_type は kitchen / hall のいずれかです
+DEVICE_NOT_ASSIGNABLE	400	api/store/shift/apply-ai-suggestions.php	124	デバイスアカウント(' . $deviceRows[0]['display_name'] . ')はシフト割当の対象外です
+USER_NOT_IN_STORE	400	api/store/shift/apply-ai-suggestions.php	129	指定されたユーザー(' . $uid . ')はこの店舗に所属していません
+DB_ERROR	500	api/store/shift/apply-ai-suggestions.php	182	AI提案の適用に失敗しました

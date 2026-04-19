@@ -43,6 +43,7 @@ $verified = false;
 $gatewayName = '';
 $externalPaymentId = '';
 $gatewayStatus = '';
+$verifyResult = null;  // P0 #5: metadata 照合のため verify 結果を保持
 
 // L-13: Stripe Connect 経由の決済検証（プラットフォームキーで検証）
 $connectUsed = false;
@@ -59,13 +60,14 @@ try {
                 }
             }
             if ($sessionId) {
-                $result = verify_stripe_checkout($platformConfig['secret_key'], $sessionId);
+                $result = verify_stripe_checkout($platformConfig['secret_key'], $sessionId, $connectInfo['stripe_connect_account_id']);
                 if ($result['success']) {
                     $verified = true;
                     $gatewayName = 'stripe_connect';
                     $externalPaymentId = $result['payment_intent_id'] ?: $sessionId;
                     $gatewayStatus = $result['payment_status'] ?: 'paid';
                     $connectUsed = true;
+                    $verifyResult = $result;
                 } else {
                     json_error('PAYMENT_NOT_CONFIRMED', $result['error'] ?: '決済が確認できませんでした', 402);
                 }
@@ -98,6 +100,7 @@ if (!$connectUsed) {
         $gatewayName = 'stripe';
         $externalPaymentId = $result['payment_intent_id'] ?: $sessionId;
         $gatewayStatus = $result['payment_status'] ?: 'paid';
+        $verifyResult = $result;
     } else {
         json_error('PAYMENT_NOT_CONFIRMED', $result['error'] ?: '決済が確認できませんでした', 402);
     }
@@ -105,6 +108,43 @@ if (!$connectUsed) {
 
 if (!$verified) {
     json_error('VERIFICATION_FAILED', '決済の確認に失敗しました', 500);
+}
+
+// ── P0 #5: metadata 照合 (別注文 session の流用攻撃を阻止) ──
+$md = (isset($verifyResult['metadata']) && is_array($verifyResult['metadata'])) ? $verifyResult['metadata'] : array();
+$mdTenant = isset($md['tenant_id']) ? (string)$md['tenant_id'] : '';
+$mdStore  = isset($md['store_id']) ? (string)$md['store_id'] : '';
+$mdExpAmt = isset($md['expected_amount']) ? (int)$md['expected_amount'] : -1;
+$mdExpCur = isset($md['expected_currency']) ? strtolower((string)$md['expected_currency']) : '';
+$mdOrderIds = isset($md['order_ids']) ? (string)$md['order_ids'] : '';
+$mdPurpose = isset($md['purpose']) ? (string)$md['purpose'] : '';
+$amountTotal = isset($verifyResult['amount_total']) ? (int)$verifyResult['amount_total'] : -1;
+$verifiedCurrency = isset($verifyResult['currency']) ? strtolower((string)$verifyResult['currency']) : '';
+
+if ($mdTenant === '' || $mdStore === '' || $mdExpAmt < 0 || $mdExpCur === '' || $mdOrderIds === '') {
+    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH metadata_missing session=' . $sessionId, 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (metadata 不足)', 403);
+}
+if ($mdTenant !== (string)$order['tenant_id'] || $mdStore !== (string)$order['store_id']) {
+    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH context tenant_md=' . $mdTenant . ' store_md=' . $mdStore, 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (テナント/店舗)', 403);
+}
+if ($mdPurpose !== 'takeout') {
+    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH purpose=' . $mdPurpose, 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (用途)', 403);
+}
+if ($mdExpCur !== 'jpy' || $verifiedCurrency !== 'jpy') {
+    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH currency md=' . $mdExpCur . ' stripe=' . $verifiedCurrency, 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (通貨)', 403);
+}
+if ($mdExpAmt !== $amountTotal || $mdExpAmt !== (int)$order['total_amount']) {
+    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH amount db=' . (int)$order['total_amount'] . ' md=' . $mdExpAmt . ' stripe=' . $amountTotal, 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (金額)', 403);
+}
+$mdOrderIdList = array_filter(array_map('trim', explode(',', $mdOrderIds)), 'strlen');
+if (!in_array($orderId, $mdOrderIdList, true)) {
+    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH order_id_not_in_md md=' . $mdOrderIds . ' req=' . $orderId, 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (注文ID)', 403);
 }
 
 // 決済成功 → orders.status を pending に更新（調理開始可能）

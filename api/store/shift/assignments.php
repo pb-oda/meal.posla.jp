@@ -85,25 +85,49 @@ if ($method === 'GET') {
     unset($a);
 
     // スタッフ一覧（カレンダー描画用 — staffロールのみ）
-    $stmtUsers = $pdo->prepare(
-        'SELECT u.id, u.display_name, u.username
-         FROM users u
-         JOIN user_stores us ON us.user_id = u.id AND us.store_id = ?
-         WHERE u.tenant_id = ? AND u.is_active = 1 AND u.role = ?
-         ORDER BY u.display_name'
-    );
-    $stmtUsers->execute([$storeId, $tenantId, 'staff']);
-    $users = $stmtUsers->fetchAll();
+    // セキュリティ: staff ロールは自分以外のスタッフ情報を取得不可
+    if ($user['role'] === 'staff') {
+        $stmtUsers = $pdo->prepare(
+            'SELECT u.id, u.display_name, u.username
+             FROM users u
+             WHERE u.id = ? AND u.tenant_id = ? AND u.is_active = 1 AND u.role = ?'
+        );
+        $stmtUsers->execute([$user['user_id'], $tenantId, 'staff']);
+        $users = $stmtUsers->fetchAll();
+    } else {
+        $stmtUsers = $pdo->prepare(
+            'SELECT u.id, u.display_name, u.username
+             FROM users u
+             JOIN user_stores us ON us.user_id = u.id AND us.store_id = ?
+             WHERE u.tenant_id = ? AND u.is_active = 1 AND u.role = ?
+             ORDER BY u.display_name'
+        );
+        $stmtUsers->execute([$storeId, $tenantId, 'staff']);
+        $users = $stmtUsers->fetchAll();
+    }
 
     // 希望シフト（カレンダー上で参照表示用）
-    $stmtAvail = $pdo->prepare(
-        'SELECT id, user_id, target_date, availability, preferred_start, preferred_end, note
-         FROM shift_availabilities
-         WHERE tenant_id = ? AND store_id = ? AND target_date BETWEEN ? AND ?
-         ORDER BY target_date, user_id'
-    );
-    $stmtAvail->execute([$tenantId, $storeId, $startDate, $endDate]);
-    $availabilities = $stmtAvail->fetchAll();
+    // セキュリティ: staff ロールは自分の希望シフトのみ取得可
+    if ($user['role'] === 'staff') {
+        $stmtAvail = $pdo->prepare(
+            'SELECT id, user_id, target_date, availability, preferred_start, preferred_end, note
+             FROM shift_availabilities
+             WHERE tenant_id = ? AND store_id = ? AND target_date BETWEEN ? AND ?
+               AND user_id = ?
+             ORDER BY target_date, user_id'
+        );
+        $stmtAvail->execute([$tenantId, $storeId, $startDate, $endDate, $user['user_id']]);
+        $availabilities = $stmtAvail->fetchAll();
+    } else {
+        $stmtAvail = $pdo->prepare(
+            'SELECT id, user_id, target_date, availability, preferred_start, preferred_end, note
+             FROM shift_availabilities
+             WHERE tenant_id = ? AND store_id = ? AND target_date BETWEEN ? AND ?
+             ORDER BY target_date, user_id'
+        );
+        $stmtAvail->execute([$tenantId, $storeId, $startDate, $endDate]);
+        $availabilities = $stmtAvail->fetchAll();
+    }
 
     // L-3 Phase 2: 時給情報（カレンダー人件費リアルタイム計算用）
     $hourlyRates = ['default' => null, 'by_user' => []];

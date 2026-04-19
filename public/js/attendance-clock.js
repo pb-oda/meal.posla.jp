@@ -29,22 +29,15 @@
         _container: null,
         _gpsData: null,       // L-3b: { gpsRequired, storeLat, storeLng, gpsRadiusMeters }
 
-        init: function(storeId, gpsData) {
+        init: function(storeId, gpsData, targetSelector) {
             this.storeId = storeId;
             this._gpsData = gpsData || null;
+            this._targetSelector = targetSelector || null;
             this._insertUI();
             this._checkStatus();
         },
 
         _insertUI: function() {
-            // ヘッダーに打刻コンテナを挿入
-            var header = document.querySelector('.dashboard-header') ||
-                         document.querySelector('.header-bar') ||
-                         document.querySelector('header');
-            if (!header) {
-                header = document.body;
-            }
-
             // 既存のコンテナがあれば再利用
             var existing = document.getElementById('attendance-clock-container');
             if (existing) {
@@ -52,14 +45,40 @@
                 return;
             }
 
+            // 挿入先: 指定があればそれ、なければヘッダーへフォールバック
+            var target = null;
+            if (this._targetSelector) {
+                target = document.querySelector(this._targetSelector);
+            }
+            if (!target) {
+                target = document.querySelector('.dashboard-header') ||
+                         document.querySelector('.header-bar') ||
+                         document.querySelector('header') ||
+                         document.body;
+            }
+
             var container = document.createElement('div');
             container.id = 'attendance-clock-container';
-            container.style.cssText = 'display:inline-flex;align-items:center;gap:8px;margin-left:auto;padding:4px 12px;';
-            container.innerHTML = '<span id="att-clock-status"></span>' +
-                                  '<button id="att-clock-in-btn" class="btn" style="display:none">出勤</button>' +
-                                  '<button id="att-clock-out-btn" class="btn" style="display:none">退勤</button>';
 
-            header.appendChild(container);
+            // スタッフ画面（panel-staff-home）に挿入する場合は大きめのスタイル
+            var isStaffPanel = this._targetSelector === '#staff-attendance-slot';
+            if (isStaffPanel) {
+                container.style.cssText = 'display:flex;flex-direction:column;gap:0.75rem;align-items:center;padding:1rem;';
+                container.innerHTML =
+                    '<div id="att-clock-status" style="font-size:1rem;color:#333;font-weight:bold;"></div>' +
+                    '<div style="display:flex;gap:1rem;justify-content:center;">' +
+                    '<button id="att-clock-in-btn" class="btn btn-primary" style="display:none;font-size:1.125rem;padding:1rem 2.5rem;background:#43a047;border:none;border-radius:6px;color:#fff;font-weight:bold;cursor:pointer;">🟢 出勤</button>' +
+                    '<button id="att-clock-out-btn" class="btn btn-primary" style="display:none;font-size:1.125rem;padding:1rem 2.5rem;background:#e53935;border:none;border-radius:6px;color:#fff;font-weight:bold;cursor:pointer;">🔴 退勤</button>' +
+                    '</div>';
+            } else {
+                container.style.cssText = 'display:inline-flex;align-items:center;gap:8px;margin-left:auto;padding:4px 12px;';
+                container.innerHTML =
+                    '<span id="att-clock-status"></span>' +
+                    '<button id="att-clock-in-btn" class="btn" style="display:none">出勤</button>' +
+                    '<button id="att-clock-out-btn" class="btn" style="display:none">退勤</button>';
+            }
+
+            target.appendChild(container);
             this._container = container;
         },
 

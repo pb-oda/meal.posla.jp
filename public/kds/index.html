@@ -22,6 +22,9 @@
     html.light-theme .kds-station-btn:hover { background:#f0f0f0; }
     html.light-theme .kds-station-btn.active { background:#e3f2fd; color:#1565c0; border-color:#42a5f5; }
   </style>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 </head>
 <body>
 
@@ -84,8 +87,8 @@
     </div>
   </div>
 
-  <script src="../shared/js/utils.js"></script>
-  <script src="js/kds-auth.js"></script>
+  <script src="../shared/js/utils.js?v=20260419-phaseB"></script>
+  <script src="js/kds-auth.js?v=20260418gps"></script>
   <script src="js/polling-data-source.js"></script>
   <script src="js/kds-renderer.js?v=20260404e"></script>
   <script src="js/voice-commander.js?v=20260407p14"></script>
@@ -156,7 +159,8 @@
             storeNameEl.textContent = s ? s.name : '-';
             changeLinkEl.style.display = '';
             sessionStorage.setItem('mt_kds_started', '1');
-            initMain();
+            // GPS チェック後に initMain
+            KdsAuth.checkGps(selectedId, initMain);
           });
           return;
         }
@@ -169,14 +173,19 @@
             KdsAuth.setStore(selectedId);
             var s = ctx.stores.find(function (x) { return x.id === selectedId; });
             storeNameEl.textContent = s ? s.name : '-';
-            VoiceCommander.onStoreChange();
-            restartPolling();
+            // GPS チェック後に再開
+            KdsAuth.checkGps(selectedId, function () {
+              VoiceCommander.onStoreChange();
+              restartPolling();
+            });
           });
         });
       }
 
-      // 起動オーバーレイ → initMain
-      showStartupOverlay(currentStore ? currentStore.name : '', initMain);
+      // 起動オーバーレイ → GPS チェック → initMain
+      showStartupOverlay(currentStore ? currentStore.name : '', function () {
+        KdsAuth.checkGps(ctx.storeId, initMain);
+      });
 
       // ── メイン初期化 ──
       function initMain() {
@@ -321,6 +330,7 @@
   <script src="../js/theme-switcher.js"></script>
   <script>ThemeSwitcher.injectButton(document.querySelector('.kds-header__right'));</script>
   <script src="../js/offline-detector.js"></script>
-  <script src="../js/session-monitor.js"></script>
+  <script src="../js/session-monitor.js?v=20260419-fixurl"></script>
+  <script src="pwa-register.js"></script>
 </body>
 </html>

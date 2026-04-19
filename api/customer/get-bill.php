@@ -29,7 +29,7 @@ $stmt = $pdo->prepare(
 $stmt->execute([$tableId, $storeId]);
 $tableRow = $stmt->fetch();
 
-if (!$tableRow || $tableRow['session_token'] !== $sessionToken) {
+if (!$tableRow || !$tableRow['session_token'] || !hash_equals($tableRow['session_token'], (string)$sessionToken)) {
     json_error('INVALID_SESSION', 'セッションが無効です', 403);
 }
 if ($tableRow['session_token_expires_at'] && strtotime($tableRow['session_token_expires_at']) < time()) {

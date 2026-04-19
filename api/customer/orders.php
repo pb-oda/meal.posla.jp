@@ -10,8 +10,13 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/order-items.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
+require_once __DIR__ . '/../lib/order-validator.php';
 
 require_method(['POST']);
+
+// S1: レートリミット — 1IP あたり 20回/10分
+check_rate_limit('customer-order', 20, 600);
 
 $data = get_json_body();
 $storeId = $data['store_id'] ?? null;
@@ -20,6 +25,7 @@ $items = $data['items'] ?? [];
 $removedItems = $data['removed_items'] ?? [];
 $idempotencyKey = $data['idempotency_key'] ?? null;
 $sessionToken = $data['session_token'] ?? null;
+$subSessionId = $data['sub_session_id'] ?? null;
 $memo = isset($data['memo']) ? mb_substr(trim($data['memo']), 0, 200) : null;
 if ($memo === '') $memo = null;
 
@@ -44,6 +50,16 @@ if ($tokenRow) {
     }
 }
 
+// S1: per-session 注文上限 — 同一セッション内で 50件 or ¥200,000 超えたら拒否
+$sessLimitStmt = $pdo->prepare(
+    "SELECT COUNT(*) AS cnt, COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE table_id = ? AND session_token = ? AND status != 'cancelled'"
+);
+$sessLimitStmt->execute([$tableId, $sessionToken]);
+$sessLimit = $sessLimitStmt->fetch();
+if ($sessLimit && ($sessLimit['cnt'] >= 50 || $sessLimit['total'] >= 200000)) {
+    json_error('SESSION_ORDER_LIMIT', 'このセッションの注文上限に達しました。スタッフにお声がけください。', 429);
+}
+
 // 冪等キーチェック
 if ($idempotencyKey) {
     $stmt = $pdo->prepare('SELECT id FROM orders WHERE idempotency_key = ?');
@@ -62,6 +78,7 @@ if (!$table) json_error('TABLE_NOT_FOUND', 'テーブルが見つかりません
 
 // プランセッション中か判定
 $isPlanSession = false;
+$activePlanId = null;
 try {
     $stmt = $pdo->prepare(
         "SELECT ts.plan_id FROM table_sessions ts
@@ -71,8 +88,10 @@ try {
          ORDER BY ts.started_at DESC LIMIT 1"
     );
     $stmt->execute([$tableId, $storeId]);
-    if ($stmt->fetchColumn()) {
+    $planRow = $stmt->fetchColumn();
+    if ($planRow) {
         $isPlanSession = true;
+        $activePlanId = $planRow;
     }
 } catch (Exception $e) {
     // table_sessions 未作成時はスキップ
@@ -86,12 +105,15 @@ $settings = $stmt->fetch() ?: [];
 $maxItems = (int)($settings['max_items_per_order'] ?? 10);
 $maxAmount = (int)($settings['max_amount_per_order'] ?? 30000);
 
-// 品数・金額チェック
+// P0 #1+#2: サーバー側で価格・商品存在・数量を強制再検証
+// (クライアントから送られた items[].price は無視、正規価格で上書き)
+$validated = validate_and_recompute_items($pdo, $storeId, $items, $isPlanSession, $activePlanId);
+$items = $validated['items'];
+$totalAmount = $validated['total_amount'];
+
 $totalQty = 0;
-$totalAmount = 0;
 foreach ($items as $item) {
-    $totalQty += (int)($item['qty'] ?? 1);
-    $totalAmount += (int)($item['price'] ?? 0) * (int)($item['qty'] ?? 1);
+    $totalQty += (int)$item['qty'];
 }
 
 // maxItems はプランセッション中も維持（いたずら防止）
@@ -141,31 +163,7 @@ try {
     error_log('[P1-12][customer/orders.php:137] check_last_order_store: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
 }
 
-// 品切れチェック（レースコンディション防止）
-require_once __DIR__ . '/../lib/menu-resolver.php';
-try {
-    $resolvedMenu = resolve_store_menu($pdo, $storeId);
-    $soldOutMap = [];
-    foreach ($resolvedMenu as $cat) {
-        foreach ($cat['items'] as $mi) {
-            if (!empty($mi['soldOut'])) {
-                $soldOutMap[$mi['menuItemId']] = $mi['name'];
-            }
-        }
-    }
-    $blockedNames = [];
-    foreach ($items as $item) {
-        $itemId = $item['id'] ?? '';
-        if (isset($soldOutMap[$itemId])) {
-            $blockedNames[] = $soldOutMap[$itemId];
-        }
-    }
-    if (!empty($blockedNames)) {
-        json_error('SOLD_OUT', implode('、', $blockedNames) . 'は品切れです。カートから削除してください。', 409);
-    }
-} catch (Exception $e) {
-    // menu-resolver 未対応環境でもブロックしない
-}
+// 品切れ・改ざんチェックは validate_and_recompute_items() で実施済み (P0 #1+#2)
 
 // 注文作成
 $orderId = generate_uuid();
@@ -173,16 +171,36 @@ $itemsJson = json_encode($items, JSON_UNESCAPED_UNICODE);
 $removedJson = !empty($removedItems) ? json_encode($removedItems, JSON_UNESCAPED_UNICODE) : null;
 
 try {
-    $stmt = $pdo->prepare(
-        'INSERT INTO orders (id, store_id, table_id, items, removed_items, total_amount, status, order_type, idempotency_key, session_token, memo, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())'
-    );
-    $stmt->execute([
-        $orderId, $storeId, $tableId,
-        $itemsJson, $removedJson, $totalAmount,
-        'pending', 'dine_in',
-        $idempotencyKey, $sessionToken, $memo ?: null
-    ]);
+    // F-QR1: sub_session_id カラム存在チェック
+    $hasSubSessionCol = false;
+    try {
+        $pdo->query('SELECT sub_session_id FROM orders LIMIT 0');
+        $hasSubSessionCol = true;
+    } catch (PDOException $e) {}
+
+    if ($hasSubSessionCol) {
+        $stmt = $pdo->prepare(
+            'INSERT INTO orders (id, store_id, table_id, items, removed_items, total_amount, status, order_type, idempotency_key, session_token, sub_session_id, memo, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())'
+        );
+        $stmt->execute([
+            $orderId, $storeId, $tableId,
+            $itemsJson, $removedJson, $totalAmount,
+            'pending', 'dine_in',
+            $idempotencyKey, $sessionToken, $subSessionId, $memo ?: null
+        ]);
+    } else {
+        $stmt = $pdo->prepare(
+            'INSERT INTO orders (id, store_id, table_id, items, removed_items, total_amount, status, order_type, idempotency_key, session_token, memo, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())'
+        );
+        $stmt->execute([
+            $orderId, $storeId, $tableId,
+            $itemsJson, $removedJson, $totalAmount,
+            'pending', 'dine_in',
+            $idempotencyKey, $sessionToken, $memo ?: null
+        ]);
+    }
 } catch (PDOException $e) {
     // removed_items カラム未存在（migration-a4未適用）の場合フォールバック
     if (strpos($e->getMessage(), 'removed_items') !== false) {

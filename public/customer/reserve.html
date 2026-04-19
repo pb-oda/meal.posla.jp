@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>ご予約 — POSLA</title>
+  <link rel="stylesheet" href="css/reserve.css?v=20260418h">
+</head>
+<body>
+  <header class="rs-header">
+    <div class="rs-header__title" id="rs-store-name">予約</div>
+    <div class="rs-header__sub">ご予約フォーム</div>
+    <div class="rs-lang-switch" id="rs-lang-switch">
+      <button data-lang="ja" class="rs-lang-btn rs-lang-btn--active">日本語</button>
+      <button data-lang="en" class="rs-lang-btn">EN</button>
+      <button data-lang="zh-Hans" class="rs-lang-btn">中</button>
+      <button data-lang="ko" class="rs-lang-btn">KR</button>
+    </div>
+  </header>
+
+  <nav class="rs-stepper">
+    <div class="rs-step" data-step="1"><span class="rs-step__num">1</span><span class="rs-step__label" data-i18n="step.date">日付</span></div>
+    <div class="rs-step" data-step="2"><span class="rs-step__num">2</span><span class="rs-step__label" data-i18n="step.party">人数</span></div>
+    <div class="rs-step" data-step="3"><span class="rs-step__num">3</span><span class="rs-step__label" data-i18n="step.time">時間</span></div>
+    <div class="rs-step" data-step="4"><span class="rs-step__num">4</span><span class="rs-step__label" data-i18n="step.info">情報</span></div>
+    <div class="rs-step" data-step="5"><span class="rs-step__num">5</span><span class="rs-step__label" data-i18n="step.confirm">確認</span></div>
+  </nav>
+
+  <main id="reserve-app">
+    <div class="rs-loading"><div class="rs-spinner"></div><div data-i18n="loading.init">読み込み中…</div></div>
+  </main>
+
+  <div class="rs-ai-fab" id="rs-ai-fab" hidden>
+    <button class="rs-ai-fab__btn" id="rs-ai-open">
+      <span class="rs-ai-fab__icon">💬</span>
+      <span data-i18n="ai.fab">AIで予約</span>
+    </button>
+  </div>
+
+  <div class="rs-modal" id="rs-ai-modal" hidden>
+    <div class="rs-modal__overlay" data-modal-close></div>
+    <div class="rs-modal__content rs-ai-modal__content" id="rs-ai-modal-content">
+      <button class="rs-modal__close" data-modal-close>×</button>
+      <div id="rs-ai-modal-body"></div>
+    </div>
+  </div>
+
+  <div class="rs-toast" id="rs-toast" hidden></div>
+
+  <script src="js/reserve-app.js?v=20260418h"></script>
+</body>
+</html>

@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#3f51b5">
   <title>管理ダッシュボード</title>
   <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/reservation-board.css?v=20260418">
   <style>
     /* L-3 Phase 3: ヘルプスタッフ表示 */
     .shift-help { background: #fff3e0 !important; border-left: 3px solid #e65100; }
@@ -27,6 +28,9 @@
       color: var(--text-primary, #333);
     }
   </style>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 </head>
 <body>
 
@@ -49,6 +53,7 @@
         <a class="header-shortcut header-shortcut--customer" id="link-customer-menu" href="#" target="_blank" title="顧客メニュー（選択中店舗）">注文画面</a>
       </div>
       <span class="admin-header__user" id="header-user-name">-</span>
+      <a class="btn-change-password" href="/public/docs-tenant/" target="_blank" rel="noopener" title="取扱説明書を開く" style="text-decoration:none;">📖 取扱説明書</a>
       <button class="btn-change-password" id="btn-change-password" type="button" title="パスワード変更">パスワード変更</button>
       <button class="btn-logout" id="btn-logout">ログアウト</button>
     </div>
@@ -65,6 +70,7 @@
     <button class="tab-nav__btn tab-nav__btn--group" data-group="config" data-role-min="manager" data-requires-store>店舗設定</button>
     <button class="tab-nav__btn tab-nav__btn--group" data-group="takeout" data-role-min="manager" data-requires-store>テイクアウト</button>
     <button class="tab-nav__btn tab-nav__btn--group" data-group="ai" data-role-min="manager" data-requires-store>AIアシスタント</button>
+    <button class="tab-nav__btn tab-nav__btn--group" data-group="reservation" data-role-min="manager" data-requires-store>予約管理</button>
     <button class="tab-nav__btn tab-nav__btn--group" data-group="shift" data-role-min="staff" data-requires-store>シフト管理</button>
     <!-- owner専用タブは owner-dashboard.html に移動済み -->
   </nav>
@@ -98,12 +104,14 @@
       <button class="sub-tab-nav__btn" data-tab="kds-stations" data-group="config" data-role-min="manager">KDSステーション</button>
       <button class="sub-tab-nav__btn" data-tab="staff-mgmt" data-group="config" data-role-min="manager">スタッフ管理</button>
       <button class="sub-tab-nav__btn" data-tab="audit-log" data-group="config" data-role-min="manager">監査ログ</button>
+      <button class="sub-tab-nav__btn" data-tab="error-stats" data-group="config" data-role-min="manager">エラー監視</button>
       <button class="sub-tab-nav__btn" data-tab="receipt-settings" data-group="config" data-role-min="manager">領収書設定</button>
       <!-- テイクアウト -->
       <button class="sub-tab-nav__btn" data-tab="takeout-orders" data-group="takeout" data-role-min="manager">テイクアウト注文</button>
       <!-- AIアシスタント -->
       <button class="sub-tab-nav__btn" data-tab="ai-assistant" data-group="ai" data-role-min="manager">AIアシスタント</button>
       <!-- シフト管理 -->
+      <button class="sub-tab-nav__btn" data-tab="reservation-board" data-group="reservation" data-role-min="manager">予約台帳・コース・顧客・設定</button>
       <button class="sub-tab-nav__btn" data-tab="shift-calendar" data-group="shift" data-role-min="manager">週間カレンダー</button>
       <button class="sub-tab-nav__btn" data-tab="shift-my" data-group="shift" data-role-min="staff" data-role-max="staff">マイシフト</button>
       <button class="sub-tab-nav__btn" data-tab="shift-availability" data-group="shift" data-role-min="staff" data-role-max="staff">希望提出</button>
@@ -296,6 +304,7 @@
       <!-- P1a: デバイスアカウント管理（KDS / レジ端末用） -->
       <div class="panel-header" style="margin-top:24px;">
         <h2 class="panel-header__title">デバイスアカウント（KDS / レジ端末）</h2>
+        <button class="btn btn-outline" id="btn-token-device" style="margin-right:8px">トークン発行</button>
         <button class="btn btn-primary" id="btn-add-device">+ デバイス追加</button>
       </div>
       <p style="color:#666;font-size:0.85rem;margin:4px 0 12px;">スタッフではなく端末専用のログインアカウントです。シフト・人件費・レポートには含まれません。</p>
@@ -306,6 +315,12 @@
     <div class="tab-panel" id="panel-audit-log">
       <div class="panel-header"><h2 class="panel-header__title">監査ログ</h2></div>
       <div class="card" id="audit-log-container"></div>
+    </div>
+
+    <!-- エラー監視 (Phase B / CB1) -->
+    <div class="tab-panel" id="panel-error-stats">
+      <div class="panel-header"><h2 class="panel-header__title">エラー監視</h2></div>
+      <div class="card" id="error-stats-container"></div>
     </div>
 
     <!-- テイクアウト管理 -->
@@ -331,6 +346,11 @@
     </div>
 
     <!-- シフト管理 -->
+    <!-- 予約管理 (L-9) -->
+    <div class="tab-panel" id="panel-reservation-board">
+      <div id="reservation-board-container"></div>
+    </div>
+
     <div class="tab-panel" id="panel-shift-calendar">
       <div id="shift-view-calendar" class="shift-view"></div>
     </div>
@@ -367,6 +387,13 @@
           <a href="../kds/accounting.html" id="staff-tool-register" class="btn btn-primary" style="font-size:1.125rem; padding:1rem 2rem; text-decoration:none;">POSレジ</a>
         </div>
         <p id="staff-gps-status" style="display:none; margin-top:1rem; color:#666;"></p>
+
+        <!-- 勤怠打刻（スタッフ画面に統合、2026-04-19） -->
+        <div id="staff-attendance-section" style="display:none; margin-top:2rem; padding:1.5rem; border:1px solid #e0e0e0; border-radius:8px; background:#fafafa;">
+          <p style="color:#666; margin-bottom:0.75rem; font-size:0.95rem;">勤怠打刻</p>
+          <div id="staff-attendance-slot"></div>
+        </div>
+
         <div id="staff-shift-links" style="display:none; margin-top:2rem; padding-top:2rem; border-top:1px solid #e0e0e0;">
           <p style="color:#666; margin-bottom:1rem;">シフト管理</p>
           <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
@@ -404,14 +431,15 @@
 
   <!-- JS -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-  <script src="../shared/js/utils.js"></script>
+  <script src="../shared/js/utils.js?v=20260419-phaseB"></script>
+  <script src="../shared/js/printer-service.js?v=20260418u2"></script>
   <script src="js/admin-api.js?v=20260408p1a"></script>
   <script src="js/store-selector.js"></script>
   <script src="js/category-editor.js"></script>
   <script src="js/menu-override-editor.js?v=20260408p130"></script>
   <script src="js/local-item-editor.js"></script>
   <script src="js/daily-recommendation-editor.js"></script>
-  <script src="js/table-editor.js"></script>
+  <script src="js/table-editor.js?v=20260418"></script>
   <script src="js/floor-map.js?v=20260408p1be"></script>
   <script src="js/sales-report.js"></script>
   <script src="js/register-report.js"></script>
@@ -422,19 +450,76 @@
   <script src="js/time-limit-plan-editor.js"></script>
   <script src="js/course-editor.js"></script>
   <script src="js/inventory-manager.js"></script>
-  <script src="js/settings-editor.js?v=20260408p110b"></script>
+  <script src="js/settings-editor.js?v=20260418u2"></script>
   <script src="js/option-group-editor.js"></script>
   <script src="js/kds-station-editor.js"></script>
-  <script src="js/user-editor.js?v=20260406b"></script>
-  <script src="js/device-editor.js?v=20260408p1a"></script>
-  <script src="js/audit-log-viewer.js"></script>
+  <script src="js/user-editor.js?v=20260419-cp1"></script>
+  <script src="js/device-editor.js?v=20260418"></script>
+  <script src="js/audit-log-viewer.js?v=20260419-cb1c"></script>
+  <script src="js/error-stats-viewer.js?v=20260419-cb1"></script>
+  <script src="../shared/js/posla-helpdesk-fab.js?v=20260419-cb1c"></script>
   <script src="js/receipt-settings.js?v=20260405c"></script>
   <script src="js/takeout-manager.js"></script>
-  <script src="js/ai-assistant.js?v=20260408bF"></script>
+  <script src="js/ai-assistant.js?v=20260419-cb1c"></script>
   <script src="../js/shift-manager.js?v=20260406b"></script>
   <script src="../js/shift-calendar.js?v=20260408bF"></script>
   <script src="js/shift-help.js?v=20260408p1be"></script>
-  <script src="../js/attendance-clock.js?v=20260406"></script>
+  <script src="../js/attendance-clock.js?v=20260419-staffpanel"></script>
+  <script src="js/reservation-board.js?v=20260418d"></script>
+  <script>
+  // L-9 予約管理 — タブ表示時に ReservationBoard を初期化
+  (function () {
+    function getCurrentStoreId() {
+      try {
+        if (window.StoreSelector) {
+          if (typeof window.StoreSelector.getSelectedStoreId === 'function') return window.StoreSelector.getSelectedStoreId();
+          if (typeof window.StoreSelector.getCurrentStoreId === 'function') return window.StoreSelector.getCurrentStoreId();
+        }
+        return localStorage.getItem('mt_current_store_id');
+      } catch (e) { return null; }
+    }
+    function tryInit() {
+      setTimeout(function () {
+        var panel = document.getElementById('panel-reservation-board');
+        if (!panel || panel.style.display === 'none') return;
+        var storeId = getCurrentStoreId();
+        var container = document.getElementById('reservation-board-container');
+        if (!storeId) {
+          if (container) container.innerHTML = '<div style="padding:32px;text-align:center;color:#888;">店舗を選択してください</div>';
+          return;
+        }
+        if (!window.ReservationBoard) {
+          if (container) container.innerHTML = '<div style="padding:32px;text-align:center;color:#c62828;">ReservationBoard モジュール読み込み失敗</div>';
+          return;
+        }
+        window.ReservationBoard.init('reservation-board-container', storeId);
+      }, 80);
+    }
+    document.addEventListener('click', function (e) {
+      var target = e.target;
+      while (target && target !== document) {
+        if (target.getAttribute) {
+          var tab = target.getAttribute('data-tab');
+          var grp = target.getAttribute('data-group');
+          if (tab === 'reservation-board' || (grp === 'reservation' && target.classList && target.classList.contains('tab-nav__btn--group'))) {
+            tryInit();
+            return;
+          }
+        }
+        target = target.parentNode;
+      }
+    });
+    // 店舗切替時に再描画
+    setTimeout(function () {
+      if (window.StoreSelector && typeof window.StoreSelector.onChange === 'function') {
+        window.StoreSelector.onChange(function () {
+          var panel = document.getElementById('panel-reservation-board');
+          if (panel && panel.style.display !== 'none') tryInit();
+        });
+      }
+    }, 1500);
+  })();
+  </script>
   <script>
   (function () {
     'use strict';
@@ -478,7 +563,9 @@
             : firstStore.staffVisibleTools;
         }
         var devToolsStr = devTools || '';
-        if (devToolsStr.indexOf('register') >= 0) {
+        if (devToolsStr.indexOf('handy') >= 0) {
+          window.location.href = '../handy/index.html';
+        } else if (devToolsStr.indexOf('register') >= 0) {
           window.location.href = '../kds/cashier.html';
         } else {
           // デフォルトは KDS（kds 指定 or 設定なし）
@@ -737,6 +824,9 @@
         DeviceEditor.init(document.getElementById('device-list'));
       }
       AuditLogViewer.init(document.getElementById('audit-log-container'));
+      if (typeof ErrorStatsViewer !== 'undefined') {
+        ErrorStatsViewer.init(document.getElementById('error-stats-container'), StoreSelector.getSelectedStoreId());
+      }
       ReceiptSettings.init(document.getElementById('receipt-settings-container'));
       AiAssistant.init(document.getElementById('ai-assistant-container'));
       TakeoutManager.init(document.getElementById('takeout-orders-container'));
@@ -767,8 +857,11 @@
       })();
 
       // 出退勤ボタンはスタッフのみ表示（マネージャー/オーナーは不要）
+      // 2026-04-19: ヘッダーではなくスタッフ画面（panel-staff-home）に挿入
       if (_role === 'staff' && typeof AttendanceClock !== 'undefined' && StoreSelector.getSelectedStoreId()) {
-        AttendanceClock.init(StoreSelector.getSelectedStoreId(), _currentStoreGps);
+        AttendanceClock.init(StoreSelector.getSelectedStoreId(), _currentStoreGps, '#staff-attendance-slot');
+        var attSection = document.getElementById('staff-attendance-section');
+        if (attSection) attSection.style.display = '';
       }
 
       // スタッフには「注文画面」リンク不要（ハンディで確認可能）
@@ -777,97 +870,16 @@
         if (_custLink) _custLink.style.display = 'none';
       }
 
-      // L-3b: スタッフ向けツール表示制御 + GPS圏内チェック
-      if (_role === 'staff' && _currentStoreGps) {
-        // ツール表示制御（スタッフホーム + ヘッダーショートカット両方）
-        // L-3b2: ユーザー個別設定 > 店舗設定 > 全表示
-        var _visTools = _currentStoreGps.userVisibleTools !== null ? _currentStoreGps.userVisibleTools : _currentStoreGps.staffVisibleTools;
-        if (_visTools) {
-          var _toolPairs = [
-            { key: 'handy',    ids: ['staff-tool-handy',    'header-tool-handy'] },
-            { key: 'kds',      ids: ['staff-tool-kds',      'header-tool-kds'] },
-            { key: 'register', ids: ['staff-tool-register', 'header-tool-register'] }
-          ];
-          var _allowed = _visTools.split(',');
-          for (var ti = 0; ti < _toolPairs.length; ti++) {
-            if (_allowed.indexOf(_toolPairs[ti].key) === -1) {
-              for (var pi = 0; pi < _toolPairs[ti].ids.length; pi++) {
-                var toolEl = document.getElementById(_toolPairs[ti].ids[pi]);
-                if (toolEl) toolEl.style.display = 'none';
-              }
-            }
-          }
+      // スタッフはハンディ/KDS/レジ不要（device アカウントで運用）
+      // ツールリンクを無条件非表示
+      if (_role === 'staff') {
+        var _staffToolIds = ['staff-tool-handy','staff-tool-kds','staff-tool-register','header-tool-handy','header-tool-kds','header-tool-register'];
+        for (var ti = 0; ti < _staffToolIds.length; ti++) {
+          var toolEl = document.getElementById(_staffToolIds[ti]);
+          if (toolEl) toolEl.style.display = 'none';
         }
-
-        // GPS圏内チェック（ツールボタンの有効/無効制御）
-        if (_currentStoreGps.gpsRequired === 1
-            && _currentStoreGps.storeLat !== null && _currentStoreGps.storeLng !== null) {
-          // ツールボタンを一時無効化（スタッフホーム + ヘッダー両方）
-          var _toolBtns = document.querySelectorAll('#staff-tool-handy,#staff-tool-kds,#staff-tool-register,#header-tool-handy,#header-tool-kds,#header-tool-register');
-          for (var gi = 0; gi < _toolBtns.length; gi++) {
-            if (_toolBtns[gi].style.display !== 'none') {
-              _toolBtns[gi].style.opacity = '0.4';
-              _toolBtns[gi].style.pointerEvents = 'none';
-            }
-          }
-          var _gpsStatusEl = document.getElementById('staff-gps-status');
-          if (_gpsStatusEl) {
-            _gpsStatusEl.style.display = '';
-            _gpsStatusEl.textContent = '位置情報を確認中...';
-            _gpsStatusEl.style.color = '#666';
-          }
-
-          // Haversine距離計算
-          function _staffHaversine(lat1, lng1, lat2, lng2) {
-            var R = 6371000;
-            var dLat = (lat2 - lat1) * Math.PI / 180;
-            var dLng = (lng2 - lng1) * Math.PI / 180;
-            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                    Math.sin(dLng / 2) * Math.sin(dLng / 2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          }
-
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(pos) {
-              var dist = _staffHaversine(
-                _currentStoreGps.storeLat, _currentStoreGps.storeLng,
-                pos.coords.latitude, pos.coords.longitude
-              );
-              if (dist <= _currentStoreGps.gpsRadiusMeters) {
-                // 圏内: ボタン有効化
-                for (var ei = 0; ei < _toolBtns.length; ei++) {
-                  if (_toolBtns[ei].style.display !== 'none') {
-                    _toolBtns[ei].style.opacity = '';
-                    _toolBtns[ei].style.pointerEvents = '';
-                  }
-                }
-                if (_gpsStatusEl) {
-                  _gpsStatusEl.textContent = '店舗圏内です（' + Math.round(dist) + 'm）';
-                  _gpsStatusEl.style.color = '#27ae60';
-                }
-              } else {
-                // 圏外: エラー表示
-                if (_gpsStatusEl) {
-                  _gpsStatusEl.textContent = '店舗から' + Math.round(dist) + 'm離れています（許容: ' + _currentStoreGps.gpsRadiusMeters + 'm）。店舗圏内でご利用ください。';
-                  _gpsStatusEl.style.color = '#e74c3c';
-                }
-              }
-            }, function(err) {
-              if (_gpsStatusEl) {
-                var errMsg = '位置情報を取得できませんでした';
-                if (err.code === 1) errMsg = '位置情報の取得が拒否されました。ブラウザの設定を確認してください';
-                _gpsStatusEl.textContent = errMsg;
-                _gpsStatusEl.style.color = '#e74c3c';
-              }
-            }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-          } else {
-            if (_gpsStatusEl) {
-              _gpsStatusEl.textContent = 'このブラウザは位置情報に対応していません';
-              _gpsStatusEl.style.color = '#e74c3c';
-            }
-          }
-        }
+        var _gpsStatusEl = document.getElementById('staff-gps-status');
+        if (_gpsStatusEl) _gpsStatusEl.style.display = 'none';
       }
 
       // スタッフ向けシフトリンク表示（shift_management機能が有効な場合）
@@ -904,12 +916,39 @@
         document.getElementById('panel-staff-home').style.display = '';
         document.getElementById('panel-staff-home').classList.add('active');
       } else if (!_waitingForOverlay) {
-        // managerはメニュー管理グループを初期表示
-        openGroup('menu');
+        // CB1c: 前回開いていたタブを localStorage から復元 (なければメニュー管理)
+        _restoreLastTab() || openGroup('menu');
       }
     }).catch(function () {
       window.location.href = 'index.html';
     });
+
+    // CB1c: タブ復元 — true 返したら復元成功
+    function _restoreLastTab() {
+      try {
+        var savedGroup = localStorage.getItem('posla_last_group');
+        var savedTab   = localStorage.getItem('posla_last_tab');
+        if (!savedGroup || !savedTab) return false;
+
+        // savedGroup が現在のロールで開けるか確認
+        var groupBtn = document.querySelector('.tab-nav__btn[data-group="' + savedGroup + '"]');
+        if (!groupBtn || groupBtn.style.display === 'none') return false;
+
+        openGroup(savedGroup);
+
+        // openGroup は最初のサブタブを開くので、savedTab に切り替える
+        var subNav = document.getElementById('sub-tab-nav');
+        var subBtn = subNav.querySelector('.sub-tab-nav__btn[data-tab="' + savedTab + '"]');
+        if (!subBtn || subBtn.style.display === 'none') return true; // group は復元できたので一応 true
+
+        subNav.querySelectorAll('.sub-tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
+        subBtn.classList.add('active');
+        activateTab(savedTab);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
 
     // グループを開く（サブタブ表示 + 最初のサブタブを選択）
     function openGroup(groupId) {
@@ -1056,6 +1095,12 @@
       if (tabId !== 'floor-map') FloorMap.stop();
       if (tabId !== 'takeout-orders') TakeoutManager.stop();
 
+      // CB1c: 最後に開いたタブを保存 (リロード時に復元)
+      try {
+        localStorage.setItem('posla_last_tab', tabId);
+        if (_activeGroup) localStorage.setItem('posla_last_group', _activeGroup);
+      } catch (e) {}
+
       document.querySelectorAll('.tab-panel').forEach(function (p) {
         p.classList.toggle('active', p.id === 'panel-' + tabId);
       });
@@ -1085,6 +1130,9 @@
           if (typeof DeviceEditor !== 'undefined') DeviceEditor.load();
           break;
         case 'audit-log': AuditLogViewer.load(); break;
+        case 'error-stats':
+          if (typeof ErrorStatsViewer !== 'undefined') ErrorStatsViewer.load(StoreSelector.getSelectedStoreId());
+          break;
         case 'receipt-settings': ReceiptSettings.load(); break;
         case 'takeout-orders': TakeoutManager.load(); break;
         case 'ai-assistant': AiAssistant.load(); break;
@@ -1174,6 +1222,15 @@
       btnAddDevice.addEventListener('click', function () {
         if (typeof DeviceEditor !== 'undefined') {
           DeviceEditor.openAddModal();
+        }
+      });
+    }
+    // F-DA1: デバイストークン発行ボタン
+    var btnTokenDevice = document.getElementById('btn-token-device');
+    if (btnTokenDevice) {
+      btnTokenDevice.addEventListener('click', function () {
+        if (typeof DeviceEditor !== 'undefined') {
+          DeviceEditor.openTokenModal();
         }
       });
     }
@@ -1364,6 +1421,7 @@
       if (btn.dataset.action === 'edit-table') TableEditor.openEditModal(btn.dataset.id);
       else if (btn.dataset.action === 'delete-table') TableEditor.confirmDelete(btn.dataset.id);
       else if (btn.dataset.action === 'show-qr') TableEditor.showQR(btn.dataset.id, btn.dataset.name);
+      else if (btn.dataset.action === 'sub-qr') TableEditor.openSubQrModal(btn.dataset.id, btn.dataset.name);
     });
 
     // オプショングループリストのイベント委譲
@@ -1444,7 +1502,7 @@
   }
   </script>
   <script src="../js/offline-detector.js"></script>
-  <script src="../js/session-monitor.js"></script>
+  <script src="../js/session-monitor.js?v=20260419-fixurl"></script>
 
   <!-- パスワード変更モーダル（P1-5） -->
   <div class="modal-overlay" id="password-change-overlay" style="display:none;opacity:1;visibility:visible;">
@@ -1584,5 +1642,6 @@
     });
   })();
   </script>
+  <script src="pwa-register.js"></script>
 </body>
 </html>

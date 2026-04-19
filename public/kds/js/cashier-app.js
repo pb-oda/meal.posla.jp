@@ -16,6 +16,7 @@
   var _storeId = null;
   var _storeName = '';
   var _userName = '';
+  var _userRole = '';     // CB1: device は manager 専用 API を叩かない
   var _sessions = {};        // {tableId: session}
   var _orders = {};          // {orderId: order}
   var _selectedTableId = null;
@@ -56,31 +57,36 @@
       if (!ctx) return;
       _storeId = ctx.storeId;
       _userName = (ctx.user && ctx.user.display_name) || (ctx.user && ctx.user.username) || '';
+      _userRole = (ctx.user && ctx.user.role) || '';   // CB1: 売上系 API は manager+ のみ呼び出し
       ctx.stores.forEach(function (s) {
         if (s.id === ctx.storeId) _storeName = s.name;
       });
-      document.getElementById('ca-store-name').textContent = _storeName;
 
-      // スタッフ名表示
-      var staffEl = document.getElementById('ca-staff-name');
-      if (staffEl && _userName) staffEl.textContent = _userName;
+      // GPS チェック (device ロールは常に強制)
+      KdsAuth.checkGps(_storeId, function () {
+        document.getElementById('ca-store-name').textContent = _storeName;
 
-      // 時計開始
-      _startClock();
+        // スタッフ名表示
+        var staffEl = document.getElementById('ca-staff-name');
+        if (staffEl && _userName) staffEl.textContent = _userName;
 
-      // 音声設定復元
-      _soundEnabled = localStorage.getItem('ca_sound') === '1';
-      _updateSoundBtn();
+        // 時計開始
+        _startClock();
 
-      _fetchReceiptSettings();
-      _startPolling();
-      _startSalesPolling();
-      _bindEvents();
-      _bindKeyboard();
-      _renderRegister();
+        // 音声設定復元
+        _soundEnabled = localStorage.getItem('ca_sound') === '1';
+        _updateSoundBtn();
 
-      // L-13: Stripe Terminal 初期化（Connect対応店舗のみ）
-      _initStripeTerminal();
+        _fetchReceiptSettings();
+        _startPolling();
+        _startSalesPolling();
+        _bindEvents();
+        _bindKeyboard();
+        _renderRegister();
+
+        // L-13: Stripe Terminal 初期化（Connect対応店舗のみ）
+        _initStripeTerminal();
+      });
     });
   };
 
@@ -168,7 +174,8 @@
     var orderUrl = '../../api/kds/orders.php?store_id=' + encodeURIComponent(_storeId) + '&view=accounting';
     var sessionUrl = '../../api/store/table-sessions.php?store_id=' + encodeURIComponent(_storeId);
 
-    fetch(orderUrl, { credentials: 'same-origin' })
+    // CP1: Promise を返すよう変更。会計前の強制リフレッシュ等で await するため。
+    return fetch(orderUrl, { credentials: 'same-origin' })
       .then(function (r) {
         return r.text().then(function (t) {
           if (!t) return {};
@@ -208,6 +215,9 @@
             _selectedTableId = null;
             _resetRegisterState();
             _renderRegister();
+          } else {
+            // CP1b: 選択中テーブルの注文/品目が変わっていたら _items を再構築
+            _refreshSelectedItems();
           }
         }
       }).catch(function (err) {
@@ -215,13 +225,78 @@
       });
   }
 
+  // CP1b: 選択中テーブルの _items を最新の _orders から再構築する。
+  // _checkedItems の状態は orderId+itemId 単位で保持。新規品目はチェック済みで追加。
+  function _refreshSelectedItems() {
+    if (!_selectedTableId) return;
+    var group = _findGroup(_selectedTableId);
+    if (!group) return;
+
+    // 旧チェック状態を orderId+itemId キーで退避
+    var prevChecked = {};
+    _items.forEach(function (it, i) {
+      var key = it.orderId + ':' + (it.itemId || '');
+      prevChecked[key] = _checkedItems[i];
+    });
+
+    var newItems = [];
+    var newChecked = {};
+    group.orders.forEach(function (o) {
+      (o.items || []).forEach(function (item) {
+        var taxRate = 10;
+        if (item.taxRate) taxRate = item.taxRate;
+        else if (o.order_type === 'takeout') taxRate = 8;
+
+        var i = newItems.length;
+        newItems.push({
+          name: item.name,
+          qty: item.qty || 1,
+          price: item.price || 0,
+          taxRate: taxRate,
+          orderId: o.id,
+          options: item.options || [],
+          itemId: item.item_id || null,
+          paymentId: item.payment_id || null,
+          status: item.status || 'pending'
+        });
+        var key = o.id + ':' + (item.item_id || '');
+        if (item.payment_id) {
+          newChecked[i] = false;
+        } else if (prevChecked.hasOwnProperty(key)) {
+          newChecked[i] = prevChecked[key];
+        } else {
+          newChecked[i] = true;
+        }
+      });
+    });
+
+    // 内容に変化がある場合のみ再描画
+    var changed = newItems.length !== _items.length;
+    if (!changed) {
+      for (var i = 0; i < newItems.length; i++) {
+        var a = newItems[i], b = _items[i];
+        if (a.orderId !== b.orderId || a.itemId !== b.itemId || a.status !== b.status || a.paymentId !== b.paymentId) {
+          changed = true;
+          break;
+        }
+      }
+    }
+    _items = newItems;
+    _checkedItems = newChecked;
+    if (changed) _renderRegister();
+  }
+
   // ── 売上サマリー ──
   function _startSalesPolling() {
+    // CB1: device ロールは manager+ 限定 API を叩けないのでスキップ (FORBIDDEN ノイズ防止)
+    if (_userRole === 'device') return;
     _fetchSalesSummary();
     _salesPollTimer = setInterval(_fetchSalesSummary, 30000);
   }
 
   function _fetchSalesSummary() {
+    // CB1: device ロールは売上サマリー API を呼ばない
+    if (_userRole === 'device') return;
     var today = _todayStr();
     var salesUrl = '../../api/store/sales-report.php?store_id=' + encodeURIComponent(_storeId) + '&from=' + today + '&to=' + today;
     var regUrl = '../../api/store/register-report.php?store_id=' + encodeURIComponent(_storeId) + '&from=' + today + '&to=' + today;
@@ -493,7 +568,8 @@
           orderId: o.id,
           options: item.options || [],
           itemId: item.item_id || null,
-          paymentId: item.payment_id || null
+          paymentId: item.payment_id || null,
+          status: item.status || 'pending'
         });
         _checkedItems[i] = item.payment_id ? false : true;
       });
@@ -597,7 +673,8 @@
             options: item.options || [],
             itemId: item.item_id || null,
             paymentId: item.payment_id || null,
-            tableCode: g.tableCode
+            tableCode: g.tableCode,
+            status: item.status || 'pending'
           });
           _checkedItems[i] = item.payment_id ? false : true;
         });
@@ -1064,13 +1141,13 @@
       });
     }).then(function (json) {
       if (!json.ok) {
-        _showToast(json.error ? (json.error.message || 'エラー') : 'エラー', 'error');
+        _showToast(Utils.formatError(json), 'error');
         return;
       }
       _printReceiptHtml(json.data);
       _showToast('領収書を発行しました', 'success');
     }).catch(function (err) {
-      _showToast(err.message || '通信エラー', 'error');
+      _showToast(Utils.formatError(err), 'error');
     });
   }
 
@@ -1162,24 +1239,150 @@
   function _submitPayment() {
     if (_isSubmitting) return;
 
+    // CP1b: 会計前に _orders を強制リフレッシュして、KDS の提供済み更新とのレースを防ぐ
+    _fetchOrders().then(function () {
+      _submitPaymentAfterRefresh();
+    }).catch(function () {
+      // 通信失敗時はフォールバックで既存状態のまま進める
+      _submitPaymentAfterRefresh();
+    });
+  }
+
+  function _submitPaymentAfterRefresh() {
     var isMergedSubmit = _mergeMode && _mergedGroupKeys.length >= 2;
     var group = isMergedSubmit ? null : _findGroup(_selectedTableId);
     if (!isMergedSubmit && !group) return;
 
+    // CP1b: _items の status を最新の _orders で上書き（indices は保持するので _checkedItems は有効）
+    _items.forEach(function (item) {
+      var order = _orders[item.orderId];
+      if (!order || !order.items) return;
+      for (var j = 0; j < order.items.length; j++) {
+        var oi = order.items[j];
+        if (oi.item_id && item.itemId && oi.item_id === item.itemId) {
+          if (oi.status) item.status = oi.status;
+          break;
+        }
+      }
+    });
+
     var allChecked = _isAllChecked();
     var isPartial = _isSomeChecked() && (!allChecked || _hasPaidItems());
     var calc = _calcTotal();
+
+    // 未提供品チェック（S5）
+    var unservedNames = [];
+    _items.forEach(function (item, i) {
+      if (!_checkedItems[i]) return;
+      if (item.paymentId) return;
+      if (item.status !== 'served' && item.status !== 'cancelled') {
+        unservedNames.push(item.name);
+      }
+    });
+    if (unservedNames.length > 0) {
+      var unservedMsg = '【注意】まだ提供されていない商品があります:\n';
+      unservedNames.forEach(function (n) { unservedMsg += '  ・' + n + '\n'; });
+      unservedMsg += '\nこのまま会計を続けますか？';
+      if (!confirm(unservedMsg)) return;
+    }
 
     // 確認ダイアログ
     var confirmMsg = Utils.formatYen(calc.finalTotal) + ' を ' + _PAY_LABELS[_paymentMethod] + ' で会計しますか？';
     if (isPartial) confirmMsg = '【個別会計】' + confirmMsg;
     if (!confirm(confirmMsg)) return;
 
+    // CP1: 担当スタッフ PIN 入力を要求
+    _promptCashierPin(function (pin) {
+      if (pin === null) return;   // キャンセル
+      _submitPaymentWithPin(group, isPartial, calc, pin);
+    });
+  }
+
+  /**
+   * CP1: 担当スタッフ PIN 入力モーダルを表示
+   * callback(pin or null) — null はキャンセル
+   */
+  function _promptCashierPin(callback) {
+    // 既存モーダル除去
+    var existing = document.getElementById('ca-pin-modal-overlay');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'ca-pin-modal-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:10000;';
+    overlay.innerHTML =
+      '<div style="background:#fff;padding:2rem;border-radius:12px;width:340px;text-align:center;">' +
+      '<h3 style="margin:0 0 0.75rem;font-size:1.25rem;color:#333;">担当スタッフ PIN 入力</h3>' +
+      '<p style="margin:0 0 1rem;font-size:0.85rem;color:#666;">レジを操作するスタッフの PIN を入力してください。</p>' +
+      '<input id="ca-pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="••••" style="width:200px;font-size:2rem;text-align:center;letter-spacing:0.5em;padding:0.5rem;border:2px solid #ccc;border-radius:8px;margin-bottom:1rem;" />' +
+      '<div id="ca-pin-error" style="color:#d9534f;font-size:0.85rem;min-height:1.2em;margin-bottom:0.75rem;"></div>' +
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;margin-bottom:1rem;">' +
+        ['1','2','3','4','5','6','7','8','9','C','0','⌫'].map(function (k) {
+          var bg = (k === 'C' || k === '⌫') ? '#f5f5f5' : '#fff';
+          return '<button type="button" data-pinkey="' + k + '" style="font-size:1.5rem;padding:0.75rem;background:' + bg + ';border:1px solid #ddd;border-radius:6px;cursor:pointer;font-weight:bold;">' + k + '</button>';
+        }).join('') +
+      '</div>' +
+      '<div style="display:flex;gap:0.5rem;">' +
+      '<button id="ca-pin-cancel" style="flex:1;padding:0.75rem;background:#f5f5f5;border:1px solid #ddd;border-radius:6px;cursor:pointer;">キャンセル</button>' +
+      '<button id="ca-pin-ok" style="flex:1;padding:0.75rem;background:#43a047;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">確定</button>' +
+      '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+
+    var input = document.getElementById('ca-pin-input');
+    var errEl = document.getElementById('ca-pin-error');
+
+    setTimeout(function () { if (input) input.focus(); }, 100);
+
+    function cleanup() {
+      overlay.remove();
+    }
+
+    function submit() {
+      var pin = input.value.replace(/\D/g, '');
+      if (!/^\d{4,8}$/.test(pin)) {
+        errEl.textContent = '4〜8 桁の数字を入力してください';
+        return;
+      }
+      cleanup();
+      callback(pin);
+    }
+
+    // テンキー
+    overlay.querySelectorAll('[data-pinkey]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var k = btn.getAttribute('data-pinkey');
+        if (k === 'C') input.value = '';
+        else if (k === '⌫') input.value = input.value.slice(0, -1);
+        else if (input.value.length < 8) input.value += k;
+        errEl.textContent = '';
+      });
+    });
+
+    // キーボード
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      if (e.key === 'Escape') { cleanup(); callback(null); }
+    });
+
+    document.getElementById('ca-pin-ok').addEventListener('click', submit);
+    document.getElementById('ca-pin-cancel').addEventListener('click', function () {
+      cleanup();
+      callback(null);
+    });
+  }
+
+  /**
+   * CP1: PIN 確認後の実際の会計送信処理
+   */
+  function _submitPaymentWithPin(group, isPartial, calc, pin) {
     var isMerged = _mergeMode && _mergedGroupKeys.length >= 2;
 
     var body = {
       store_id: _storeId,
-      payment_method: _paymentMethod
+      payment_method: _paymentMethod,
+      staff_pin: pin   // CP1: 担当スタッフ PIN
     };
 
     // 合流モードの場合
@@ -1268,11 +1471,11 @@
       if (!json.ok) {
         _playError();
         var errCode = (json.error && json.error.code) || '';
-        var errMsg = (json.error && json.error.message) || 'エラー';
+        var formatted = Utils.formatError(json);
         if (errCode === 'GATEWAY_ERROR') {
-          _showToast('決済エラー: ' + errMsg, 'error');
+          _showToast('決済エラー: ' + formatted, 'error');
         } else {
-          _showToast(errMsg, 'error');
+          _showToast(formatted, 'error');
         }
         _startPolling();
         _renderRegister();
@@ -1293,7 +1496,7 @@
       var ov = document.getElementById('ca-gw-overlay');
       if (ov) ov.parentNode.removeChild(ov);
       _playError();
-      _showToast(err.message || '通信エラー', 'error');
+      _showToast(Utils.formatError(err), 'error');
       _startPolling();
       _renderRegister();
     });
@@ -1371,12 +1574,26 @@
     var payments = _journalData.payments || [];
     var summary = _journalData.summary || { count: 0, total: 0 };
 
+    // 返金集計
+    var refundCount = 0;
+    var refundTotal = 0;
+    payments.forEach(function (p) {
+      if (p.refund_status && p.refund_status !== 'none') {
+        refundCount++;
+        refundTotal += parseInt(p.refund_amount || p.total_amount, 10) || 0;
+      }
+    });
+
     var html = '';
 
     // サマリー
     html += '<div class="ca-journal__summary">';
     html += '<div class="ca-journal__stat"><div class="ca-journal__stat-label">取引件数</div><div class="ca-journal__stat-value">' + summary.count + '</div></div>';
-    html += '<div class="ca-journal__stat"><div class="ca-journal__stat-label">合計金額</div><div class="ca-journal__stat-value">' + Utils.formatYen(summary.total) + '</div></div>';
+    var netTotal = summary.total - refundTotal;
+    html += '<div class="ca-journal__stat"><div class="ca-journal__stat-label">合計金額</div><div class="ca-journal__stat-value">' + Utils.formatYen(netTotal) + '</div></div>';
+    if (refundCount > 0) {
+      html += '<div class="ca-journal__stat ca-journal__stat--refund"><div class="ca-journal__stat-label">返金</div><div class="ca-journal__stat-value">' + refundCount + '件 / -' + Utils.formatYen(refundTotal) + '</div></div>';
+    }
     html += '</div>';
 
     if (payments.length === 0) {
@@ -1399,17 +1616,86 @@
       var staffName = p.staff_name || '-';
       var isPartial = parseInt(p.is_partial, 10) === 1;
 
-      html += '<div class="ca-journal__item">';
+      var refundStatus = p.refund_status || 'none';
+      var isRefunded = refundStatus !== 'none';
+      var gatewayName = p.gateway_name || '';
+      var canRefund = gatewayName && !isRefunded && method !== 'cash';
+
+      html += '<div class="ca-journal__item' + (isRefunded ? ' ca-journal__item--refunded' : '') + '">';
       html += '<span class="ca-journal__item-time">' + Utils.escapeHtml(timeStr) + '</span>';
       html += '<span class="ca-journal__item-table">' + Utils.escapeHtml(tableCode) + (isPartial ? ' *' : '') + '</span>';
       html += '<span class="ca-journal__item-method ca-journal__item-method--' + method + '">' + (_PAY_LABELS[method] || method) + '</span>';
       html += '<span class="ca-journal__item-staff">' + Utils.escapeHtml(staffName) + '</span>';
       html += '<span class="ca-journal__item-amount">' + Utils.formatYen(amount) + '</span>';
+      if (isRefunded) {
+        html += '<span class="ca-journal__refund-badge">返金済</span>';
+      } else if (canRefund) {
+        html += '<button class="ca-journal__refund-btn" data-payment-id="' + Utils.escapeHtml(p.id) + '" data-amount="' + amount + '">返金</button>';
+      }
       html += '</div>';
     });
     html += '</div>';
 
     body.innerHTML = html;
+
+    // C-R1: 返金ボタンイベントバインド
+    var refundBtns = body.querySelectorAll('.ca-journal__refund-btn');
+    for (var ri = 0; ri < refundBtns.length; ri++) {
+      refundBtns[ri].addEventListener('click', function () {
+        var pid = this.getAttribute('data-payment-id');
+        var amt = parseInt(this.getAttribute('data-amount'), 10) || 0;
+        _confirmRefund(pid, amt);
+      });
+    }
+  }
+
+  // C-R1: 返金確認 + 実行（CP1b: 担当スタッフ PIN 必須）
+  var _refunding = false;
+  function _confirmRefund(paymentId, amount) {
+    if (_refunding) return;
+    if (!confirm('この取引 (' + Utils.formatYen(amount) + ') を返金しますか？\nこの操作は取り消せません。')) return;
+
+    // 担当スタッフ PIN を要求
+    _promptCashierPin(function (pin) {
+      if (pin === null) return;   // キャンセル
+      _executeRefund(paymentId, amount, pin);
+    });
+  }
+
+  function _executeRefund(paymentId, amount, pin) {
+    _refunding = true;
+    var url = '../../api/store/refund-payment.php';
+    fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        payment_id: paymentId,
+        store_id: _storeId,
+        reason: 'requested_by_customer',
+        staff_pin: pin
+      })
+    })
+    .then(function (r) {
+      return r.text().then(function (t) {
+        try { return JSON.parse(t); } catch (e) { return { ok: false, error: { message: t.substring(0, 120) } }; }
+      });
+    })
+    .then(function (json) {
+      if (json.ok) {
+        _playSound('success');
+        alert('返金が完了しました (' + Utils.formatYen(amount) + ')');
+        _openJournal(); // リロード
+      } else {
+        alert('返金に失敗しました: ' + Utils.formatError(json));
+      }
+    })
+    .catch(function (err) {
+      alert('通信エラーが発生しました: ' + Utils.formatError(err));
+    })
+    .finally(function () {
+      _refunding = false;
+    });
   }
 
   // ── レジ開閉 ──
@@ -1570,7 +1856,9 @@
     }
   };
 
-  function _postCashLog(type, amount, note, callback) {
+  function _postCashLog(type, amount, note, pin, callback) {
+    // 後方互換: 旧シグネチャ (type, amount, note, callback) を許容
+    if (typeof pin === 'function') { callback = pin; pin = null; }
     fetch('../../api/kds/cash-log.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1578,7 +1866,8 @@
         store_id: _storeId,
         type: type,
         amount: amount,
-        note: note || ''
+        note: note || '',
+        staff_pin: pin || ''
       }),
       credentials: 'same-origin'
     }).then(function (r) {
@@ -1592,12 +1881,12 @@
         if (callback) callback(true);
       } else {
         _playError();
-        _showToast('エラー: ' + ((json.error && json.error.message) || '不明'), 'error');
+        _showToast('エラー: ' + Utils.formatError(json), 'error');
         if (callback) callback(false);
       }
-    }).catch(function () {
+    }).catch(function (err) {
       _playError();
-      _showToast('通信エラー', 'error');
+      _showToast('通信エラー: ' + Utils.formatError(err), 'error');
       if (callback) callback(false);
     });
   }
@@ -1938,52 +2227,61 @@
     var regCtrlBody = document.getElementById('ca-register-ctrl-body');
     if (regCtrlBody) {
       regCtrlBody.addEventListener('click', function (e) {
-        // レジ開け
+        // レジ開け (CB1d: PIN 必須)
         if (e.target.closest('#ca-reg-open-btn')) {
           var openInput = document.getElementById('ca-reg-open-amount');
           var openAmt = openInput ? (parseInt(openInput.value, 10) || 0) : 0;
-          _postCashLog('open', openAmt, 'レジ開け', function (ok) {
-            if (ok) {
-              _showToast('レジを開けました', 'success');
-              _fetchSalesSummary();
-            }
+          _promptCashierPin(function (pin) {
+            if (pin === null) return;
+            _postCashLog('open', openAmt, 'レジ開け', pin, function (ok) {
+              if (ok) {
+                _showToast('レジを開けました', 'success');
+                _fetchSalesSummary();
+              }
+            });
           });
           return;
         }
 
-        // 入金
+        // 入金 (CB1d: PIN 必須)
         if (e.target.closest('#ca-reg-cashin-btn')) {
           var inInput = document.getElementById('ca-reg-io-amount');
           var noteInput = document.getElementById('ca-reg-io-note');
           var inAmt = inInput ? (parseInt(inInput.value, 10) || 0) : 0;
           var inNote = noteInput ? noteInput.value : '';
           if (inAmt <= 0) { _showToast('金額を入力してください', 'error'); return; }
-          _postCashLog('cash_in', inAmt, inNote || '入金', function (ok) {
-            if (ok) {
-              _showToast('入金しました', 'success');
-              _fetchSalesSummary();
-            }
+          _promptCashierPin(function (pin) {
+            if (pin === null) return;
+            _postCashLog('cash_in', inAmt, inNote || '入金', pin, function (ok) {
+              if (ok) {
+                _showToast('入金しました', 'success');
+                _fetchSalesSummary();
+              }
+            });
           });
           return;
         }
 
-        // 出金
+        // 出金 (CB1d: PIN 必須 — 不正抑止のため特に重要)
         if (e.target.closest('#ca-reg-cashout-btn')) {
           var outInput = document.getElementById('ca-reg-io-amount');
           var outNoteInput = document.getElementById('ca-reg-io-note');
           var outAmt = outInput ? (parseInt(outInput.value, 10) || 0) : 0;
           var outNote = outNoteInput ? outNoteInput.value : '';
           if (outAmt <= 0) { _showToast('金額を入力してください', 'error'); return; }
-          _postCashLog('cash_out', outAmt, outNote || '出金', function (ok) {
-            if (ok) {
-              _showToast('出金しました', 'success');
-              _fetchSalesSummary();
-            }
+          _promptCashierPin(function (pin) {
+            if (pin === null) return;
+            _postCashLog('cash_out', outAmt, outNote || '出金', pin, function (ok) {
+              if (ok) {
+                _showToast('出金しました', 'success');
+                _fetchSalesSummary();
+              }
+            });
           });
           return;
         }
 
-        // レジ閉め
+        // レジ閉め (CB1d: PIN 必須)
         if (e.target.closest('#ca-reg-close-btn')) {
           var closeInput = document.getElementById('ca-reg-close-amount');
           var closeAmt = closeInput ? (parseInt(closeInput.value, 10) || 0) : 0;
@@ -1991,11 +2289,14 @@
           var diff = closeAmt - expected;
           var diffStr = diff >= 0 ? '+' + Utils.formatYen(diff) : Utils.formatYen(diff);
           if (!confirm('レジを閉めますか？\n実際: ' + Utils.formatYen(closeAmt) + '\n予想: ' + Utils.formatYen(expected) + '\n差額: ' + diffStr)) return;
-          _postCashLog('close', closeAmt, 'レジ閉め（差額: ' + diffStr + '）', function (ok) {
-            if (ok) {
-              _showToast('レジを閉めました', 'success');
-              _fetchSalesSummary();
-            }
+          _promptCashierPin(function (pin) {
+            if (pin === null) return;
+            _postCashLog('close', closeAmt, 'レジ閉め（差額: ' + diffStr + '）', pin, function (ok) {
+              if (ok) {
+                _showToast('レジを閉めました', 'success');
+                _fetchSalesSummary();
+              }
+            });
           });
           return;
         }
@@ -2151,11 +2452,24 @@
 
     var totalAmount = calc.finalTotal;
 
+    // S2 P0 #4: order 紐付け情報を渡してサーバー側で金額検証 + metadata 埋込
+    var intentOrderIds = (body && body.order_ids) ? body.order_ids : [];
+    if ((!intentOrderIds || intentOrderIds.length === 0) && _orders) {
+      intentOrderIds = Object.keys(_orders || {});
+    }
+    var intentTableId = (body && body.table_id) ? body.table_id : (_selectedTableId || '');
+    if (intentTableId === '_merged_') intentTableId = '';
+
     // Step 1: サーバーで PaymentIntent 作成
     fetch('../../api/store/terminal-intent.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: totalAmount }),
+      body: JSON.stringify({
+        amount: totalAmount,
+        store_id: _storeId,
+        table_id: intentTableId,
+        order_ids: intentOrderIds
+      }),
       credentials: 'same-origin'
     })
     .then(function (res) { return res.text(); })

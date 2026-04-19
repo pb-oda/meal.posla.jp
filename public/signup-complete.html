@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>お申込み完了 - POSLA</title>
+  <link rel="stylesheet" href="css/lp.css?v=20260418">
+</head>
+<body>
+
+<header class="lp-header">
+  <div class="lp-container lp-header__inner">
+    <div class="lp-logo"><a href="index.html" style="color:#ff6f00;text-decoration:none;">POSLA</a></div>
+  </div>
+</header>
+
+<section class="lp-section lp-section--signup" style="min-height:60vh;">
+  <div class="lp-container lp-container--narrow" style="text-align:center;">
+    <div id="sc-status" style="font-size:1.1rem;color:#666;margin:24px 0;">アカウントを有効化しています…</div>
+    <div id="sc-content" style="display:none;">
+      <div style="font-size:5rem;color:#2e7d32;margin-bottom:16px;">✓</div>
+      <h1 style="font-size:1.8rem;margin:0 0 12px;">お申込みありがとうございます</h1>
+      <p style="color:#666;margin-bottom:24px;">決済が正常に完了しました。<br>ご登録いただいたメールアドレスにログイン情報をお送りしています。</p>
+      <div style="background:#fff3e0;border:2px solid #ff9800;border-radius:12px;padding:20px;margin-bottom:24px;">
+        <div style="font-size:1.1rem;font-weight:700;color:#e65100;margin-bottom:8px;">📅 30日間無料トライアル開始</div>
+        <div style="color:#666;font-size:0.9rem;">期間内のキャンセルで請求は発生しません。</div>
+      </div>
+      <a href="admin/index.html" class="lp-btn lp-btn--primary" style="max-width:400px;">ログイン画面へ →</a>
+      <p style="color:#888;font-size:0.85rem;margin-top:24px;">メールが届かない場合は info@posla.jp までご連絡ください。</p>
+    </div>
+  </div>
+</section>
+
+<script>
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var token = qs.get('t');
+  var statusEl = document.getElementById('sc-status');
+  var contentEl = document.getElementById('sc-content');
+  function show() { statusEl.style.display = 'none'; contentEl.style.display = 'block'; }
+  function showFailure(msg) {
+    statusEl.style.color = '#c62828';
+    // S3-#18: 通信失敗時は成功表示にせず、リトライ + サポート連絡導線を出す
+    statusEl.innerHTML = '';
+    var p = document.createElement('p');
+    p.style.margin = '0 0 16px';
+    p.textContent = msg;
+    statusEl.appendChild(p);
+    var retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'lp-btn lp-btn--primary';
+    retry.style.maxWidth = '240px';
+    retry.style.margin = '0 8px 8px';
+    retry.textContent = 'もう一度試す';
+    retry.onclick = function () { location.reload(); };
+    statusEl.appendChild(retry);
+    var support = document.createElement('a');
+    support.href = 'mailto:info@posla.jp';
+    support.className = 'lp-btn lp-btn--secondary';
+    support.style.maxWidth = '240px';
+    support.style.margin = '0 8px 8px';
+    support.style.display = 'inline-block';
+    support.textContent = 'サポートに連絡';
+    statusEl.appendChild(support);
+  }
+  if (!token) { show(); return; }
+  // S3-#18: POSLA 規約に従い res.text() → JSON.parse() パターンに統一
+  fetch('/api/signup/activate.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ signup_token: token })
+  }).then(function (r) { return r.text(); })
+    .then(function (txt) {
+      var j;
+      try { j = JSON.parse(txt); } catch (e) {
+        showFailure('サーバーから不正な応答を受け取りました。時間をおいて再度お試しください。');
+        return;
+      }
+      if (j && j.ok) {
+        show();
+      } else {
+        var msg = (j && j.error && j.error.message) ? j.error.message : '不明なエラー';
+        showFailure('有効化に失敗しました: ' + msg);
+      }
+    })
+    .catch(function () {
+      // S3-#18: 通信失敗を成功表示にしない
+      showFailure('通信に失敗しました。ネットワークをご確認のうえ、もう一度お試しください。');
+    });
+})();
+</script>
+
+<footer class="lp-footer">
+  <div class="lp-container">
+    <div>POSLA © 2026 Plusbelief Inc.</div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -18,6 +18,24 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/audit-log.php';
+
+// C-D1 / 監査#146: visible_tools ホワイトリスト検証
+// 許可値: kds / register / handy (カンマ区切りで複数可)
+// null/空文字 → null (店舗設定に従う)
+// 不正値 → 400 エラーで即時終了
+function _validate_visible_tools($input) {
+    if ($input === null || $input === '') return null;
+    $allowed = ['kds', 'register', 'handy'];
+    $parts = array_filter(array_map('trim', explode(',', (string)$input)), 'strlen');
+    $clean = [];
+    foreach ($parts as $p) {
+        if (!in_array($p, $allowed, true)) {
+            json_error('INVALID_VISIBLE_TOOLS', 'visible_tools に不正な値: ' . $p . ' (kds/register/handy のみ可)', 400);
+        }
+        if (!in_array($p, $clean, true)) $clean[] = $p;
+    }
+    return empty($clean) ? null : implode(',', $clean);
+}
 require_once __DIR__ . '/../lib/password-policy.php';
 
 require_method(['GET', 'POST', 'PATCH', 'DELETE']);
@@ -47,9 +65,22 @@ if ($kind !== 'staff' && $kind !== 'device') {
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $storeId = require_store_param();
 
+    // CP1: cashier_pin_hash 列が存在するかチェック (マイグレーション未適用環境への配慮)
+    $hasPinCol = false;
+    try {
+        $pdo->query('SELECT cashier_pin_hash FROM users LIMIT 0');
+        $hasPinCol = true;
+    } catch (PDOException $e) {
+        // マイグレーション未適用 → cashier_pin_set を false 固定で返す
+    }
+
+    $pinSelect = $hasPinCol
+        ? ', CASE WHEN u.cashier_pin_hash IS NOT NULL AND u.cashier_pin_hash != "" THEN 1 ELSE 0 END AS cashier_pin_set'
+        : ', 0 AS cashier_pin_set';
+
     $stmt = $pdo->prepare(
         'SELECT u.id, u.username, u.email, u.display_name, u.role, u.is_active, u.created_at,
-                us.visible_tools, us.hourly_rate,
+                us.visible_tools, us.hourly_rate' . $pinSelect . ',
                 GROUP_CONCAT(us2.store_id) AS store_ids,
                 GROUP_CONCAT(s2.name) AS store_names
          FROM users u
@@ -117,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$id, $tenantId, $username, $email ?: null, $hash, $displayName, $kind]);
 
         // 店舗割当 (L-3b2: visible_tools対応, L-3 Phase 2: hourly_rate対応)
-        $visibleTools = isset($data['visible_tools']) ? $data['visible_tools'] : null;
+        $visibleTools = isset($data['visible_tools']) ? _validate_visible_tools($data['visible_tools']) : null;
         $hourlyRate = isset($data['hourly_rate']) ? (int)$data['hourly_rate'] : null;
         if ($hourlyRate !== null && ($hourlyRate < 1 || $hourlyRate > 10000)) $hourlyRate = null;
         $ins = $pdo->prepare('INSERT INTO user_stores (user_id, store_id, visible_tools, hourly_rate) VALUES (?, ?, ?, ?)');
@@ -195,13 +226,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         $pdo->prepare('UPDATE users SET ' . implode(', ', $fields) . ' WHERE id = ?')->execute($params);
     }
 
+    // S3 #13: マネージャーが他店舗の user_stores を更新できないよう、
+    // 指定された store_id が操作者の所属店舗に含まれることを必ず検証する。
+    // owner は全店舗アクセス可能なのでスキップ。
+    $assertOperatorStore = function($targetStoreId) use ($user, $myStoreIds) {
+        if ($user['role'] === 'owner') return;
+        if (!in_array($targetStoreId, $myStoreIds, true)) {
+            json_error('FORBIDDEN', '指定された店舗への操作権限がありません', 403);
+        }
+    };
+
     // L-3b2: visible_tools 更新（店舗スコープ）
     if (array_key_exists('visible_tools', $data)) {
+        $data['visible_tools'] = _validate_visible_tools($data['visible_tools']);
         $vtStoreId = isset($data['store_id']) ? $data['store_id'] : (isset($_GET['store_id']) ? $_GET['store_id'] : null);
         if (!$vtStoreId) {
             // パラメータなければ、対象の所属店舗のうちmanagerがアクセス可能な最初の店舗
             $vtStoreId = $myStoreIds[0];
         }
+        // S3 #13: 操作者の所属店舗境界チェック
+        $assertOperatorStore($vtStoreId);
         $pdo->prepare('UPDATE user_stores SET visible_tools = ? WHERE user_id = ? AND store_id = ?')
             ->execute([$data['visible_tools'], $id, $vtStoreId]);
     }
@@ -212,6 +256,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         if (!$hrStoreId) {
             $hrStoreId = $myStoreIds[0];
         }
+        // S3 #13: 操作者の所属店舗境界チェック
+        $assertOperatorStore($hrStoreId);
         $hrVal = $data['hourly_rate'] !== null && $data['hourly_rate'] !== '' ? (int)$data['hourly_rate'] : null;
         if ($hrVal !== null && ($hrVal < 1 || $hrVal > 10000)) $hrVal = null;
         $pdo->prepare('UPDATE user_stores SET hourly_rate = ? WHERE user_id = ? AND store_id = ?')

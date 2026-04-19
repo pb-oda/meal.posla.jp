@@ -45,11 +45,12 @@ if (empty($paidItems)) {
     $orderIds = json_decode($payment['order_ids'], true);
     if (!empty($orderIds)) {
         // orders.items から品目を取得
+        // S3 #15: store_id 境界 — 同店舗の orders のみ取得
         $placeholders = implode(',', array_fill(0, count($orderIds), '?'));
         $stmt = $pdo->prepare(
-            "SELECT items FROM orders WHERE id IN ($placeholders)"
+            "SELECT items FROM orders WHERE id IN ($placeholders) AND store_id = ?"
         );
-        $stmt->execute($orderIds);
+        $stmt->execute(array_merge($orderIds, [$storeId]));
         $orderRows = $stmt->fetchAll();
         $paidItems = [];
         foreach ($orderRows as $oRow) {

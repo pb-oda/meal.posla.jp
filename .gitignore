@@ -35,9 +35,17 @@ node_modules/
 docs/manual/.vitepress/dist/
 docs/manual/.vitepress/cache/
 
+# VitePress Basic Auth credentials (never commit — Sakura 本番のみに配置)
+public/docs-internal/.htpasswd
+public/docs-internal/.htaccess
+
 # IDE
 .vscode/
 .idea/
 
 # Logs
 *.log
+
+# Docker — ローカル開発用データ（リポジトリにコミットしない）
+docker/db/data/
+docker-compose.override.yml

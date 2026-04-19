@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 POSLA 営業ピッチ プレゼンテーション生成スクリプト
-対面営業向け、15-20分構成、21スライド
+対象: テナント営業 + 関係者(共同経営者・社内チーム・パートナー)
+構成: 21スライド、フロー哲学を最初に据える
 出力: docs/sales-pitch.pptx
 """
 
@@ -23,12 +24,16 @@ BLACK = RGBColor(0x21, 0x21, 0x21)
 GRAY = RGBColor(0x75, 0x75, 0x75)
 LIGHT_GRAY = RGBColor(0xF5, 0xF5, 0xF5)
 GREEN = RGBColor(0x2E, 0x7D, 0x32)
+RED = RGBColor(0xC6, 0x28, 0x28)
+BLUE = RGBColor(0x15, 0x65, 0xC0)
 
 FONT_JP = 'Hiragino Sans'
 
 # 16:9 スライドサイズ (13.333 x 7.5 inch = 1280x720 px)
 SLIDE_W = Inches(13.333)
 SLIDE_H = Inches(7.5)
+
+TOTAL_SLIDES = 21
 
 # ============================================================
 # ヘルパー関数
@@ -83,7 +88,7 @@ def add_text(slide, left, top, width, height, text, size=18, bold=False,
     return box
 
 
-def add_footer(slide, page_num, total=21):
+def add_footer(slide, page_num, total=TOTAL_SLIDES):
     """フッター: ページ番号 + ブランド"""
     add_rect(slide, Emu(0), SLIDE_H - Inches(0.4), SLIDE_W, Inches(0.4), NAVY)
     add_text(slide, Inches(0.4), SLIDE_H - Inches(0.38), Inches(6), Inches(0.35),
@@ -154,6 +159,21 @@ def add_card(slide, left, top, width, height, title, body_lines, accent_color=NA
              body, size=14, color=BLACK)
 
 
+def add_flow_box(slide, left, top, width, height, label, color=NAVY):
+    """フロー図用の小箱"""
+    add_rect(slide, left, top, width, height, color)
+    add_text(slide, left, top, width, height, label,
+             size=12, bold=True, color=WHITE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+
+def add_arrow_text(slide, left, top, width, height, char='→', color=ORANGE, size=20):
+    """矢印テキスト"""
+    add_text(slide, left, top, width, height, char,
+             size=size, bold=True, color=color,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+
 # ============================================================
 # スライド生成
 # ============================================================
@@ -180,12 +200,16 @@ def make_presentation():
              '〜 飲食店現場を全部AIで 〜', size=28, color=ORANGE, align=PP_ALIGN.CENTER)
 
     add_text(s, Inches(0.5), Inches(3.3), Inches(12.5), Inches(1.2),
-             '注文・KDS・会計・在庫・シフト・分析\nぜんぶ込み 月10,000円から',
-             size=32, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+             '機能ではなく "業務フロー" を売る\n予約・注文・KDS・会計・在庫・シフト・分析  ぜんぶ込み',
+             size=28, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
 
-    add_text(s, Inches(0.5), Inches(5.3), Inches(12.5), Inches(0.5),
+    add_text(s, Inches(0.5), Inches(5.1), Inches(12.5), Inches(0.5),
+             '1店舗 月20,000円 (税別)  /  全機能込み  /  追加料金なし',
+             size=22, bold=True, color=ORANGE, align=PP_ALIGN.CENTER)
+
+    add_text(s, Inches(0.5), Inches(5.9), Inches(12.5), Inches(0.5),
              '30日間 無料トライアル実施中',
-             size=20, color=WHITE, align=PP_ALIGN.CENTER)
+             size=18, color=WHITE, align=PP_ALIGN.CENTER)
 
     add_text(s, Inches(0.5), Inches(6.5), Inches(12.5), Inches(0.5),
              'Plus Belief Inc.  |  https://posla.jp',
@@ -237,45 +261,142 @@ def make_presentation():
         add_card(s, left, card_top, card_w, card_h, title, lines, accent_color=ORANGE)
 
     add_text(s, Inches(0.5), Inches(6.4), Inches(12.3), Inches(0.5),
-             'これ全部、POSLA 1つで解決できます。',
+             '原因は "システムを機能ごとに買っているから"。POSLA は違います。',
              size=22, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
 
     # ============================================================
-    # Slide 3: POSLAの答え
+    # Slide 3: POSLA の哲学 — フローを売る
     # ============================================================
     s = prs.slides.add_slide(blank_layout)
     set_background(s, WHITE)
-    add_title_bar(s, 'POSLAの答え：「1つで全部解決」', 3)
+    add_title_bar(s, 'POSLA の哲学  〜 機能ではなく「フロー」を売る 〜', 3)
 
-    add_text(s, Inches(0.5), Inches(1.5), Inches(12.3), Inches(0.8),
-             '飲食店に必要な機能を すべて 1つのシステムに統合',
-             size=22, color=GRAY, align=PP_ALIGN.CENTER)
+    add_text(s, Inches(0.5), Inches(1.4), Inches(12.3), Inches(0.6),
+             '他社 POS と POSLA の決定的な違い',
+             size=18, color=GRAY, align=PP_ALIGN.CENTER)
 
-    items = [
-        'お客さんの注文 → 厨房 → 会計 → 在庫 → 売上分析 まで全部つながる',
-        'AIが「売れ筋」「人件費」「発注量」「シフト」を自動提案',
-        '導入する月額は 1つ分。スタッフの教育コストも 1つ分',
-        'タブレット1枚 + プリンター だけで始められる',
-        '30日間 無料で全機能を試せる (Stripeカード登録のみ)',
+    # 左カラム: 他社
+    add_rect(s, Inches(0.7), Inches(2.2), Inches(5.8), Inches(4.5),
+             LIGHT_GRAY, line_color=GRAY)
+    add_rect(s, Inches(0.7), Inches(2.2), Inches(5.8), Inches(0.5), GRAY)
+    add_text(s, Inches(0.7), Inches(2.2), Inches(5.8), Inches(0.5),
+             '他社 (機能を売る世界)',
+             size=16, bold=True, color=WHITE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    others = [
+        'POS は POS だけ',
+        'KDS は KDS だけ',
+        '在庫管理は別契約',
+        'シフトは別 SaaS',
+        '予約は別ベンダー',
+        '↓',
+        'バラバラの月額が積み上がる',
+        '画面も操作もデータも分断',
+        'スタッフ教育コスト × N',
     ]
-    add_bullet_list(s, Inches(1.5), Inches(2.7), Inches(10.3), Inches(4),
-                    items, size=20, line_spacing=1.6)
+    add_bullet_list(s, Inches(0.95), Inches(2.85), Inches(5.4), Inches(3.7),
+                    others, size=13, line_spacing=1.3)
 
-    add_rect(s, Inches(1.5), Inches(6.3), Inches(10.3), Inches(0.6), NAVY)
-    add_text(s, Inches(1.5), Inches(6.3), Inches(10.3), Inches(0.6),
-             '「うちの店、これだけで全部まわるんだ」と言われます',
-             size=18, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    # 右カラム: POSLA
+    add_rect(s, Inches(6.85), Inches(2.2), Inches(5.8), Inches(4.5),
+             WHITE, line_color=NAVY)
+    add_rect(s, Inches(6.85), Inches(2.2), Inches(5.8), Inches(0.5), NAVY)
+    add_text(s, Inches(6.85), Inches(2.2), Inches(5.8), Inches(0.5),
+             'POSLA (フローを売る世界)',
+             size=16, bold=True, color=WHITE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    posla_items = [
+        '予約 → 着席 → 注文 → 厨房',
+        '→ 提供 → 会計 → 在庫減算',
+        '→ シフト最適化 → 売上分析',
+        '→ 顧客台帳 → 次回予約',
+        '↓',
+        '1つのシステムで業務フロー完結',
+        '取引データが全部 POSLA に集まる',
+        'AI 提案・経済圏連携の土台に',
+    ]
+    add_bullet_list(s, Inches(7.1), Inches(2.85), Inches(5.4), Inches(3.7),
+                    posla_items, size=13, line_spacing=1.3)
+
+    add_text(s, Inches(0.5), Inches(6.95), Inches(12.3), Inches(0.4),
+             '"フローを売る" = データが集まる = 経営判断・AI・経済圏化が可能',
+             size=15, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
 
     # ============================================================
-    # Slide 4: POSLAとは
+    # Slide 4: 業務フローの全体像 (ループ図)
     # ============================================================
     s = prs.slides.add_slide(blank_layout)
     set_background(s, WHITE)
-    add_title_bar(s, 'POSLAとは', 4)
+    add_title_bar(s, '業務フローの全体像  〜 POSLA がループ全部を担う 〜', 4)
+
+    add_text(s, Inches(0.5), Inches(1.3), Inches(12.3), Inches(0.5),
+             'お客さんの来店から次回予約まで、すべて POSLA 1つで完結',
+             size=16, color=GRAY, align=PP_ALIGN.CENTER)
+
+    # 上段5箱
+    box_w = Inches(2.0)
+    box_h = Inches(0.8)
+    arrow_w = Inches(0.4)
+    row_total = box_w * 5 + arrow_w * 4
+    row_left = (SLIDE_W - row_total) / 2
+
+    top_row_y = Inches(2.2)
+    upper = ['① 予約', '② 着席', '③ 注文', '④ 厨房', '⑤ 提供']
+    for i, label in enumerate(upper):
+        x = row_left + (box_w + arrow_w) * i
+        add_flow_box(s, x, top_row_y, box_w, box_h, label, color=NAVY)
+        if i < 4:
+            add_arrow_text(s, x + box_w, top_row_y, arrow_w, box_h, '→')
+
+    # 右側 下向き矢印
+    right_arrow_x = row_left + box_w * 5 + arrow_w * 4 - box_w / 2
+    add_arrow_text(s, right_arrow_x, top_row_y + box_h, box_w, Inches(0.6), '↓', size=28)
+
+    # 中央バッジ
+    badge_w = Inches(3.0)
+    badge_h = Inches(1.4)
+    badge_left = (SLIDE_W - badge_w) / 2
+    badge_top = Inches(3.55)
+    add_rect(s, badge_left, badge_top, badge_w, badge_h, ORANGE)
+    add_text(s, badge_left, badge_top + Inches(0.2), badge_w, Inches(0.5),
+             'POSLA',
+             size=24, bold=True, color=WHITE,
+             align=PP_ALIGN.CENTER)
+    add_text(s, badge_left, badge_top + Inches(0.75), badge_w, Inches(0.5),
+             'このフロー全部を1つで',
+             size=13, color=WHITE,
+             align=PP_ALIGN.CENTER)
+
+    # 左側 上向き矢印
+    left_arrow_x = row_left - box_w / 2
+    add_arrow_text(s, left_arrow_x, top_row_y + box_h, box_w, Inches(0.6), '↑', size=28)
+
+    # 下段5箱 (右から左へ進む流れ)
+    bot_row_y = Inches(5.1)
+    lower = ['⑩ 次回予約', '⑨ 顧客台帳', '⑧ 売上分析', '⑦ 在庫減算', '⑥ 会計']
+    for i, label in enumerate(lower):
+        x = row_left + (box_w + arrow_w) * i
+        add_flow_box(s, x, bot_row_y, box_w, box_h, label, color=BLUE)
+        if i < 4:
+            add_arrow_text(s, x + box_w, bot_row_y, arrow_w, box_h, '←')
+
+    add_text(s, Inches(0.5), Inches(6.3), Inches(12.3), Inches(0.4),
+             '↑ 1つのシステムでこのループを回すから、データが全部つながる',
+             size=14, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
+    add_text(s, Inches(0.5), Inches(6.75), Inches(12.3), Inches(0.4),
+             '"これだけで店が回る" — POSLA の約束',
+             size=14, bold=True, color=ORANGE, align=PP_ALIGN.CENTER)
+
+    # ============================================================
+    # Slide 5: POSLAとは
+    # ============================================================
+    s = prs.slides.add_slide(blank_layout)
+    set_background(s, WHITE)
+    add_title_bar(s, 'POSLAとは', 5)
 
     add_text(s, Inches(0.5), Inches(1.5), Inches(12.3), Inches(0.6),
-             '飲食店向け オールインワン クラウドPOS',
-             size=24, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
+             '飲食店向け オールインワン クラウドPOS  (フローを丸ごと提供)',
+             size=22, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
 
     items = [
         '注文管理 (ハンディPOS) … スタッフがタブレットで注文取り',
@@ -291,54 +412,60 @@ def make_presentation():
                     items, size=16, line_spacing=1.35)
 
     add_text(s, Inches(0.5), Inches(6.6), Inches(12.3), Inches(0.4),
-             '↑ ぜんぶ込み。追加料金なし。',
+             '↑ ぜんぶ込み。プラン分けなし。追加料金なし。',
              size=16, bold=True, color=ORANGE, align=PP_ALIGN.CENTER)
 
     # ============================================================
-    # Slide 5: 誰向けか
+    # Slide 6: 誰向けか
     # ============================================================
     s = prs.slides.add_slide(blank_layout)
     set_background(s, WHITE)
-    add_title_bar(s, '誰のためのシステムか', 5)
+    add_title_bar(s, '誰のためのシステムか', 6)
 
     add_text(s, Inches(0.5), Inches(1.4), Inches(12.3), Inches(0.5),
-             '1店舗でも、複数店舗でも。ご利用シーンで「使いたい機能」からプランをお選びください',
+             '機能で分けません。すべてのお客さんに「全機能」をお届けします',
              size=16, color=GRAY, align=PP_ALIGN.CENTER)
 
     add_rect(s, Inches(2.5), Inches(2.0), Inches(8.3), Inches(0.5), GREEN)
     add_text(s, Inches(2.5), Inches(2.0), Inches(8.3), Inches(0.5),
-             '★ 多店舗運営は 全プラン 標準対応 (店舗数に応じて月額が変わります)',
+             '★ 多店舗運営も全機能標準。価格は店舗数で変わります',
              size=14, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
     cards = [
-        ('店内飲食を回したい', [
-            '・注文・KDS・会計を',
-            '  デジタル化したい',
-            '・セルフオーダーで',
-            '  人手不足を解消',
-            '→ standardプラン',
-            '   月10,000円〜',
+        ('個人店オーナー', [
+            '・1店舗だけ運営',
+            '・人手不足を',
+            '  デジタルで補いたい',
+            '・売上をデータで',
+            '  把握したい',
+            '',
+            '→ 月額 ¥20,000',
+            '   全機能込み',
         ]),
-        ('経営管理もしたい', [
-            '・在庫・原価を見たい',
-            '・売上分析・回転率',
-            '・テイクアウト対応',
-            '・シフト管理',
-            '→ proプラン',
-            '   月20,000〜30,000円',
+        ('小〜中規模チェーン', [
+            '・2〜10店舗運営',
+            '・店舗ごとの',
+            '  売上比較',
+            '・スタッフ統一管理',
+            '・本部レポート',
+            '',
+            '→ 2店舗目以降',
+            '   ¥17,000/店舗',
         ]),
-        ('本部統括が必要', [
-            '・本部メニューを',
-            '  全店一括配信したい',
-            '・店舗間で',
-            '  シフトヘルプを送りたい',
-            '→ enterpriseプラン',
-            '   月50,000円〜',
+        ('大手チェーン', [
+            '・10店舗以上',
+            '・本部から',
+            '  メニューを一括配信',
+            '・店舗間ヘルプ',
+            '・統合シフト',
+            '',
+            '→ + ¥3,000/店舗',
+            '   本部一括配信',
         ]),
     ]
     card_w = Inches(4.0)
-    card_h = Inches(3.7)
-    card_top = Inches(2.8)
+    card_h = Inches(3.9)
+    card_top = Inches(2.7)
     gap = Inches(0.25)
     total_w = card_w * 3 + gap * 2
     start_left = (SLIDE_W - total_w) / 2
@@ -347,16 +474,16 @@ def make_presentation():
         left = start_left + (card_w + gap) * i
         add_card(s, left, card_top, card_w, card_h, title, lines, accent_color=NAVY)
 
-    add_text(s, Inches(0.5), Inches(6.7), Inches(12.3), Inches(0.4),
+    add_text(s, Inches(0.5), Inches(6.85), Inches(12.3), Inches(0.4),
              '居酒屋・ラーメン・カフェ・焼肉・定食屋 … 業態問わず、1店舗からチェーンまで使えます',
              size=13, color=GRAY, align=PP_ALIGN.CENTER)
 
     # ============================================================
-    # Slide 6: お客さん側の機能
+    # Slide 7: お客さん側の機能
     # ============================================================
     s = prs.slides.add_slide(blank_layout)
     set_background(s, WHITE)
-    add_title_bar(s, '【お客さん側】 セルフオーダー画面', 6)
+    add_title_bar(s, '【お客さん側】 セルフオーダー画面', 7)
 
     add_text(s, Inches(0.5), Inches(1.5), Inches(12.3), Inches(0.5),
              'QRコードを読むだけで、自分のスマホから注文できます',
@@ -369,7 +496,7 @@ def make_presentation():
         'おすすめ・売り切れ・期間限定の自動表示',
         '【AIウェイター】 自然な会話で「おすすめは？」「辛くない？」に回答',
         '【店員呼び出し】 ボタン1つで店員にチャイム通知',
-        '【セルフレジ】 (Pro〜) お客さんが自分で支払いも可能',
+        '【セルフレジ】 お客さんが自分で支払いも可能',
         '【満足度評価】 食後のアンケート → Googleレビュー誘導',
     ]
     add_bullet_list(s, Inches(0.7), Inches(2.3), Inches(11.9), Inches(4.6),
@@ -380,11 +507,11 @@ def make_presentation():
              size=15, bold=True, color=ORANGE, align=PP_ALIGN.CENTER)
 
     # ============================================================
-    # Slide 7: 店員側の機能
+    # Slide 8: 店員側の機能
     # ============================================================
     s = prs.slides.add_slide(blank_layout)
     set_background(s, WHITE)
-    add_title_bar(s, '【店員側】 ホール・キッチン業務', 7)
+    add_title_bar(s, '【店員側】 ホール・キッチン業務', 8)
 
     add_text(s, Inches(0.5), Inches(1.5), Inches(12.3), Inches(0.5),
              '注文取り・調理進捗・会計を1つのシステムでスムーズに',
@@ -409,11 +536,11 @@ def make_presentation():
              size=15, bold=True, color=ORANGE, align=PP_ALIGN.CENTER)
 
     # ============================================================
-    # Slide 8: 経営者側の機能
+    # Slide 9: 経営者側の機能
     # ============================================================
     s = prs.slides.add_slide(blank_layout)
     set_background(s, WHITE)
-    add_title_bar(s, '【経営者側】 売上・分析・経営判断', 8)
+    add_title_bar(s, '【経営者側】 売上・分析・経営判断', 9)
 
     add_text(s, Inches(0.5), Inches(1.5), Inches(12.3), Inches(0.5),
              '数字で見える化、AIで先回り。「勘」ではなく「データ」で経営する',
@@ -438,14 +565,14 @@ def make_presentation():
              size=15, bold=True, color=ORANGE, align=PP_ALIGN.CENTER)
 
     # ============================================================
-    # Slide 9: AI機能ハイライト
+    # Slide 10: AI機能ハイライト
     # ============================================================
     s = prs.slides.add_slide(blank_layout)
     set_background(s, WHITE)
-    add_title_bar(s, 'POSLAのAI機能 〜 ここが他社と違う 〜', 9)
+    add_title_bar(s, 'POSLAのAI機能 〜 ここが他社と違う 〜', 10)
 
     add_text(s, Inches(0.5), Inches(1.5), Inches(12.3), Inches(0.5),
-             '飲食店業務に特化したAI機能を全プランに標準装備',
+             '飲食店業務に特化したAI機能をすべてのお客さんに標準装備',
              size=18, color=GRAY, align=PP_ALIGN.CENTER)
 
     items = [
@@ -466,11 +593,11 @@ def make_presentation():
              size=14, bold=True, color=ORANGE, align=PP_ALIGN.CENTER)
 
     # ============================================================
-    # Slide 10: 連携機能
+    # Slide 11: 連携機能
     # ============================================================
     s = prs.slides.add_slide(blank_layout)
     set_background(s, WHITE)
-    add_title_bar(s, '外部サービス連携', 10)
+    add_title_bar(s, '外部サービス連携', 11)
 
     add_text(s, Inches(0.5), Inches(1.5), Inches(12.3), Inches(0.5),
              '既存の決済・POS・レビューサービスとシームレスに連携',
@@ -493,101 +620,134 @@ def make_presentation():
              size=12, color=GRAY, align=PP_ALIGN.CENTER)
 
     # ============================================================
-    # Slide 11: standardプラン
+    # Slide 12: プラン構造  〜 1本化 + アドオン 〜
     # ============================================================
     s = prs.slides.add_slide(blank_layout)
     set_background(s, WHITE)
-    add_title_bar(s, 'プラン①  standard / 月10,000円', 11)
+    add_title_bar(s, 'プラン構造  〜 シンプルに1つだけ 〜', 12)
 
     add_text(s, Inches(0.5), Inches(1.4), Inches(12.3), Inches(0.6),
-             '店内飲食を回したい店舗向け  〜 注文・KDS・会計の基本セット 〜',
-             size=20, color=NAVY, align=PP_ALIGN.CENTER, bold=True)
+             'POSLA は機能でプランを分けません。理由は "フローを売っているから"',
+             size=18, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
 
-    # 価格バッジ
-    add_rect(s, Inches(5.0), Inches(2.2), Inches(3.3), Inches(0.9), ORANGE)
-    add_text(s, Inches(5.0), Inches(2.2), Inches(3.3), Inches(0.9),
-             '¥10,000 / 月  税別',
-             size=24, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    # 大きな1プランカード
+    plan_left = Inches(1.5)
+    plan_top = Inches(2.4)
+    plan_w = Inches(10.3)
+    plan_h = Inches(2.2)
+    add_rect(s, plan_left + Emu(50000), plan_top + Emu(50000), plan_w, plan_h,
+             RGBColor(0xE0, 0xE0, 0xE0))
+    add_rect(s, plan_left, plan_top, plan_w, plan_h, WHITE, line_color=NAVY)
+    add_rect(s, plan_left, plan_top, plan_w, Inches(0.6), NAVY)
+    add_text(s, plan_left, plan_top, plan_w, Inches(0.6),
+             'POSLA  ─  基本料金 (全機能込み)',
+             size=18, bold=True, color=WHITE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
-    items = [
-        '○ セルフオーダー + AIウェイター',
-        '○ ハンディPOS + フロアマップ + テーブル合流分割',
-        '○ KDS + AI音声コマンド',
-        '○ POSレジ (現金/カード/QR)',
-        '○ 基本レポート (売上日報)',
-        '○ 電子領収書発行',
-        '○ オフライン検知 + マルチセッション制御',
-    ]
-    add_bullet_list(s, Inches(2.0), Inches(3.5), Inches(9.3), Inches(3.5),
-                    items, size=16, line_spacing=1.35)
+    # 価格表示 (横並び)
+    add_text(s, plan_left + Inches(0.3), plan_top + Inches(0.85), Inches(4.5), Inches(0.5),
+             '1店舗目',
+             size=16, bold=True, color=GRAY,
+             align=PP_ALIGN.CENTER)
+    add_text(s, plan_left + Inches(0.3), plan_top + Inches(1.25), Inches(4.5), Inches(0.7),
+             '¥20,000 / 月',
+             size=28, bold=True, color=NAVY,
+             align=PP_ALIGN.CENTER)
+
+    add_text(s, plan_left + Inches(5.3), plan_top + Inches(0.85), Inches(4.7), Inches(0.5),
+             '2店舗目以降 (15% OFF)',
+             size=16, bold=True, color=GRAY,
+             align=PP_ALIGN.CENTER)
+    add_text(s, plan_left + Inches(5.3), plan_top + Inches(1.25), Inches(4.7), Inches(0.7),
+             '¥17,000 / 店舗',
+             size=28, bold=True, color=NAVY,
+             align=PP_ALIGN.CENTER)
+
+    # オプションカード
+    opt_top = Inches(4.85)
+    opt_h = Inches(1.4)
+    add_rect(s, plan_left + Emu(50000), opt_top + Emu(50000), plan_w, opt_h,
+             RGBColor(0xE0, 0xE0, 0xE0))
+    add_rect(s, plan_left, opt_top, plan_w, opt_h, WHITE, line_color=ORANGE)
+    add_rect(s, plan_left, opt_top, plan_w, Inches(0.5), ORANGE)
+    add_text(s, plan_left, opt_top, plan_w, Inches(0.5),
+             '+ 本部一括メニュー配信オプション (チェーン向け)',
+             size=15, bold=True, color=WHITE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    add_text(s, plan_left + Inches(0.3), opt_top + Inches(0.65), plan_w - Inches(0.6), Inches(0.7),
+             '+ ¥3,000 / 店舗   (10店舗以上のチェーン本部向け。1店舗運営なら不要)',
+             size=18, bold=True, color=ORANGE,
+             align=PP_ALIGN.CENTER)
 
     add_text(s, Inches(0.5), Inches(6.7), Inches(12.3), Inches(0.4),
-             '30日間 無料トライアル (Stripeカード登録のみ)',
-             size=14, bold=True, color=GREEN, align=PP_ALIGN.CENTER)
+             '機能で迷わせない・営業で困らせない・契約後も追加請求なし',
+             size=15, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
 
     # ============================================================
-    # Slide 12: proプラン
+    # Slide 13: 価格早見表
     # ============================================================
     s = prs.slides.add_slide(blank_layout)
     set_background(s, WHITE)
-    add_title_bar(s, 'プラン②  pro / 月20,000〜30,000円', 12)
+    add_title_bar(s, '価格早見表 (税別)', 13)
 
-    add_text(s, Inches(0.5), Inches(1.4), Inches(12.3), Inches(0.6),
-             '経営管理もしたい店舗向け  〜 在庫・分析・テイクアウト・シフト 〜',
-             size=20, color=NAVY, align=PP_ALIGN.CENTER, bold=True)
+    add_text(s, Inches(0.5), Inches(1.4), Inches(12.3), Inches(0.5),
+             '規模が大きくなるほど 1店舗あたりの単価は下がります',
+             size=16, color=GRAY, align=PP_ALIGN.CENTER)
 
-    add_rect(s, Inches(4.5), Inches(2.2), Inches(4.3), Inches(0.9), ORANGE)
-    add_text(s, Inches(4.5), Inches(2.2), Inches(4.3), Inches(0.9),
-             '¥20,000〜30,000 / 月  税別',
-             size=22, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    # 価格表
+    table_left = Inches(1.0)
+    table_top = Inches(2.1)
+    col_widths = [Inches(2.7), Inches(2.5), Inches(3.0), Inches(3.1)]
+    row_h = Inches(0.55)
 
-    items = [
-        '◎ standardの全機能',
-        '+ 在庫・レシピ管理 + AI需要予測',
-        '+ 高度レポート (回転率・客層・スタッフ評価・併売分析)',
-        '+ 監査ログ + 満足度評価 + Googleレビュー連携',
-        '+ テイクアウト + Square/Stripe決済ゲートウェイ',
-        '+ 多言語対応 (5言語)',
-        '+ シフト管理 + AI最適シフト提案',
+    headers = ['規模', '基本料金', '+本部一括配信', '月額合計']
+    rows = [
+        ['個人店  1店舗',     '¥20,000',         '—',           '¥20,000'],
+        ['小規模  3店舗',     '¥54,000',         '(任意)',      '¥54,000'],
+        ['中規模  5店舗',     '¥88,000',         '+¥15,000',    '¥88k〜103k'],
+        ['チェーン 10店舗',   '¥173,000',        '+¥30,000',    '¥173k〜203k'],
+        ['大手  30店舗',      '¥513,000',        '+¥90,000',    '¥513k〜603k'],
     ]
-    add_bullet_list(s, Inches(1.5), Inches(3.4), Inches(10.3), Inches(3.5),
-                    items, size=16, line_spacing=1.3)
 
-    add_text(s, Inches(0.5), Inches(6.7), Inches(12.3), Inches(0.4),
-             '一番人気のプラン。9割のお客さんがこちらを選びます',
-             size=14, bold=True, color=ORANGE, align=PP_ALIGN.CENTER)
+    # ヘッダー
+    x = table_left
+    for i, h in enumerate(headers):
+        add_rect(s, x, table_top, col_widths[i], row_h, NAVY)
+        add_text(s, x, table_top, col_widths[i], row_h, h,
+                 size=14, bold=True, color=WHITE,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        x = x + col_widths[i]
 
-    # ============================================================
-    # Slide 13: enterpriseプラン
-    # ============================================================
-    s = prs.slides.add_slide(blank_layout)
-    set_background(s, WHITE)
-    add_title_bar(s, 'プラン③  enterprise / 月50,000円', 13)
+    # データ行
+    for r, row in enumerate(rows):
+        bg = LIGHT_GRAY if r % 2 == 0 else WHITE
+        y = table_top + row_h * (r + 1)
+        x = table_left
+        for i in range(4):
+            add_rect(s, x, y, col_widths[i], row_h, bg, line_color=GRAY)
+            align = PP_ALIGN.LEFT if i == 0 else PP_ALIGN.CENTER
+            add_text(s, x + Inches(0.1), y, col_widths[i] - Inches(0.2), row_h,
+                     row[i], size=13, color=BLACK,
+                     align=align, anchor=MSO_ANCHOR.MIDDLE)
+            x = x + col_widths[i]
 
-    add_text(s, Inches(0.5), Inches(1.4), Inches(12.3), Inches(0.6),
-             '本部統括が必要な店舗向け  〜 本部メニュー一括配信 + 店舗間シフトヘルプ 〜',
-             size=20, color=NAVY, align=PP_ALIGN.CENTER, bold=True)
+    # 内訳メモ
+    add_text(s, Inches(1.0), Inches(5.4), Inches(11.3), Inches(0.4),
+             '【内訳ロジック】',
+             size=14, bold=True, color=NAVY)
+    add_text(s, Inches(1.0), Inches(5.8), Inches(11.3), Inches(0.4),
+             '・1店舗目  ¥20,000 / 月',
+             size=13, color=BLACK)
+    add_text(s, Inches(1.0), Inches(6.15), Inches(11.3), Inches(0.4),
+             '・2店舗目以降  ¥17,000 / 店舗  (15%引き)',
+             size=13, color=BLACK)
+    add_text(s, Inches(1.0), Inches(6.5), Inches(11.3), Inches(0.4),
+             '・本部一括メニュー配信オプション  +¥3,000 / 店舗  (チェーン本部のみ任意)',
+             size=13, color=BLACK)
 
-    add_rect(s, Inches(5.0), Inches(2.2), Inches(3.3), Inches(0.9), ORANGE)
-    add_text(s, Inches(5.0), Inches(2.2), Inches(3.3), Inches(0.9),
-             '¥50,000 / 月  税別',
-             size=24, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-
-    items = [
-        '◎ proの全機能',
-        '+ 本部メニュー一括配信 (HQメニュー)',
-        '+ クロス店舗分析 (ABC分析・全店ランキング)',
-        '+ 多店舗シフト管理 + 店舗間ヘルプ要請',
-        '+ 統合シフトビュー (全店人件費比較)',
-        '+ オーナーダッシュボード (本部用画面)',
-        '+ 店舗別ユーザー権限管理',
-    ]
-    add_bullet_list(s, Inches(2.0), Inches(3.4), Inches(9.3), Inches(3.5),
-                    items, size=16, line_spacing=1.3)
-
-    add_text(s, Inches(0.5), Inches(6.7), Inches(12.3), Inches(0.4),
-             '※ enterpriseは「本部メニュー一括配信」「店舗間シフトヘルプ」が必要なときに選んでください',
-             size=14, bold=True, color=GREEN, align=PP_ALIGN.CENTER)
+    add_text(s, Inches(0.5), Inches(6.95), Inches(12.3), Inches(0.4),
+             '※ 30日間 全機能無料トライアル付き  /  追加料金・隠れコストなし',
+             size=13, bold=True, color=GREEN, align=PP_ALIGN.CENTER)
 
     # ============================================================
     # Slide 14: 競合との違い
@@ -597,19 +757,20 @@ def make_presentation():
     add_title_bar(s, '競合と何が違うのか', 14)
 
     items = [
-        '①【オールインワン】 POS + KDS + 在庫 + シフト + 分析が1つに統合',
-        '②【AI標準装備】 追加料金なしでAI機能をフル活用 (他社は月+5,000〜)',
-        '③【マルチテナント設計】 1店舗から100店舗まで同じシステムで対応',
-        '④【月額が明確】 1店舗1万円〜5万円。隠れコストなし',
-        '⑤【日本の飲食店に特化】 居酒屋・ラーメン・カフェ業態を熟知',
-        '⑥【スマレジから移行可】 既存マスタを丸ごとインポート',
-        '⑦【現場主導の開発】 実店舗のフィードバックで毎週アップデート',
+        '①【フローを売る】 機能の寄せ集めではなく、業務フロー全体を1つで提供',
+        '②【オールインワン】 POS + KDS + 在庫 + シフト + 分析が1つに統合',
+        '③【AI標準装備】 追加料金なしでAI機能をフル活用 (他社は月+5,000〜)',
+        '④【マルチテナント設計】 1店舗から100店舗まで同じシステムで対応',
+        '⑤【プラン迷わない】 1プラン+アドオンだけ。営業トーク1秒で完結',
+        '⑥【日本の飲食店に特化】 居酒屋・ラーメン・カフェ業態を熟知',
+        '⑦【スマレジから移行可】 既存マスタを丸ごとインポート',
+        '⑧【現場主導の開発】 実店舗のフィードバックで毎週アップデート',
     ]
     add_bullet_list(s, Inches(0.7), Inches(1.7), Inches(11.9), Inches(5.0),
-                    items, size=17, line_spacing=1.45)
+                    items, size=16, line_spacing=1.4)
 
     add_text(s, Inches(0.5), Inches(6.7), Inches(12.3), Inches(0.4),
-             '「全部入りで月1万円」というのが最大の差別化です',
+             '"フロー全部入りで月¥20k" — これが最大の差別化です',
              size=16, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
 
     # ============================================================
@@ -623,7 +784,6 @@ def make_presentation():
              '同等機能を競合で揃えると…',
              size=18, color=GRAY, align=PP_ALIGN.CENTER)
 
-    # シンプルな比較表
     table_left = Inches(1.0)
     table_top = Inches(2.2)
     col_widths = [Inches(4.5), Inches(3.2), Inches(3.6)]
@@ -631,14 +791,14 @@ def make_presentation():
 
     headers = ['サービス', '月額 (1店舗)', '備考']
     rows = [
-        ['POSLA standard', '¥10,000', 'オールインワン'],
-        ['POSLA pro', '¥20,000〜30,000', 'AI + 在庫 + 分析'],
-        ['POSLA enterprise', '¥50,000', '本部統括 + 店舗間ヘルプ'],
-        ['他社POS A', '¥15,000〜', 'POSのみ。KDSは別契約'],
-        ['他社KDS B', '¥8,000〜', 'KDSのみ'],
-        ['他社在庫管理 C', '¥12,000〜', '在庫のみ'],
-        ['他社シフト D', '¥5,000〜', 'シフトのみ'],
-        ['↑ 全部足すと', '¥40,000〜', '別々の画面・別々の操作', True],
+        ['POSLA  (1店舗目)',         '¥20,000',     'フロー全部入り'],
+        ['POSLA  (2店舗目以降)',     '¥17,000',     'ボリューム割引'],
+        ['POSLA  本部配信オプション', '+¥3,000',     'チェーン本部のみ任意'],
+        ['他社POS A',                '¥15,000〜',  'POSのみ。KDSは別契約'],
+        ['他社KDS B',                '¥8,000〜',   'KDSのみ'],
+        ['他社在庫管理 C',           '¥12,000〜',  '在庫のみ'],
+        ['他社シフト D',             '¥5,000〜',   'シフトのみ'],
+        ['↑ 他社を全部足すと',        '¥40,000〜',  '別々の画面・別々の操作', True],
     ]
 
     # ヘッダー
@@ -664,6 +824,10 @@ def make_presentation():
                      text, size=13, bold=bold, color=text_color,
                      align=PP_ALIGN.LEFT if i == 0 else PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
             x = x + col_widths[i]
+
+    add_text(s, Inches(0.5), Inches(6.95), Inches(12.3), Inches(0.4),
+             '"POSLA 1つ" vs "他社4契約" — 単価でも運用負荷でも勝てます',
+             size=14, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
 
     # ============================================================
     # Slide 16: 必要な機材
@@ -784,10 +948,10 @@ def make_presentation():
 
     items = [
         '○ お申込み時に Stripe でクレジットカード登録 (請求は0円)',
-        '○ 登録完了で 即日 全機能フル開放 (proプラン相当)',
+        '○ 登録完了で 即日 全機能フル開放 (1プランしかないので迷わない)',
         '○ 30日間 ゆっくり試せる',
-        '○ 気に入ったら 何もしなくてOK → 31日目から自動で proプラン課金',
-        '○ 解約 or プラン変更 (standard等) は 30日以内 にマイページから',
+        '○ 気に入ったら 何もしなくてOK → 31日目から自動で月額¥20,000課金',
+        '○ 解約 or 店舗追加 は マイページから 24時間いつでも',
         '○ 解約後は データ削除 (個人情報も完全削除)',
     ]
     add_bullet_list(s, Inches(1.0), Inches(3.2), Inches(11.3), Inches(3.5),
@@ -805,21 +969,25 @@ def make_presentation():
     add_title_bar(s, 'よくある質問 TOP3', 19)
 
     qas = [
-        ('Q1. 既存のレジから乗り換えできますか？',
-         'A. はい。スマレジからは商品マスタを自動インポートできます。\n     その他のPOSからもCSVで取り込み可能です。'),
+        ('Q1. なぜ機能別プランがないのですか？',
+         'A. 飲食店の業務は「予約 → 注文 → 会計 → 在庫 → 分析」と全部つながっており、\n'
+         '     一部だけ使う運用は本来ありません。機能別に分けると、お客さんが\n'
+         '     "何を選べばいいか" で迷ってしまいます。POSLAは "フロー全部" を1価格で提供します。'),
         ('Q2. インターネット回線が不安定でも使えますか？',
-         'A. オフライン検知機能があります。回線が切れても注文取りは継続でき、\n     復旧後に自動同期されます。'),
+         'A. オフライン検知機能があります。回線が切れても注文取りは継続でき、\n'
+         '     復旧後に自動同期されます。'),
         ('Q3. スタッフが操作に慣れるまでどのくらい？',
-         'A. 平均15分です。注文画面はLINEレベルの直感操作で設計しており、\n     アルバイトでも初日から使えます。'),
+         'A. 平均15分です。注文画面はLINEレベルの直感操作で設計しており、\n'
+         '     アルバイトでも初日から使えます。'),
     ]
 
     y = Inches(1.6)
     for q, a in qas:
         add_text(s, Inches(0.7), y, Inches(11.9), Inches(0.5),
-                 q, size=18, bold=True, color=NAVY)
-        y = y + Inches(0.55)
-        add_text(s, Inches(1.2), y, Inches(11.4), Inches(0.9),
-                 a, size=15, color=BLACK)
+                 q, size=17, bold=True, color=NAVY)
+        y = y + Inches(0.5)
+        add_text(s, Inches(1.2), y, Inches(11.4), Inches(1.1),
+                 a, size=13, color=BLACK)
         y = y + Inches(1.15)
 
     # ============================================================
@@ -834,7 +1002,7 @@ def make_presentation():
              size=16, color=GRAY, align=PP_ALIGN.CENTER)
 
     items = [
-        '× 予約管理 … 現在開発中。2026年中にリリース予定',
+        '× 予約管理 … 現在開発中。2026年中にリリース予定 (フローの起点)',
         '× セルフレジ (現金) … カード/QRのみ対応。現金セルフレジは未対応',
         '× レシートプリンター直接印刷 … スター/エプソン対応開発中',
         '× LINE公式アカウント連携 … 現状はGoogleレビューのみ対応',
@@ -855,13 +1023,14 @@ def make_presentation():
     s = prs.slides.add_slide(blank_layout)
     set_background(s, NAVY)
     add_rect(s, Emu(0), Inches(2.5), SLIDE_W, Inches(0.15), ORANGE)
+    add_footer(s, 21)
 
     add_text(s, Inches(0.5), Inches(0.7), Inches(12.5), Inches(1.0),
              'ご検討ありがとうございます',
              size=40, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
 
     add_text(s, Inches(0.5), Inches(1.8), Inches(12.5), Inches(0.6),
-             'まずは30日間、無料で試してみてください',
+             '機能ではなく、業務フロー全部をお届けします',
              size=22, color=ORANGE, align=PP_ALIGN.CENTER)
 
     add_text(s, Inches(0.5), Inches(3.0), Inches(12.5), Inches(0.7),
@@ -869,8 +1038,8 @@ def make_presentation():
              size=64, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
 
     add_text(s, Inches(0.5), Inches(4.3), Inches(12.5), Inches(0.5),
-             '飲食店現場を全部AIで',
-             size=22, color=WHITE, align=PP_ALIGN.CENTER)
+             '1店舗 月¥20,000  /  全機能込み  /  30日無料',
+             size=20, color=WHITE, align=PP_ALIGN.CENTER)
 
     # コンタクト
     add_text(s, Inches(0.5), Inches(5.3), Inches(12.5), Inches(0.5),

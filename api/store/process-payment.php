@@ -20,6 +20,8 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/inventory-sync.php';
 require_once __DIR__ . '/../lib/payment-gateway.php';
+require_once __DIR__ . '/../lib/stripe-connect.php';
+require_once __DIR__ . '/../lib/audit-log.php';
 
 require_method(['POST']);
 $user = require_auth();
@@ -34,6 +36,7 @@ $selectedItems  = $data['selected_items'] ?? null;   // 個別会計
 $totalOverride  = isset($data['total_override']) ? (int)$data['total_override'] : null;
 $mergedTableIds  = $data['merged_table_ids'] ?? null;   // 合流テーブルID配列
 $selectedItemIds = $data['selected_item_ids'] ?? null;   // 分割: order_item.id 配列
+$staffPin        = isset($data['staff_pin']) ? trim((string)$data['staff_pin']) : '';   // CP1: 担当スタッフ PIN
 
 if (!$storeId) json_error('VALIDATION', 'store_id は必須です', 400);
 if (!$tableId && empty($orderIds)) json_error('VALIDATION', 'table_id または order_ids が必要です', 400);
@@ -44,6 +47,53 @@ require_store_access($storeId);
 
 $pdo = get_db();
 
+// ── CP1 + S2: 担当スタッフ PIN 検証 (必須化) ──
+// 全ての会計操作で PIN 必須。出勤中スタッフのみ照合可能。
+// device 端末・個人アカウント問わず、必ず「誰が会計したか」を確定する。
+$cashierUserId   = $user['user_id'];
+$cashierUserName = null;
+$pinVerified     = false;
+
+if ($staffPin === '') {
+    json_error('PIN_REQUIRED', '担当スタッフ PIN の入力が必要です', 400);
+}
+if (!preg_match('/^\d{4,8}$/', $staffPin)) {
+    json_error('INVALID_PIN', '担当 PIN は 4〜8 桁の数字で入力してください', 400);
+}
+// 出勤中スタッフの PIN ハッシュを取得
+try {
+    $today = date('Y-m-d');
+    $pinStmt = $pdo->prepare(
+        "SELECT u.id, u.display_name, u.cashier_pin_hash
+         FROM users u
+         INNER JOIN attendance_logs ar
+           ON ar.user_id = u.id AND ar.store_id = ?
+              AND DATE(ar.clock_in) = ? AND ar.clock_out IS NULL
+         WHERE u.tenant_id = ? AND u.is_active = 1
+               AND u.role IN ('staff', 'manager', 'owner')
+               AND u.cashier_pin_hash IS NOT NULL"
+    );
+    $pinStmt->execute([$storeId, $today, $user['tenant_id']]);
+    $candidates = $pinStmt->fetchAll();
+} catch (PDOException $e) {
+    json_error('MIGRATION', 'PIN 機能のマイグレーションが未適用です (migration-cp1-cashier-pin.sql / migration-l3-shift-management.sql)', 500);
+}
+foreach ($candidates as $cand) {
+    if ($cand['cashier_pin_hash'] && password_verify($staffPin, $cand['cashier_pin_hash'])) {
+        $cashierUserId   = $cand['id'];
+        $cashierUserName = $cand['display_name'];
+        $pinVerified     = true;
+        break;
+    }
+}
+if (!$pinVerified) {
+    if (function_exists('write_audit_log')) {
+        $auditUser = ['user_id' => $user['user_id'], 'tenant_id' => $user['tenant_id'], 'username' => $user['username'] ?? null, 'role' => $user['role'] ?? null];
+        @write_audit_log($pdo, $auditUser, $storeId, 'cashier_pin_failed', 'payment', null, null, ['pin_length' => strlen($staffPin)], null);
+    }
+    json_error('PIN_INVALID', 'PIN が一致しないか、対象スタッフが出勤中ではありません', 401);
+}
+
 // payments テーブル存在チェック
 try {
     $pdo->query('SELECT 1 FROM payments LIMIT 0');
@@ -52,6 +102,8 @@ try {
 }
 
 // ── 注文取得 ──
+// S3 #3: 未払い注文の取得は外部決済の前段。FOR UPDATE は paid 化直前の再取得で行う
+//        (外部 API 呼出中は行ロックを保持しない方針)
 $orders = [];
 if (is_array($mergedTableIds) && count($mergedTableIds) > 0) {
     // 合流会計: 複数テーブルの注文をまとめて取得
@@ -137,28 +189,71 @@ $tax8 = 0;
 $totalAmount = 0;
 
 if ($isPartial) {
-    // 個別会計: selected_items から計算
-    foreach ($selectedItems as $item) {
-        $qty = (int)($item['qty'] ?? 1);
-        $price = (int)($item['price'] ?? 0);
+    // ── S2 P0 #3: 個別会計の価格はサーバー側で order_items から再計算 ──
+    // クライアントが送る $selectedItems の price は信用しない。
+    // $selectedItemIds (order_items.id) を canonical source として、
+    // store_id 境界つきで実価格を取得する。
+    if (!is_array($selectedItemIds) || count($selectedItemIds) === 0) {
+        json_error('VALIDATION', '個別会計には selected_item_ids が必要です', 400);
+    }
+    if (empty($orderIdList)) {
+        json_error('VALIDATION', '対象注文がありません', 400);
+    }
+    $idsPh   = implode(',', array_fill(0, count($selectedItemIds), '?'));
+    $ordPh   = implode(',', array_fill(0, count($orderIdList), '?'));
+    // store_id は order_items テーブルにも存在するので二重チェック
+    $itemStmt = $pdo->prepare(
+        "SELECT oi.id, oi.menu_item_id, oi.name, oi.price, oi.qty, oi.payment_id,
+                o.order_type
+         FROM order_items oi
+         INNER JOIN orders o ON o.id = oi.order_id
+         WHERE oi.id IN ($idsPh)
+           AND oi.order_id IN ($ordPh)
+           AND oi.store_id = ?
+           AND o.store_id = ?"
+    );
+    $itemStmt->execute(array_merge($selectedItemIds, $orderIdList, [$storeId, $storeId]));
+    $rows = $itemStmt->fetchAll();
+    if (count($rows) !== count($selectedItemIds)) {
+        json_error('INVALID_ITEM', '指定された品目が現在の注文に存在しません', 400);
+    }
+    foreach ($rows as $row) {
+        if (!empty($row['payment_id'])) {
+            json_error('ALREADY_PAID', '指定された品目には既に支払済みのものが含まれています', 409);
+        }
+    }
+    // 再計算
+    $rebuiltSelected = [];
+    foreach ($rows as $row) {
+        $qty       = (int)$row['qty'];
+        $price     = (int)$row['price'];
         $lineTotal = $price * $qty;
-        $taxRate = isset($item['taxRate']) ? (int)$item['taxRate'] : 10;
+        // tax_rate は order_items に保存されないので order_type から推定
+        $taxRate   = ($row['order_type'] === 'takeout') ? 8 : 10;
 
         if ($taxRate === 8) {
-            $sub = (int)floor($lineTotal / 1.08);
+            $sub       = (int)floor($lineTotal / 1.08);
             $subtotal8 += $sub;
-            $tax8 += $lineTotal - $sub;
+            $tax8      += $lineTotal - $sub;
         } else {
-            $sub = (int)floor($lineTotal / 1.10);
+            $sub        = (int)floor($lineTotal / 1.10);
             $subtotal10 += $sub;
-            $tax10 += $lineTotal - $sub;
+            $tax10      += $lineTotal - $sub;
         }
         $totalAmount += $lineTotal;
+        $rebuiltSelected[] = [
+            'id'           => $row['id'],
+            'menu_item_id' => $row['menu_item_id'],   // S3 #5: 在庫減算で recipes.menu_template_id と突合するため必須
+            'name'         => $row['name'],
+            'price'        => $price,
+            'qty'          => $qty,
+            'taxRate'      => $taxRate,
+        ];
     }
-    // total_override がある場合はそちらを使用
-    if ($totalOverride !== null) {
-        $totalAmount = $totalOverride;
-    }
+    // クライアントの selectedItems を canonical な再構築版で上書き
+    // (DB INSERT / レシピ引落で参照される $selectedItems もこれに統一)
+    $selectedItems = $rebuiltSelected;
+    // total_override は P0 #3 の修正で完全に無視する (改ざん防止)
 } else {
     // 全額会計
     $orderTotal = 0;
@@ -216,15 +311,71 @@ $gatewayStatus = null;
 
 if ($paymentMethod !== 'cash') {
     // L-13: Stripe Terminal（物理カードリーダー経由: PIはクライアント側で完了済み）
+    // S2 P0 #4: Stripe API で PaymentIntent を取得し、状態・金額・metadata を必ず検証
     $terminalPaymentId = $data['terminal_payment_id'] ?? '';
     $terminalDone = false;
     if ($paymentMethod === 'terminal' && $terminalPaymentId) {
-        $gatewayName = 'stripe_connect_terminal';
+        // Pattern B (Connect) 優先 / Pattern A フォールバック
+        $connectInfo     = get_tenant_connect_info($pdo, $user['tenant_id']);
+        $useConnect      = ($connectInfo && (int)($connectInfo['connect_onboarding_complete'] ?? 0) === 1);
+        $retrieveResult  = null;
+
+        if ($useConnect) {
+            $platformConfig = get_platform_stripe_config($pdo);
+            if (empty($platformConfig['secret_key'])) {
+                json_error('STRIPE_NOT_CONFIGURED', 'プラットフォームの Stripe キーが未設定です', 500);
+            }
+            $retrieveResult = retrieve_stripe_connect_payment_intent(
+                $platformConfig['secret_key'],
+                $connectInfo['stripe_connect_account_id'],
+                $terminalPaymentId
+            );
+        } else {
+            $gwConfig = get_payment_gateway_config($pdo, $user['tenant_id']);
+            if (!$gwConfig || $gwConfig['gateway'] !== 'stripe' || empty($gwConfig['token'])) {
+                json_error('NOT_CONNECTED', 'Stripe Terminal が利用できる設定がありません', 400);
+            }
+            $retrieveResult = retrieve_stripe_payment_intent($gwConfig['token'], $terminalPaymentId);
+        }
+
+        if (!$retrieveResult['success']) {
+            error_log('[process-payment] terminal_retrieve_failed: ' . ($retrieveResult['error'] ?? '') . ' pi=' . $terminalPaymentId, 3, '/home/odah/log/php_errors.log');
+            json_error('STRIPE_ERROR', 'PaymentIntent の取得に失敗しました', 502);
+        }
+
+        $intent  = $retrieveResult['intent'];
+        $piMd    = $intent['metadata'] ?? [];
+        $piAmt   = (int)($intent['amount'] ?? 0);
+        $piCcy   = strtolower($intent['currency'] ?? '');
+        $piState = $intent['status'] ?? '';
+
+        if ($piState !== 'succeeded') {
+            json_error('STRIPE_MISMATCH', '決済が完了状態ではありません (status=' . $piState . ')', 403);
+        }
+        if ($piCcy !== 'jpy') {
+            json_error('STRIPE_MISMATCH', '通貨が一致しません', 403);
+        }
+        if ($piAmt !== (int)$totalAmount) {
+            error_log('[process-payment] terminal_amount_mismatch: server=' . $totalAmount . ' stripe=' . $piAmt . ' pi=' . $terminalPaymentId, 3, '/home/odah/log/php_errors.log');
+            json_error('STRIPE_MISMATCH', '決済金額がサーバー側計算値と一致しません', 403);
+        }
+        // metadata 整合性 (terminal-intent.php で埋めた値と照合)
+        if (($piMd['tenant_id'] ?? '') !== $user['tenant_id']) {
+            json_error('STRIPE_MISMATCH', 'PaymentIntent のテナントが一致しません', 403);
+        }
+        if (($piMd['store_id'] ?? '') !== $storeId) {
+            json_error('STRIPE_MISMATCH', 'PaymentIntent の店舗が一致しません', 403);
+        }
+        if (($piMd['purpose'] ?? '') !== 'pos_terminal') {
+            json_error('STRIPE_MISMATCH', 'PaymentIntent の用途が POS Terminal ではありません', 403);
+        }
+
+        $gatewayName       = $useConnect ? 'stripe_connect_terminal' : 'stripe_terminal';
         $externalPaymentId = $terminalPaymentId;
-        $gatewayStatus = 'succeeded';
+        $gatewayStatus     = 'succeeded';
         // DB記録は 'card' として統一（paymentsテーブル互換）
-        $paymentMethod = 'card';
-        $terminalDone = true;
+        $paymentMethod     = 'card';
+        $terminalDone      = true;
     }
 
     // L-13: Stripe Connect 判定
@@ -274,6 +425,30 @@ try {
 
 $pdo->beginTransaction();
 try {
+    // ── S3 #3: 注文の二重 paid 化防止 ──
+    // 全額会計時は対象 order を FOR UPDATE で再ロック → status 再確認 →
+    // UPDATE 後に affected_rows == 件数一致 を検証する。
+    // (個別会計は order_items.payment_id の WHERE payment_id IS NULL で同等の効果)
+    if (!$isPartial && !empty($orderIdList)) {
+        $lockPh = implode(',', array_fill(0, count($orderIdList), '?'));
+        $lockStmt = $pdo->prepare(
+            'SELECT id, status FROM orders
+             WHERE id IN (' . $lockPh . ')
+               AND store_id = ?
+             FOR UPDATE'
+        );
+        $lockStmt->execute(array_merge($orderIdList, [$storeId]));
+        $lockedRows = $lockStmt->fetchAll();
+        if (count($lockedRows) !== count($orderIdList)) {
+            throw new RuntimeException('CONFLICT: order_count_mismatch');
+        }
+        foreach ($lockedRows as $lr) {
+            if (in_array($lr['status'], ['paid', 'cancelled'], true)) {
+                throw new RuntimeException('CONFLICT: order_already_finalized id=' . $lr['id']);
+            }
+        }
+    }
+
     // payments レコード作成
     if ($hasMergedCols) {
         $pdo->prepare(
@@ -289,7 +464,7 @@ try {
             $subtotal10, $tax10, $subtotal8, $tax8,
             $totalAmount, $paymentMethod, $receivedAmount, $changeAmount,
             $isPartial ? 1 : 0,
-            $user['user_id']
+            $cashierUserId   // CP1: PIN 検証されたスタッフ ID (PIN なしならログイン中ユーザー)
         ]);
     } else {
         $pdo->prepare(
@@ -302,7 +477,7 @@ try {
             $subtotal10, $tax10, $subtotal8, $tax8,
             $totalAmount, $paymentMethod, $receivedAmount, $changeAmount,
             $isPartial ? 1 : 0,
-            $user['user_id']
+            $cashierUserId   // CP1: PIN 検証されたスタッフ ID (PIN なしならログイン中ユーザー)
         ]);
     }
 
@@ -313,31 +488,43 @@ try {
         )->execute([$gatewayName, $externalPaymentId, $gatewayStatus, $paymentId]);
     }
 
-    // 分割会計時: 対象 order_items の payment_id を記録
+    // 分割会計時: 対象 order_items の payment_id を記録 (P1 #8: store_id 境界)
     if ($isPartial && $hasOiPaymentId && is_array($selectedItemIds) && count($selectedItemIds) > 0) {
         $ph = implode(',', array_fill(0, count($selectedItemIds), '?'));
         $pdo->prepare(
-            'UPDATE order_items SET payment_id = ? WHERE id IN (' . $ph . ')'
-        )->execute(array_merge([$paymentId], $selectedItemIds));
+            'UPDATE order_items SET payment_id = ?
+             WHERE id IN (' . $ph . ')
+               AND store_id = ?
+               AND payment_id IS NULL'
+        )->execute(array_merge([$paymentId], $selectedItemIds, [$storeId]));
     }
 
     // 全額会計の場合のみ、注文を paid に更新 + セッション終了
     if (!$isPartial) {
         if (!empty($orderIdList)) {
             $placeholders = implode(',', array_fill(0, count($orderIdList), '?'));
-            $pdo->prepare(
+            // S3 #3 + P1 #8: store_id 境界 + 既 paid/cancelled の order は除外し、
+            // 影響件数が一致しなければ二重決済とみなして CONFLICT で ROLLBACK
+            $updOrders = $pdo->prepare(
                 'UPDATE orders SET status = ?, payment_method = ?, received_amount = ?, change_amount = ?,
                         paid_at = NOW(), updated_at = NOW()
-                 WHERE id IN (' . $placeholders . ')'
-            )->execute(array_merge(['paid', $paymentMethod, $receivedAmount, $changeAmount], $orderIdList));
+                 WHERE id IN (' . $placeholders . ')
+                   AND store_id = ?
+                   AND status NOT IN ("paid", "cancelled")'
+            );
+            $updOrders->execute(array_merge(['paid', $paymentMethod, $receivedAmount, $changeAmount], $orderIdList, [$storeId]));
+            if ($updOrders->rowCount() !== count($orderIdList)) {
+                throw new RuntimeException('CONFLICT: order_update_rowcount_mismatch expected=' . count($orderIdList) . ' actual=' . $updOrders->rowCount());
+            }
         }
 
         // 合流会計: 全テーブルのセッションクローズ + トークン再生成
         if (is_array($mergedTableIds) && count($mergedTableIds) > 0) {
             foreach ($mergedTableIds as $mTableId) {
                 $newToken = bin2hex(random_bytes(16));
-                $pdo->prepare('UPDATE tables SET session_token = ?, session_token_expires_at = DATE_ADD(NOW(), INTERVAL 4 HOUR) WHERE id = ?')
-                    ->execute([$newToken, $mTableId]);
+                // P1 #8: tables.id だけでなく store_id でも絞る
+                $pdo->prepare('UPDATE tables SET session_token = ?, session_token_expires_at = DATE_ADD(NOW(), INTERVAL 4 HOUR) WHERE id = ? AND store_id = ?')
+                    ->execute([$newToken, $mTableId, $storeId]);
                 try {
                     $pdo->prepare(
                         'UPDATE table_sessions SET status = "paid", closed_at = NOW()
@@ -349,7 +536,8 @@ try {
             }
         } elseif ($tableId) {
             $newToken = bin2hex(random_bytes(16));
-            $pdo->prepare('UPDATE tables SET session_token = ?, session_token_expires_at = DATE_ADD(NOW(), INTERVAL 4 HOUR) WHERE id = ?')->execute([$newToken, $tableId]);
+            // P1 #8: store_id 境界
+            $pdo->prepare('UPDATE tables SET session_token = ?, session_token_expires_at = DATE_ADD(NOW(), INTERVAL 4 HOUR) WHERE id = ? AND store_id = ?')->execute([$newToken, $tableId, $storeId]);
 
             try {
                 $pdo->prepare(
@@ -382,8 +570,9 @@ try {
             $closeOrderStmt->execute([$paymentMethod, $storeId, $tableId]);
 
             $newToken = bin2hex(random_bytes(16));
-            $pdo->prepare('UPDATE tables SET session_token = ?, session_token_expires_at = DATE_ADD(NOW(), INTERVAL 4 HOUR) WHERE id = ?')
-                ->execute([$newToken, $tableId]);
+            // P1 #8: store_id 境界
+            $pdo->prepare('UPDATE tables SET session_token = ?, session_token_expires_at = DATE_ADD(NOW(), INTERVAL 4 HOUR) WHERE id = ? AND store_id = ?')
+                ->execute([$newToken, $tableId, $storeId]);
             try {
                 $pdo->prepare(
                     'UPDATE table_sessions SET status = "paid", closed_at = NOW()
@@ -402,7 +591,7 @@ try {
         $pdo->prepare(
             'INSERT INTO cash_log (id, store_id, user_id, type, amount, note, created_at)
              VALUES (?, ?, ?, ?, ?, ?, NOW())'
-        )->execute([$logId, $storeId, $user['user_id'], 'cash_sale', $totalAmount, $note]);
+        )->execute([$logId, $storeId, $cashierUserId, 'cash_sale', $totalAmount, $note]);
     }
 
     // ── レシピ連動在庫引き落とし ──
@@ -411,12 +600,16 @@ try {
         $pdo->query('SELECT 1 FROM ingredients LIMIT 0');
 
         // 対象品目の集計: {menu_item_id => qty}
+        // S3 #5: 部分会計時は order_items.id ではなく menu_item_id (= menu_templates.id)
+        // を使う必要がある (recipes.menu_template_id と突合させるため)。
+        // 旧コードは order_items.id を渡していたため recipes が一切ヒットせず、
+        // 在庫が引き落とされない致命バグだった。
         $itemQtyMap = [];
         if ($isPartial && is_array($selectedItems)) {
             foreach ($selectedItems as $si) {
-                $itemId = $si['id'] ?? null;
-                if (!$itemId) continue;
-                $itemQtyMap[$itemId] = ($itemQtyMap[$itemId] ?? 0) + (int)($si['qty'] ?? 1);
+                $menuItemId = $si['menu_item_id'] ?? null;
+                if (!$menuItemId) continue;
+                $itemQtyMap[$menuItemId] = ($itemQtyMap[$menuItemId] ?? 0) + (int)($si['qty'] ?? 1);
             }
         } else {
             foreach ($orders as $order) {
@@ -433,15 +626,20 @@ try {
         if (!empty($itemQtyMap)) {
             $menuIds = array_keys($itemQtyMap);
             $ph = implode(',', array_fill(0, count($menuIds), '?'));
+            // P1 #8: tenant_id 境界 — menu_templates JOIN で同テナントのレシピのみ取得
             $recipeStmt = $pdo->prepare(
                 "SELECT r.menu_template_id, r.ingredient_id, r.quantity
-                 FROM recipes r WHERE r.menu_template_id IN ($ph)"
+                 FROM recipes r
+                 INNER JOIN menu_templates mt ON mt.id = r.menu_template_id
+                 INNER JOIN ingredients ing ON ing.id = r.ingredient_id
+                 WHERE r.menu_template_id IN ($ph)
+                   AND mt.tenant_id = ?
+                   AND ing.tenant_id = ?"
             );
-            $recipeStmt->execute($menuIds);
+            $recipeStmt->execute(array_merge($menuIds, [$user['tenant_id'], $user['tenant_id']]));
             $recipeRows = $recipeStmt->fetchAll();
 
-            // 原材料ごとの合計消費量を計算
-            $deductions = []; // ingredient_id => total_deduction
+            $deductions = [];
             foreach ($recipeRows as $rr) {
                 $menuId = $rr['menu_template_id'];
                 $ingId = $rr['ingredient_id'];
@@ -450,12 +648,12 @@ try {
                 $deductions[$ingId] = ($deductions[$ingId] ?? 0) + ($recipeQty * $orderQty);
             }
 
-            // 一括在庫引き落とし（マイナス在庫許容）
+            // P1 #8: tenant_id 境界 — 同テナントの原材料のみ更新
             $updateStmt = $pdo->prepare(
-                'UPDATE ingredients SET stock_quantity = stock_quantity - ? WHERE id = ?'
+                'UPDATE ingredients SET stock_quantity = stock_quantity - ? WHERE id = ? AND tenant_id = ?'
             );
             foreach ($deductions as $ingId => $amount) {
-                $updateStmt->execute([$amount, $ingId]);
+                $updateStmt->execute([$amount, $ingId, $user['tenant_id']]);
             }
         }
     } catch (PDOException $e) {
@@ -473,7 +671,27 @@ try {
     $pdo->commit();
 } catch (Exception $e) {
     $pdo->rollBack();
-    json_error('DB_ERROR', '会計処理に失敗しました: ' . $e->getMessage(), 500);
+    // P3 #13: 内部エラーメッセージはログのみ、レスポンスは固定文言
+    error_log('[process-payment] tx_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    // S3 #3: CONFLICT は 409 で返す (二重会計検知)
+    if (strpos($e->getMessage(), 'CONFLICT') === 0) {
+        json_error('CONFLICT', 'この注文は既に他のデバイスで会計処理されました。最新状態を再取得してください。', 409);
+    }
+    json_error('DB_ERROR', '会計処理に失敗しました。時間を置いて再試行してください。', 500);
+}
+
+// 会計成功を監査ログに記録（CP1b: PIN 有無に関わらず必ず記録）
+if (function_exists('write_audit_log')) {
+    $auditUser = ['user_id' => $user['user_id'], 'tenant_id' => $user['tenant_id'], 'username' => $user['username'] ?? null, 'role' => $user['role'] ?? null];
+    @write_audit_log($pdo, $auditUser, $storeId, 'payment_complete', 'payment', $paymentId, null, [
+        'cashier_user_id'   => $cashierUserId,
+        'cashier_user_name' => $cashierUserName,
+        'pin_verified'      => $pinVerified ? 1 : 0,
+        'total'             => $totalAmount,
+        'payment_method'    => $paymentMethod,
+        'is_partial'        => $isPartial ? 1 : 0,
+        'order_count'       => count($orders),
+    ], null);
 }
 
 json_response([
@@ -486,6 +704,8 @@ json_response([
     'changeAmount'      => $changeAmount,
     'orderCount'        => count($orders),
     'paymentMethod'     => $paymentMethod,
+    'cashierUserId'     => $cashierUserId,
+    'cashierUserName'   => $cashierUserName,
     'isPartial'         => $isPartial,
     'gatewayName'       => $gatewayName,
     'externalPaymentId' => $externalPaymentId,

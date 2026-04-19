@@ -33,11 +33,17 @@ try {
 // アクティブなセッション（table_sessions が存在する場合のみ）
 $sessionMap = [];
 $hasMemoCol = false;
+$hasPinCol = false;
 try {
     // memo カラム存在チェック
     try {
         $pdo->query('SELECT memo FROM table_sessions LIMIT 0');
         $hasMemoCol = true;
+    } catch (PDOException $e) {}
+    // S6: session_pin カラム存在チェック
+    try {
+        $pdo->query('SELECT session_pin FROM table_sessions LIMIT 0');
+        $hasPinCol = true;
     } catch (PDOException $e) {}
 
     $tsCols = 'ts.id, ts.table_id, ts.status, ts.guest_count, ts.started_at,
@@ -47,6 +53,9 @@ try {
                 ct.name AS course_name, ct.price AS course_price';
     if ($hasMemoCol) {
         $tsCols .= ', ts.memo';
+    }
+    if ($hasPinCol) {
+        $tsCols .= ', ts.session_pin';
     }
 
     $stmt = $pdo->prepare(
@@ -143,6 +152,7 @@ foreach ($tables as $t) {
             'coursePrice'        => $session['course_price'] !== null ? (int)$session['course_price'] : null,
             'currentPhaseNumber' => $session['current_phase_number'] !== null ? (int)$session['current_phase_number'] : null,
             'memo'               => $hasMemoCol ? ($session['memo'] ?? null) : null,
+            'sessionPin'         => $hasPinCol ? ($session['session_pin'] ?? null) : null,
         ];
     }
 

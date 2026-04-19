@@ -90,29 +90,35 @@ var HandyApp = (function () {
           _showStoreOverlay(_stores, function (selectedId) {
             _storeId = selectedId;
             localStorage.setItem('mt_handy_store', _storeId);
-            setupUI();
-            loadStoreData().then(function () {
-              renderCategories();
-              renderMenuItems();
-              renderTables();
-              renderCart();
-              _menuVersionTimer = setInterval(checkMenuVersion, _VERSION_CHECK_INTERVAL);
+            _checkGpsAccess(function () {
+              setupUI();
+              loadStoreData().then(function () {
+                renderCategories();
+                renderMenuItems();
+                renderTables();
+                renderCart();
+                _menuVersionTimer = setInterval(checkMenuVersion, _VERSION_CHECK_INTERVAL);
+              });
             });
           });
           return 'overlay'; // 店舗選択中 → 後続.thenでスキップ
         }
 
-        setupUI();
         bindEvents();
-        return loadStoreData();
+        _checkGpsAccess(function () {
+          setupUI();
+          loadStoreData().then(function () {
+            renderCategories();
+            renderMenuItems();
+            renderTables();
+            renderCart();
+            _menuVersionTimer = setInterval(checkMenuVersion, _VERSION_CHECK_INTERVAL);
+          });
+        });
+        return 'gps_check';
       })
       .then(function (flag) {
-        if (flag === 'overlay') return; // 複数店舗オーバーレイ表示中
-        renderCategories();
-        renderMenuItems();
-        renderTables();
-        renderCart();
-        _menuVersionTimer = setInterval(checkMenuVersion, _VERSION_CHECK_INTERVAL);
+        if (flag === 'overlay' || flag === 'gps_check') return;
       })
       .catch(function (err) {
         console.error('Init error:', err);
@@ -286,6 +292,12 @@ var HandyApp = (function () {
         openSeatModal(seatBtn.dataset.tableId, seatBtn.dataset.tableCode);
         return;
       }
+      // L-9: テーブル開放 (ホワイトリスト方式) — スタッフが認証 → 客がQR読むと自動着席
+      var openBtn = e.target.closest('.ts-card__open-btn');
+      if (openBtn) {
+        openTableForCustomer(openBtn.dataset.tableId, openBtn.dataset.tableCode);
+        return;
+      }
       var memoBtn = e.target.closest('.ts-card__memo-btn');
       if (memoBtn) {
         var sid = memoBtn.dataset.sessionId;
@@ -298,6 +310,12 @@ var HandyApp = (function () {
           }
         }
         openMemoModal(sid, tc, currentMemo);
+        return;
+      }
+      // F-QR1: 個別QRボタン
+      var subQrBtn = e.target.closest('.ts-card__sub-qr-btn');
+      if (subQrBtn) {
+        _openSubQrModal(subQrBtn.dataset.sessionId, subQrBtn.dataset.tableId, subQrBtn.dataset.tableCode);
         return;
       }
       var cancelBtn = e.target.closest('.ts-card__cancel-btn');
@@ -406,6 +424,8 @@ var HandyApp = (function () {
     els.panelOrder.style.display = 'none';
     els.panelHistory.style.display = 'none';
     els.panelTables.style.display = 'none';
+    var pRsv = document.getElementById('panel-reservations');
+    if (pRsv) pRsv.style.display = 'none';
     els.cartBar.style.display = 'none';
 
     if (tab === 'history') {
@@ -415,6 +435,9 @@ var HandyApp = (function () {
       els.panelTables.style.display = 'block';
       loadTableStatus();
       _tablesPollTimer = setInterval(loadTableStatus, 5000);
+    } else if (tab === 'reservations') {
+      if (pRsv) pRsv.style.display = 'block';
+      initReservationTab();
     } else {
       els.panelOrder.style.display = 'block';
       els.cartBar.style.display = 'block';
@@ -963,12 +986,30 @@ var HandyApp = (function () {
 
   function loadTableStatus() {
     if (!_storeId) return;
-    // テーブル状態とプラン一覧とコース一覧を並行取得
+    var today = ymdLocal(new Date());
+    // L-9: テーブル状態 + プラン + コース + 当日予約 を並行取得
     Promise.all([
       apiFetch('/store/tables-status.php?store_id=' + _storeId),
       apiFetch('/store/time-limit-plans.php?store_id=' + _storeId).catch(function () { return { ok: true, data: { plans: [] } }; }),
-      apiFetch('/store/course-templates.php?store_id=' + _storeId).catch(function () { return { ok: true, data: { courses: [] } }; })
+      apiFetch('/store/course-templates.php?store_id=' + _storeId).catch(function () { return { ok: true, data: { courses: [] } }; }),
+      apiFetch('/store/reservations.php?store_id=' + _storeId + '&date=' + today).catch(function () { return { ok: true, data: { reservations: [] } }; })
     ]).then(function (results) {
+      // L-9: 当日予約をテーブルバッジ用にキャッシュ
+      _todayReservationsByTable = {};
+      var rsvData = results[3] && results[3].data && results[3].data.reservations ? results[3].data.reservations : [];
+      var nowTs = Date.now();
+      rsvData.forEach(function (r) {
+        if (r.status === 'cancelled' || r.status === 'no_show' || r.status === 'completed') return;
+        var rTs = new Date(r.reserved_at.replace(' ', 'T')).getTime();
+        if (rTs < nowTs - 3 * 3600 * 1000) return; // 3h 以上前は表示しない
+        (r.assigned_table_ids || []).forEach(function (tid) {
+          if (!_todayReservationsByTable[tid]) _todayReservationsByTable[tid] = [];
+          _todayReservationsByTable[tid].push(r);
+        });
+      });
+      Object.keys(_todayReservationsByTable).forEach(function (tid) {
+        _todayReservationsByTable[tid].sort(function (a, b) { return a.reserved_at.localeCompare(b.reserved_at); });
+      });
       var tablesJson = results[0];
       var plansJson = results[1];
       var coursesJson = results[2];
@@ -1068,13 +1109,35 @@ var HandyApp = (function () {
         html += '<div class="ts-card__memo">' + Utils.escapeHtml(t.session.memo) + '</div>';
       }
 
+      // L-9: 当日の予約バッジ表示 (テーブルに紐付く未着席の予約)
+      var rsvForTable = _todayReservationsByTable[t.id] || [];
+      // 着席中はバッジ表示せず (現在のセッションが優先)
+      if (!t.session && rsvForTable.length) {
+        var nextRsv = rsvForTable.find(function (r) { return r.status === 'confirmed' || r.status === 'pending'; });
+        if (nextRsv) {
+          var when = nextRsv.reserved_at.substring(11, 16);
+          html += '<div style="background:#e3f2fd;border-left:3px solid #1976d2;padding:6px 8px;margin-top:6px;border-radius:4px;font-size:0.8rem;">';
+          html += '📅 <strong>' + when + '</strong> ' + Utils.escapeHtml(nextRsv.customer_name) + ' (' + nextRsv.party_size + '名)';
+          if (nextRsv.tags && nextRsv.tags.indexOf('VIP') !== -1) html += ' ★VIP';
+          if (nextRsv.memo) html += '<div style="font-size:0.7rem;color:#555;margin-top:2px;">📝 ' + Utils.escapeHtml(nextRsv.memo) + '</div>';
+          html += '</div>';
+        }
+      }
+
+      // S6: PIN表示
+      if (t.session && t.session.sessionPin) {
+        html += '<div style="margin-top:0.25rem;font-size:0.8rem;color:#ff6f00;font-weight:700">PIN: ' + Utils.escapeHtml(t.session.sessionPin) + '</div>';
+      }
+
       if (!t.session && (!t.orders || t.orders.orderCount === 0)) {
         html += '<div class="ts-card__detail ts-card__detail--muted">' + t.capacity + '席</div>';
         html += '<button class="ts-card__seat-btn" data-table-id="' + t.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '">着席</button>';
+        html += '<button class="ts-card__open-btn" data-table-id="' + t.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="margin-top:4px;background:#43a047;color:#fff;border:none;padding:0.5rem;border-radius:6px;cursor:pointer;width:100%;font-size:0.85rem;">📲 QR開放 (5分)</button>';
       }
       if (t.session) {
         html += '<div style="display:flex;gap:0.5rem;margin-top:0.5rem">';
         html += '<button class="ts-card__memo-btn" data-session-id="' + t.session.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="flex:1;font-size:0.85rem;padding:0.5rem;border:1px solid #90a4ae;border-radius:6px;background:#455a64;color:#fff;cursor:pointer">メモ編集</button>';
+        html += '<button class="ts-card__sub-qr-btn" data-session-id="' + t.session.id + '" data-table-id="' + t.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="flex:1;font-size:0.85rem;padding:0.5rem;border:1px solid #ff6f00;border-radius:6px;background:#ff6f00;color:#fff;cursor:pointer">個別QR</button>';
         html += '<button class="ts-card__cancel-btn" data-session-id="' + t.session.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="flex:1">着席キャンセル</button>';
         html += '</div>';
       }
@@ -1103,6 +1166,175 @@ var HandyApp = (function () {
   }
 
   // ==== Seat modal (着席) ====
+  // ===== L-9: 予約タブ =====
+  var _rsvDate = null;
+  var _rsvData = null;
+  var _rsvBoundOnce = false;
+  var _todayReservationsByTable = {}; // テーブルバッジ用キャッシュ
+
+  function ymdLocal(d) {
+    // S3-#17: ES5 互換 (padStart は古い WebView 非対応)
+    function _p2(n) { return ('0' + n).slice(-2); }
+    return d.getFullYear() + '-' + _p2(d.getMonth() + 1) + '-' + _p2(d.getDate());
+  }
+
+  function initReservationTab() {
+    if (!_rsvDate) _rsvDate = ymdLocal(new Date());
+    var dateInput = document.getElementById('rsv-date');
+    if (dateInput) dateInput.value = _rsvDate;
+    if (!_rsvBoundOnce) {
+      document.getElementById('rsv-prev-day').addEventListener('click', function () {
+        var d = new Date(_rsvDate); d.setDate(d.getDate() - 1); _rsvDate = ymdLocal(d); document.getElementById('rsv-date').value = _rsvDate; loadReservations();
+      });
+      document.getElementById('rsv-next-day').addEventListener('click', function () {
+        var d = new Date(_rsvDate); d.setDate(d.getDate() + 1); _rsvDate = ymdLocal(d); document.getElementById('rsv-date').value = _rsvDate; loadReservations();
+      });
+      document.getElementById('rsv-today').addEventListener('click', function () {
+        _rsvDate = ymdLocal(new Date()); document.getElementById('rsv-date').value = _rsvDate; loadReservations();
+      });
+      document.getElementById('rsv-date').addEventListener('change', function (e) {
+        _rsvDate = e.target.value; loadReservations();
+      });
+      // 予約カードクリック (delegation)
+      document.getElementById('rsv-list').addEventListener('click', function (e) {
+        var openBtn = e.target.closest('[data-rsv-open-table]');
+        if (openBtn) { openTableForCustomer(openBtn.getAttribute('data-rsv-open-table'), openBtn.getAttribute('data-rsv-table-code')); return; }
+        var seatBtn = e.target.closest('[data-rsv-seat]');
+        if (seatBtn) { seatReservationFromHandy(seatBtn.getAttribute('data-rsv-seat')); return; }
+        var noShowBtn = e.target.closest('[data-rsv-noshow]');
+        if (noShowBtn) { markReservationNoShow(noShowBtn.getAttribute('data-rsv-noshow')); return; }
+      });
+      _rsvBoundOnce = true;
+    }
+    loadReservations();
+  }
+
+  function loadReservations() {
+    var listEl = document.getElementById('rsv-list');
+    listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#888;">読み込み中…</div>';
+    apiFetch('/store/reservations.php?store_id=' + encodeURIComponent(_storeId) + '&date=' + encodeURIComponent(_rsvDate))
+      .then(function (j) {
+        if (!j.ok) { listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#c62828;">' + Utils.escapeHtml(apiErrorMsg(j)) + '</div>'; return; }
+        _rsvData = j.data;
+        renderReservations();
+        // 当日ぶんはテーブルバッジ用にも保存
+        if (_rsvDate === ymdLocal(new Date())) {
+          _todayReservationsByTable = {};
+          (j.data.reservations || []).forEach(function (r) {
+            if (r.status === 'cancelled' || r.status === 'no_show') return;
+            (r.assigned_table_ids || []).forEach(function (tid) {
+              if (!_todayReservationsByTable[tid]) _todayReservationsByTable[tid] = [];
+              _todayReservationsByTable[tid].push(r);
+            });
+          });
+        }
+      })
+      .catch(function (e) { listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#c62828;">通信エラー: ' + Utils.escapeHtml(e.message) + '</div>'; });
+  }
+
+  function renderReservations() {
+    var d = _rsvData;
+    var sumEl = document.getElementById('rsv-summary');
+    if (sumEl && d.summary) {
+      sumEl.textContent = d.summary.total + '件 / ' + d.summary.guests + '名 / 着席' + d.summary.seated + ' / no-show' + d.summary.no_show;
+    }
+    var listEl = document.getElementById('rsv-list');
+    if (!d.reservations || !d.reservations.length) {
+      listEl.innerHTML = '<div style="text-align:center;padding:32px;color:#888;">この日の予約はありません</div>';
+      return;
+    }
+    var html = '';
+    d.reservations.forEach(function (r) {
+      var when = r.reserved_at ? r.reserved_at.substring(11, 16) : '--:--';
+      var tids = r.assigned_table_ids || [];
+      var tableLabels = tids.map(function (tid) {
+        var found = (d.tables || []).find(function (t) { return t.id === tid; });
+        return found ? found.label : '?';
+      }).join('+') || '未割当';
+      var statusBadge = '';
+      var statusColor = '#1976d2';
+      if (r.status === 'confirmed') { statusBadge = '確定'; statusColor = '#1976d2'; }
+      else if (r.status === 'pending') { statusBadge = '決済待ち'; statusColor = '#f57c00'; }
+      else if (r.status === 'seated') { statusBadge = '着席中'; statusColor = '#2e7d32'; }
+      else if (r.status === 'no_show') { statusBadge = 'no-show'; statusColor = '#c62828'; }
+      else if (r.status === 'cancelled') { statusBadge = 'キャンセル'; statusColor = '#888'; }
+      else if (r.status === 'completed') { statusBadge = '完了'; statusColor = '#5e35b1'; }
+      var tagsHtml = '';
+      if (r.tags && r.tags.indexOf('VIP') !== -1) tagsHtml += ' <span style="background:#ffd600;color:#000;padding:2px 6px;border-radius:4px;font-size:0.7rem;">★VIP</span>';
+      if (r.source === 'walk_in') tagsHtml += ' <span style="background:#fff3e0;color:#e65100;padding:2px 6px;border-radius:4px;font-size:0.7rem;">walk-in</span>';
+      if (r.source === 'web') tagsHtml += ' <span style="background:#e3f2fd;color:#1565c0;padding:2px 6px;border-radius:4px;font-size:0.7rem;">web</span>';
+      if (r.source === 'ai_chat') tagsHtml += ' <span style="background:#f3e5f5;color:#6a1b9a;padding:2px 6px;border-radius:4px;font-size:0.7rem;">AI</span>';
+
+      html += '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;margin-bottom:10px;padding:12px;color:#212121;">';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+      html += '<span style="font-size:1.4rem;font-weight:700;color:#212121;">' + when + '</span>';
+      html += '<span style="background:' + statusColor + ';color:#fff;padding:2px 8px;border-radius:4px;font-size:0.75rem;">' + statusBadge + '</span>';
+      html += tagsHtml;
+      html += '</div>';
+      html += '<div style="font-size:1.05rem;font-weight:700;margin-bottom:4px;color:#212121;">' + Utils.escapeHtml(r.customer_name) + ' / ' + r.party_size + '名 (' + r.duration_min + '分)</div>';
+      html += '<div style="font-size:0.9rem;color:#424242;margin-bottom:4px;">テーブル: <strong style="color:#212121;">' + Utils.escapeHtml(tableLabels) + '</strong></div>';
+      if (r.customer_phone) html += '<div style="font-size:0.9rem;margin-bottom:4px;color:#424242;">📞 <a href="tel:' + Utils.escapeHtml(r.customer_phone) + '" style="color:#1565c0;text-decoration:none;font-weight:600;">' + Utils.escapeHtml(r.customer_phone) + '</a></div>';
+      if (r.course_name) html += '<div style="font-size:0.9rem;color:#424242;margin-bottom:4px;">🍽 ' + Utils.escapeHtml(r.course_name) + '</div>';
+      if (r.memo) html += '<div style="font-size:0.9rem;background:#fff8e1;padding:6px 8px;border-radius:4px;margin:4px 0;color:#424242;">📝 ' + Utils.escapeHtml(r.memo) + '</div>';
+
+      // アクションボタン (ステータス別)
+      if (r.status === 'confirmed' || r.status === 'pending') {
+        html += '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">';
+        if (tids.length) {
+          html += '<button data-rsv-open-table="' + tids[0] + '" data-rsv-table-code="' + Utils.escapeHtml(tableLabels) + '" style="flex:1;background:#43a047;color:#fff;border:none;padding:8px;border-radius:6px;font-size:0.85rem;">📲 QR開放</button>';
+          html += '<button data-rsv-seat="' + r.id + '" style="flex:1;background:#1976d2;color:#fff;border:none;padding:8px;border-radius:6px;font-size:0.85rem;">🪑 即着席</button>';
+        }
+        html += '<button data-rsv-noshow="' + r.id + '" style="background:#c62828;color:#fff;border:none;padding:8px 12px;border-radius:6px;font-size:0.85rem;">no-show</button>';
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    listEl.innerHTML = html;
+  }
+
+  function seatReservationFromHandy(reservationId) {
+    if (!confirm('この予約客を即着席させますか?')) return;
+    apiPost('/store/reservation-seat.php', { reservation_id: reservationId, store_id: _storeId })
+      .then(function (j) {
+        if (j.ok) { showToast('着席完了', 2500); loadReservations(); }
+        else showToast(apiErrorMsg(j), 3500);
+      })
+      .catch(function (e) { showToast('通信エラー: ' + e.message, 3000); });
+  }
+
+  function markReservationNoShow(reservationId) {
+    if (!confirm('この予約を no-show として記録しますか?')) return;
+    apiPost('/store/reservation-no-show.php', { reservation_id: reservationId, store_id: _storeId })
+      .then(function (j) {
+        if (j.ok) {
+          var msg = 'no-show 完了';
+          if (j.data && j.data.captured_amount) msg += ' (予約金 ¥' + j.data.captured_amount.toLocaleString() + ' 回収)';
+          showToast(msg, 3000);
+          loadReservations();
+        } else showToast(apiErrorMsg(j), 3500);
+      })
+      .catch(function (e) { showToast('通信エラー: ' + e.message, 3000); });
+  }
+
+  // L-9: テーブル開放 (ホワイトリスト方式)
+  // スタッフが空席を「開放」 → next_session_token を発行 (5分有効、ワンタイム)
+  // 客が QR を読むと自動的にセッション作成、トークンは即消費される
+  function openTableForCustomer(tableId, tableCode) {
+    if (!confirm('テーブル ' + tableCode + ' を客向けに開放します。\n5分以内に客が QR を読み込むと自動着席します。\nよろしいですか?')) return;
+    apiPost('/store/table-open.php', { store_id: _storeId, table_id: tableId, expires_minutes: 5 })
+      .then(function (j) {
+        if (j.ok) {
+          showToast('テーブル ' + tableCode + ' を開放しました (5分有効)', 4000);
+          loadTables();
+        } else {
+          var msg = apiErrorMsg(j);
+          if (j.error && j.error.code === 'TABLE_IN_USE') msg = 'テーブルは既に使用中です';
+          showToast('開放失敗: ' + msg, 3500);
+        }
+      })
+      .catch(function (e) { showToast('通信エラー: ' + e.message, 3000); });
+  }
+
   function openSeatModal(tableId, tableCode) {
     var planOptions = '<option value="">プランなし（通常）</option>';
     _timeLimitPlans.forEach(function (p) {
@@ -1182,7 +1414,13 @@ var HandyApp = (function () {
           return;
         }
         closeOptionModal();
-        toast(tableCode + ' に' + guestCount + '名着席しました', 'success');
+        // S6: PIN表示
+        var pin = json.data.sessionPin;
+        if (pin) {
+          toast(tableCode + ' に' + guestCount + '名着席  PIN: ' + pin, 'success');
+        } else {
+          toast(tableCode + ' に' + guestCount + '名着席しました', 'success');
+        }
         loadTableStatus();
       }).catch(function (err) {
         toast(err.message || '通信エラー', 'error');
@@ -1309,6 +1547,161 @@ var HandyApp = (function () {
       overlay.style.display = 'none';
       onSelect(btn.dataset.storeId);
     });
+  }
+
+  // ==== F-QR1: 個別QR (サブセッション) ====
+  function _openSubQrModal(sessionId, tableId, tableCode) {
+    els.optTitle.textContent = tableCode + ' 個別QR発行';
+    els.optBody.innerHTML = '<div style="text-align:center;padding:1rem"><p style="color:#aaa">読み込み中...</p></div>';
+    els.optAdd.style.display = 'none';
+    els.optOverlay.classList.add('open');
+
+    // 既存サブセッション一覧を取得
+    apiFetch('/store/sub-sessions.php?store_id=' + encodeURIComponent(_storeId) + '&table_session_id=' + encodeURIComponent(sessionId))
+      .then(function (json) {
+        if (!json.ok) {
+          els.optBody.innerHTML = '<p style="color:#e74c3c">' + apiErrorMsg(json) + '</p>';
+          return;
+        }
+        _renderSubQrPanel(json.data.subSessions || [], sessionId, tableId, tableCode);
+      })
+      .catch(function (err) {
+        els.optBody.innerHTML = '<p style="color:#e74c3c">' + Utils.escapeHtml(err.message) + '</p>';
+      });
+  }
+
+  function _renderSubQrPanel(subs, sessionId, tableId, tableCode) {
+    var html = '';
+    if (subs.length > 0) {
+      html += '<div style="margin-bottom:1rem">';
+      for (var i = 0; i < subs.length; i++) {
+        var s = subs[i];
+        var qrUrl = window.location.origin + window.location.pathname.replace(/\/handy\/.*$/, '')
+          + '/customer/menu.html?store_id=' + encodeURIComponent(_storeId)
+          + '&table_id=' + encodeURIComponent(tableId)
+          + '&sub_token=' + encodeURIComponent(s.subToken);
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem;border-bottom:1px solid #37474f">';
+        html += '<div>';
+        html += '<strong style="color:#ff6f00">' + Utils.escapeHtml(s.label || '—') + '</strong>';
+        html += '<div style="font-size:0.75rem;color:#90a4ae">' + s.orderCount + '件 / ' + Utils.formatYen(s.totalAmount) + '</div>';
+        html += '</div>';
+        html += '<a href="' + Utils.escapeHtml(qrUrl) + '" target="_blank" style="padding:0.4rem 0.8rem;background:#1e88e5;color:#fff;border-radius:6px;font-size:0.8rem;text-decoration:none">QR表示</a>';
+        html += '</div>';
+      }
+      html += '</div>';
+    } else {
+      html += '<p style="color:#90a4ae;text-align:center;margin-bottom:1rem">個別QRはまだ発行されていません</p>';
+    }
+    html += '<button id="sub-qr-add-btn" style="width:100%;padding:0.75rem;background:#ff6f00;color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer">+ 個別QRを発行</button>';
+    els.optBody.innerHTML = html;
+
+    document.getElementById('sub-qr-add-btn').addEventListener('click', function () {
+      this.disabled = true;
+      this.textContent = '発行中...';
+      apiPost('/store/sub-sessions.php', {
+        store_id: _storeId,
+        table_session_id: sessionId,
+        table_id: tableId
+      }).then(function (json) {
+        if (!json.ok) {
+          toast(apiErrorMsg(json), 'error');
+          return;
+        }
+        var sub = json.data.subSession;
+        toast(sub.label + ' の個別QRを発行しました', 'success');
+        // リロード
+        _openSubQrModal(sessionId, tableId, tableCode);
+      }).catch(function (err) {
+        toast(err.message, 'error');
+      });
+    });
+  }
+
+  // ==== C-G1: GPS 圏内チェック ====
+  function _haversine(lat1, lng1, lat2, lng2) {
+    var R = 6371000;
+    var dLat = (lat2 - lat1) * Math.PI / 180;
+    var dLng = (lng2 - lng1) * Math.PI / 180;
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function _getStoreGps(storeId) {
+    for (var i = 0; i < _stores.length; i++) {
+      if (_stores[i].id === storeId) {
+        return {
+          gpsRequired: _stores[i].gpsRequired || 0,
+          storeLat: _stores[i].storeLat,
+          storeLng: _stores[i].storeLng,
+          gpsRadiusMeters: _stores[i].gpsRadiusMeters || 200
+        };
+      }
+    }
+    return null;
+  }
+
+  function _checkGpsAccess(onSuccess) {
+    var gps = _getStoreGps(_storeId);
+    if (!gps) { onSuccess(); return; }
+
+    var isDevice = _user && _user.role === 'device';
+    var shouldCheck = isDevice || gps.gpsRequired === 1;
+    if (!shouldCheck || gps.storeLat === null || gps.storeLng === null) {
+      onSuccess();
+      return;
+    }
+    _showGpsOverlay('位置情報を確認中...', '#666');
+    if (!navigator.geolocation) {
+      _showGpsOverlay('このブラウザは位置情報に対応していません', '#e74c3c', true, onSuccess);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      var dist = _haversine(gps.storeLat, gps.storeLng, pos.coords.latitude, pos.coords.longitude);
+      if (dist <= gps.gpsRadiusMeters) {
+        _hideGpsOverlay();
+        onSuccess();
+      } else {
+        _showGpsOverlay(
+          '店舗から' + Math.round(dist) + 'm離れています（許容: ' + gps.gpsRadiusMeters + 'm）。店舗圏内でご利用ください。',
+          '#e74c3c', true, onSuccess
+        );
+      }
+    }, function (err) {
+      var msg = '位置情報を取得できませんでした';
+      if (err.code === 1) msg = '位置情報の取得が拒否されました。ブラウザの設定を確認してください';
+      _showGpsOverlay(msg, '#e74c3c', true, onSuccess);
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+  }
+
+  function _showGpsOverlay(msg, color, showRetry, onSuccess) {
+    var ov = document.getElementById('handy-gps-overlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'handy-gps-overlay';
+      ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;';
+      document.body.appendChild(ov);
+    }
+    var html = '<div style="background:#fff;padding:2rem;border-radius:12px;max-width:360px;text-align:center;">'
+      + '<div style="font-size:2rem;margin-bottom:1rem;">📍</div>'
+      + '<p style="color:' + (color || '#666') + ';font-size:0.95rem;margin-bottom:1rem;">' + Utils.escapeHtml(msg) + '</p>';
+    if (showRetry) {
+      html += '<button id="handy-gps-retry" style="padding:0.6rem 1.5rem;background:#ff6f00;color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer;">再チェック</button>';
+    }
+    html += '</div>';
+    ov.innerHTML = html;
+    ov.style.display = 'flex';
+    if (showRetry) {
+      document.getElementById('handy-gps-retry').addEventListener('click', function () {
+        _checkGpsAccess(onSuccess);
+      });
+    }
+  }
+
+  function _hideGpsOverlay() {
+    var ov = document.getElementById('handy-gps-overlay');
+    if (ov) ov.style.display = 'none';
   }
 
   return { init: init };

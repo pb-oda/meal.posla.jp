@@ -230,7 +230,7 @@ var CallStaff = (function () {
     })
     .then(function (json) {
       if (!json.ok) {
-        throw new Error((json.error && json.error.message) || 'エラー');
+        throw new Error((window.Utils && Utils.formatError) ? Utils.formatError(json) : ((json.error && json.error.message) || 'エラー'));
       }
       _lastAlertId = (json.data && json.data.alert_id) || null;
       _playFeedbackChime();

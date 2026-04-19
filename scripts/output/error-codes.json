@@ -1,0 +1,2848 @@
+{
+  "ACCOUNT_DISABLED": {
+    "errorNo": "E3001",
+    "category": "認証・認可",
+    "http_status": 403,
+    "message": "このアカウントは無効化されています",
+    "occurrences": 1,
+    "files": [
+      "api/auth/login.php"
+    ]
+  },
+  "ALREADY_ACTIVE": {
+    "errorNo": "E3002",
+    "category": "認証・認可",
+    "http_status": 409,
+    "message": "このテーブルには既にアクティブなセッションがあります",
+    "occurrences": 1,
+    "files": [
+      "api/store/table-sessions.php"
+    ]
+  },
+  "ALREADY_ONBOARDED": {
+    "errorNo": "E3003",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "オンボーディングは既に完了しています",
+    "occurrences": 1,
+    "files": [
+      "api/connect/onboard.php"
+    ]
+  },
+  "ALREADY_SETUP": {
+    "errorNo": "E3004",
+    "category": "認証・認可",
+    "http_status": 403,
+    "message": "初期セットアップは完了済みです",
+    "occurrences": 1,
+    "files": [
+      "api/posla/setup.php"
+    ]
+  },
+  "BLACKLISTED_CUSTOMER": {
+    "errorNo": "E3005",
+    "category": "認証・認可",
+    "http_status": 403,
+    "message": "'この顧客は予約不可です: ' . ($bl['blacklist_reason'] ?: '')",
+    "occurrences": 1,
+    "files": [
+      "api/store/reservations.php"
+    ]
+  },
+  "CANNOT_DELETE_SELF": {
+    "errorNo": "E3006",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "自分自身は削除できません",
+    "occurrences": 2,
+    "files": [
+      "api/owner/users.php",
+      "api/store/staff-management.php"
+    ]
+  },
+  "DUPLICATE_EMAIL": {
+    "errorNo": "E3007",
+    "category": "認証・認可",
+    "http_status": 409,
+    "message": "このメールアドレスは既に登録されています",
+    "occurrences": 2,
+    "files": [
+      "api/owner/users.php",
+      "api/store/staff-management.php"
+    ]
+  },
+  "DUPLICATE_USERNAME": {
+    "errorNo": "E3008",
+    "category": "認証・認可",
+    "http_status": 409,
+    "message": "このユーザー名は既に使用されています",
+    "occurrences": 4,
+    "files": [
+      "api/owner/users.php",
+      "api/store/staff-management.php"
+    ]
+  },
+  "EMAIL_TAKEN": {
+    "errorNo": "E3009",
+    "category": "認証・認可",
+    "http_status": 409,
+    "message": "このメールアドレスは既に登録されています",
+    "occurrences": 1,
+    "files": [
+      "api/signup/register.php"
+    ]
+  },
+  "FORBIDDEN": {
+    "errorNo": "E3010",
+    "category": "認証・認可",
+    "http_status": 403,
+    "message": "本人確認に失敗しました",
+    "occurrences": 36,
+    "files": [
+      "api/customer/reservation-cancel.php",
+      "api/customer/reservation-deposit-checkout.php",
+      "api/customer/reservation-detail.php",
+      "api/customer/reservation-precheckin.php",
+      "api/customer/reservation-update.php",
+      "api/lib/auth.php",
+      "api/owner/analytics-abc.php",
+      "api/owner/users.php",
+      "api/posla/monitor-events.php",
+      "api/store/active-sessions.php",
+      "api/store/ai-generate.php",
+      "api/store/reservation-courses.php",
+      "api/store/reservation-customers.php",
+      "api/store/reservation-settings.php",
+      "api/store/set-cashier-pin.php",
+      "api/store/shift/help-requests.php",
+      "api/store/staff-management.php",
+      "api/store/translate-menu.php"
+    ]
+  },
+  "FORBIDDEN_HQ_MENU": {
+    "errorNo": "E3011",
+    "category": "認証・認可",
+    "http_status": 403,
+    "message": "本部メニューは owner ロールでのみ編集できます",
+    "occurrences": 3,
+    "files": [
+      "api/owner/menu-templates.php"
+    ]
+  },
+  "GPS_REQUIRED": {
+    "errorNo": "E3012",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "位置情報の取得が必要です。ブラウザの位置情報を許可してください",
+    "occurrences": 2,
+    "files": [
+      "api/store/shift/attendance.php"
+    ]
+  },
+  "INVALID_CREDENTIALS": {
+    "errorNo": "E3013",
+    "category": "認証・認可",
+    "http_status": 401,
+    "message": "メールアドレスまたはパスワードが正しくありません",
+    "occurrences": 2,
+    "files": [
+      "api/auth/login.php",
+      "api/posla/login.php"
+    ]
+  },
+  "INVALID_CURRENT_PASSWORD": {
+    "errorNo": "E3014",
+    "category": "認証・認可",
+    "http_status": 401,
+    "message": "現在のパスワードが正しくありません",
+    "occurrences": 2,
+    "files": [
+      "api/auth/change-password.php",
+      "api/posla/change-password.php"
+    ]
+  },
+  "INVALID_PIN": {
+    "errorNo": "E3015",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "担当 PIN は 4〜8 桁の数字で入力してください",
+    "occurrences": 5,
+    "files": [
+      "api/customer/table-session.php",
+      "api/kds/cash-log.php",
+      "api/store/process-payment.php",
+      "api/store/refund-payment.php",
+      "api/store/set-cashier-pin.php"
+    ]
+  },
+  "INVALID_ROLE": {
+    "errorNo": "E3016",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "role_hint は kitchen / hall のいずれかです",
+    "occurrences": 6,
+    "files": [
+      "api/owner/users.php",
+      "api/store/shift/assignments.php",
+      "api/store/shift/help-requests.php",
+      "api/store/shift/templates.php"
+    ]
+  },
+  "INVALID_SESSION": {
+    "errorNo": "E3017",
+    "category": "認証・認可",
+    "http_status": 403,
+    "message": "セッションが無効です",
+    "occurrences": 14,
+    "files": [
+      "api/customer/checkout-confirm.php",
+      "api/customer/checkout-session.php",
+      "api/customer/get-bill.php",
+      "api/customer/order-history.php",
+      "api/customer/order-status.php",
+      "api/customer/orders.php",
+      "api/customer/satisfaction-rating.php"
+    ]
+  },
+  "INVALID_SIGNATURE": {
+    "errorNo": "E3018",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "Webhook署名の検証に失敗しました",
+    "occurrences": 1,
+    "files": [
+      "api/subscription/webhook.php"
+    ]
+  },
+  "INVALID_STAFF": {
+    "errorNo": "E3019",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "required_staff は 1〜20 で指定してください",
+    "occurrences": 2,
+    "files": [
+      "api/store/shift/templates.php"
+    ]
+  },
+  "INVALID_TOKEN": {
+    "errorNo": "E3020",
+    "category": "認証・認可",
+    "http_status": 404,
+    "message": "無効なトークンです",
+    "occurrences": 2,
+    "files": [
+      "api/auth/device-register.php",
+      "api/signup/activate.php"
+    ]
+  },
+  "INVALID_USERNAME": {
+    "errorNo": "E3021",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "ユーザー名は半角英数字・ハイフン・アンダースコア（3〜50文字）で入力してください",
+    "occurrences": 5,
+    "files": [
+      "api/owner/users.php",
+      "api/signup/register.php",
+      "api/store/staff-management.php"
+    ]
+  },
+  "INVALID_USERS": {
+    "errorNo": "E3022",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "一部のスタッフがこの店舗に所属していません",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/help-requests.php"
+    ]
+  },
+  "NO_ACTIVE_SESSION": {
+    "errorNo": "E3023",
+    "category": "認証・認可",
+    "http_status": 403,
+    "message": "スタッフが着席操作を行うまでお待ちください。",
+    "occurrences": 1,
+    "files": [
+      "api/customer/table-session.php"
+    ]
+  },
+  "PIN_INVALID": {
+    "errorNo": "E3024",
+    "category": "認証・認可",
+    "http_status": 401,
+    "message": "PIN が一致しないか、対象スタッフが出勤中ではありません",
+    "occurrences": 3,
+    "files": [
+      "api/kds/cash-log.php",
+      "api/store/process-payment.php",
+      "api/store/refund-payment.php"
+    ]
+  },
+  "PIN_REQUIRED": {
+    "errorNo": "E3025",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "レジ金庫の操作には担当スタッフ PIN の入力が必要です",
+    "occurrences": 4,
+    "files": [
+      "api/customer/table-session.php",
+      "api/kds/cash-log.php",
+      "api/store/process-payment.php",
+      "api/store/refund-payment.php"
+    ]
+  },
+  "SAME_PASSWORD": {
+    "errorNo": "E3026",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "新しいパスワードは現在のパスワードと異なるものを設定してください",
+    "occurrences": 2,
+    "files": [
+      "api/auth/change-password.php",
+      "api/posla/change-password.php"
+    ]
+  },
+  "SESSION_COOLDOWN": {
+    "errorNo": "E3027",
+    "category": "認証・認可",
+    "http_status": 403,
+    "message": "お会計が完了しています。新しいご注文はスタッフにお声がけください。",
+    "occurrences": 1,
+    "files": [
+      "api/customer/table-session.php"
+    ]
+  },
+  "SESSION_REVOKED": {
+    "errorNo": "E3028",
+    "category": "認証・認可",
+    "http_status": 401,
+    "message": "セッションが無効化されました。再ログインしてください。",
+    "occurrences": 1,
+    "files": [
+      "api/lib/auth.php"
+    ]
+  },
+  "SESSION_TIMEOUT": {
+    "errorNo": "E3029",
+    "category": "認証・認可",
+    "http_status": 401,
+    "message": "セッションがタイムアウトしました。再度ログインしてください。",
+    "occurrences": 1,
+    "files": [
+      "api/lib/auth.php"
+    ]
+  },
+  "STORE_INACTIVE": {
+    "errorNo": "E3030",
+    "category": "認証・認可",
+    "http_status": 403,
+    "message": "店舗が無効です",
+    "occurrences": 1,
+    "files": [
+      "api/auth/device-register.php"
+    ]
+  },
+  "TENANT_DISABLED": {
+    "errorNo": "E3031",
+    "category": "認証・認可",
+    "http_status": 403,
+    "message": "このテナントは無効化されています",
+    "occurrences": 1,
+    "files": [
+      "api/auth/login.php"
+    ]
+  },
+  "TENANT_INACTIVE": {
+    "errorNo": "E3032",
+    "category": "認証・認可",
+    "http_status": 403,
+    "message": "テナントが無効です",
+    "occurrences": 1,
+    "files": [
+      "api/auth/device-register.php"
+    ]
+  },
+  "TOKEN_ALREADY_USED": {
+    "errorNo": "E3033",
+    "category": "認証・認可",
+    "http_status": 409,
+    "message": "このトークンは既に使用済みです",
+    "occurrences": 1,
+    "files": [
+      "api/auth/device-register.php"
+    ]
+  },
+  "TOKEN_EXPIRED": {
+    "errorNo": "E3034",
+    "category": "認証・認可",
+    "http_status": 410,
+    "message": "このトークンは有効期限切れです",
+    "occurrences": 1,
+    "files": [
+      "api/auth/device-register.php"
+    ]
+  },
+  "UNAUTHORIZED": {
+    "errorNo": "E3035",
+    "category": "認証・認可",
+    "http_status": 401,
+    "message": "POSLA管理者ログインが必要です",
+    "occurrences": 2,
+    "files": [
+      "api/lib/auth.php",
+      "api/posla/auth-helper.php"
+    ]
+  },
+  "USERNAME_TAKEN": {
+    "errorNo": "E3036",
+    "category": "認証・認可",
+    "http_status": 409,
+    "message": "このユーザー名は既に使用されています",
+    "occurrences": 1,
+    "files": [
+      "api/signup/register.php"
+    ]
+  },
+  "USER_NOT_IN_STORE": {
+    "errorNo": "E3037",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "指定されたユーザーはこの店舗に所属していません",
+    "occurrences": 2,
+    "files": [
+      "api/store/shift/apply-ai-suggestions.php",
+      "api/store/shift/assignments.php"
+    ]
+  },
+  "WEAK_PASSWORD": {
+    "errorNo": "E3038",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "パスワードは8文字以上で入力してください",
+    "occurrences": 3,
+    "files": [
+      "api/lib/password-policy.php"
+    ]
+  },
+  "WEAK_PIN": {
+    "errorNo": "E3039",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "同じ数字の繰り返しは PIN として使えません",
+    "occurrences": 2,
+    "files": [
+      "api/store/set-cashier-pin.php"
+    ]
+  },
+  "ACTIVATE_FAILED": {
+    "errorNo": "E1001",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "有効化に失敗しました",
+    "occurrences": 1,
+    "files": [
+      "api/signup/activate.php"
+    ]
+  },
+  "CART_LOG_FAILED": {
+    "errorNo": "E1002",
+    "category": "システム / インフラ",
+    "http_status": 503,
+    "message": "カートログ記録に失敗しました",
+    "occurrences": 1,
+    "files": [
+      "api/customer/cart-event.php"
+    ]
+  },
+  "CHECKOUT_FAILED": {
+    "errorNo": "E1003",
+    "category": "システム / インフラ",
+    "http_status": 503,
+    "message": "$checkout['error'] ?: '不明'",
+    "occurrences": 2,
+    "files": [
+      "api/customer/checkout-session.php",
+      "api/customer/reservation-deposit-checkout.php"
+    ]
+  },
+  "CREATE_FAILED": {
+    "errorNo": "E1004",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "ユーザー作成に失敗しました",
+    "occurrences": 2,
+    "files": [
+      "api/owner/users.php",
+      "api/store/staff-management.php"
+    ]
+  },
+  "DB_ERROR": {
+    "errorNo": "E1005",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "処理に失敗しました。時間を置いて再試行してください。",
+    "occurrences": 17,
+    "files": [
+      "api/customer/reservation-create.php",
+      "api/customer/satisfaction-rating.php",
+      "api/customer/takeout-orders.php",
+      "api/kds/close-table.php",
+      "api/kds/orders.php",
+      "api/owner/ingredients.php",
+      "api/signup/register.php",
+      "api/smaregi/store-mapping.php",
+      "api/store/handy-order.php",
+      "api/store/process-payment.php",
+      "api/store/refund-payment.php",
+      "api/store/shift/apply-ai-suggestions.php",
+      "api/store/shift/help-requests.php",
+      "api/store/tables-status.php"
+    ]
+  },
+  "DELETE_FAILED": {
+    "errorNo": "E1006",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "削除に失敗しました",
+    "occurrences": 6,
+    "files": [
+      "api/owner/ingredients.php",
+      "api/owner/menu-templates.php",
+      "api/owner/option-groups.php",
+      "api/owner/users.php",
+      "api/store/kds-stations.php",
+      "api/store/staff-management.php"
+    ]
+  },
+  "DEVICE_CREATION_FAILED": {
+    "errorNo": "E1007",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "デバイスアカウントの作成に失敗しました",
+    "occurrences": 1,
+    "files": [
+      "api/auth/device-register.php"
+    ]
+  },
+  "EMPTY_BODY": {
+    "errorNo": "E1008",
+    "category": "システム / インフラ",
+    "http_status": 400,
+    "message": "リクエストボディが空です",
+    "occurrences": 2,
+    "files": [
+      "api/lib/response.php",
+      "api/subscription/webhook.php"
+    ]
+  },
+  "EMPTY_CSV": {
+    "errorNo": "E1009",
+    "category": "システム / インフラ",
+    "http_status": 400,
+    "message": "CSVが空です",
+    "occurrences": 8,
+    "files": [
+      "api/owner/ingredients-csv.php",
+      "api/owner/menu-csv.php",
+      "api/owner/recipes-csv.php",
+      "api/store/course-csv.php",
+      "api/store/local-items-csv.php",
+      "api/store/menu-overrides-csv.php",
+      "api/store/plan-menu-items-csv.php",
+      "api/store/time-limit-plans-csv.php"
+    ]
+  },
+  "FETCH_FAILED": {
+    "errorNo": "E1010",
+    "category": "システム / インフラ",
+    "http_status": 502,
+    "message": "Geocoding APIの呼び出しに失敗しました",
+    "occurrences": 3,
+    "files": [
+      "api/store/ai-generate.php",
+      "api/store/places-proxy.php"
+    ]
+  },
+  "FILE_READ_ERROR": {
+    "errorNo": "E1011",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "ファイルの読み込みに失敗しました",
+    "occurrences": 8,
+    "files": [
+      "api/owner/ingredients-csv.php",
+      "api/owner/menu-csv.php",
+      "api/owner/recipes-csv.php",
+      "api/store/course-csv.php",
+      "api/store/local-items-csv.php",
+      "api/store/menu-overrides-csv.php",
+      "api/store/plan-menu-items-csv.php",
+      "api/store/time-limit-plans-csv.php"
+    ]
+  },
+  "FILE_TOO_LARGE": {
+    "errorNo": "E1012",
+    "category": "システム / インフラ",
+    "http_status": 400,
+    "message": "ファイルサイズは5MB以下にしてください",
+    "occurrences": 2,
+    "files": [
+      "api/owner/upload-image.php",
+      "api/store/upload-image.php"
+    ]
+  },
+  "GENERATE_FAILED": {
+    "errorNo": "E1013",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "'領収書の作成に失敗しました: ' . $e->getMessage()",
+    "occurrences": 1,
+    "files": [
+      "api/store/receipt.php"
+    ]
+  },
+  "IMPORT_FAILED": {
+    "errorNo": "E1014",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "'インポートに失敗しました: ' . $e->getMessage()",
+    "occurrences": 8,
+    "files": [
+      "api/owner/ingredients-csv.php",
+      "api/owner/menu-csv.php",
+      "api/owner/recipes-csv.php",
+      "api/store/course-csv.php",
+      "api/store/local-items-csv.php",
+      "api/store/menu-overrides-csv.php",
+      "api/store/plan-menu-items-csv.php",
+      "api/store/time-limit-plans-csv.php"
+    ]
+  },
+  "METHOD_NOT_ALLOWED": {
+    "errorNo": "E1015",
+    "category": "システム / インフラ",
+    "http_status": 405,
+    "message": "POST のみ対応しています",
+    "occurrences": 2,
+    "files": [
+      "api/lib/response.php",
+      "api/subscription/webhook.php"
+    ]
+  },
+  "MIGRATION": {
+    "errorNo": "E1016",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "PIN 機能のマイグレーションが未適用です (migration-cp1-cashier-pin.sql / migration-l3-shift-management.sql)",
+    "occurrences": 13,
+    "files": [
+      "api/kds/cash-log.php",
+      "api/owner/ingredients-csv.php",
+      "api/owner/ingredients.php",
+      "api/owner/recipes-csv.php",
+      "api/owner/recipes.php",
+      "api/store/active-sessions.php",
+      "api/store/course-csv.php",
+      "api/store/plan-menu-items-csv.php",
+      "api/store/process-payment.php",
+      "api/store/refund-payment.php",
+      "api/store/set-cashier-pin.php",
+      "api/store/time-limit-plans-csv.php"
+    ]
+  },
+  "MIGRATION_REQUIRED": {
+    "errorNo": "E1017",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "この機能にはデータベースの更新が必要です",
+    "occurrences": 12,
+    "files": [
+      "api/auth/device-register.php",
+      "api/store/course-phases.php",
+      "api/store/course-templates.php",
+      "api/store/device-registration-token.php",
+      "api/store/kds-stations.php",
+      "api/store/last-order.php",
+      "api/store/plan-menu-items.php",
+      "api/store/refund-payment.php",
+      "api/store/sub-sessions.php",
+      "api/store/table-sessions.php",
+      "api/store/time-limit-plans.php"
+    ]
+  },
+  "MISSING_COLUMN": {
+    "errorNo": "E1018",
+    "category": "システム / インフラ",
+    "http_status": 400,
+    "message": "必須カラム \"' . $req . '\" がありません",
+    "occurrences": 8,
+    "files": [
+      "api/owner/ingredients-csv.php",
+      "api/owner/menu-csv.php",
+      "api/owner/recipes-csv.php",
+      "api/store/course-csv.php",
+      "api/store/local-items-csv.php",
+      "api/store/menu-overrides-csv.php",
+      "api/store/plan-menu-items-csv.php",
+      "api/store/time-limit-plans-csv.php"
+    ]
+  },
+  "NO_FILE": {
+    "errorNo": "E1019",
+    "category": "システム / インフラ",
+    "http_status": 400,
+    "message": "CSVファイルをアップロードしてください",
+    "occurrences": 10,
+    "files": [
+      "api/owner/ingredients-csv.php",
+      "api/owner/menu-csv.php",
+      "api/owner/recipes-csv.php",
+      "api/owner/upload-image.php",
+      "api/store/course-csv.php",
+      "api/store/local-items-csv.php",
+      "api/store/menu-overrides-csv.php",
+      "api/store/plan-menu-items-csv.php",
+      "api/store/time-limit-plans-csv.php",
+      "api/store/upload-image.php"
+    ]
+  },
+  "PARSE_FAILED": {
+    "errorNo": "E1020",
+    "category": "システム / インフラ",
+    "http_status": 502,
+    "message": "Geocoding APIレスポンスの解析に失敗しました",
+    "occurrences": 3,
+    "files": [
+      "api/store/ai-generate.php",
+      "api/store/places-proxy.php"
+    ]
+  },
+  "RATE_LIMITED": {
+    "errorNo": "E1021",
+    "category": "システム / インフラ",
+    "http_status": 429,
+    "message": "リクエスト回数の上限に達しました。しばらくしてからお試しください。",
+    "occurrences": 1,
+    "files": [
+      "api/lib/rate-limiter.php"
+    ]
+  },
+  "SAVE_FAILED": {
+    "errorNo": "E1022",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "ファイルの保存に失敗しました",
+    "occurrences": 2,
+    "files": [
+      "api/owner/upload-image.php",
+      "api/store/upload-image.php"
+    ]
+  },
+  "SEAT_FAILED": {
+    "errorNo": "E1023",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "'着席処理に失敗しました: ' . $e->getMessage()",
+    "occurrences": 1,
+    "files": [
+      "api/store/reservation-seat.php"
+    ]
+  },
+  "SEND_FAILED": {
+    "errorNo": "E1024",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "$result['error'] ?: '送信失敗'",
+    "occurrences": 1,
+    "files": [
+      "api/store/reservation-notify.php"
+    ]
+  },
+  "SERVER_ERROR": {
+    "errorNo": "E1025",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "設定の更新に失敗しました",
+    "occurrences": 1,
+    "files": [
+      "api/store/settings.php"
+    ]
+  },
+  "SYNC_FAILED": {
+    "errorNo": "E1026",
+    "category": "システム / インフラ",
+    "http_status": 400,
+    "message": "紐付けの保存に失敗しました",
+    "occurrences": 3,
+    "files": [
+      "api/owner/option-groups.php",
+      "api/smaregi/sync-order.php"
+    ]
+  },
+  "UPDATE_FAILED": {
+    "errorNo": "E1027",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "アラートの更新に失敗しました",
+    "occurrences": 2,
+    "files": [
+      "api/kds/call-alerts.php",
+      "api/owner/users.php"
+    ]
+  },
+  "VERIFICATION_FAILED": {
+    "errorNo": "E1028",
+    "category": "システム / インフラ",
+    "http_status": 500,
+    "message": "決済の確認に失敗しました",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-payment.php"
+    ]
+  },
+  "ADMIN_NOT_FOUND": {
+    "errorNo": "E4001",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "管理者が見つかりません",
+    "occurrences": 1,
+    "files": [
+      "api/posla/change-password.php"
+    ]
+  },
+  "COURSE_NOT_FOUND": {
+    "errorNo": "E4002",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "コースが見つかりません",
+    "occurrences": 3,
+    "files": [
+      "api/customer/menu.php",
+      "api/customer/reservation-create.php",
+      "api/store/table-sessions.php"
+    ]
+  },
+  "CUSTOMER_NOT_FOUND": {
+    "errorNo": "E4003",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "顧客が見つかりません",
+    "occurrences": 1,
+    "files": [
+      "api/store/reservation-customers.php"
+    ]
+  },
+  "ITEM_NOT_FOUND": {
+    "errorNo": "E4004",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "品目が見つかりません",
+    "occurrences": 1,
+    "files": [
+      "api/kds/update-item-status.php"
+    ]
+  },
+  "NOT_FOUND": {
+    "errorNo": "E4005",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "メニューが見つかりません",
+    "occurrences": 68,
+    "files": [
+      "api/connect/disconnect.php",
+      "api/customer/menu.php",
+      "api/customer/reservation-cancel.php",
+      "api/customer/reservation-deposit-checkout.php",
+      "api/customer/reservation-detail.php",
+      "api/customer/reservation-precheckin.php",
+      "api/customer/reservation-update.php",
+      "api/customer/takeout-orders.php",
+      "api/customer/takeout-payment.php",
+      "api/kds/close-table.php",
+      "api/owner/categories.php",
+      "api/owner/ingredients.php",
+      "api/owner/menu-templates.php",
+      "api/owner/option-groups.php",
+      "api/owner/recipes.php",
+      "api/owner/tenants.php",
+      "api/owner/users.php",
+      "api/posla/tenants.php",
+      "api/store/active-sessions.php",
+      "api/store/course-phases.php",
+      "api/store/course-templates.php",
+      "api/store/handy-order.php",
+      "api/store/kds-stations.php",
+      "api/store/local-items.php",
+      "api/store/menu-overrides.php",
+      "api/store/plan-menu-items.php",
+      "api/store/process-payment.php",
+      "api/store/refund-payment.php",
+      "api/store/set-cashier-pin.php",
+      "api/store/shift/assignments.php",
+      "api/store/shift/attendance.php",
+      "api/store/shift/availabilities.php",
+      "api/store/shift/help-requests.php",
+      "api/store/shift/templates.php",
+      "api/store/staff-management.php",
+      "api/store/table-sessions.php",
+      "api/store/tables.php",
+      "api/store/takeout-management.php",
+      "api/store/terminal-intent.php",
+      "api/store/time-limit-plans.php"
+    ]
+  },
+  "NO_COURSE_SESSION": {
+    "errorNo": "E4006",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "アクティブなコースセッションが見つかりません",
+    "occurrences": 1,
+    "files": [
+      "api/kds/advance-phase.php"
+    ]
+  },
+  "NO_UNPAID_ORDERS": {
+    "errorNo": "E4007",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "未払いの注文がありません",
+    "occurrences": 3,
+    "files": [
+      "api/customer/checkout-confirm.php",
+      "api/customer/checkout-session.php",
+      "api/customer/get-bill.php"
+    ]
+  },
+  "ORDER_NOT_FOUND": {
+    "errorNo": "E4008",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "注文が見つかりません",
+    "occurrences": 2,
+    "files": [
+      "api/kds/update-status.php",
+      "api/smaregi/sync-order.php"
+    ]
+  },
+  "PAYMENT_NOT_FOUND": {
+    "errorNo": "E4009",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "支払い情報が見つかりません",
+    "occurrences": 4,
+    "files": [
+      "api/customer/receipt-view.php",
+      "api/store/receipt.php"
+    ]
+  },
+  "PLAN_NOT_FOUND": {
+    "errorNo": "E4010",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "プランが見つかりません",
+    "occurrences": 1,
+    "files": [
+      "api/store/table-sessions.php"
+    ]
+  },
+  "RECEIPT_NOT_FOUND": {
+    "errorNo": "E4011",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "領収書が見つかりません",
+    "occurrences": 1,
+    "files": [
+      "api/store/receipt.php"
+    ]
+  },
+  "RESERVATION_NOT_FOUND": {
+    "errorNo": "E4012",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "予約が見つかりません",
+    "occurrences": 4,
+    "files": [
+      "api/store/reservation-no-show.php",
+      "api/store/reservation-notify.php",
+      "api/store/reservation-seat.php",
+      "api/store/reservations.php"
+    ]
+  },
+  "SESSION_NOT_ACTIVE": {
+    "errorNo": "E4013",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "アクティブなセッションが見つかりません",
+    "occurrences": 1,
+    "files": [
+      "api/store/sub-sessions.php"
+    ]
+  },
+  "STORE_NOT_FOUND": {
+    "errorNo": "E4014",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "店舗が見つかりません",
+    "occurrences": 16,
+    "files": [
+      "api/customer/ai-waiter.php",
+      "api/customer/checkout-confirm.php",
+      "api/customer/checkout-session.php",
+      "api/customer/menu.php",
+      "api/customer/reservation-availability.php",
+      "api/customer/reservation-create.php",
+      "api/customer/takeout-orders.php",
+      "api/lib/auth.php",
+      "api/owner/stores.php",
+      "api/public/store-status.php",
+      "api/smaregi/import-menu.php",
+      "api/store/reservations.php",
+      "api/store/shift/help-requests.php"
+    ]
+  },
+  "TABLE_NOT_FOUND": {
+    "errorNo": "E4015",
+    "category": "リソース未発見",
+    "http_status": 500,
+    "message": "テーブルが見つかりません",
+    "occurrences": 5,
+    "files": [
+      "api/customer/call-staff.php",
+      "api/customer/orders.php",
+      "api/customer/table-session.php",
+      "api/owner/option-groups.php",
+      "api/store/table-open.php"
+    ]
+  },
+  "TENANT_NOT_FOUND": {
+    "errorNo": "E4016",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "テナントが見つかりません",
+    "occurrences": 3,
+    "files": [
+      "api/connect/onboard.php",
+      "api/subscription/checkout.php",
+      "api/subscription/status.php"
+    ]
+  },
+  "USER_NOT_FOUND": {
+    "errorNo": "E4017",
+    "category": "リソース未発見",
+    "http_status": 404,
+    "message": "ユーザーが見つかりません",
+    "occurrences": 1,
+    "files": [
+      "api/auth/change-password.php"
+    ]
+  },
+  "AI_CHAT_DISABLED": {
+    "errorNo": "E9001",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 403,
+    "message": "AI予約は無効です",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-ai-parse.php"
+    ]
+  },
+  "AI_ERROR": {
+    "errorNo": "E9002",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 502,
+    "message": "$msg",
+    "occurrences": 1,
+    "files": [
+      "api/store/ai-generate.php"
+    ]
+  },
+  "AI_FAILED": {
+    "errorNo": "E9003",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 503,
+    "message": "AIの応答に失敗しました",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-ai-parse.php"
+    ]
+  },
+  "AI_NOT_CONFIGURED": {
+    "errorNo": "E9004",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 503,
+    "message": "AI機能が設定されていません",
+    "occurrences": 2,
+    "files": [
+      "api/customer/reservation-ai-parse.php",
+      "api/lib/posla-settings.php"
+    ]
+  },
+  "AI_PARSE_FAILED": {
+    "errorNo": "E9005",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 500,
+    "message": "AI応答を解釈できませんでした",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-ai-parse.php"
+    ]
+  },
+  "CANCEL_DEADLINE_PASSED": {
+    "errorNo": "E9006",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "変更締切時刻を過ぎています",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-update.php"
+    ]
+  },
+  "CANNOT_RESERVE": {
+    "errorNo": "E9007",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 403,
+    "message": "この番号からは予約できません。お電話で店舗へお問い合わせください",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-create.php"
+    ]
+  },
+  "GEMINI_ERROR": {
+    "errorNo": "E9008",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 502,
+    "message": "$geminiJson['error']['message'] ?? 'AI APIエラー'",
+    "occurrences": 2,
+    "files": [
+      "api/customer/ai-waiter.php",
+      "api/kds/ai-kitchen.php"
+    ]
+  },
+  "GEMINI_NETWORK": {
+    "errorNo": "E9009",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 502,
+    "message": "'AI通信エラー: ' . $curlError",
+    "occurrences": 2,
+    "files": [
+      "api/customer/ai-waiter.php",
+      "api/kds/ai-kitchen.php"
+    ]
+  },
+  "GEMINI_PARSE": {
+    "errorNo": "E9010",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 502,
+    "message": "AIレスポンスの解析に失敗しました",
+    "occurrences": 2,
+    "files": [
+      "api/customer/ai-waiter.php",
+      "api/kds/ai-kitchen.php"
+    ]
+  },
+  "KNOWLEDGE_BASE_MISSING": {
+    "errorNo": "E9011",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 503,
+    "message": "ヘルプデスク knowledge base が未生成です。POSLA運営に連絡してください",
+    "occurrences": 1,
+    "files": [
+      "api/store/ai-generate.php"
+    ]
+  },
+  "LEAD_TIME_VIOLATION": {
+    "errorNo": "E9012",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "予約締切時刻を過ぎています",
+    "occurrences": 2,
+    "files": [
+      "api/customer/reservation-create.php",
+      "api/customer/reservation-update.php"
+    ]
+  },
+  "NOT_AVAILABLE": {
+    "errorNo": "E9013",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "事前チェックインできない状態です",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-precheckin.php"
+    ]
+  },
+  "PICKUP_TOO_EARLY": {
+    "errorNo": "E9014",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "受取時間は現在から' . $minPrepMinutes . '分以降を指定してください",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-orders.php"
+    ]
+  },
+  "RESERVATION_DISABLED": {
+    "errorNo": "E9015",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 403,
+    "message": "オンライン予約は受け付けていません",
+    "occurrences": 3,
+    "files": [
+      "api/customer/reservation-ai-parse.php",
+      "api/customer/reservation-availability.php",
+      "api/customer/reservation-create.php"
+    ]
+  },
+  "SAME_STORE": {
+    "errorNo": "E9016",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "自店舗には要請できません",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/help-requests.php"
+    ]
+  },
+  "SELF_CHECKOUT_DISABLED": {
+    "errorNo": "E9017",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 403,
+    "message": "セルフレジは有効になっていません",
+    "occurrences": 1,
+    "files": [
+      "api/customer/checkout-session.php"
+    ]
+  },
+  "SLOT_FULL": {
+    "errorNo": "E9018",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 409,
+    "message": "この時間枠は満席です。別の時間を選択してください",
+    "occurrences": 4,
+    "files": [
+      "api/customer/reservation-create.php",
+      "api/customer/takeout-orders.php"
+    ]
+  },
+  "SLOT_UNAVAILABLE": {
+    "errorNo": "E9019",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 409,
+    "message": "お選びの時間は満席です。別の時間をお試しください",
+    "occurrences": 2,
+    "files": [
+      "api/customer/reservation-create.php",
+      "api/customer/reservation-update.php"
+    ]
+  },
+  "SMAREGI_API_ERROR": {
+    "errorNo": "E9020",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 502,
+    "message": "$errMsg . ' (HTTP=' . $result['status'] . ' detail=' . $detail . ')'",
+    "occurrences": 2,
+    "files": [
+      "api/smaregi/import-menu.php",
+      "api/smaregi/stores.php"
+    ]
+  },
+  "SMAREGI_NOT_CONFIGURED": {
+    "errorNo": "E9021",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 500,
+    "message": "スマレジ Client ID が未設定です。POSLA管理者に連絡してください。",
+    "occurrences": 1,
+    "files": [
+      "api/smaregi/auth.php"
+    ]
+  },
+  "TAKEOUT_DISABLED": {
+    "errorNo": "E9022",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "現在テイクアウトは受け付けていません",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-orders.php"
+    ]
+  },
+  "ALREADY_CLOCKED_IN": {
+    "errorNo": "E8001",
+    "category": "シフト・勤怠",
+    "http_status": 400,
+    "message": "既に出勤中です（' . $existing['clock_in'] . '〜）",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/attendance.php"
+    ]
+  },
+  "INVALID_BREAK": {
+    "errorNo": "E8002",
+    "category": "シフト・勤怠",
+    "http_status": 400,
+    "message": "break_minutes は 0〜480 の範囲で指定してください",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/attendance.php"
+    ]
+  },
+  "NOT_CLOCKED_IN": {
+    "errorNo": "E8003",
+    "category": "シフト・勤怠",
+    "http_status": 400,
+    "message": "出勤打刻がありません",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/attendance.php"
+    ]
+  },
+  "NO_ASSIGNMENTS": {
+    "errorNo": "E8004",
+    "category": "シフト・勤怠",
+    "http_status": 400,
+    "message": "user_assignments を指定してください",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/assignments.php"
+    ]
+  },
+  "NO_MAPPING": {
+    "errorNo": "E8005",
+    "category": "シフト・勤怠",
+    "http_status": 400,
+    "message": "この店舗はスマレジ店舗にマッピングされていません",
+    "occurrences": 1,
+    "files": [
+      "api/smaregi/import-menu.php"
+    ]
+  },
+  "NO_PHASE": {
+    "errorNo": "E8006",
+    "category": "シフト・勤怠",
+    "http_status": 400,
+    "message": "コースにフェーズが設定されていません",
+    "occurrences": 1,
+    "files": [
+      "api/store/table-sessions.php"
+    ]
+  },
+  "NO_STAFF": {
+    "errorNo": "E8007",
+    "category": "シフト・勤怠",
+    "http_status": 400,
+    "message": "派遣するスタッフを選択してください",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/help-requests.php"
+    ]
+  },
+  "NO_STORES": {
+    "errorNo": "E8008",
+    "category": "シフト・勤怠",
+    "http_status": 400,
+    "message": "店舗を1つ以上登録してください",
+    "occurrences": 1,
+    "files": [
+      "api/subscription/checkout.php"
+    ]
+  },
+  "ALREADY_FINAL": {
+    "errorNo": "E5001",
+    "category": "注文・KDS・テーブル",
+    "http_status": 400,
+    "message": "この予約は既に確定状態です",
+    "occurrences": 3,
+    "files": [
+      "api/customer/reservation-cancel.php",
+      "api/customer/reservation-update.php",
+      "api/store/reservations.php"
+    ]
+  },
+  "COURSE_PARTY_MISMATCH": {
+    "errorNo": "E5002",
+    "category": "注文・KDS・テーブル",
+    "http_status": 400,
+    "message": "このコースの対象人数外です",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-create.php"
+    ]
+  },
+  "DEVICE_NOT_ASSIGNABLE": {
+    "errorNo": "E5003",
+    "category": "注文・KDS・テーブル",
+    "http_status": 400,
+    "message": "デバイスアカウント(' . $deviceRows[0]['display_name'] . ')はシフト割当の対象外です",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/apply-ai-suggestions.php"
+    ]
+  },
+  "EMPTY_CART": {
+    "errorNo": "E5004",
+    "category": "注文・KDS・テーブル",
+    "http_status": 400,
+    "message": "カートが空です",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-orders.php"
+    ]
+  },
+  "INVALID_AVAILABILITY": {
+    "errorNo": "E5005",
+    "category": "注文・KDS・テーブル",
+    "http_status": 400,
+    "message": "availabilities[$i].availability は available / preferred / unavailable のいずれかです",
+    "occurrences": 2,
+    "files": [
+      "api/store/shift/availabilities.php"
+    ]
+  },
+  "INVALID_STATUS": {
+    "errorNo": "E5006",
+    "category": "注文・KDS・テーブル",
+    "http_status": 400,
+    "message": "無効なステータスです",
+    "occurrences": 12,
+    "files": [
+      "api/customer/reservation-deposit-checkout.php",
+      "api/kds/call-alerts.php",
+      "api/kds/update-item-status.php",
+      "api/kds/update-status.php",
+      "api/store/refund-payment.php",
+      "api/store/reservation-no-show.php",
+      "api/store/reservation-seat.php",
+      "api/store/shift/assignments.php",
+      "api/store/shift/help-requests.php",
+      "api/store/table-sessions.php"
+    ]
+  },
+  "INVALID_TABLE": {
+    "errorNo": "E5007",
+    "category": "注文・KDS・テーブル",
+    "http_status": 400,
+    "message": "テーブルが店舗に属していません",
+    "occurrences": 1,
+    "files": [
+      "api/store/reservation-seat.php"
+    ]
+  },
+  "INVALID_TABLE_IDS": {
+    "errorNo": "E5008",
+    "category": "注文・KDS・テーブル",
+    "http_status": 400,
+    "message": "指定テーブルが店舗に属していません",
+    "occurrences": 1,
+    "files": [
+      "api/store/reservations.php"
+    ]
+  },
+  "LAST_ORDER_PASSED": {
+    "errorNo": "E5009",
+    "category": "注文・KDS・テーブル",
+    "http_status": 409,
+    "message": "現在ラストオーダーのため注文を受け付けておりません",
+    "occurrences": 3,
+    "files": [
+      "api/customer/orders.php"
+    ]
+  },
+  "NO_ITEMS": {
+    "errorNo": "E5010",
+    "category": "注文・KDS・テーブル",
+    "http_status": 400,
+    "message": "注文に品目がありません",
+    "occurrences": 3,
+    "files": [
+      "api/lib/order-validator.php",
+      "api/store/receipt.php"
+    ]
+  },
+  "NO_TABLE_ASSIGNED": {
+    "errorNo": "E5011",
+    "category": "注文・KDS・テーブル",
+    "http_status": 400,
+    "message": "着席先テーブルが指定されていません",
+    "occurrences": 1,
+    "files": [
+      "api/store/reservation-seat.php"
+    ]
+  },
+  "SESSION_ORDER_LIMIT": {
+    "errorNo": "E5012",
+    "category": "注文・KDS・テーブル",
+    "http_status": 429,
+    "message": "このセッションの注文上限に達しました。スタッフにお声がけください。",
+    "occurrences": 1,
+    "files": [
+      "api/customer/orders.php"
+    ]
+  },
+  "SOLD_OUT": {
+    "errorNo": "E5013",
+    "category": "注文・KDS・テーブル",
+    "http_status": 409,
+    "message": "implode('、', $soldOutNames) . 'は品切れです。カートから削除してください。'",
+    "occurrences": 2,
+    "files": [
+      "api/lib/order-validator.php",
+      "api/store/handy-order.php"
+    ]
+  },
+  "SUB_SESSION_LIMIT": {
+    "errorNo": "E5014",
+    "category": "注文・KDS・テーブル",
+    "http_status": 400,
+    "message": "サブセッションの上限（10）に達しています",
+    "occurrences": 1,
+    "files": [
+      "api/store/sub-sessions.php"
+    ]
+  },
+  "TABLE_CAPACITY_SHORT": {
+    "errorNo": "E5015",
+    "category": "注文・KDS・テーブル",
+    "http_status": 400,
+    "message": "指定テーブルの収容人数が不足です",
+    "occurrences": 1,
+    "files": [
+      "api/store/reservations.php"
+    ]
+  },
+  "TABLE_IN_USE": {
+    "errorNo": "E5016",
+    "category": "注文・KDS・テーブル",
+    "http_status": 409,
+    "message": "テーブルは使用中です",
+    "occurrences": 1,
+    "files": [
+      "api/store/table-open.php"
+    ]
+  },
+  "TABLE_OCCUPIED": {
+    "errorNo": "E5017",
+    "category": "注文・KDS・テーブル",
+    "http_status": 409,
+    "message": "テーブルは既に使用中です",
+    "occurrences": 1,
+    "files": [
+      "api/store/reservation-seat.php"
+    ]
+  },
+  "ALREADY_PAID": {
+    "errorNo": "E1001",
+    "category": "システム / インフラ (未分類)",
+    "http_status": 409,
+    "message": "指定された品目には既に支払済みのものが含まれています",
+    "occurrences": 1,
+    "files": [
+      "api/store/process-payment.php"
+    ]
+  },
+  "AMOUNT_MISMATCH": {
+    "errorNo": "E1002",
+    "category": "システム / インフラ (未分類)",
+    "http_status": 400,
+    "message": "金額がサーバー側計算値と一致しません",
+    "occurrences": 1,
+    "files": [
+      "api/store/terminal-intent.php"
+    ]
+  },
+  "INVALID_ITEM": {
+    "errorNo": "E1003",
+    "category": "システム / インフラ (未分類)",
+    "http_status": 404,
+    "message": "存在しないメニュー品目が含まれています",
+    "occurrences": 2,
+    "files": [
+      "api/lib/order-validator.php",
+      "api/store/process-payment.php"
+    ]
+  },
+  "INVALID_OPTION": {
+    "errorNo": "E1004",
+    "category": "システム / インフラ (未分類)",
+    "http_status": 404,
+    "message": "存在しないオプションが含まれています",
+    "occurrences": 1,
+    "files": [
+      "api/lib/order-validator.php"
+    ]
+  },
+  "INVALID_QUANTITY": {
+    "errorNo": "E1005",
+    "category": "システム / インフラ (未分類)",
+    "http_status": 400,
+    "message": "数量が不正です",
+    "occurrences": 2,
+    "files": [
+      "api/lib/order-validator.php"
+    ]
+  },
+  "STRIPE_MISMATCH": {
+    "errorNo": "E1006",
+    "category": "システム / インフラ (未分類)",
+    "http_status": 403,
+    "message": "決済情報が一致しません (metadata 不足)",
+    "occurrences": 20,
+    "files": [
+      "api/customer/checkout-confirm.php",
+      "api/customer/takeout-payment.php",
+      "api/store/process-payment.php"
+    ]
+  },
+  "ALREADY_REFUNDED": {
+    "errorNo": "E6001",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 400,
+    "message": "この決済は既に返金処理中または返金済みです",
+    "occurrences": 2,
+    "files": [
+      "api/store/refund-payment.php"
+    ]
+  },
+  "ALREADY_SUBSCRIBED": {
+    "errorNo": "E6002",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 400,
+    "message": "既にサブスクリプションがあります。Customer Portal から変更してください",
+    "occurrences": 1,
+    "files": [
+      "api/subscription/checkout.php"
+    ]
+  },
+  "CASH_REFUND": {
+    "errorNo": "E6003",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 400,
+    "message": "現金決済はシステム返金できません。手動で返金してください。",
+    "occurrences": 1,
+    "files": [
+      "api/store/refund-payment.php"
+    ]
+  },
+  "CONNECT_NOT_CONFIGURED": {
+    "errorNo": "E6004",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 500,
+    "message": "Stripe Connect が設定されていません",
+    "occurrences": 1,
+    "files": [
+      "api/store/refund-payment.php"
+    ]
+  },
+  "DEPOSIT_CHECKOUT_FAILED": {
+    "errorNo": "E6005",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 503,
+    "message": "'予約金決済の準備に失敗しました: ' . ($checkout['error'] ?: 'unknown')",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-create.php"
+    ]
+  },
+  "GATEWAY_ERROR": {
+    "errorNo": "E6006",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 502,
+    "message": "'決済に失敗しました: ' . ($gwResult['error'] ?? '不明なエラー')",
+    "occurrences": 1,
+    "files": [
+      "api/store/process-payment.php"
+    ]
+  },
+  "GATEWAY_NOT_CONFIGURED": {
+    "errorNo": "E6007",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 500,
+    "message": "Stripe が設定されていません",
+    "occurrences": 1,
+    "files": [
+      "api/store/refund-payment.php"
+    ]
+  },
+  "INVALID_PLAN": {
+    "errorNo": "E6008",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 400,
+    "message": "プランが不正です",
+    "occurrences": 2,
+    "files": [
+      "api/posla/tenants.php"
+    ]
+  },
+  "NOT_CONNECTED": {
+    "errorNo": "E6009",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 400,
+    "message": "Stripe Terminal が利用できる設定がありません",
+    "occurrences": 5,
+    "files": [
+      "api/connect/terminal-token.php",
+      "api/smaregi/import-menu.php",
+      "api/smaregi/stores.php",
+      "api/store/process-payment.php",
+      "api/store/terminal-intent.php"
+    ]
+  },
+  "NO_DEPOSIT": {
+    "errorNo": "E6010",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 400,
+    "message": "この予約に予約金は不要です",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-deposit-checkout.php"
+    ]
+  },
+  "NO_GATEWAY": {
+    "errorNo": "E6011",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 500,
+    "message": "決済ゲートウェイが設定されていません",
+    "occurrences": 2,
+    "files": [
+      "api/customer/takeout-payment.php",
+      "api/store/refund-payment.php"
+    ]
+  },
+  "NO_SUBSCRIPTION": {
+    "errorNo": "E6012",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 400,
+    "message": "サブスクリプションが未設定です。先にCheckoutを完了してください",
+    "occurrences": 1,
+    "files": [
+      "api/subscription/portal.php"
+    ]
+  },
+  "ONLINE_PAYMENT_REQUIRED": {
+    "errorNo": "E6013",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 400,
+    "message": "テイクアウトはオンライン決済のみご利用いただけます",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-orders.php"
+    ]
+  },
+  "PAYMENT_GATEWAY_ERROR": {
+    "errorNo": "E6014",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 502,
+    "message": "Stripe設定が見つかりません",
+    "occurrences": 3,
+    "files": [
+      "api/customer/checkout-confirm.php"
+    ]
+  },
+  "PAYMENT_NOT_AVAILABLE": {
+    "errorNo": "E6015",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 503,
+    "message": "決済処理に失敗しました。お手数ですが店舗にお問い合わせください",
+    "occurrences": 3,
+    "files": [
+      "api/customer/takeout-orders.php"
+    ]
+  },
+  "PAYMENT_NOT_CONFIGURED": {
+    "errorNo": "E6016",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 503,
+    "message": "オンライン決済が設定されていません",
+    "occurrences": 1,
+    "files": [
+      "api/customer/checkout-session.php"
+    ]
+  },
+  "PAYMENT_NOT_CONFIRMED": {
+    "errorNo": "E6017",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 402,
+    "message": "$result['error'] ?: '決済が確認できませんでした'",
+    "occurrences": 8,
+    "files": [
+      "api/customer/checkout-confirm.php",
+      "api/customer/takeout-payment.php",
+      "api/signup/activate.php"
+    ]
+  },
+  "PLAN_REQUIRED": {
+    "errorNo": "E6018",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 403,
+    "message": "シフト管理はProプラン以上で利用できます",
+    "occurrences": 10,
+    "files": [
+      "api/owner/shift/unified-view.php",
+      "api/store/shift/ai-suggest-data.php",
+      "api/store/shift/apply-ai-suggestions.php",
+      "api/store/shift/assignments.php",
+      "api/store/shift/attendance.php",
+      "api/store/shift/availabilities.php",
+      "api/store/shift/help-requests.php",
+      "api/store/shift/settings.php",
+      "api/store/shift/summary.php",
+      "api/store/shift/templates.php"
+    ]
+  },
+  "PLATFORM_KEY_MISSING": {
+    "errorNo": "E6019",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 500,
+    "message": "プラットフォームの Stripe キーが設定されていません",
+    "occurrences": 1,
+    "files": [
+      "api/store/refund-payment.php"
+    ]
+  },
+  "PRICE_NOT_CONFIGURED": {
+    "errorNo": "E6020",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 503,
+    "message": "料金プラン設定が未完了です",
+    "occurrences": 2,
+    "files": [
+      "api/signup/register.php",
+      "api/subscription/checkout.php"
+    ]
+  },
+  "RECEIPT_EXPIRED": {
+    "errorNo": "E6021",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 403,
+    "message": "領収書の表示期限が切れています。スタッフにお声がけください",
+    "occurrences": 1,
+    "files": [
+      "api/customer/receipt-view.php"
+    ]
+  },
+  "REFUND_FAILED": {
+    "errorNo": "E6022",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 502,
+    "message": "'返金に失敗しました: ' . ($refundResult['error'] ?? '不明なエラー')",
+    "occurrences": 1,
+    "files": [
+      "api/store/refund-payment.php"
+    ]
+  },
+  "STRIPE_ERROR": {
+    "errorNo": "E6023",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 502,
+    "message": "$createResult['error']",
+    "occurrences": 10,
+    "files": [
+      "api/connect/onboard.php",
+      "api/connect/terminal-token.php",
+      "api/signup/register.php",
+      "api/store/process-payment.php",
+      "api/store/terminal-intent.php",
+      "api/subscription/checkout.php",
+      "api/subscription/portal.php"
+    ]
+  },
+  "STRIPE_NOT_CONFIGURED": {
+    "errorNo": "E6024",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 503,
+    "message": "プラットフォームのStripe APIキーが設定されていません",
+    "occurrences": 8,
+    "files": [
+      "api/connect/onboard.php",
+      "api/connect/terminal-token.php",
+      "api/signup/activate.php",
+      "api/signup/register.php",
+      "api/store/process-payment.php",
+      "api/store/terminal-intent.php",
+      "api/subscription/checkout.php",
+      "api/subscription/portal.php"
+    ]
+  },
+  "AMOUNT_EXCEEDED": {
+    "errorNo": "E2001",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "金額が上限（¥' . number_format($maxAmount) . '）を超えています",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-orders.php"
+    ]
+  },
+  "EMAIL_REQUIRED": {
+    "errorNo": "E2002",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "メールアドレスを入力してください",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-create.php"
+    ]
+  },
+  "INVALID_ACTION": {
+    "errorNo": "E2003",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "actionパラメータが不正です",
+    "occurrences": 4,
+    "files": [
+      "api/customer/cart-event.php",
+      "api/customer/takeout-orders.php",
+      "api/store/places-proxy.php",
+      "api/store/shift/help-requests.php"
+    ]
+  },
+  "INVALID_AMOUNT": {
+    "errorNo": "E2004",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "合計金額が不正です",
+    "occurrences": 1,
+    "files": [
+      "api/customer/checkout-session.php"
+    ]
+  },
+  "INVALID_CATEGORY": {
+    "errorNo": "E2005",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "無効なカテゴリです",
+    "occurrences": 2,
+    "files": [
+      "api/owner/menu-templates.php"
+    ]
+  },
+  "INVALID_COLOR": {
+    "errorNo": "E2006",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "カラーコードは #RRGGBB 形式で入力してください",
+    "occurrences": 1,
+    "files": [
+      "api/store/settings.php"
+    ]
+  },
+  "INVALID_COUNT": {
+    "errorNo": "E2007",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "必要人数は1〜10の範囲で指定してください",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/help-requests.php"
+    ]
+  },
+  "INVALID_DATE": {
+    "errorNo": "E2008",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "start_date, end_date を YYYY-MM-DD 形式で指定してください",
+    "occurrences": 19,
+    "files": [
+      "api/customer/reservation-availability.php",
+      "api/customer/takeout-orders.php",
+      "api/owner/shift/unified-view.php",
+      "api/store/receipt.php",
+      "api/store/reservation-stats.php",
+      "api/store/reservations.php",
+      "api/store/shift/ai-suggest-data.php",
+      "api/store/shift/assignments.php",
+      "api/store/shift/attendance.php",
+      "api/store/shift/availabilities.php",
+      "api/store/shift/help-requests.php",
+      "api/store/shift/summary.php"
+    ]
+  },
+  "INVALID_DATETIME": {
+    "errorNo": "E2009",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "日時を解釈できません",
+    "occurrences": 8,
+    "files": [
+      "api/customer/reservation-create.php",
+      "api/customer/reservation-update.php",
+      "api/store/reservations.php",
+      "api/store/shift/attendance.php"
+    ]
+  },
+  "INVALID_DAY": {
+    "errorNo": "E2010",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "day_of_week は 0（日）〜 6（土）で指定してください",
+    "occurrences": 2,
+    "files": [
+      "api/store/shift/templates.php"
+    ]
+  },
+  "INVALID_EMAIL": {
+    "errorNo": "E2011",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "メールアドレスが不正です",
+    "occurrences": 7,
+    "files": [
+      "api/customer/reservation-create.php",
+      "api/owner/users.php",
+      "api/signup/register.php",
+      "api/store/reservation-settings.php",
+      "api/store/reservations.php",
+      "api/store/staff-management.php"
+    ]
+  },
+  "INVALID_FORMAT": {
+    "errorNo": "E2012",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "許可されていないファイル形式です（JPEG/PNG/WebP/GIF のみ）",
+    "occurrences": 2,
+    "files": [
+      "api/owner/upload-image.php",
+      "api/store/upload-image.php"
+    ]
+  },
+  "INVALID_INPUT": {
+    "errorNo": "E2013",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "mappings 配列が必要です",
+    "occurrences": 10,
+    "files": [
+      "api/smaregi/store-mapping.php",
+      "api/store/shift/apply-ai-suggestions.php"
+    ]
+  },
+  "INVALID_JSON": {
+    "errorNo": "E2014",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "リクエストのJSONが不正です",
+    "occurrences": 1,
+    "files": [
+      "api/lib/response.php"
+    ]
+  },
+  "INVALID_KIND": {
+    "errorNo": "E2015",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "kind は staff または device のみ指定可能です",
+    "occurrences": 1,
+    "files": [
+      "api/store/staff-management.php"
+    ]
+  },
+  "INVALID_NAME": {
+    "errorNo": "E2016",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "テンプレート名は1〜100文字で入力してください",
+    "occurrences": 3,
+    "files": [
+      "api/customer/reservation-create.php",
+      "api/store/shift/templates.php"
+    ]
+  },
+  "INVALID_PARTY_SIZE": {
+    "errorNo": "E2017",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "人数が範囲外です",
+    "occurrences": 5,
+    "files": [
+      "api/customer/reservation-availability.php",
+      "api/customer/reservation-create.php",
+      "api/customer/reservation-update.php",
+      "api/store/reservations.php"
+    ]
+  },
+  "INVALID_PAYLOAD": {
+    "errorNo": "E2018",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "イベントデータが不正です",
+    "occurrences": 1,
+    "files": [
+      "api/subscription/webhook.php"
+    ]
+  },
+  "INVALID_PERIOD": {
+    "errorNo": "E2019",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "period は weekly / monthly のいずれかです",
+    "occurrences": 2,
+    "files": [
+      "api/owner/shift/unified-view.php",
+      "api/store/shift/summary.php"
+    ]
+  },
+  "INVALID_PHONE": {
+    "errorNo": "E2020",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "電話番号が不正です",
+    "occurrences": 3,
+    "files": [
+      "api/customer/reservation-create.php",
+      "api/customer/takeout-orders.php",
+      "api/signup/register.php"
+    ]
+  },
+  "INVALID_RATING": {
+    "errorNo": "E2021",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "評価は1〜5の整数で指定してください",
+    "occurrences": 1,
+    "files": [
+      "api/customer/satisfaction-rating.php"
+    ]
+  },
+  "INVALID_REG_NUMBER": {
+    "errorNo": "E2022",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "登録番号は T + 13桁の数字で入力してください（例: T1234567890123）",
+    "occurrences": 1,
+    "files": [
+      "api/store/receipt-settings.php"
+    ]
+  },
+  "INVALID_SHAPE": {
+    "errorNo": "E2023",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "無効なshapeです（' . implode('/', $allowedShapes) . '）",
+    "occurrences": 1,
+    "files": [
+      "api/store/tables.php"
+    ]
+  },
+  "INVALID_SLUG": {
+    "errorNo": "E2024",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "スラッグは英小文字・数字・ハイフンのみ使用可能です",
+    "occurrences": 3,
+    "files": [
+      "api/owner/stores.php",
+      "api/posla/tenants.php"
+    ]
+  },
+  "INVALID_SOURCE": {
+    "errorNo": "E2025",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "source は \"template\" または \"local\" です",
+    "occurrences": 1,
+    "files": [
+      "api/kds/sold-out.php"
+    ]
+  },
+  "INVALID_STORE": {
+    "errorNo": "E2026",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "送信先店舗が見つかりません",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/help-requests.php"
+    ]
+  },
+  "INVALID_TIME": {
+    "errorNo": "E2027",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "時刻は HH:MM 形式で指定してください",
+    "occurrences": 10,
+    "files": [
+      "api/store/reservation-settings.php",
+      "api/store/shift/assignments.php",
+      "api/store/shift/availabilities.php",
+      "api/store/shift/help-requests.php",
+      "api/store/shift/templates.php"
+    ]
+  },
+  "INVALID_TIME_RANGE": {
+    "errorNo": "E2028",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "終了時刻は開始時刻より後にしてください",
+    "occurrences": 6,
+    "files": [
+      "api/store/shift/assignments.php",
+      "api/store/shift/availabilities.php",
+      "api/store/shift/help-requests.php",
+      "api/store/shift/templates.php"
+    ]
+  },
+  "INVALID_TRANSITION": {
+    "errorNo": "E2029",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "$current . ' から ' . $newStatus . ' への遷移はできません'",
+    "occurrences": 1,
+    "files": [
+      "api/store/takeout-management.php"
+    ]
+  },
+  "INVALID_TYPE": {
+    "errorNo": "E2030",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "無効な種別です",
+    "occurrences": 3,
+    "files": [
+      "api/kds/cash-log.php",
+      "api/store/receipt.php",
+      "api/store/reservation-notify.php"
+    ]
+  },
+  "INVALID_VALUE": {
+    "errorNo": "E2031",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "$key . ' は 1 以上'",
+    "occurrences": 13,
+    "files": [
+      "api/store/reservation-settings.php",
+      "api/store/shift/settings.php"
+    ]
+  },
+  "INVALID_VISIBLE_TOOLS": {
+    "errorNo": "E2032",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "visible_tools に不正な値: ' . $p . ' (kds/register/handy のみ可)",
+    "occurrences": 1,
+    "files": [
+      "api/store/staff-management.php"
+    ]
+  },
+  "MAX_AMOUNT_EXCEEDED": {
+    "errorNo": "E2033",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "金額上限を超えています。店員をお呼びください。",
+    "occurrences": 1,
+    "files": [
+      "api/customer/orders.php"
+    ]
+  },
+  "MAX_ITEMS_EXCEEDED": {
+    "errorNo": "E2034",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "1回の注文は' . $maxItems . '品までです。店員をお呼びください。",
+    "occurrences": 1,
+    "files": [
+      "api/customer/orders.php"
+    ]
+  },
+  "MISSING_ADDRESS": {
+    "errorNo": "E2035",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "住所は必須です",
+    "occurrences": 1,
+    "files": [
+      "api/store/places-proxy.php"
+    ]
+  },
+  "MISSING_ALERT_ID": {
+    "errorNo": "E2036",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "alert_id は必須です",
+    "occurrences": 2,
+    "files": [
+      "api/customer/call-staff.php",
+      "api/kds/call-alerts.php"
+    ]
+  },
+  "MISSING_EMAIL": {
+    "errorNo": "E2037",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "メールアドレスは必須です",
+    "occurrences": 1,
+    "files": [
+      "api/posla/setup.php"
+    ]
+  },
+  "MISSING_FIELDS": {
+    "errorNo": "E2038",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "store_id, table_id, session_token は必須です",
+    "occurrences": 44,
+    "files": [
+      "api/auth/change-password.php",
+      "api/auth/login.php",
+      "api/customer/call-staff.php",
+      "api/customer/cart-event.php",
+      "api/customer/checkout-confirm.php",
+      "api/customer/checkout-session.php",
+      "api/customer/get-bill.php",
+      "api/customer/order-history.php",
+      "api/customer/order-status.php",
+      "api/customer/orders.php",
+      "api/customer/receipt-view.php",
+      "api/customer/satisfaction-rating.php",
+      "api/kds/cash-log.php",
+      "api/kds/sold-out.php",
+      "api/kds/update-item-status.php",
+      "api/kds/update-status.php",
+      "api/owner/categories.php",
+      "api/owner/ingredients.php",
+      "api/owner/menu-templates.php",
+      "api/owner/option-groups.php",
+      "api/owner/recipes.php",
+      "api/owner/stores.php",
+      "api/owner/users.php",
+      "api/posla/change-password.php",
+      "api/posla/login.php",
+      "api/signup/register.php",
+      "api/store/active-sessions.php",
+      "api/store/kds-stations.php",
+      "api/store/last-order.php",
+      "api/store/local-items.php",
+      "api/store/menu-overrides.php",
+      "api/store/staff-management.php",
+      "api/store/tables.php"
+    ]
+  },
+  "MISSING_ID": {
+    "errorNo": "E2039",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "idが必要です",
+    "occurrences": 39,
+    "files": [
+      "api/customer/reservation-detail.php",
+      "api/owner/categories.php",
+      "api/owner/ingredients.php",
+      "api/owner/menu-templates.php",
+      "api/owner/option-groups.php",
+      "api/owner/recipes.php",
+      "api/owner/stores.php",
+      "api/owner/users.php",
+      "api/posla/monitor-events.php",
+      "api/posla/tenants.php",
+      "api/store/course-phases.php",
+      "api/store/course-templates.php",
+      "api/store/kds-stations.php",
+      "api/store/local-items.php",
+      "api/store/plan-menu-items.php",
+      "api/store/shift/assignments.php",
+      "api/store/shift/attendance.php",
+      "api/store/shift/availabilities.php",
+      "api/store/shift/help-requests.php",
+      "api/store/shift/templates.php",
+      "api/store/staff-management.php",
+      "api/store/table-sessions.php",
+      "api/store/tables.php",
+      "api/store/time-limit-plans.php"
+    ]
+  },
+  "MISSING_MESSAGE": {
+    "errorNo": "E2040",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "メッセージを入力してください",
+    "occurrences": 1,
+    "files": [
+      "api/customer/ai-waiter.php"
+    ]
+  },
+  "MISSING_NAME": {
+    "errorNo": "E2041",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "テナント名は必須です",
+    "occurrences": 6,
+    "files": [
+      "api/customer/takeout-orders.php",
+      "api/posla/setup.php",
+      "api/posla/tenants.php",
+      "api/store/reservation-courses.php",
+      "api/store/reservations.php"
+    ]
+  },
+  "MISSING_ORDER": {
+    "errorNo": "E2042",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "order_idが必要です",
+    "occurrences": 3,
+    "files": [
+      "api/customer/takeout-orders.php",
+      "api/customer/takeout-payment.php",
+      "api/store/takeout-management.php"
+    ]
+  },
+  "MISSING_ORDER_ID": {
+    "errorNo": "E2043",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "order_id は必須です",
+    "occurrences": 1,
+    "files": [
+      "api/smaregi/sync-order.php"
+    ]
+  },
+  "MISSING_PARAM": {
+    "errorNo": "E2044",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "id と store_id が必要です",
+    "occurrences": 16,
+    "files": [
+      "api/customer/reservation-ai-parse.php",
+      "api/customer/reservation-cancel.php",
+      "api/customer/reservation-deposit-checkout.php",
+      "api/customer/reservation-precheckin.php",
+      "api/customer/reservation-update.php",
+      "api/store/reservation-courses.php",
+      "api/store/reservation-customers.php",
+      "api/store/reservation-no-show.php",
+      "api/store/reservation-notify.php",
+      "api/store/reservation-seat.php",
+      "api/store/reservations.php",
+      "api/store/shift/help-requests.php",
+      "api/store/table-open.php"
+    ]
+  },
+  "MISSING_PARAMS": {
+    "errorNo": "E2045",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "idとstore_idが必要です",
+    "occurrences": 8,
+    "files": [
+      "api/customer/table-session.php",
+      "api/store/course-phases.php",
+      "api/store/course-templates.php",
+      "api/store/places-proxy.php",
+      "api/store/plan-menu-items.php",
+      "api/store/receipt.php",
+      "api/store/table-sessions.php",
+      "api/store/time-limit-plans.php"
+    ]
+  },
+  "MISSING_PASSWORD": {
+    "errorNo": "E2046",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "パスワードは必須です",
+    "occurrences": 1,
+    "files": [
+      "api/posla/setup.php"
+    ]
+  },
+  "MISSING_PAYMENT": {
+    "errorNo": "E2047",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "payment_id は必須です",
+    "occurrences": 1,
+    "files": [
+      "api/store/receipt.php"
+    ]
+  },
+  "MISSING_PHONE": {
+    "errorNo": "E2048",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "電話番号が必要です",
+    "occurrences": 2,
+    "files": [
+      "api/customer/takeout-orders.php"
+    ]
+  },
+  "MISSING_PICKUP": {
+    "errorNo": "E2049",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "受取時間を選択してください",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-orders.php"
+    ]
+  },
+  "MISSING_PLAN": {
+    "errorNo": "E2050",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "plan_idが必要です",
+    "occurrences": 1,
+    "files": [
+      "api/store/plan-menu-items.php"
+    ]
+  },
+  "MISSING_PROMPT": {
+    "errorNo": "E2051",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "プロンプトが空です",
+    "occurrences": 1,
+    "files": [
+      "api/store/ai-generate.php"
+    ]
+  },
+  "MISSING_SESSION": {
+    "errorNo": "E2052",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "session_idが必要です",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-payment.php"
+    ]
+  },
+  "MISSING_SLUG": {
+    "errorNo": "E2053",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "slugは必須です",
+    "occurrences": 1,
+    "files": [
+      "api/posla/tenants.php"
+    ]
+  },
+  "MISSING_STATUS": {
+    "errorNo": "E2054",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "statusが必要です",
+    "occurrences": 1,
+    "files": [
+      "api/store/takeout-management.php"
+    ]
+  },
+  "MISSING_STORE": {
+    "errorNo": "E2055",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "store_id は必須です",
+    "occurrences": 42,
+    "files": [
+      "api/customer/ai-waiter.php",
+      "api/customer/menu.php",
+      "api/customer/reservation-availability.php",
+      "api/customer/reservation-create.php",
+      "api/customer/takeout-orders.php",
+      "api/kds/ai-kitchen.php",
+      "api/kds/call-alerts.php",
+      "api/lib/auth.php",
+      "api/public/store-status.php",
+      "api/smaregi/import-menu.php",
+      "api/store/course-csv.php",
+      "api/store/course-phases.php",
+      "api/store/course-templates.php",
+      "api/store/last-order.php",
+      "api/store/local-items-csv.php",
+      "api/store/local-items.php",
+      "api/store/menu-overrides-csv.php",
+      "api/store/menu-version.php",
+      "api/store/places-proxy.php",
+      "api/store/plan-menu-items-csv.php",
+      "api/store/plan-menu-items.php",
+      "api/store/receipt-settings.php",
+      "api/store/reservation-courses.php",
+      "api/store/reservation-customers.php",
+      "api/store/reservation-settings.php",
+      "api/store/reservation-stats.php",
+      "api/store/reservations.php",
+      "api/store/settings.php",
+      "api/store/staff-management.php",
+      "api/store/table-sessions.php",
+      "api/store/tables.php",
+      "api/store/takeout-management.php",
+      "api/store/time-limit-plans-csv.php",
+      "api/store/time-limit-plans.php",
+      "api/store/translate-menu.php"
+    ]
+  },
+  "MISSING_TOKEN": {
+    "errorNo": "E2056",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "signup_token が必要です",
+    "occurrences": 1,
+    "files": [
+      "api/signup/activate.php"
+    ]
+  },
+  "MISSING_TO_STORE": {
+    "errorNo": "E2057",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "送信先店舗を指定してください",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/help-requests.php"
+    ]
+  },
+  "MISSING_USER": {
+    "errorNo": "E2058",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "user_id を指定してください",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/assignments.php"
+    ]
+  },
+  "NO_API_KEY": {
+    "errorNo": "E2059",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "Google Places APIキーが設定されていません（POSLA管理画面で設定してください）",
+    "occurrences": 1,
+    "files": [
+      "api/store/places-proxy.php"
+    ]
+  },
+  "NO_CHANGES": {
+    "errorNo": "E2060",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "更新項目がありません",
+    "occurrences": 3,
+    "files": [
+      "api/customer/reservation-update.php",
+      "api/posla/settings.php",
+      "api/posla/tenants.php"
+    ]
+  },
+  "NO_DATA": {
+    "errorNo": "E2061",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "availabilities 配列を指定してください",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/availabilities.php"
+    ]
+  },
+  "NO_EMAIL": {
+    "errorNo": "E2062",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "メールアドレスが登録されていません",
+    "occurrences": 1,
+    "files": [
+      "api/store/reservation-notify.php"
+    ]
+  },
+  "NO_FIELDS": {
+    "errorNo": "E2063",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "更新項目がありません",
+    "occurrences": 25,
+    "files": [
+      "api/owner/categories.php",
+      "api/owner/ingredients.php",
+      "api/owner/menu-templates.php",
+      "api/owner/option-groups.php",
+      "api/owner/stores.php",
+      "api/owner/tenants.php",
+      "api/store/course-phases.php",
+      "api/store/course-templates.php",
+      "api/store/local-items.php",
+      "api/store/plan-menu-items.php",
+      "api/store/receipt-settings.php",
+      "api/store/reservation-courses.php",
+      "api/store/reservation-customers.php",
+      "api/store/reservation-settings.php",
+      "api/store/reservations.php",
+      "api/store/settings.php",
+      "api/store/shift/assignments.php",
+      "api/store/shift/attendance.php",
+      "api/store/shift/availabilities.php",
+      "api/store/shift/settings.php",
+      "api/store/shift/templates.php",
+      "api/store/table-sessions.php",
+      "api/store/tables.php",
+      "api/store/time-limit-plans.php"
+    ]
+  },
+  "NO_REG_NUMBER": {
+    "errorNo": "E2064",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "適格簡易請求書の発行には登録番号の設定が必要です",
+    "occurrences": 1,
+    "files": [
+      "api/store/receipt.php"
+    ]
+  },
+  "OUT_OF_RANGE": {
+    "errorNo": "E2065",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "店舗から' . round($dist) . 'm離れています（許容: ' . $gpsSetting['gps_radius_meters'] . 'm）",
+    "occurrences": 2,
+    "files": [
+      "api/store/shift/attendance.php"
+    ]
+  },
+  "PAST_DATE": {
+    "errorNo": "E2066",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "過去日は予約できません",
+    "occurrences": 2,
+    "files": [
+      "api/customer/reservation-availability.php",
+      "api/store/shift/help-requests.php"
+    ]
+  },
+  "PHONE_REQUIRED": {
+    "errorNo": "E2067",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "電話番号を入力してください",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-create.php"
+    ]
+  },
+  "TEXT_TOO_LONG": {
+    "errorNo": "E2068",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "入力が長すぎます",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-ai-parse.php"
+    ]
+  },
+  "TOO_EARLY": {
+    "errorNo": "E2069",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "予約時刻 30 分前から利用できます",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-precheckin.php"
+    ]
+  },
+  "TOO_FAR": {
+    "errorNo": "E2070",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "受付期間を超えています",
+    "occurrences": 2,
+    "files": [
+      "api/customer/reservation-availability.php",
+      "api/customer/reservation-create.php"
+    ]
+  },
+  "TOO_MANY": {
+    "errorNo": "E2071",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "一度に提出できるのは最大31日分です",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/availabilities.php"
+    ]
+  },
+  "TOO_MANY_ITEMS": {
+    "errorNo": "E2072",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "品数が上限（' . $maxItems . '品）を超えています",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-orders.php"
+    ]
+  },
+  "VALIDATION": {
+    "errorNo": "E2073",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "store_id は必須です",
+    "occurrences": 41,
+    "files": [
+      "api/auth/device-register.php",
+      "api/kds/advance-phase.php",
+      "api/kds/close-table.php",
+      "api/store/course-phases.php",
+      "api/store/course-templates.php",
+      "api/store/daily-recommendations.php",
+      "api/store/device-registration-token.php",
+      "api/store/handy-order.php",
+      "api/store/plan-menu-items.php",
+      "api/store/process-payment.php",
+      "api/store/refund-payment.php",
+      "api/store/set-cashier-pin.php",
+      "api/store/sub-sessions.php",
+      "api/store/table-sessions.php",
+      "api/store/terminal-intent.php",
+      "api/store/time-limit-plans.php"
+    ]
+  },
+  "CONFLICT": {
+    "errorNo": "E7001",
+    "category": "メニュー・在庫",
+    "http_status": 409,
+    "message": "この注文は既に他の操作で確定されました。画面を更新してご確認ください。",
+    "occurrences": 3,
+    "files": [
+      "api/customer/checkout-confirm.php",
+      "api/store/handy-order.php",
+      "api/store/process-payment.php"
+    ]
+  },
+  "DUPLICATE": {
+    "errorNo": "E7002",
+    "category": "メニュー・在庫",
+    "http_status": 409,
+    "message": "この原材料は既にレシピに登録されています",
+    "occurrences": 1,
+    "files": [
+      "api/owner/recipes.php"
+    ]
+  },
+  "DUPLICATE_CODE": {
+    "errorNo": "E7003",
+    "category": "メニュー・在庫",
+    "http_status": 409,
+    "message": "このテーブルコードは既に使用されています",
+    "occurrences": 1,
+    "files": [
+      "api/store/tables.php"
+    ]
+  },
+  "DUPLICATE_SLUG": {
+    "errorNo": "E7004",
+    "category": "メニュー・在庫",
+    "http_status": 409,
+    "message": "このスラッグは既に使用されています",
+    "occurrences": 3,
+    "files": [
+      "api/owner/stores.php",
+      "api/posla/tenants.php"
+    ]
+  },
+  "HAS_REFERENCES": {
+    "errorNo": "E7005",
+    "category": "メニュー・在庫",
+    "http_status": 409,
+    "message": "メニューが紐付いているカテゴリは削除できません",
+    "occurrences": 1,
+    "files": [
+      "api/owner/categories.php"
+    ]
+  }
+}

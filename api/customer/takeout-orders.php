@@ -13,6 +13,7 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
 require_once __DIR__ . '/../lib/order-items.php';
 require_once __DIR__ . '/../lib/payment-gateway.php';
+require_once __DIR__ . '/../lib/order-validator.php';
 
 require_method(['GET', 'POST']);
 $pdo = get_db();
@@ -58,17 +59,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             error_log('[P1-12][customer/takeout-orders.php:56] fetch_takeout_settings: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
         }
 
-        // オンライン決済可否判定
+        // オンライン決済可否判定 (S3-strict): payment_gateway=stripe + 実キーが揃っている場合のみ true
         $onlinePaymentAvailable = false;
         if ((int)$takeoutSettings['takeout_online_payment'] === 1) {
             try {
                 $gwStmt = $pdo->prepare(
-                    'SELECT t.payment_gateway FROM tenants t JOIN stores s ON s.tenant_id = t.id WHERE s.id = ?'
+                    'SELECT t.payment_gateway, t.stripe_secret_key, t.stripe_connect_account_id, t.connect_onboarding_complete
+                     FROM tenants t JOIN stores s ON s.tenant_id = t.id WHERE s.id = ?'
                 );
                 $gwStmt->execute([$storeId]);
                 $gwRow = $gwStmt->fetch();
                 if ($gwRow && $gwRow['payment_gateway'] === 'stripe') {
-                    $onlinePaymentAvailable = true;
+                    $hasDirectKey = isset($gwRow['stripe_secret_key']) && $gwRow['stripe_secret_key'] !== '';
+                    $hasConnectReady = !empty($gwRow['stripe_connect_account_id']) && (int)$gwRow['connect_onboarding_complete'] === 1;
+                    if ($hasDirectKey || $hasConnectReady) {
+                        $onlinePaymentAvailable = true;
+                    }
                 }
             } catch (PDOException $e) {
                 error_log('[P1-12][customer/takeout-orders.php:72] check_payment_gateway: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
@@ -224,7 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $customerPhone = trim($data['customer_phone'] ?? '');
     $pickupAt = $data['pickup_at'] ?? null;
     $memo = trim($data['memo'] ?? '');
-    $paymentMethod = $data['payment_method'] ?? 'cash';
+    $paymentMethod = $data['payment_method'] ?? 'online';
     $idempotencyKey = $data['idempotency_key'] ?? null;
 
     // バリデーション
@@ -234,7 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$customerPhone) json_error('MISSING_PHONE', '電話番号を入力してください', 400);
     if (!preg_match('/^[0-9]{10,11}$/', $customerPhone)) json_error('INVALID_PHONE', '電話番号はハイフンなしの10〜11桁で入力してください', 400);
     if (!$pickupAt) json_error('MISSING_PICKUP', '受取時間を選択してください', 400);
-    if (!in_array($paymentMethod, ['cash', 'online'], true)) json_error('INVALID_PAYMENT', '支払方法が不正です', 400);
+    if ($paymentMethod !== 'online') json_error('ONLINE_PAYMENT_REQUIRED', 'テイクアウトはオンライン決済のみご利用いただけます', 400);
 
     // 店舗存在確認
     $stmt = $pdo->prepare('SELECT s.id, s.tenant_id FROM stores s WHERE s.id = ? AND s.is_active = 1');
@@ -273,7 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         json_error('PICKUP_TOO_EARLY', '受取時間は現在から' . $minPrepMinutes . '分以降を指定してください', 400);
     }
 
-    // スロット空き確認
+    // スロット空き確認 (事前判定)
     $slotCapacity = $ss ? (int)$ss['takeout_slot_capacity'] : 5;
     $slotTime = $pickupDt->format('H:i');
     $slotDate = $pickupDt->format('Y-m-d');
@@ -288,6 +294,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($slotCount >= $slotCapacity) {
         json_error('SLOT_FULL', 'この時間枠は満席です。別の時間を選択してください', 409);
     }
+    // S3 #8: 並列受注のレース検出は INSERT トランザクション内で再カウントする (下記)
 
     // 品数・金額チェック
     $maxItems = 10;
@@ -304,11 +311,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         error_log('[P1-12][customer/takeout-orders.php:294] fetch_max_limits: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
     }
 
+    // P0 #1+#2: サーバー側で価格・商品存在・数量を強制再検証
+    // (テイクアウトはプランセッション不適用 → $isPlanSession=false)
+    $validated = validate_and_recompute_items($pdo, $storeId, $items, false, null);
+    $items = $validated['items'];
+    $totalAmount = $validated['total_amount'];
+
     $totalQty = 0;
-    $totalAmount = 0;
     foreach ($items as $item) {
-        $totalQty += (int)($item['qty'] ?? 1);
-        $totalAmount += (int)($item['price'] ?? 0) * (int)($item['qty'] ?? 1);
+        $totalQty += (int)$item['qty'];
     }
     if ($totalQty > $maxItems) json_error('TOO_MANY_ITEMS', '品数が上限（' . $maxItems . '品）を超えています', 400);
     if ($totalAmount > $maxAmount) json_error('AMOUNT_EXCEEDED', '金額が上限（¥' . number_format($maxAmount) . '）を超えています', 400);
@@ -321,7 +332,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $itemsJson = json_encode($items, JSON_UNESCAPED_UNICODE);
     $pickupAtFormatted = $pickupDt->format('Y-m-d H:i:00');
 
+    // S3 #8: スロット容量超過の race を防止するため、既存件数の FOR UPDATE 再カウント →
+    //        容量チェック → INSERT を atomic に実行する。
     try {
+        $pdo->beginTransaction();
+
+        // 同スロットの既存 takeout 注文を FOR UPDATE で行ロック
+        $lockStmt = $pdo->prepare(
+            "SELECT id FROM orders
+             WHERE store_id = ? AND order_type = 'takeout'
+               AND DATE(pickup_at) = ? AND TIME_FORMAT(pickup_at, '%H:%i') = ?
+               AND status NOT IN ('cancelled','paid')
+             FOR UPDATE"
+        );
+        $lockStmt->execute([$storeId, $slotDate, $slotTime]);
+        $lockedRows = $lockStmt->fetchAll();
+        if (count($lockedRows) >= $slotCapacity) {
+            $pdo->rollBack();
+            json_error('SLOT_FULL', 'この時間枠は満席になりました。別の時間を選択してください', 409);
+        }
+
         $stmt = $pdo->prepare(
             'INSERT INTO orders (
                 id, store_id, table_id, items, total_amount, status,
@@ -341,7 +371,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $memo ?: null,
             $idempotencyKey
         ]);
+
+        $pdo->commit();
     } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        // idempotency_key UNIQUE 衝突時は既存注文を返す (二重送信救済)
+        if ($e->getCode() === '23000' && $idempotencyKey) {
+            $idStmt = $pdo->prepare('SELECT id FROM orders WHERE idempotency_key = ? AND store_id = ?');
+            $idStmt->execute([$idempotencyKey, $storeId]);
+            $existing = $idStmt->fetch();
+            if ($existing) {
+                json_response(['order_id' => $existing['id'], 'status' => 'pending', 'duplicate' => true]);
+            }
+        }
+        error_log('[S3#8][takeout-orders] insert_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
         json_error('DB_ERROR', '注文作成に失敗しました', 500);
     }
 
@@ -363,6 +406,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                    . '&phone=' . urlencode($customerPhone);
         $orderName = 'テイクアウト注文 #' . substr($orderId, 0, 8);
 
+        // P0 #5: Stripe Session metadata (テイクアウト)
+        $stripeMetadata = array(
+            'tenant_id'        => (string)$store['tenant_id'],
+            'store_id'         => (string)$storeId,
+            'expected_amount'  => (string)$totalAmount,
+            'expected_currency' => 'jpy',
+            'order_ids'        => (string)$orderId,
+            'purpose'          => 'takeout',
+        );
+
         // L-13: Stripe Connect 判定（Connect が有効なら優先的に使用）
         $connectHandled = false;
         try {
@@ -375,7 +428,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $result = create_stripe_connect_checkout_session(
                         $platformConfig['secret_key'],
                         $connectInfo['stripe_connect_account_id'],
-                        $totalAmount, 'JPY', $appFee, $orderName, $successUrl, $cancelUrl
+                        $totalAmount, 'JPY', $appFee, $orderName, $successUrl, $cancelUrl,
+                        $stripeMetadata
                     );
                     if ($result['success'] && $result['checkout_url']) {
                         try {
@@ -386,9 +440,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         json_response(['order_id' => $orderId, 'status' => 'pending_payment', 'checkout_url' => $result['checkout_url']]);
                     }
-                    // Connect決済URL生成失敗 → 店頭払いにフォールバック
-                    $pdo->prepare("UPDATE orders SET status = 'pending' WHERE id = ?")->execute([$orderId]);
-                    json_response(['order_id' => $orderId, 'status' => 'pending', 'checkout_url' => null, 'payment_error' => $result['error']]);
+                    // Connect決済URL生成失敗 → 注文をキャンセルしてエラー返却 (S3: 店頭払い廃止)
+                    $pdo->prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?")->execute([$orderId]);
+                    error_log('[S3][takeout-orders.php] connect_checkout_failed: ' . ($result['error'] ?? 'unknown'), 3, '/home/odah/log/php_errors.log');
+                    json_error('PAYMENT_NOT_AVAILABLE', '決済処理に失敗しました。お手数ですが店舗にお問い合わせください', 503);
                 }
             }
         } catch (Exception $e) {
@@ -399,13 +454,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // C-3 / P1-2: 従来の直接決済（Stripe のみ）
         $gwConfig = get_payment_gateway_config($pdo, $store['tenant_id']);
         if (!$gwConfig || $gwConfig['gateway'] !== 'stripe') {
-            // 決済未設定 → 店頭払いにフォールバック
-            $pdo->prepare("UPDATE orders SET status = 'pending' WHERE id = ?")->execute([$orderId]);
-            json_response(['order_id' => $orderId, 'status' => 'pending', 'checkout_url' => null]);
+            // 決済未設定 → 注文キャンセル + エラー返却 (S3: 店頭払い廃止)
+            $pdo->prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?")->execute([$orderId]);
+            error_log('[S3][takeout-orders.php] gateway_not_configured store=' . $storeId, 3, '/home/odah/log/php_errors.log');
+            json_error('PAYMENT_NOT_AVAILABLE', 'この店舗ではオンライン決済が設定されていません', 503);
         }
 
         $result = create_stripe_checkout_session(
-            $gwConfig['token'], $totalAmount, 'JPY', $orderName, $successUrl, $cancelUrl
+            $gwConfig['token'], $totalAmount, 'JPY', $orderName, $successUrl, $cancelUrl,
+            $stripeMetadata
         );
         if ($result['success'] && $result['checkout_url']) {
             // セッションIDを注文に紐付け（後で決済確認に使用）
@@ -417,9 +474,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             json_response(['order_id' => $orderId, 'status' => 'pending_payment', 'checkout_url' => $result['checkout_url']]);
         }
-        // 決済URL生成失敗 → 店頭払いにフォールバック
-        $pdo->prepare("UPDATE orders SET status = 'pending' WHERE id = ?")->execute([$orderId]);
-        json_response(['order_id' => $orderId, 'status' => 'pending', 'checkout_url' => null, 'payment_error' => $result['error']]);
+        // 決済URL生成失敗 → 注文をキャンセルしてエラー返却 (S3: 店頭払い廃止)
+        $pdo->prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?")->execute([$orderId]);
+        error_log('[S3][takeout-orders.php] direct_checkout_failed: ' . ($result['error'] ?? 'unknown'), 3, '/home/odah/log/php_errors.log');
+        json_error('PAYMENT_NOT_AVAILABLE', '決済処理に失敗しました。お手数ですが店舗にお問い合わせください', 503);
     }
 
     json_response(['order_id' => $orderId, 'status' => 'pending']);

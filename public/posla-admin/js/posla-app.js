@@ -316,15 +316,35 @@
   // ── API設定（POSLA共通） ──
   var _apiSettings = {};
 
-  function _buildKeyDisplay(label, isSet, masked, value) {
+  // 機密キーは「設定済みかどうか + マスク表示」のみ。実値はサーバーから返らない
+  function _buildKeyDisplay(label, isSet, masked) {
     if (!isSet) {
       return '<span class="ai-status ai-status--unset"></span>未設定';
     }
-    var id = label.replace(/\s/g, '-').toLowerCase();
     return '<span class="ai-status ai-status--set"></span>' +
-      '<span id="' + id + '-masked">' + Utils.escapeHtml(masked || '') + '</span>' +
-      '<span id="' + id + '-raw" style="display:none;">' + Utils.escapeHtml(value || '') + '</span>' +
-      ' <button type="button" data-toggle-key="' + id + '" style="background:none;border:none;cursor:pointer;font-size:1rem;vertical-align:middle;padding:0 4px;" title="表示切替">&#128065;</button>';
+      '<span>' + Utils.escapeHtml(masked || '********') + '</span>';
+  }
+
+  // posla_settings GET レスポンスからキー情報 {set, masked} を取り出す
+  // 新形式: settings[key] = {set, masked}  /  旧形式: settings[key+'_set'], settings[key+'_masked']
+  function _getKeyInfo(s, key) {
+    var entry = s[key];
+    if (entry && typeof entry === 'object' && 'set' in entry) {
+      return { set: !!entry.set, masked: entry.masked || null };
+    }
+    return { set: !!s[key + '_set'], masked: s[key + '_masked'] || null };
+  }
+
+  // 非機密項目（price ID 等）の生値取得
+  function _getPlainValue(s, key) {
+    var entry = s[key];
+    if (entry && typeof entry === 'object') {
+      // 機密キー構造体しかない場合は空扱い
+      return '';
+    }
+    if (entry !== undefined && entry !== null) return String(entry);
+    if (s[key + '_value'] !== undefined && s[key + '_value'] !== null) return String(s[key + '_value']);
+    return '';
   }
 
   function loadApiStatus() {
@@ -334,15 +354,25 @@
       var statusEl = document.getElementById('current-api-status');
       if (!statusEl) return;
 
-      var geminiHtml = _buildKeyDisplay('gemini', s.gemini_api_key_set, s.gemini_api_key_masked, s.gemini_api_key_value);
-      var placesHtml = _buildKeyDisplay('places', s.google_places_api_key_set, s.google_places_api_key_masked, s.google_places_api_key_value);
+      var gemini = _getKeyInfo(s, 'gemini_api_key');
+      var places = _getKeyInfo(s, 'google_places_api_key');
+      var stripeSecret = _getKeyInfo(s, 'stripe_secret_key');
+      var stripePub = _getKeyInfo(s, 'stripe_publishable_key');
+      var stripeWebhook = _getKeyInfo(s, 'stripe_webhook_secret');
+      var smaregiSecret = _getKeyInfo(s, 'smaregi_client_secret');
 
-      var stripeSecretHtml = _buildKeyDisplay('stripe-secret', s.stripe_secret_key_set, s.stripe_secret_key_masked, s.stripe_secret_key_value);
-      var stripePubHtml = _buildKeyDisplay('stripe-pub', s.stripe_publishable_key_set, s.stripe_publishable_key_masked, s.stripe_publishable_key_value);
-      var stripeWebhookHtml = _buildKeyDisplay('stripe-webhook', s.stripe_webhook_secret_set, s.stripe_webhook_secret_masked, s.stripe_webhook_secret_value);
-      var priceStdVal = s.stripe_price_standard_value || '';
-      var priceProVal = s.stripe_price_pro_value || '';
-      var priceEntVal = s.stripe_price_enterprise_value || '';
+      var geminiHtml = _buildKeyDisplay('gemini', gemini.set, gemini.masked);
+      var placesHtml = _buildKeyDisplay('places', places.set, places.masked);
+      var stripeSecretHtml = _buildKeyDisplay('stripe-secret', stripeSecret.set, stripeSecret.masked);
+      var stripePubHtml = _buildKeyDisplay('stripe-pub', stripePub.set, stripePub.masked);
+      var stripeWebhookHtml = _buildKeyDisplay('stripe-webhook', stripeWebhook.set, stripeWebhook.masked);
+      var smaregiSecretHtml = _buildKeyDisplay('smaregi-secret', smaregiSecret.set, smaregiSecret.masked);
+
+      var priceBaseVal = _getPlainValue(s, 'stripe_price_base');
+      var priceAddVal = _getPlainValue(s, 'stripe_price_additional_store');
+      var priceHqVal = _getPlainValue(s, 'stripe_price_hq_broadcast');
+      var connectFeeVal = _getPlainValue(s, 'connect_application_fee_percent');
+      var smaregiClientIdVal = _getPlainValue(s, 'smaregi_client_id');
 
       statusEl.innerHTML =
         '<table class="data-table"><tbody>' +
@@ -352,43 +382,27 @@
         '<tr><td style="font-weight:600;">Secret Key</td><td>' + stripeSecretHtml + '</td></tr>' +
         '<tr><td style="font-weight:600;">Publishable Key</td><td>' + stripePubHtml + '</td></tr>' +
         '<tr><td style="font-weight:600;">Webhook Secret</td><td>' + stripeWebhookHtml + '</td></tr>' +
-        '<tr><td style="font-weight:600;">Price: Standard</td><td>' + (priceStdVal ? Utils.escapeHtml(priceStdVal) : '<span style="color:#999;">未設定</span>') + '</td></tr>' +
-        '<tr><td style="font-weight:600;">Price: Pro</td><td>' + (priceProVal ? Utils.escapeHtml(priceProVal) : '<span style="color:#999;">未設定</span>') + '</td></tr>' +
-        '<tr><td style="font-weight:600;">Price: Enterprise</td><td>' + (priceEntVal ? Utils.escapeHtml(priceEntVal) : '<span style="color:#999;">未設定</span>') + '</td></tr>' +
+        '<tr><td style="font-weight:600;">Price: 基本料金 (¥20,000)</td><td>' + (priceBaseVal ? Utils.escapeHtml(priceBaseVal) : '<span style="color:#999;">未設定</span>') + '</td></tr>' +
+        '<tr><td style="font-weight:600;">Price: 追加店舗 (¥17,000)</td><td>' + (priceAddVal ? Utils.escapeHtml(priceAddVal) : '<span style="color:#999;">未設定</span>') + '</td></tr>' +
+        '<tr><td style="font-weight:600;">Price: 本部一括配信 (¥3,000)</td><td>' + (priceHqVal ? Utils.escapeHtml(priceHqVal) : '<span style="color:#999;">未設定</span>') + '</td></tr>' +
         '<tr><td colspan="2" style="border-top:2px solid #e0e0e0;font-weight:600;padding-top:0.75rem;">Stripe Connect</td></tr>' +
-        '<tr><td style="font-weight:600;">Application Fee (%)</td><td>' + Utils.escapeHtml(s.connect_application_fee_percent_value || '未設定') + '</td></tr>' +
+        '<tr><td style="font-weight:600;">Application Fee (%)</td><td>' + (connectFeeVal ? Utils.escapeHtml(connectFeeVal) : '未設定') + '</td></tr>' +
         '<tr><td colspan="2" style="border-top:2px solid #e0e0e0;font-weight:600;padding-top:0.75rem;">スマレジ連携</td></tr>' +
-        '<tr><td style="font-weight:600;">Client ID</td><td>' + (s.smaregi_client_id_set ? Utils.escapeHtml(s.smaregi_client_id_value || '') : '<span style="color:#999;">未設定</span>') + '</td></tr>' +
-        '<tr><td style="font-weight:600;">Client Secret</td><td>' + _buildKeyDisplay('smaregi-secret', s.smaregi_client_secret_set, s.smaregi_client_secret_masked, s.smaregi_client_secret_value) + '</td></tr>' +
+        '<tr><td style="font-weight:600;">Client ID</td><td>' + (smaregiClientIdVal ? Utils.escapeHtml(smaregiClientIdVal) : '<span style="color:#999;">未設定</span>') + '</td></tr>' +
+        '<tr><td style="font-weight:600;">Client Secret</td><td>' + smaregiSecretHtml + '</td></tr>' +
         '</tbody></table>';
 
       // Connect手数料率フィールドに現在値をセット
       var feeInput = document.getElementById('posla-connect-fee');
-      if (feeInput && s.connect_application_fee_percent_value) {
-        feeInput.value = s.connect_application_fee_percent_value;
+      if (feeInput && connectFeeVal) {
+        feeInput.value = connectFeeVal;
       }
 
       // スマレジ Client IDに現在値をセット
       var smClientIdInput = document.getElementById('posla-smaregi-client-id');
-      if (smClientIdInput && s.smaregi_client_id_value) {
-        smClientIdInput.value = s.smaregi_client_id_value;
+      if (smClientIdInput && smaregiClientIdVal) {
+        smClientIdInput.value = smaregiClientIdVal;
       }
-
-      statusEl.addEventListener('click', function(e) {
-        var btn = e.target.closest('[data-toggle-key]');
-        if (!btn) return;
-        var key = btn.getAttribute('data-toggle-key');
-        var maskedEl = document.getElementById(key + '-masked');
-        var rawEl = document.getElementById(key + '-raw');
-        if (!maskedEl || !rawEl) return;
-        if (rawEl.style.display === 'none') {
-          rawEl.style.display = '';
-          maskedEl.style.display = 'none';
-        } else {
-          rawEl.style.display = 'none';
-          maskedEl.style.display = '';
-        }
-      });
     }).catch(function(err) {
       showToast('API設定の読み込みに失敗しました: ' + err.message);
     });
@@ -400,9 +414,9 @@
     var stripeSecret = document.getElementById('posla-stripe-secret').value.trim();
     var stripePub = document.getElementById('posla-stripe-pub').value.trim();
     var stripeWebhook = document.getElementById('posla-stripe-webhook').value.trim();
-    var priceStd = document.getElementById('posla-stripe-price-std').value.trim();
-    var pricePro = document.getElementById('posla-stripe-price-pro').value.trim();
-    var priceEnt = document.getElementById('posla-stripe-price-ent').value.trim();
+    var priceBase = document.getElementById('posla-stripe-price-base').value.trim();
+    var priceAdd = document.getElementById('posla-stripe-price-add').value.trim();
+    var priceHq = document.getElementById('posla-stripe-price-hq').value.trim();
     var connectFeeEl = document.getElementById('posla-connect-fee');
     var connectFee = connectFeeEl ? connectFeeEl.value.trim() : '';
 
@@ -412,9 +426,9 @@
     if (stripeSecret) data.stripe_secret_key = stripeSecret;
     if (stripePub) data.stripe_publishable_key = stripePub;
     if (stripeWebhook) data.stripe_webhook_secret = stripeWebhook;
-    if (priceStd) data.stripe_price_standard = priceStd;
-    if (pricePro) data.stripe_price_pro = pricePro;
-    if (priceEnt) data.stripe_price_enterprise = priceEnt;
+    if (priceBase) data.stripe_price_base = priceBase;
+    if (priceAdd) data.stripe_price_additional_store = priceAdd;
+    if (priceHq) data.stripe_price_hq_broadcast = priceHq;
     if (connectFee !== '') data.connect_application_fee_percent = connectFee;
 
     var smaregiClientId = document.getElementById('posla-smaregi-client-id');
@@ -437,9 +451,9 @@
       document.getElementById('posla-stripe-secret').value = '';
       document.getElementById('posla-stripe-pub').value = '';
       document.getElementById('posla-stripe-webhook').value = '';
-      document.getElementById('posla-stripe-price-std').value = '';
-      document.getElementById('posla-stripe-price-pro').value = '';
-      document.getElementById('posla-stripe-price-ent').value = '';
+      document.getElementById('posla-stripe-price-base').value = '';
+      document.getElementById('posla-stripe-price-add').value = '';
+      document.getElementById('posla-stripe-price-hq').value = '';
       var feeEl = document.getElementById('posla-connect-fee');
       if (feeEl) feeEl.value = '';
       var smIdEl = document.getElementById('posla-smaregi-client-id');
@@ -466,9 +480,9 @@
       stripe_secret_key: null,
       stripe_publishable_key: null,
       stripe_webhook_secret: null,
-      stripe_price_standard: null,
-      stripe_price_pro: null,
-      stripe_price_enterprise: null
+      stripe_price_base: null,
+      stripe_price_additional_store: null,
+      stripe_price_hq_broadcast: null
     }).then(function() {
       showToast('キーを削除しました');
       loadApiStatus();

@@ -4,10 +4,13 @@
 var OrderSender = (function () {
   'use strict';
 
+  var _subSessionId = null; // F-QR1: 個別QR サブセッションID
+
   function generateIdempotencyKey() {
     var arr = new Uint8Array(16);
     crypto.getRandomValues(arr);
-    return Array.from(arr, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+    // S3-#17: ES5 互換 (padStart は古い WebView 非対応)
+    return Array.from(arr, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
   }
 
   function send(baseApi, storeId, tableId, cartItems, sessionToken, removedItems, retries, idempotencyKey, memo, allergens) {
@@ -41,6 +44,10 @@ var OrderSender = (function () {
         item.allergen_selections = allergens;
       });
     }
+    // F-QR1: サブセッションIDを注文に含める
+    if (_subSessionId) {
+      body.sub_session_id = _subSessionId;
+    }
 
     return fetch(baseApi + '/customer/orders.php', {
       method: 'POST',
@@ -54,7 +61,8 @@ var OrderSender = (function () {
         try { json = JSON.parse(text); }
         catch (e) { throw { network: true, message: 'JSON解析エラー: ' + text.substring(0, 200) }; }
         if (!res.ok || json.error) {
-          var err = new Error((json.error && json.error.message) || '注文の送信に失敗しました');
+          var formatted = (window.Utils && Utils.formatError) ? Utils.formatError(json) : ((json.error && json.error.message) || '注文の送信に失敗しました');
+          var err = new Error(formatted);
           err.retriable = res.status >= 500 || res.status === 0;
           // O-3: ラストオーダーエラーを識別可能にする
           if (json.error && json.error.code === 'LAST_ORDER_PASSED') {
@@ -179,5 +187,7 @@ var OrderSender = (function () {
     });
   }
 
-  return { send: send };
+  function setSubSessionId(id) { _subSessionId = id; }
+
+  return { send: send, setSubSessionId: setSubSessionId };
 })();

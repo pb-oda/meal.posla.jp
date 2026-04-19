@@ -185,8 +185,11 @@ var AiAssistant = (function () {
   // ── UI描画 ──
   function _render() {
     _container.innerHTML = ''
-      // ── SNS投稿文生成 ──
       + '<div style="max-width:720px;margin:0 auto;padding:1.5rem;">'
+
+      // (CB1c: AI ヘルプデスクは右下フローティングボタンに移行したため、ここからは削除)
+
+      // ── SNS投稿文生成 ──
 
       // SNSセクションヘッダー
       + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;">'
@@ -348,6 +351,8 @@ var AiAssistant = (function () {
     // 分析DOM
     _btnAnalyze = document.getElementById('ai-btn-analyze');
     _analysisArea = document.getElementById('ai-analysis-area');
+
+    // (CB1c: ヘルプデスクは右下フローティングボタン (posla-helpdesk-fab.js) に移行)
 
     // SNSイベント
     _btnInsta.addEventListener('click', function () { _generate('instagram'); });
@@ -1075,6 +1080,60 @@ var AiAssistant = (function () {
   // ══════════════════════════════════
   // 共通ユーティリティ
   // ══════════════════════════════════
+
+  // ── Batch-FINAL: ヘルプデスク問い合わせ ──
+  function _askHelpdesk() {
+    var q = document.getElementById('ai-hd-question').value.trim();
+    if (!q) {
+      alert('質問を入力してください');
+      return;
+    }
+    var btn = document.getElementById('ai-hd-ask');
+    var wrap = document.getElementById('ai-hd-answer-wrap');
+    var ansEl = document.getElementById('ai-hd-answer');
+    btn.disabled = true;
+    btn.textContent = '調査中…';
+    ansEl.textContent = '';
+    wrap.style.display = 'block';
+    ansEl.innerHTML = '<span style="color:#999;">マニュアル 28 章を検索中…</span>';
+
+    fetch('../../api/store/ai-generate.php', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'helpdesk_tenant',
+        prompt: q
+      })
+    })
+    .then(function (r) {
+      return r.text().then(function (body) {
+        try { return JSON.parse(body); } catch (e) { throw new Error('JSON解析エラー'); }
+      });
+    })
+    .then(function (json) {
+      btn.disabled = false;
+      btn.textContent = '質問する';
+      if (!json.ok) {
+        var msg = (json.error && json.error.message) || 'AI APIエラー';
+        if (json.error && json.error.code === 'KNOWLEDGE_BASE_MISSING') {
+          msg = 'マニュアル knowledge base が未生成です。POSLA運営にお問い合わせください (scripts/build-helpdesk-prompt.php の実行が必要)';
+        }
+        ansEl.textContent = '⚠ ' + msg;
+        ansEl.style.color = '#c62828';
+        return;
+      }
+      var text = (json.data && json.data.text) || '';
+      ansEl.style.color = '#333';
+      ansEl.textContent = text;
+    })
+    .catch(function (err) {
+      btn.disabled = false;
+      btn.textContent = '質問する';
+      ansEl.textContent = '⚠ 通信エラー: ' + err.message;
+      ansEl.style.color = '#c62828';
+    });
+  }
 
   // ── Gemini API呼び出し（サーバープロキシ経由）──
   // ※APIキーはサーバー側で保持。ブラウザには露出しない

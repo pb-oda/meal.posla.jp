@@ -33,6 +33,6 @@ if (!$row) {
     json_response(['valid' => false]);
 }
 
-$valid = ($row['session_token'] === $token);
+$valid = ($row['session_token'] && hash_equals($row['session_token'], (string)$token));
 
 json_response(['valid' => $valid]);

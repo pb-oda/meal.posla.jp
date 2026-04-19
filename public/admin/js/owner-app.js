@@ -615,127 +615,196 @@
     });
   }
 
-  function renderSubscription(container, data) {
-    var plans = [
-      { key: 'standard', name: 'Standard', price: '¥5,000', desc: '店内飲食の基本運営' },
-      { key: 'pro', name: 'Pro', price: '¥20,000', desc: '全チャネル + 経営管理' },
-      { key: 'enterprise', name: 'Enterprise', price: '¥50,000', desc: '多店舗統括' }
-    ];
+  // P1-35: α-1 価格内訳テーブルを組み立てる
+  // 戻り値: { html: 文字列, total: 数値 }
+  function _renderPricingBreakdown(storeCount, hasHqBroadcast) {
+    storeCount = parseInt(storeCount, 10) || 1;
+    if (storeCount < 1) storeCount = 1;
 
-    var hasSubscription = data.has_subscription;
-    var currentPlan = data.plan || 'standard';
-    var subStatus = data.subscription_status || 'none';
+    var lines = [];
+    lines.push({ label: '基本料金', unit: 20000, qty: 1, subtotal: 20000 });
+    if (storeCount > 1) {
+      var addQty = storeCount - 1;
+      lines.push({ label: '追加店舗', unit: 17000, qty: addQty, subtotal: 17000 * addQty });
+    }
+    if (hasHqBroadcast) {
+      lines.push({ label: '本部一括配信', unit: 3000, qty: storeCount, subtotal: 3000 * storeCount });
+    }
+
+    var total = 0;
+    for (var i = 0; i < lines.length; i++) total += lines[i].subtotal;
 
     var html = '';
-
-    if (hasSubscription && subStatus !== 'none') {
-      // ── 契約中表示 ──
-      var statusLabels = { active: '有効', past_due: '支払い遅延', canceled: '解約済み', trialing: 'トライアル' };
-      var statusColors = { active: '#4caf50', past_due: '#c62828', canceled: '#999', trialing: '#ff9800' };
-      var statusLabel = statusLabels[subStatus] || subStatus;
-      var statusColor = statusColors[subStatus] || '#999';
-
-      var periodEndStr = '-';
-      if (data.current_period_end) {
-        var d = new Date(data.current_period_end);
-        periodEndStr = d.getFullYear() + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + ('0' + d.getDate()).slice(-2);
-      }
-
-      var planLabel = '';
-      for (var p = 0; p < plans.length; p++) {
-        if (plans[p].key === currentPlan) { planLabel = plans[p].name; break; }
-      }
-
-      html += '<div class="card" style="max-width:500px;margin-bottom:1.5rem;">'
-        + '<div class="card__body" style="text-align:center;">'
-        + '<div style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:0.5rem;">現在のプラン</div>'
-        + '<div style="font-size:2rem;font-weight:700;color:var(--primary);">' + Utils.escapeHtml(planLabel) + '</div>'
-        + '<div style="margin-top:0.75rem;">'
-        +   '<span style="display:inline-block;padding:0.25rem 0.75rem;border-radius:10px;font-size:0.8rem;font-weight:600;color:#fff;background:' + statusColor + ';">'
-        +     Utils.escapeHtml(statusLabel)
-        +   '</span>'
-        + '</div>'
-        + '<div style="margin-top:1rem;font-size:0.875rem;color:var(--text-secondary);">次回請求日: ' + Utils.escapeHtml(periodEndStr) + '</div>'
-        + '<div style="margin-top:1.5rem;display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">'
-        +   '<button class="btn btn-primary" id="btn-open-portal">プラン変更・カード変更・解約</button>'
-        + '</div>'
-        + '</div></div>';
-
-      // プランカード（参考表示）
-      html += '<h3 style="font-size:1rem;font-weight:600;margin-bottom:0.75rem;">プラン一覧</h3>';
-      html += '<div style="display:flex;gap:1rem;flex-wrap:wrap;">';
-      for (var i = 0; i < plans.length; i++) {
-        var pl = plans[i];
-        var isCurrent = pl.key === currentPlan;
-        var borderStyle = isCurrent ? '2px solid var(--primary)' : '1px solid #e0e0e0';
-        html += '<div class="card" style="flex:1;min-width:180px;max-width:260px;border:' + borderStyle + ';">'
-          + '<div class="card__body" style="text-align:center;">'
-          + '<div style="font-size:1.25rem;font-weight:700;">' + Utils.escapeHtml(pl.name) + '</div>'
-          + '<div style="font-size:1.5rem;font-weight:700;color:var(--primary);margin:0.5rem 0;">' + pl.price + '<span style="font-size:0.8rem;font-weight:400;">/月</span></div>'
-          + '<div style="font-size:0.8rem;color:var(--text-secondary);">' + Utils.escapeHtml(pl.desc) + '</div>';
-        if (isCurrent) {
-          html += '<div style="margin-top:0.75rem;"><span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:10px;font-size:0.75rem;font-weight:600;background:var(--primary);color:#fff;">現在のプラン</span></div>';
-        }
-        html += '</div></div>';
-      }
-      html += '</div>';
-    } else {
-      // ── 未契約表示 ──
-      html += '<p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1.25rem;">サブスクリプションが未契約です。プランを選択して契約を開始してください。</p>';
-      html += '<div style="display:flex;gap:1rem;flex-wrap:wrap;">';
-      for (var j = 0; j < plans.length; j++) {
-        var pl2 = plans[j];
-        var isCurr = pl2.key === currentPlan;
-        var border2 = isCurr ? '2px solid var(--primary)' : '1px solid #e0e0e0';
-        html += '<div class="card" style="flex:1;min-width:200px;max-width:300px;border:' + border2 + ';">'
-          + '<div class="card__body" style="text-align:center;">'
-          + '<div style="font-size:1.25rem;font-weight:700;">' + Utils.escapeHtml(pl2.name) + '</div>'
-          + '<div style="font-size:1.75rem;font-weight:700;color:var(--primary);margin:0.75rem 0;">' + pl2.price + '<span style="font-size:0.85rem;font-weight:400;">/月</span></div>'
-          + '<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1rem;">' + Utils.escapeHtml(pl2.desc) + '</div>';
-        if (isCurr) {
-          html += '<div style="margin-bottom:0.5rem;"><span style="font-size:0.75rem;color:var(--primary);font-weight:600;">現在のプラン</span></div>';
-        }
-        html += '<button class="btn btn-primary" data-checkout-plan="' + pl2.key + '">このプランで契約</button>'
-          + '</div></div>';
-      }
-      html += '</div>';
+    html += '<table class="pricing-table" style="width:100%;max-width:480px;border-collapse:collapse;font-size:0.9rem;margin-bottom:0.75rem;">';
+    html += '<thead><tr style="border-bottom:2px solid #e0e0e0;">'
+      +    '<th style="text-align:left;padding:0.5rem 0.5rem;color:var(--text-secondary);font-weight:600;">項目</th>'
+      +    '<th style="text-align:right;padding:0.5rem 0.5rem;color:var(--text-secondary);font-weight:600;">単価</th>'
+      +    '<th style="text-align:right;padding:0.5rem 0.5rem;color:var(--text-secondary);font-weight:600;">数量</th>'
+      +    '<th style="text-align:right;padding:0.5rem 0.5rem;color:var(--text-secondary);font-weight:600;">小計</th>'
+      + '</tr></thead><tbody>';
+    for (var j = 0; j < lines.length; j++) {
+      var ln = lines[j];
+      html += '<tr style="border-bottom:1px solid #f0f0f0;">'
+        +    '<td style="padding:0.5rem 0.5rem;">' + Utils.escapeHtml(ln.label) + '</td>'
+        +    '<td style="padding:0.5rem 0.5rem;text-align:right;">¥' + ln.unit.toLocaleString() + '</td>'
+        +    '<td style="padding:0.5rem 0.5rem;text-align:right;">× ' + ln.qty + '</td>'
+        +    '<td style="padding:0.5rem 0.5rem;text-align:right;">¥' + ln.subtotal.toLocaleString() + '</td>'
+        + '</tr>';
     }
+    html += '<tr style="border-top:2px solid #333;background:#fafafa;">'
+      +    '<td colspan="3" style="padding:0.6rem 0.5rem;font-weight:700;">月額合計</td>'
+      +    '<td style="padding:0.6rem 0.5rem;text-align:right;font-weight:700;font-size:1.1rem;color:var(--primary);">¥' + total.toLocaleString() + '</td>'
+      + '</tr>';
+    html += '</tbody></table>';
+
+    return { html: html, total: total };
+  }
+
+  // P1-35: 未契約表示 (subStatus === 'none')
+  function _renderSubUnsubscribed(container, data) {
+    var storeCount = parseInt(data.store_count, 10) || 1;
+
+    function renderInner(checked) {
+      var pb = _renderPricingBreakdown(storeCount, checked);
+
+      var html = '';
+      html += '<div class="card" style="max-width:560px;">'
+        +    '<div class="card__body">'
+        +      '<h3 style="margin:0 0 0.5rem;font-size:1.1rem;font-weight:700;">POSLA サブスクリプション</h3>'
+        +      '<p style="margin:0 0 1rem;font-size:0.85rem;color:var(--text-secondary);">'
+        +        '店舗数: <strong>' + storeCount + '</strong> 店舗 (現在の登録店舗から自動)'
+        +      '</p>'
+        +      '<div id="sub-pricing-area">' + pb.html + '</div>'
+        +      '<label style="display:flex;align-items:center;gap:0.5rem;padding:0.75rem;background:#f5f5f5;border-radius:6px;cursor:pointer;margin-bottom:1rem;">'
+        +        '<input type="checkbox" id="sub-hq-broadcast"' + (checked ? ' checked' : '') + '>'
+        +        '<span style="font-size:0.9rem;">'
+        +          '<strong>本部一括配信アドオンを追加する</strong>'
+        +          '<br><span style="font-size:0.78rem;color:var(--text-secondary);">チェーン本部運用向け（複数店舗で同一メニューを一括配信）</span>'
+        +        '</span>'
+        +      '</label>'
+        +      '<p style="margin:0 0 1rem;font-size:0.85rem;color:var(--text-secondary);text-align:center;">※ 30日間無料トライアル / 31日目から自動課金</p>'
+        +      '<div style="text-align:center;">'
+        +        '<button class="btn btn-primary" id="btn-start-trial" style="font-size:1rem;padding:0.75rem 2rem;">30日間無料で始める</button>'
+        +      '</div>'
+        +    '</div>'
+        + '</div>';
+
+      container.innerHTML = html;
+
+      // チェックボックス変更で再描画 (合計金額更新)
+      var chk = document.getElementById('sub-hq-broadcast');
+      if (chk) {
+        chk.addEventListener('change', function () {
+          renderInner(chk.checked);
+        });
+      }
+
+      var startBtn = document.getElementById('btn-start-trial');
+      if (startBtn) {
+        startBtn.addEventListener('click', function () {
+          var hqChecked = chk ? chk.checked : false;
+          startBtn.disabled = true;
+          startBtn.textContent = '処理中...';
+          _subRequest('POST', '/checkout.php', { hq_broadcast: hqChecked }).then(function (resp) {
+            if (resp.checkout_url) {
+              window.location.href = resp.checkout_url;
+            }
+          }).catch(function (err) {
+            showToast(err.message || 'エラーが発生しました', 'error');
+            startBtn.disabled = false;
+            startBtn.textContent = '30日間無料で始める';
+          });
+        });
+      }
+    }
+
+    // 初期表示は data.has_hq_broadcast を尊重 (none 状態では通常 false)
+    renderInner(!!data.has_hq_broadcast);
+  }
+
+  // P1-35: 契約中表示 (trialing / active / past_due / canceled)
+  function _renderSubActive(container, data) {
+    var subStatus = data.subscription_status || 'none';
+    var statusLabels = { active: '有効', past_due: '支払い遅延', canceled: '解約済み', trialing: 'トライアル中' };
+    var statusColors = { active: '#4caf50', past_due: '#c62828', canceled: '#999', trialing: '#ff9800' };
+    var statusLabel = statusLabels[subStatus] || subStatus;
+    var statusColor = statusColors[subStatus] || '#999';
+
+    // 次回請求日 / トライアル残日数
+    var periodEndStr = '-';
+    var trialDaysLeftStr = '';
+    if (data.current_period_end) {
+      var d = new Date(data.current_period_end);
+      if (!isNaN(d.getTime())) {
+        periodEndStr = d.getFullYear() + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + ('0' + d.getDate()).slice(-2);
+        if (subStatus === 'trialing') {
+          var diffMs = d.getTime() - (new Date()).getTime();
+          var diffDays = Math.ceil(diffMs / 86400000);
+          if (diffDays > 0) {
+            trialDaysLeftStr = '残り ' + diffDays + ' 日';
+          }
+        }
+      }
+    }
+
+    var pb = _renderPricingBreakdown(data.store_count || 1, !!data.has_hq_broadcast);
+
+    var html = '';
+    html += '<div class="card" style="max-width:560px;">'
+      +    '<div class="card__body">'
+      +      '<h3 style="margin:0 0 0.75rem;font-size:1.1rem;font-weight:700;">サブスクリプション</h3>'
+      +      '<div style="margin-bottom:1rem;">'
+      +        '<span style="font-size:0.85rem;color:var(--text-secondary);">状態: </span>'
+      +        '<span style="display:inline-block;padding:0.25rem 0.75rem;border-radius:10px;font-size:0.8rem;font-weight:600;color:#fff;background:' + statusColor + ';">'
+      +          Utils.escapeHtml(statusLabel)
+      +        '</span>'
+      +        (trialDaysLeftStr ? ' <span style="font-size:0.85rem;color:var(--text-secondary);margin-left:0.5rem;">' + Utils.escapeHtml(trialDaysLeftStr) + '</span>' : '')
+      +      '</div>'
+      +      '<div style="margin-bottom:0.75rem;font-size:0.85rem;color:var(--text-secondary);">'
+      +        '店舗数: <strong>' + (data.store_count || 1) + '</strong> 店舗'
+      +        ' / 本部一括配信アドオン: <strong>' + (data.has_hq_broadcast ? 'あり' : 'なし') + '</strong>'
+      +      '</div>'
+      +      pb.html
+      +      '<div style="margin-top:1rem;font-size:0.875rem;color:var(--text-secondary);">'
+      +        (subStatus === 'trialing' ? '課金開始日' : '次回請求日') + ': ' + Utils.escapeHtml(periodEndStr)
+      +      '</div>'
+      +      '<div style="margin-top:1.5rem;text-align:center;">'
+      +        '<button class="btn btn-primary" id="btn-open-portal">サブスクリプション管理 (Stripe)</button>'
+      +      '</div>'
+      +    '</div>'
+      + '</div>';
 
     container.innerHTML = html;
 
-    // イベント: Checkout
-    container.addEventListener('click', function (e) {
-      var checkoutBtn = e.target.closest('[data-checkout-plan]');
-      if (checkoutBtn) {
-        var plan = checkoutBtn.getAttribute('data-checkout-plan');
-        checkoutBtn.disabled = true;
-        checkoutBtn.textContent = '処理中...';
-        _subRequest('POST', '/checkout.php', { plan: plan }).then(function (data) {
-          if (data.checkout_url) {
-            window.location.href = data.checkout_url;
+    var portalBtn = document.getElementById('btn-open-portal');
+    if (portalBtn) {
+      portalBtn.addEventListener('click', function () {
+        portalBtn.disabled = true;
+        portalBtn.textContent = '処理中...';
+        _subRequest('POST', '/portal.php').then(function (resp) {
+          if (resp.portal_url) {
+            window.location.href = resp.portal_url;
           }
         }).catch(function (err) {
           showToast(err.message || 'エラーが発生しました', 'error');
-          checkoutBtn.disabled = false;
-          checkoutBtn.textContent = 'このプランで契約';
+          portalBtn.disabled = false;
+          portalBtn.textContent = 'サブスクリプション管理 (Stripe)';
         });
-      }
+      });
+    }
+  }
 
-      // Portal
-      if (e.target.id === 'btn-open-portal') {
-        e.target.disabled = true;
-        e.target.textContent = '処理中...';
-        _subRequest('POST', '/portal.php').then(function (data) {
-          if (data.portal_url) {
-            window.location.href = data.portal_url;
-          }
-        }).catch(function (err) {
-          showToast(err.message || 'エラーが発生しました', 'error');
-          e.target.disabled = false;
-          e.target.textContent = 'プラン変更・カード変更・解約';
-        });
-      }
-    });
+  function renderSubscription(container, data) {
+    // P1-35: α-1 化 — 旧 standard/pro/enterprise 3カードを廃止
+    // 価格内訳テーブル + HQ アドオンチェックボックス + 契約中/未契約で UI 切替
+    var subStatus = data.subscription_status || 'none';
+    var hasSubscription = data.has_subscription;
+
+    if (hasSubscription && subStatus !== 'none') {
+      _renderSubActive(container, data);
+    } else {
+      _renderSubUnsubscribed(container, data);
+    }
   }
 
   // ═══════════════════════════════════

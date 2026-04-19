@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1976d2" rx="76"/>
+  <circle cx="256" cy="180" r="80" fill="white" fill-opacity="0.95"/>
+  <text x="256" y="208" font-family="-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif" font-size="64" font-weight="700" fill="#1976d2" text-anchor="middle">P</text>
+  <text x="256" y="340" font-family="-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif" font-size="56" font-weight="700" fill="white" text-anchor="middle" letter-spacing="3">POSLA</text>
+  <text x="256" y="420" font-family="-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif" font-size="80" font-weight="800" fill="white" text-anchor="middle" letter-spacing="6">管</text>
+</svg>

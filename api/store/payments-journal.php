@@ -36,10 +36,27 @@ if ($from && $to) {
     $range = ['start' => $bd['start'], 'end' => $bd['end']];
 }
 
+// C-R1: refund / gateway カラム存在チェック
+$hasRefundCols = false;
+try {
+    $pdo->query('SELECT refund_status FROM payments LIMIT 0');
+    $hasRefundCols = true;
+} catch (PDOException $e) {}
+
+$hasGatewayCols = false;
+try {
+    $pdo->query('SELECT gateway_name FROM payments LIMIT 0');
+    $hasGatewayCols = true;
+} catch (PDOException $e) {}
+
+$extraCols = '';
+if ($hasGatewayCols) $extraCols .= ', p.gateway_name, p.external_payment_id, p.gateway_status';
+if ($hasRefundCols) $extraCols .= ', p.refund_status, p.refund_amount, p.refunded_at';
+
 $stmt = $pdo->prepare(
     'SELECT p.id, p.table_id, p.total_amount, p.payment_method,
             p.received_amount, p.change_amount, p.is_partial,
-            p.paid_at, p.user_id,
+            p.paid_at, p.user_id' . $extraCols . ',
             u.display_name AS staff_name,
             t.table_code AS table_code
      FROM payments p

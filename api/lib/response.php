@@ -4,18 +4,34 @@
  *
  * 統一フォーマット:
  *   成功: { "ok": true,  "data": {...}, "serverTime": "..." }
- *   エラー: { "ok": false, "error": { "code": "...", "message": "..." } }
+ *   エラー: { "ok": false, "error": { "code": "...", "message": "...", "errorNo": "Exxxx" } }
+ *
+ * Phase B: errorNo は api/lib/error-codes.php の get_error_no() で文字列 code から導出する
  */
+
+require_once __DIR__ . '/error-codes.php';
 
 function send_api_headers(): void
 {
     header('Content-Type: application/json; charset=utf-8');
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
     header('Cache-Control: no-store');
+
+    // S3-#19 (Q3=B): 自ドメインのみ Origin allow (eat.posla.jp / meal.posla.jp)
+    // 通常は同一オリジン前提だが、将来のサブドメイン分離やローカル開発に備える
+    $origin  = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $allowed = ['https://eat.posla.jp', 'https://meal.posla.jp'];
+    if (in_array($origin, $allowed, true)) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Vary: Origin');
+        header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type');
+    }
 }
 
+/**
+ * S3-#19 (Q3=B): preflight 応答 — 自ドメイン Origin のみ 204 を返す
+ */
 function handle_preflight(): void
 {
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -66,12 +82,19 @@ function json_error(string $code, string $message, int $status_code = 400): void
     send_api_headers();
     http_response_code($status_code);
 
+    // Phase B: 文字列 code から E 番号を導出 (未登録なら null)
+    $errorNo = function_exists('get_error_no') ? get_error_no($code) : null;
+
+    // Phase B (CB1): error_log テーブルに記録 (失敗時もレスポンスを阻害しない)
+    _record_error_log($code, $message, $status_code, $errorNo);
+
     $body = json_encode([
         'ok'    => false,
         'error' => [
             'code'    => $code,
             'message' => $message,
             'status'  => $status_code,
+            'errorNo' => $errorNo,
         ],
         'serverTime' => date('c'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -87,6 +110,65 @@ function json_error(string $code, string $message, int $status_code = 400): void
 
     echo $body;
     exit;
+}
+
+/**
+ * Phase B (CB1): error_log テーブルに記録
+ *
+ * 失敗時もレスポンスを阻害しない (silent fail)。
+ * 認証情報が利用可能なら user/tenant/store を併記。
+ * テーブル未作成や DB 接続失敗時もスローしない。
+ */
+function _record_error_log(string $code, string $message, int $status_code, ?string $errorNo): void
+{
+    try {
+        // db.php がまだ require されていない可能性がある (低レイヤから呼ばれるケース)
+        if (!function_exists('get_db')) {
+            return;
+        }
+        $pdo = @get_db();
+        if (!$pdo) return;
+
+        // 認証情報の取得を試みる (セッションから直接読む。未認証時は null のまま)
+        $tenantId = $userId = $username = $role = null;
+        if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['user_id'])) {
+            $tenantId = $_SESSION['tenant_id'] ?? null;
+            $userId   = $_SESSION['user_id'] ?? null;
+            $username = $_SESSION['username'] ?? null;
+            $role     = $_SESSION['role'] ?? null;
+        }
+        // store_id はクエリパラメータ or POST body から拾う
+        $storeId = null;
+        if (isset($_GET['store_id']) && is_string($_GET['store_id'])) {
+            $storeId = substr($_GET['store_id'], 0, 36);
+        }
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO error_log
+                (error_no, code, message, http_status,
+                 tenant_id, store_id, user_id, username, role,
+                 request_method, request_path, ip_address, user_agent, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())'
+        );
+        $stmt->execute([
+            $errorNo,
+            substr($code, 0, 64),
+            mb_substr($message, 0, 1000),
+            $status_code,
+            $tenantId,
+            $storeId,
+            $userId,
+            $username,
+            $role,
+            $_SERVER['REQUEST_METHOD'] ?? null,
+            substr($_SERVER['REQUEST_URI'] ?? '', 0, 255),
+            $_SERVER['REMOTE_ADDR'] ?? null,
+            substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500),
+        ]);
+    } catch (Throwable $e) {
+        // テーブル未作成やDB障害でレスポンス送出を阻害しない
+        @error_log('[CB1] error_log insert failed: ' . $e->getMessage());
+    }
 }
 
 function get_json_body(): array

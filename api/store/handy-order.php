@@ -19,6 +19,7 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/order-items.php';
+require_once __DIR__ . '/../lib/order-validator.php';
 
 require_method(['POST', 'PATCH']);
 $user = require_auth();
@@ -46,16 +47,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $fields = [];
     $params = [];
 
-    // 品目の差し替え
+    // 品目の差し替え (S3 #4: クライアント送信価格を信頼せずサーバー側で再計算)
     if (isset($data['items']) && is_array($data['items'])) {
-        $totalAmount = 0;
-        foreach ($data['items'] as $item) {
-            $totalAmount += (int)($item['price'] ?? 0) * (int)($item['qty'] ?? 1);
+        // PATCH 時のプランセッション判定 (table_id 経由)
+        $patchIsPlan = false;
+        $patchPlanId = null;
+        try {
+            $tStmt = $pdo->prepare(
+                "SELECT ts.plan_id FROM table_sessions ts
+                  JOIN orders o ON o.table_id = ts.table_id AND o.store_id = ts.store_id
+                 WHERE o.id = ? AND ts.store_id = ?
+                   AND ts.status IN ('seated','eating')
+                   AND ts.plan_id IS NOT NULL
+                 ORDER BY ts.started_at DESC LIMIT 1"
+            );
+            $tStmt->execute([$orderId, $storeId]);
+            $pid = $tStmt->fetchColumn();
+            if ($pid) { $patchIsPlan = true; $patchPlanId = $pid; }
+        } catch (Exception $e) {
+            error_log('[S3#4][handy-order PATCH] plan_check: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
         }
+        $validated = validate_and_recompute_items($pdo, $storeId, $data['items'], $patchIsPlan, $patchPlanId);
         $fields[] = 'items = ?';
-        $params[] = json_encode($data['items'], JSON_UNESCAPED_UNICODE);
+        $params[] = json_encode($validated['items'], JSON_UNESCAPED_UNICODE);
         $fields[] = 'total_amount = ?';
-        $params[] = $totalAmount;
+        $params[] = $validated['total_amount'];
     }
 
     // テイクアウト情報更新
@@ -80,7 +96,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     try {
         $pdo->prepare('UPDATE orders SET ' . implode(', ', $fields) . ' WHERE id = ?')->execute($params);
     } catch (PDOException $e) {
-        json_error('DB_ERROR', '注文更新に失敗しました: ' . $e->getMessage(), 500);
+        // S3 #11: 内部エラーメッセージはログのみ、レスポンスは固定文言
+        error_log('[handy-order PATCH] db_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        json_error('DB_ERROR', '処理に失敗しました。時間を置いて再試行してください。', 500);
     }
 
     json_response(['ok' => true]);
@@ -176,11 +194,30 @@ if (!empty($itemIds)) {
     }
 }
 
-// 金額計算
-$totalAmount = 0;
-foreach ($items as $item) {
-    $totalAmount += (int)($item['price'] ?? 0) * (int)($item['qty'] ?? 1);
+// S3 #4: クライアント送信価格を信頼せずサーバー側で再計算 (改ざん防止)
+// プランセッション中か判定 (テーブルに紐付くアクティブな time_limit_plans)
+$isPlanSession = false;
+$activePlanId = null;
+if ($tableId) {
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT ts.plan_id FROM table_sessions ts
+             WHERE ts.table_id = ? AND ts.store_id = ?
+               AND ts.status IN ('seated','eating')
+               AND ts.plan_id IS NOT NULL
+             ORDER BY ts.started_at DESC LIMIT 1"
+        );
+        $stmt->execute([$tableId, $storeId]);
+        $pid = $stmt->fetchColumn();
+        if ($pid) { $isPlanSession = true; $activePlanId = $pid; }
+    } catch (Exception $e) {
+        error_log('[S3#4][handy-order POST] plan_check: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    }
 }
+
+$validated = validate_and_recompute_items($pdo, $storeId, $items, $isPlanSession, $activePlanId);
+$items = $validated['items'];
+$totalAmount = $validated['total_amount'];
 
 // 注文作成
 $orderId = generate_uuid();
@@ -209,7 +246,9 @@ try {
         $memo ?: null
     ]);
 } catch (PDOException $e) {
-    json_error('DB_ERROR', '注文作成に失敗しました: ' . $e->getMessage(), 500);
+    // S3 #11: 内部エラーメッセージはログのみ、レスポンスは固定文言
+    error_log('[handy-order POST] db_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    json_error('DB_ERROR', '処理に失敗しました。時間を置いて再試行してください。', 500);
 }
 
 // order_items テーブルにも書き込み（品目単位ステータス管理）

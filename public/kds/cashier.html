@@ -7,6 +7,9 @@
   <title>POSレジ - Cashier</title>
   <link rel="stylesheet" href="css/cashier.css?v=20260405">
   <script src="https://js.stripe.com/terminal/v1/"></script>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 </head>
 <body class="ca-body">
 
@@ -77,9 +80,9 @@
   <!-- トースト -->
   <div class="ca-toast" id="ca-toast"></div>
 
-  <script src="../shared/js/utils.js"></script>
-  <script src="js/kds-auth.js"></script>
-  <script src="js/cashier-app.js?v=20260407p14"></script>
+  <script src="../shared/js/utils.js?v=20260419-phaseB"></script>
+  <script src="js/kds-auth.js?v=20260418gps"></script>
+  <script src="js/cashier-app.js?v=20260419-s2"></script>
   <script>
   (function () {
     'use strict';
@@ -89,6 +92,7 @@
   <script src="../js/theme-switcher.js"></script>
   <script>ThemeSwitcher.injectButton(document.querySelector('.ca-header__right'));</script>
   <script src="../js/offline-detector.js"></script>
-  <script src="../js/session-monitor.js"></script>
+  <script src="../js/session-monitor.js?v=20260419-fixurl"></script>
+  <script src="pwa-register.js"></script>
 </body>
 </html>

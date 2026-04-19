@@ -221,26 +221,37 @@ function _check_session_validity(): void
 }
 
 /**
- * L-16: テナントのプラン機能チェック
+ * P1-34 (α-1): プラン機能チェック
+ *
+ * 2026-04-09 以降のプラン構成 α-1 (単一プラン + アドオン) では、
+ * 「本部一括メニュー配信」(hq_menu_broadcast) のみが差別化機能。
+ * それ以外の全機能は全契約者に標準提供 → 常に true を返す。
+ *
+ * hq_menu_broadcast は tenants テーブルのカラムを直接参照する
+ * (plan_features テーブルは論理的に廃止、SELECT しない)。
+ *
  * @param PDO $pdo
  * @param string $tenantId
  * @param string $featureKey
  * @return bool
  */
 function check_plan_feature($pdo, $tenantId, $featureKey) {
-    $stmt = $pdo->prepare(
-        'SELECT pf.enabled
-         FROM plan_features pf
-         INNER JOIN tenants t ON t.plan = pf.plan
-         WHERE t.id = ? AND pf.feature_key = ?'
-    );
-    $stmt->execute([$tenantId, $featureKey]);
+    // hq_menu_broadcast 以外は α-1 では全契約者に標準提供
+    if ($featureKey !== 'hq_menu_broadcast') {
+        return true;
+    }
+    $stmt = $pdo->prepare('SELECT hq_menu_broadcast FROM tenants WHERE id = ?');
+    $stmt->execute([$tenantId]);
     $row = $stmt->fetch();
-    return $row && (int)$row['enabled'] === 1;
+    return $row && (int)$row['hq_menu_broadcast'] === 1;
 }
 
 /**
- * L-16: テナントのプラン名取得
+ * P1-34 (α-1): テナントのプラン名取得
+ *
+ * α-1 では単一プラン構成だが、UI や既存コードとの互換性のため
+ * 引き続き plan カラムを返す。フロント側は表示用途以外で使わない想定。
+ *
  * @param PDO $pdo
  * @param string $tenantId
  * @return string
@@ -253,22 +264,46 @@ function get_tenant_plan($pdo, $tenantId) {
 }
 
 /**
- * L-16: テナントの全機能フラグ取得
+ * P1-34 (α-1): テナントの全機能フラグ取得
+ *
+ * 既存 UI (dashboard.html / owner-app.js / menu-override-editor.js) の
+ * `_planFeatures.xxx === false` / `=== true` 判定との互換性のため、
+ * 旧 plan_features の全 feature_key を返す:
+ *   - hq_menu_broadcast: tenants カラム値 (アドオン契約時のみ true)
+ *   - その他全フラグ: 常に true (α-1 で全契約者に標準提供)
+ *
  * @param PDO $pdo
  * @param string $tenantId
  * @return array ['feature_key' => bool, ...]
  */
 function get_plan_features($pdo, $tenantId) {
-    $stmt = $pdo->prepare(
-        'SELECT pf.feature_key, pf.enabled
-         FROM plan_features pf
-         INNER JOIN tenants t ON t.plan = pf.plan
-         WHERE t.id = ?'
-    );
+    $stmt = $pdo->prepare('SELECT hq_menu_broadcast FROM tenants WHERE id = ?');
     $stmt->execute([$tenantId]);
-    $features = [];
-    while ($row = $stmt->fetch()) {
-        $features[$row['feature_key']] = (int)$row['enabled'] === 1;
-    }
-    return $features;
+    $row = $stmt->fetch();
+    $hqBroadcast = $row && (int)$row['hq_menu_broadcast'] === 1;
+
+    // α-1: hq_menu_broadcast 以外の全フラグは常に true
+    // 旧 plan_features に存在した全 feature_key を網羅 (UI 互換性のため)
+    return [
+        'self_order'            => true,
+        'handy_pos'             => true,
+        'floor_map'             => true,
+        'table_merge_split'     => true,
+        'inventory'             => true,
+        'ai_waiter'             => true,
+        'ai_voice'              => true,
+        'ai_forecast'           => true,
+        'takeout'               => true,
+        'payment_gateway'       => true,
+        'advanced_reports'      => true,
+        'basket_analysis'       => true,
+        'audit_log'             => true,
+        'multi_session_control' => true,
+        'offline_detection'     => true,
+        'satisfaction_rating'   => true,
+        'multilingual'          => true,
+        'shift_management'      => true,
+        'shift_help_request'    => true,
+        'hq_menu_broadcast'     => $hqBroadcast,
+    ];
 }

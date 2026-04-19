@@ -9,8 +9,12 @@
 
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
 
 require_method(['POST']);
+
+// S1: レートリミット — 1IP あたり 60回/10分
+check_rate_limit('cart-event', 60, 600);
 
 $data = get_json_body();
 $storeId      = $data['store_id'] ?? null;

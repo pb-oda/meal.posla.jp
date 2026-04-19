@@ -26,7 +26,8 @@
   - オーナーダッシュボード「ユーザー管理」タブでスタッフアカウントを作成する
 - **ログインはユーザー名＋パスワード。メールアドレスは不要。**
   - 飲食店スタッフはメールアドレスを持っていない・教えたくないケースが多い
-  - ユーザー名は店舗内で一意であればOK（例：tanaka、suzuki、yamada01）
+  - **ユーザー名は POSLA 全体（グローバル）で一意であること**（例：matsunoya_tanaka、momonoya_suzuki01）。テナントを跨いだ衝突も禁止
+    - 旧仕様（店舗内一意）からの変更（S3 セキュリティ修正 #14, 2026-04-19）。tenant ID をプレフィックスに付ける運用を推奨
   - パスワードはオーナー/店長が初期設定し、スタッフに伝える
   - スタッフは初回ログイン後に自分でパスワードを変更できる（`POST /api/auth/change-password.php`）
 - **パスワードポリシー（P1-5）。**
@@ -46,9 +47,10 @@
   - **シフト管理・人件費・スタッフレポート・監査ログのスタッフ集計から除外される**
   - 作成は dashboard.html → スタッフ管理タブ → 「+ デバイス追加」ボタン（manager 以上）
   - owner-dashboard.html のユーザー一覧には**表示されない**（GET /api/owner/users.php で `role != 'device'`）
-  - ログインすると dashboard.html ではなく `kds/index.html` または `kds/cashier.html` に直接遷移する
-    （`stores[0].userVisibleTools` または `staffVisibleTools` の `register` 含有有無で振り分け）
-  - `visible_tools` は `kds` / `register` のいずれか（または両方）。`handy` は不可
+  - ログインすると dashboard.html ではなく `handy/index.html` / `kds/cashier.html` / `kds/index.html` に直接遷移する
+    （`stores[0].userVisibleTools` または `staffVisibleTools` の `handy` > `register` > `kds` の優先度で振り分け）
+  - `visible_tools` は `kds` / `register` / `handy` のいずれか（または複数組み合わせ、カンマ区切り）
+  - サーバー側バリデーション: `api/store/staff-management.php` の `_validate_visible_tools()` で許可値以外は 400 エラー
   - 作成・更新・削除は `POST/PATCH/DELETE /api/store/staff-management.php?kind=device`
   - KDS / レジ系 API（`api/kds/*`、`api/connect/terminal-token.php`、`api/store/terminal-intent.php` 等）は
     device からも呼び出せるよう `require_role(...)` ではなく `require_auth()` のみで保護する
@@ -138,53 +140,63 @@
 
 ---
 
-## プラン設計の原則
+## プラン設計の原則（2026-04-09 α-1 確定）
 
-- **機能はパッケージで提供する。個別ON/OFFにしない。**
-  - 例：セルフメニューを使うお客さんは「AIなし」とは考えない。セルフメニューがあるならAIウェイターは標準で使える
-  - 例：KDSを使うなら音声コマンドも標準で使える
-  - 例：在庫管理があるならAI需要予測も標準で使える
-- **お客さん（テナント）の視点で自然なまとまりにする。** エンジニアの都合で機能を細かく分割しない
-- **プランの違いは「どこまでの業務範囲をカバーするか」で決まる。** 個別機能のON/OFFではない
+### 設計哲学
 
-### プラン構成（3段階 — liteは廃止）
+- **機能ではなく "業務フロー" を売る。** 機能別プランは廃止
+- 飲食店の業務（予約→着席→注文→厨房→提供→会計→在庫→分析→次回予約）は全部つながっており、一部だけ使う運用は本来ない
+- お客さん（テナント）視点で「何を選べばいいか」迷わせない。営業トークも「業務全部カバーします」の一言で済む
+- **全機能はすべての契約者に標準提供する。** 個別 ON/OFF にしない
 
-**standard（1万円/月）— 店内飲食の基本運営**
-- セルフオーダー + AIウェイター（セルフメニューがあればAIは標準）
-- ハンディPOS + フロアマップ + テーブル合流分割
-- KDS + AI音声コマンド（KDSがあれば音声は標準）
-- 基本レポート（売上日報）
-- オフライン検知 + マルチセッション制御（インフラ。全プラン共通）
-- 電子領収書発行（L-5）
+### 価格構造（単一プラン + アドオン）
 
-**pro（2〜3万円/月）— 全チャネル + 経営管理**
-- standard の全機能 +
-- 在庫管理 + AI需要予測（在庫があればAI予測は標準）
-- 高度レポート（回転率・客層・スタッフ評価）+ 監査ログ + 満足度評価 + バスケット分析
-- テイクアウト + 決済ゲートウェイ（Square/Stripe）
-- 多言語対応
-- 未実装: スタンプカード（L-2）、シフト管理（L-3）、テイクアウト番号呼出（L-6）、セルフレジ（L-8）、予約管理（L-9）、外部POS連携（L-15）
+```
+基本料金 (全機能込み)
+  1店舗目         ¥20,000 / 月
+  2店舗目以降     ¥17,000 / 店舗   (15%引き)
 
-**enterprise（5万円/月）— 多店舗統括**
-- pro の全機能 +
-- HQメニュー一括配信
-- クロス店舗分析（ABC分析等）
-- ※今後、チェーン向け機能（全店シフト管理、統合ダッシュボード等）はここに追加
+オプション
+  + 本部一括メニュー配信   +¥3,000 / 店舗   (チェーン本部のみ任意)
+```
 
-### 価格帯の上限目安
-- 最上位プラン（enterprise）で1店舗あたり月額5万円が上限
+| 規模 | 基本 | +本部配信 | 月額合計 |
+|---|---|---|---|
+| 1店舗 | ¥20,000 | — | ¥20,000 |
+| 3店舗 | ¥54,000 | (任意) | ¥54,000 |
+| 5店舗 | ¥88,000 | +¥15,000 | ¥88〜103k |
+| 10店舗 | ¥173,000 | +¥30,000 | ¥173〜203k |
+| 30店舗 | ¥513,000 | +¥90,000 | ¥513〜603k |
+
+### トライアル
+
+- **30日間無料 / Stripe カード登録必須**
+- 31日目から自動で月額 ¥20,000 課金開始
+- 期間中に解約すれば課金なし
+
+### 機能差別化のルール
+
+- **唯一の差別化機能 = 本部一括メニュー配信** (`hq_menu_broadcast`)
+- これ以外の全機能（KDS、AI音声、AIウェイター、需要予測、シフト管理、予約、テイクアウト、多言語、ABC分析、監査ログ、決済ゲートウェイ等）は**全契約者に標準提供**
+- 旧 `standard` / `pro` / `enterprise` 3プラン構成は廃止
 
 ### 技術的な実装方針
-- `plan_features` テーブルは現状の個別キー方式を維持する
-- 新機能を実装するたびに、該当プランに `INSERT` で行を追加する
-- プランは完全階層型（standard ⊂ pro ⊂ enterprise）
-- パッケージキーへの集約は全機能が出揃ってから検討する
+
+- `plan_features` テーブルは大幅圧縮（実質 `hq_menu_broadcast` のみ判定）
+- `check_plan_feature($pdo, $tenantId, $feature)` は `hq_menu_broadcast` 以外は常に `true` を返す
+- Stripe 側で店舗数を Subscription quantity で管理、本部一括配信は別 Price ID のアドオンとして付与
+- 新機能を実装するたびに `plan_features` へ INSERT する運用は廃止（標準機能なので判定不要）
+
+### 既存テナントの扱い
+
+- 現状の matsunoya / momonoya / torimaru はすべて Hiro のテストデータのみ → grandfather 不要
+- マイグレーション時は自由に再割当 or 削除可
 
 ### APIキーの管理方針
 - Gemini / Google Places のAPIキーはPOSLA運営（プラスビリーフ）が一括負担する
 - テナントごとに個別のAIキーを設定する運用はしない
 - POSLA共通のAPIキーは `posla_settings` テーブルで一元管理（L-10b で実装済み）
-- 決済キー（Square/Stripe）のみテナント個別。owner-dashboard.htmlの「決済設定」タブで管理
+- 決済キー（Stripe）のみテナント個別。owner-dashboard.htmlの「決済設定」タブで管理
 
 ---
 
@@ -197,14 +209,16 @@ POSLAのメニューは3層構造：
 
 お客さん側のセルフメニューでは `api/lib/menu-resolver.php` の `resolve_store_menu()` が3層を統合してから返す。
 
-### enterprise の編集ルール（厳守）
+### 本部一括配信アドオン契約時の編集ルール（厳守）
+- アドオン契約 = `features.hq_menu_broadcast=1` のテナント（チェーン本部運用）
 - 全店共通の品目（本部マスタ）は **owner-dashboard 「本部メニュー」タブからのみ編集可**（owner ロール限定、P1-28 で実装）
 - 店舗側 dashboard 「店舗メニュー」タブからは **本部マスタ項目（name/name_en/category_id/calories/allergens/base_price/image_url）は readonly**（P1-29 で実装）
 - 店舗側で編集できるのは `store_menu_overrides` の項目のみ：店舗価格上書き / 非表示 / 売り切れ
 - 店舗独自品は **dashboard 「限定メニュー」タブ（`store_local_items`）から追加**する。本部マスタには絶対に書き込まない
 
-### standard / pro の編集ルール
-- owner-dashboard に「本部メニュー」タブは出ない（プラン制限、`features.hq_menu_broadcast=0`）
+### アドオン未契約時の編集ルール（個人店・小規模チェーン）
+- `features.hq_menu_broadcast=0` のテナント（基本料金のみ）
+- owner-dashboard に「本部メニュー」タブは出ない
 - dashboard 「店舗メニュー」タブから事実上 `menu_templates` を全項目編集できる（既存運用、変更しない）
 - 店舗独自品は同じく「限定メニュー」タブから追加
 

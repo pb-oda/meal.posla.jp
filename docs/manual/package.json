@@ -5,7 +5,12 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev:tenant": "VP_MODE=tenant vitepress dev",
+    "dev:internal": "VP_MODE=internal vitepress dev",
+    "build:tenant": "VP_MODE=tenant vitepress build",
+    "build:internal": "VP_MODE=internal vitepress build",
+    "build:all": "npm run build:tenant && npm run build:internal"
   },
   "keywords": [],
   "author": "",

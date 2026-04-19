@@ -102,47 +102,52 @@
 
 ---
 
-## プラン設計の原則
+## プラン設計の原則（2026-04-09 α-1 確定）
 
-- **機能はパッケージで提供する。個別ON/OFFにしない。**
-  - 例：セルフメニューを使うお客さんは「AIなし」とは考えない。セルフメニューがあるならAIウェイターは標準で使える
-  - 例：KDSを使うなら音声コマンドも標準で使える
-  - 例：在庫管理があるならAI需要予測も標準で使える
-- **お客さん（テナント）の視点で自然なまとまりにする。** エンジニアの都合で機能を細かく分割しない
-- **プランの違いは「どこまでの業務範囲をカバーするか」で決まる。** 個別機能のON/OFFではない
+### 設計哲学
 
-### プラン構成（3段階 — liteは廃止）
+- **機能ではなく "業務フロー" を売る。** 機能別プランは廃止
+- 飲食店の業務（予約→着席→注文→厨房→提供→会計→在庫→分析→次回予約）は全部つながっており、一部だけ使う運用は本来ない
+- お客さん（テナント）視点で「何を選べばいいか」迷わせない。営業トークも「業務全部カバーします」の一言で済む
+- **全機能はすべての契約者に標準提供する。** 個別 ON/OFF にしない
 
-**standard（1万円/月）— 店内飲食の基本運営**
-- セルフオーダー + AIウェイター（セルフメニューがあればAIは標準）
-- ハンディPOS + フロアマップ + テーブル合流分割
-- KDS + AI音声コマンド（KDSがあれば音声は標準）
-- 基本レポート（売上日報）
-- オフライン検知 + マルチセッション制御（インフラ。全プラン共通）
-- 未実装: 領収書発行（L-5）
+### 価格構造（単一プラン + アドオン）
 
-**pro（2〜3万円/月）— 全チャネル + 経営管理**
-- standard の全機能 +
-- 在庫管理 + AI需要予測（在庫があればAI予測は標準）
-- 高度レポート（回転率・客層・スタッフ評価）+ 監査ログ + 満足度評価 + バスケット分析
-- テイクアウト + 決済ゲートウェイ（Square/Stripe）
-- 多言語対応
-- 未実装: スタンプカード（L-2）、シフト管理（L-3）、テイクアウト番号呼出（L-6）、セルフレジ（L-8）、予約管理（L-9）、外部POS連携（L-15）
+```
+基本料金 (全機能込み)
+  1店舗目         ¥20,000 / 月
+  2店舗目以降     ¥17,000 / 店舗   (15%引き)
 
-**enterprise（5万円/月）— 多店舗統括**
-- pro の全機能 +
-- HQメニュー一括配信
-- クロス店舗分析（ABC分析等）
-- ※今後、チェーン向け機能（全店シフト管理、統合ダッシュボード等）はここに追加
+オプション
+  + 本部一括メニュー配信   +¥3,000 / 店舗   (チェーン本部のみ任意)
+```
 
-### 価格帯の上限目安
-- 最上位プラン（enterprise）で1店舗あたり月額5万円が上限
+| 規模 | 基本 | +本部配信 | 月額合計 |
+|---|---|---|---|
+| 1店舗 | ¥20,000 | — | ¥20,000 |
+| 3店舗 | ¥54,000 | (任意) | ¥54,000 |
+| 5店舗 | ¥88,000 | +¥15,000 | ¥88〜103k |
+| 10店舗 | ¥173,000 | +¥30,000 | ¥173〜203k |
+| 30店舗 | ¥513,000 | +¥90,000 | ¥513〜603k |
+
+### トライアル
+
+- **30日間無料 / Stripe カード登録必須**
+- 31日目から自動で月額 ¥20,000 課金開始
+- 期間中に解約すれば課金なし
+
+### 機能差別化のルール
+
+- **唯一の差別化機能 = 本部一括メニュー配信** (`hq_menu_broadcast`)
+- これ以外の全機能（KDS、AI音声、AIウェイター、需要予測、シフト管理、予約、テイクアウト、多言語、ABC分析、監査ログ、決済ゲートウェイ等）は**全契約者に標準提供**
+- 旧 `standard` / `pro` / `enterprise` 3プラン構成は廃止
 
 ### 技術的な実装方針
-- `plan_features` テーブルは現状の個別キー方式を維持する
-- 新機能を実装するたびに、該当プランに `INSERT` で行を追加する
-- プランは完全階層型（standard ⊂ pro ⊂ enterprise）
-- パッケージキーへの集約は全機能が出揃ってから検討する
+
+- `plan_features` テーブルは大幅圧縮（実質 `hq_menu_broadcast` のみ判定）
+- `check_plan_feature($pdo, $tenantId, $feature)` は `hq_menu_broadcast` 以外は常に `true` を返す
+- Stripe 側で店舗数を Subscription quantity で管理、本部一括配信は別 Price ID のアドオンとして付与
+- 新機能を実装するたびに `plan_features` へ INSERT する運用は廃止（標準機能なので判定不要）
 
 ### APIキーの管理方針
 - Gemini / Google Places のAPIキーはPOSLA運営（プラスビリーフ）が一括負担する
@@ -160,3 +165,40 @@
 - **owner-dashboard.html** では `owner-app.js` がタブ制御。AIアシスタントは店舗選択ドロップダウン付き。決済設定は独立タブ（L-10d）
 - **dashboard.html** では既存のインラインスクリプトがタブ制御
 - **POSLA管理画面**: `public/posla-admin/` — POSLA運営専用。テナント全体の管理・APIキー共通設定。既存テナント画面とは完全分離（L-10）
+
+
+<claude-mem-context>
+# Memory Context
+
+# [matsunoya-mt] recent context, 2026-04-19 5:15pm GMT+9
+
+Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision
+Format: ID TIME TYPE TITLE
+Fetch details: get_observations([IDs]) | Search: mem-search skill
+
+Stats: 20 obs (4,732t read) | 1,498,741t work | 100% savings
+
+### Apr 19, 2026
+451 2:32p 🔵 matsunoya-mt プロジェクト構成の全体確認
+452 2:36p 🔵 matsunoya-mt: docs/manual の3系統構成を確認
+455 " 🔵 matsunoya-mt: 3系統マニュアルの章・セクション構造を詳細確認
+456 2:39p 🔵 マニュアルと実コードの差分確認 — APIエンドポイント8件が実ファイルなし
+457 " 🔵 テナントマニュアル内の壊れたMarkdownリンク7件を確認
+458 " 🔵 α-1プラン移行後のデッドコード確認 — tenants.planとplan_featuresは機能制限に未使用
+459 " 🔵 GPS認証の実装確認 — KDSはクライアント側haversine・勤怠はサーバー側・/api/store/gps-check.phpは実在しない
+460 " 🔵 AIヘルプデスクknowledge base確認 — helpdesk-prompt-*.txtが生成済みで最新状態
+477 2:54p 🔵 matsunoya-mt git status — 大規模変更の全体像確認
+482 2:55p 🔵 matsunoya-mt マニュアル構成の確定ファイル一覧
+483 " 🔵 マニュアル参照API vs 実在APIの差分 — 許容範囲内の3件のみ
+484 " 🔵 CP1 担当スタッフPIN — process-payment.php と refund-payment.php の実装確認
+486 2:57p 🔴 docs/manual/tenant/15-owner.md — 未実装API /api/owner/categories-csv.php の記述を削除
+487 " 🔴 docs/manual/internal/06-troubleshoot.md — PIN_INVALID ログ例のAPIパスを実装に合わせて修正
+488 " 🔵 マニュアル全APIリスト整合性チェック完了 — 残存する意図的な欠如は foo.php のみ
+490 2:59p 🔴 docs/manual/internal/05-operations.md — バックアップ例示のプレースホルダー foo.php を実在ファイルに修正
+491 3:07p 🔵 matsunoya-mt 新セッション — 静的コードレビュー（バグ報告専従）開始
+492 3:08p 🔵 matsunoya-mt PHP全ファイル構文チェック — 全155ファイルでエラーゼロを確認
+493 " 🔵 matsunoya-mt APIセキュリティパターン — 認証・テナント境界の一貫した実装を確認
+494 " 🔵 matsunoya-mt エラーコードカタログ — E1xxx〜E9xxxの9系統233件が実装済み
+
+Access 1499k tokens of past work via get_observations([IDs]) or mem-search skill.
+</claude-mem-context>

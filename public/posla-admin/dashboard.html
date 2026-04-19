@@ -160,12 +160,13 @@
             <input class="form-input" type="text" id="new-name" placeholder="レストラン名">
           </div>
           <div class="form-group">
-            <label class="form-label" for="new-plan">プラン</label>
+            <label class="form-label" for="new-plan">プラン (レガシー表示のみ)</label>
             <select class="form-input" id="new-plan">
-              <option value="standard" selected>Standard</option>
-              <option value="pro">Pro</option>
-              <option value="enterprise">Enterprise</option>
+              <option value="standard" selected>Standard (α-1 以降は意味なし)</option>
+              <option value="pro">Pro (α-1 以降は意味なし)</option>
+              <option value="enterprise">Enterprise (α-1 以降は意味なし)</option>
             </select>
+            <span class="form-hint" style="color:#d9534f;">α-1 単一プラン構成（2026-04-09〜）では機能差別化は `hq_menu_broadcast` アドオンのみ。この値は `tenants.plan` に書き込まれますが動作には影響しません。アドオン契約はテナント側「決済設定」タブから。</span>
           </div>
           <button class="btn btn-primary" id="btn-create-tenant">テナントを作成</button>
         </div>
@@ -206,16 +207,16 @@
             <input class="form-input" type="password" id="posla-stripe-webhook" placeholder="whsec_...">
           </div>
           <div class="form-group">
-            <label class="form-label" for="posla-stripe-price-std">Price ID: Standard</label>
-            <input class="form-input" type="text" id="posla-stripe-price-std" placeholder="price_...">
+            <label class="form-label" for="posla-stripe-price-base">Price ID: 基本料金（¥20,000/月）</label>
+            <input class="form-input" type="text" id="posla-stripe-price-base" placeholder="price_...">
           </div>
           <div class="form-group">
-            <label class="form-label" for="posla-stripe-price-pro">Price ID: Pro</label>
-            <input class="form-input" type="text" id="posla-stripe-price-pro" placeholder="price_...">
+            <label class="form-label" for="posla-stripe-price-add">Price ID: 追加店舗（¥17,000/店舗・月）</label>
+            <input class="form-input" type="text" id="posla-stripe-price-add" placeholder="price_...">
           </div>
           <div class="form-group">
-            <label class="form-label" for="posla-stripe-price-ent">Price ID: Enterprise</label>
-            <input class="form-input" type="text" id="posla-stripe-price-ent" placeholder="price_...">
+            <label class="form-label" for="posla-stripe-price-hq">Price ID: 本部一括配信アドオン（¥3,000/店舗・月）</label>
+            <input class="form-input" type="text" id="posla-stripe-price-hq" placeholder="price_...">
           </div>
           <hr style="margin:1.5rem 0;">
           <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1.25rem;">
@@ -274,10 +275,10 @@
           <div class="modal-section__title">プラン・状態</div>
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="modal-tenant-plan">プラン（Stripe連動）</label>
+              <label class="form-label" for="modal-tenant-plan">レガシープラン（α-1 以降は意味なし）</label>
               <input class="form-input" id="modal-tenant-plan" type="text" readonly
                      style="background:#f0f0f0;cursor:not-allowed;"
-                     title="プランはお客様がStripe経由で変更します">
+                     title="α-1 単一プラン構成（2026-04-09〜）では機能差別化は hq_menu_broadcast のみ。この値は影響しません。">
             </div>
             <div class="form-group">
               <label class="form-label" for="modal-tenant-active">状態</label>
@@ -302,7 +303,7 @@
 
   <script src="../shared/js/utils.js"></script>
   <script src="js/posla-api.js"></script>
-  <script src="js/posla-app.js"></script>
+  <script src="js/posla-app.js?v=20260419secmask"></script>
 
   <!-- パスワード変更モーダル（P1-5） -->
   <div class="modal-overlay" id="password-change-overlay" style="display:none;opacity:1;visibility:visible;">
@@ -442,5 +443,7 @@
   })();
   </script>
 
+  <script>window.POSLA_HELPDESK_MODE = 'helpdesk_internal';</script>
+  <script src="../shared/js/posla-helpdesk-fab.js?v=20260419-cb1c"></script>
 </body>
 </html>

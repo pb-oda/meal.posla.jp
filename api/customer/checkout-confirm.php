@@ -36,7 +36,7 @@ $stmt = $pdo->prepare(
 $stmt->execute([$tableId, $storeId]);
 $tableRow = $stmt->fetch();
 
-if (!$tableRow || $tableRow['session_token'] !== $sessionToken) {
+if (!$tableRow || !$tableRow['session_token'] || !hash_equals($tableRow['session_token'], (string)$sessionToken)) {
     json_error('INVALID_SESSION', 'セッションが無効です', 403);
 }
 if ($tableRow['session_token_expires_at'] && strtotime($tableRow['session_token_expires_at']) < time()) {
@@ -57,6 +57,7 @@ $verified = false;
 $gatewayName = null;
 $externalPaymentId = null;
 $gatewayStatus = null;
+$verifyResult = null;  // P0 #5: metadata 照合のため verify 結果を保持
 
 // 1. Stripe Connect を確認
 try {
@@ -66,7 +67,7 @@ try {
         && !empty($connectInfo['stripe_connect_account_id'])) {
         $platformConfig = get_platform_stripe_config($pdo);
         if (!empty($platformConfig['secret_key'])) {
-            $result = verify_stripe_checkout($platformConfig['secret_key'], $stripeSessionId);
+            $result = verify_stripe_checkout($platformConfig['secret_key'], $stripeSessionId, $connectInfo['stripe_connect_account_id']);
             if ($result['success']) {
                 $pStatus = $result['payment_status'] ?? '';
                 if ($pStatus === 'paid') {
@@ -74,6 +75,7 @@ try {
                     $gatewayName = 'stripe_connect';
                     $externalPaymentId = $result['payment_intent_id'] ?: $stripeSessionId;
                     $gatewayStatus = 'succeeded';
+                    $verifyResult = $result;
                 } else {
                     json_error('PAYMENT_NOT_CONFIRMED', '決済が完了していません (status: ' . $pStatus . ')', 402);
                 }
@@ -109,9 +111,54 @@ if (!$verified) {
     $gatewayName = 'stripe';
     $externalPaymentId = $result['payment_intent_id'] ?: $stripeSessionId;
     $gatewayStatus = 'succeeded';
+    $verifyResult = $result;
 }
 
+// ── P0 #5: metadata 照合 (別注文 session の流用攻撃を阻止) ──
+// verifyResult は payment-gateway.php の verify_stripe_checkout() が返す配列
+// ['amount_total'=>int, 'currency'=>string, 'metadata'=>['tenant_id'=>..., 'store_id'=>..., 'table_id'=>..., 'expected_amount'=>..., 'order_ids'=>..., 'purpose'=>...]]
+$md = (isset($verifyResult['metadata']) && is_array($verifyResult['metadata'])) ? $verifyResult['metadata'] : array();
+$mdTenant = isset($md['tenant_id']) ? (string)$md['tenant_id'] : '';
+$mdStore  = isset($md['store_id']) ? (string)$md['store_id'] : '';
+$mdTable  = isset($md['table_id']) ? (string)$md['table_id'] : '';
+$mdExpAmt = isset($md['expected_amount']) ? (int)$md['expected_amount'] : -1;
+$mdExpCur = isset($md['expected_currency']) ? strtolower((string)$md['expected_currency']) : '';
+$mdOrderIds = isset($md['order_ids']) ? (string)$md['order_ids'] : '';
+$mdPurpose = isset($md['purpose']) ? (string)$md['purpose'] : '';
+$amountTotal = isset($verifyResult['amount_total']) ? (int)$verifyResult['amount_total'] : -1;
+$verifiedCurrency = isset($verifyResult['currency']) ? strtolower((string)$verifyResult['currency']) : '';
+
+// 必須 metadata 欠落チェック (旧 session の流用も拒否)
+if ($mdTenant === '' || $mdStore === '' || $mdTable === '' || $mdExpAmt < 0 || $mdExpCur === '' || $mdOrderIds === '') {
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH metadata_missing session=' . $stripeSessionId, 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (metadata 不足)', 403);
+}
+// テナント/店舗/テーブル境界
+if ($mdTenant !== (string)$tenantId || $mdStore !== (string)$storeId || $mdTable !== (string)$tableId) {
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH context tenant_md=' . $mdTenant . ' store_md=' . $mdStore . ' table_md=' . $mdTable, 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (テナント/店舗/テーブル)', 403);
+}
+// purpose 一致
+if ($mdPurpose !== 'dine_in_self_payment') {
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH purpose=' . $mdPurpose, 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (用途)', 403);
+}
+// 通貨一致
+if ($mdExpCur !== 'jpy' || $verifiedCurrency !== 'jpy') {
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH currency md=' . $mdExpCur . ' stripe=' . $verifiedCurrency, 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (通貨)', 403);
+}
+// expected_amount === Stripe amount_total
+if ($mdExpAmt !== $amountTotal) {
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH amount expected=' . $mdExpAmt . ' stripe=' . $amountTotal, 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (金額)', 403);
+}
+// metadata.order_ids を後段の paid 化フィルタに使う (ホワイトリスト)
+$mdOrderIdList = array_filter(array_map('trim', explode(',', $mdOrderIds)), 'strlen');
+
 // ── 二重処理防止（冪等性） ──
+// S3 #3: トランザクション外の冪等チェックは TOCTOU が残るため
+//        事前チェック（早期リターン）+ 後段でトランザクション内に再チェックを行う
 $hasGatewayCols = false;
 try {
     $pdo->query('SELECT gateway_name FROM payments LIMIT 0');
@@ -132,6 +179,7 @@ if ($hasGatewayCols && $externalPaymentId) {
 }
 
 // ── 未払い注文を取得 ──
+// P0 #5: metadata.order_ids にあるものだけを paid 化対象とする (ホワイトリスト)
 $stmt = $pdo->prepare(
     'SELECT id, items, total_amount
      FROM orders
@@ -140,10 +188,27 @@ $stmt = $pdo->prepare(
      ORDER BY created_at ASC'
 );
 $stmt->execute([$tableId, $storeId, $sessionToken]);
-$orders = $stmt->fetchAll();
+$allOrders = $stmt->fetchAll();
 
-if (empty($orders)) {
+if (empty($allOrders)) {
     json_error('NO_UNPAID_ORDERS', '未払いの注文がありません', 404);
+}
+
+// metadata.order_ids でフィルタ
+$orders = array();
+foreach ($allOrders as $o) {
+    if (in_array($o['id'], $mdOrderIdList, true)) {
+        $orders[] = $o;
+    }
+}
+if (empty($orders)) {
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH no_matching_orders md_ids=' . $mdOrderIds, 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (注文ID)', 403);
+}
+// 件数も完全一致を要求 (metadata の order_ids 全件が DB に存在し未払いであること)
+if (count($orders) !== count($mdOrderIdList)) {
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH order_count md=' . count($mdOrderIdList) . ' db=' . count($orders), 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (注文ID不一致)', 403);
 }
 
 // ── 税込合計算出 ──
@@ -179,6 +244,12 @@ foreach ($orders as $order) {
     }
 }
 
+// P0 #5: DB 上の合計が Stripe 側の amount_total/expected_amount と一致することを最終確認
+if ($totalAmount !== $mdExpAmt || $totalAmount !== $amountTotal) {
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH final_amount db=' . $totalAmount . ' md=' . $mdExpAmt . ' stripe=' . $amountTotal, 3, '/home/odah/log/php_errors.log');
+    json_error('STRIPE_MISMATCH', '決済情報が一致しません (合計金額)', 403);
+}
+
 // ── session_id を取得 ──
 $sessionId = null;
 try {
@@ -208,6 +279,41 @@ $changeAmount = 0;
 
 $pdo->beginTransaction();
 try {
+    // ── S3 #3: トランザクション内 idempotency 再確認 (TOCTOU 防止) ──
+    if ($hasGatewayCols && $externalPaymentId) {
+        $dupStmt = $pdo->prepare('SELECT id FROM payments WHERE external_payment_id = ? FOR UPDATE');
+        $dupStmt->execute([$externalPaymentId]);
+        $dupRow = $dupStmt->fetch();
+        if ($dupRow) {
+            $pdo->commit();
+            json_response([
+                'payment_id'        => $dupRow['id'],
+                'already_processed' => true,
+            ]);
+        }
+    }
+
+    // ── S3 #3: 対象注文を FOR UPDATE で再ロック → status 再確認 ──
+    if (!empty($orderIdList)) {
+        $lockPh = implode(',', array_fill(0, count($orderIdList), '?'));
+        $lockStmt = $pdo->prepare(
+            'SELECT id, status FROM orders
+             WHERE id IN (' . $lockPh . ')
+               AND store_id = ?
+             FOR UPDATE'
+        );
+        $lockStmt->execute(array_merge($orderIdList, [$storeId]));
+        $lockedRows = $lockStmt->fetchAll();
+        if (count($lockedRows) !== count($orderIdList)) {
+            throw new RuntimeException('CONFLICT: order_count_mismatch');
+        }
+        foreach ($lockedRows as $lr) {
+            if (in_array($lr['status'], ['paid', 'cancelled'], true)) {
+                throw new RuntimeException('CONFLICT: order_already_finalized id=' . $lr['id']);
+            }
+        }
+    }
+
     // payments レコード作成
     if ($hasMergedCols) {
         $pdo->prepare(
@@ -239,20 +345,28 @@ try {
     }
 
     // 注文ステータスを paid に更新
+    // S3 #3: 既 paid/cancelled の order は除外し、影響件数が一致しなければ CONFLICT で ROLLBACK
     if (!empty($orderIdList)) {
         $placeholders = implode(',', array_fill(0, count($orderIdList), '?'));
-        $pdo->prepare(
+        $updOrders = $pdo->prepare(
             'UPDATE orders SET status = ?, payment_method = ?, received_amount = ?, change_amount = ?,
                     paid_at = NOW(), updated_at = NOW()
-             WHERE id IN (' . $placeholders . ')'
-        )->execute(array_merge(['paid', $paymentMethod, $receivedAmount, $changeAmount], $orderIdList));
+             WHERE id IN (' . $placeholders . ')
+               AND store_id = ?
+               AND status NOT IN (\'paid\', \'cancelled\')'
+        );
+        $updOrders->execute(array_merge(['paid', $paymentMethod, $receivedAmount, $changeAmount], $orderIdList, [$storeId]));
+        if ($updOrders->rowCount() !== count($orderIdList)) {
+            throw new RuntimeException('CONFLICT: order_update_rowcount_mismatch expected=' . count($orderIdList) . ' actual=' . $updOrders->rowCount());
+        }
     }
 
     // テーブルセッションを閉じる + トークン再生成
+    // S3 #15: store_id 境界
     $newToken = bin2hex(random_bytes(16));
     $pdo->prepare(
-        'UPDATE tables SET session_token = ?, session_token_expires_at = DATE_ADD(NOW(), INTERVAL 4 HOUR) WHERE id = ?'
-    )->execute([$newToken, $tableId]);
+        'UPDATE tables SET session_token = ?, session_token_expires_at = DATE_ADD(NOW(), INTERVAL 4 HOUR) WHERE id = ? AND store_id = ?'
+    )->execute([$newToken, $tableId, $storeId]);
 
     try {
         $pdo->prepare(
@@ -283,11 +397,17 @@ try {
         if (!empty($itemQtyMap)) {
             $menuIds = array_keys($itemQtyMap);
             $ph = implode(',', array_fill(0, count($menuIds), '?'));
+            // S3 #6: tenant_id 境界 — menu_templates / ingredients を JOIN して同テナントのレシピのみ取得
             $recipeStmt = $pdo->prepare(
                 "SELECT r.menu_template_id, r.ingredient_id, r.quantity
-                 FROM recipes r WHERE r.menu_template_id IN ($ph)"
+                 FROM recipes r
+                 INNER JOIN menu_templates mt ON mt.id = r.menu_template_id
+                 INNER JOIN ingredients ing ON ing.id = r.ingredient_id
+                 WHERE r.menu_template_id IN ($ph)
+                   AND mt.tenant_id = ?
+                   AND ing.tenant_id = ?"
             );
-            $recipeStmt->execute($menuIds);
+            $recipeStmt->execute(array_merge($menuIds, [$tenantId, $tenantId]));
             $recipeRows = $recipeStmt->fetchAll();
 
             $deductions = [];
@@ -299,11 +419,12 @@ try {
                 $deductions[$ingId] = ($deductions[$ingId] ?? 0) + ($recipeQty * $orderQty);
             }
 
+            // S3 #6: tenant_id 境界 — 同テナントの原材料のみ更新
             $updateStmt = $pdo->prepare(
-                'UPDATE ingredients SET stock_quantity = stock_quantity - ? WHERE id = ?'
+                'UPDATE ingredients SET stock_quantity = stock_quantity - ? WHERE id = ? AND tenant_id = ?'
             );
             foreach ($deductions as $ingId => $amount) {
-                $updateStmt->execute([$amount, $ingId]);
+                $updateStmt->execute([$amount, $ingId, $tenantId]);
             }
         }
     } catch (PDOException $e) {
@@ -314,8 +435,13 @@ try {
     $pdo->commit();
 } catch (Exception $e) {
     $pdo->rollBack();
-    error_log('[L-8 checkout-confirm] ' . $e->getMessage());
-    json_error('PAYMENT_GATEWAY_ERROR', '決済処理に失敗しました: ' . $e->getMessage(), 502);
+    // S3 #11: 内部エラーメッセージはログのみ、レスポンスは固定文言
+    error_log('[L-8 checkout-confirm] ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    // S3 #3: CONFLICT は 409 で返す (二重決済確定検知)
+    if (strpos($e->getMessage(), 'CONFLICT') === 0) {
+        json_error('CONFLICT', 'この注文は既に他の操作で確定されました。画面を更新してご確認ください。', 409);
+    }
+    json_error('PAYMENT_GATEWAY_ERROR', '決済処理に失敗しました。時間を置いて再試行してください。', 502);
 }
 
 json_response([

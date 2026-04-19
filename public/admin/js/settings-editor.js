@@ -60,6 +60,35 @@ var SettingsEditor = (function () {
       + '<div class="form-group"><label class="form-label">電話番号</label><input class="form-input" id="set-receipt-phone" value="' + Utils.escapeHtml(s.receipt_phone || '') + '"></div>'
       + '<div class="form-group"><label class="form-label">フッター</label><textarea class="form-input" id="set-receipt-footer">' + Utils.escapeHtml(s.receipt_footer || '') + '</textarea></div>'
 
+      + '<h3 style="margin:2rem 0 1rem;font-size:1rem">🖨 プリンタ設定 (U-2)</h3>'
+      + '<div style="font-size:0.75rem;color:#888;margin-bottom:0.75rem">Star mC-Print3 / Epson TM-m30 (Wi-Fi/Ethernet 接続) 対応。ドライバインストール不要。詳細は <a href="../../docs/printer-guide.md" target="_blank">プリンタガイド</a> 参照。</div>'
+      + '<div class="form-row">'
+      + '<div class="form-group"><label class="form-label">プリンタ種別</label>'
+      + '<select class="form-input" id="set-printer-type">'
+      + '<option value="browser"' + ((s.printer_type === 'browser' || !s.printer_type) ? ' selected' : '') + '>ブラウザ標準 (初期)</option>'
+      + '<option value="star"' + (s.printer_type === 'star' ? ' selected' : '') + '>Star mC-Print3 (WebPRNT)</option>'
+      + '<option value="epson"' + (s.printer_type === 'epson' ? ' selected' : '') + '>Epson TM-m30 (ePOS-Print)</option>'
+      + '<option value="none"' + (s.printer_type === 'none' ? ' selected' : '') + '>無効</option>'
+      + '</select></div>'
+      + '<div class="form-group"><label class="form-label">プリンタ IP</label>'
+      + '<input class="form-input" id="set-printer-ip" value="' + Utils.escapeHtml(s.printer_ip || '') + '" placeholder="例: 192.168.1.50"></div>'
+      + '</div>'
+      + '<div class="form-row">'
+      + '<div class="form-group"><label class="form-label">ポート</label>'
+      + '<input class="form-input" id="set-printer-port" type="number" min="1" max="65535" value="' + (s.printer_port || 80) + '"></div>'
+      + '<div class="form-group"><label class="form-label">用紙幅 (mm)</label>'
+      + '<select class="form-input" id="set-printer-width">'
+      + '<option value="58"' + ((s.printer_paper_width === 58 || s.printer_paper_width === '58') ? ' selected' : '') + '>58mm</option>'
+      + '<option value="80"' + ((!s.printer_paper_width || s.printer_paper_width === 80 || s.printer_paper_width === '80') ? ' selected' : '') + '>80mm</option>'
+      + '</select></div>'
+      + '</div>'
+      + '<div class="form-group"><label class="form-label">自動印刷</label>'
+      + '<div class="settings-toggle-group">'
+      + '<label class="settings-toggle"><input type="checkbox" class="settings-toggle__input" id="set-printer-auto-kitchen"' + (parseInt(s.printer_auto_kitchen, 10) ? ' checked' : '') + '> 注文確定時にキッチン伝票を自動印刷</label>'
+      + '<label class="settings-toggle"><input type="checkbox" class="settings-toggle__input" id="set-printer-auto-receipt"' + ((parseInt(s.printer_auto_receipt, 10) || s.printer_auto_receipt === undefined) ? ' checked' : '') + '> 会計完了時にレシートを自動印刷</label>'
+      + '</div></div>'
+      + '<div style="margin-bottom:1.5rem"><button type="button" id="btn-test-print" style="padding:0.5rem 1rem;border:1px solid #43a047;color:#43a047;background:#fff;border-radius:4px;cursor:pointer;">🖨 テスト印刷</button></div>'
+
       + '<h3 style="margin:2rem 0 1rem;font-size:1rem">Googleレビュー設定</h3>'
       + '<div class="form-group"><label class="form-label">Google Place ID</label><input class="form-input" id="set-google-place-id" value="' + Utils.escapeHtml(s.google_place_id || '') + '" placeholder="例: ChIJxxxxxx"></div>'
       + '<div style="font-size:0.75rem;color:#888;margin-top:-0.5rem;margin-bottom:1rem">高評価（4-5点）のお客様にGoogleレビューへの誘導リンクを表示します。<br>Place IDは <a href="https://developers.google.com/maps/documentation/places/web-service/place-id" target="_blank" style="color:#1976d2">Google Place ID Finder</a> で検索できます。</div>'
@@ -88,6 +117,19 @@ var SettingsEditor = (function () {
       + '<button type="button" id="btn-copy-takeout-url" style="padding:0.375rem 1rem;font-size:0.8125rem;border:1px solid #2196F3;color:#2196F3;background:#fff;border-radius:4px;cursor:pointer;">URLをコピー</button>'
       + '<button type="button" id="btn-copy-takeout-qr" style="padding:0.375rem 1rem;font-size:0.8125rem;border:1px solid #4CAF50;color:#4CAF50;background:#fff;border-radius:4px;cursor:pointer;">QR画像コピー</button>'
       + '<button type="button" id="btn-print-takeout-qr" style="padding:0.375rem 1rem;font-size:0.8125rem;border:1px solid #ff6f00;color:#ff6f00;background:#fff;border-radius:4px;cursor:pointer;">印刷</button>'
+      + '</div></div>'
+
+      + '<h3 style="margin:2rem 0 1rem;font-size:1rem">📅 予約LP (L-9)</h3>'
+      + '<div style="font-size:0.75rem;color:#888;margin-bottom:0.5rem">お客様が空き状況を見ながらオンライン予約できるページのURLとQRコードです。Googleマイビジネス・Instagram・店頭ポスターに掲載してください。<br>※「予約管理 > 予約設定」でオンライン予約を有効化していないと表示されません。</div>'
+      + '<div id="reserve-qr-section" style="margin-top:0.5rem;padding:1rem;background:#fff7e6;border-radius:8px;text-align:center;">'
+      + '<p style="font-size:0.875rem;color:#333;margin-bottom:0.5rem;">予約・空き状況確認ページ</p>'
+      + '<div id="reserve-qr-code" style="display:inline-block;margin-bottom:0.5rem;"></div>'
+      + '<p id="reserve-url-text" style="font-size:0.75rem;color:#666;word-break:break-all;margin-bottom:0.75rem;"></p>'
+      + '<div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;">'
+      + '<button type="button" id="btn-copy-reserve-url" style="padding:0.375rem 1rem;font-size:0.8125rem;border:1px solid #ef6c00;color:#ef6c00;background:#fff;border-radius:4px;cursor:pointer;">URLをコピー</button>'
+      + '<button type="button" id="btn-open-reserve" style="padding:0.375rem 1rem;font-size:0.8125rem;border:1px solid #1976d2;color:#1976d2;background:#fff;border-radius:4px;cursor:pointer;">新タブで開く</button>'
+      + '<button type="button" id="btn-copy-reserve-qr" style="padding:0.375rem 1rem;font-size:0.8125rem;border:1px solid #4CAF50;color:#4CAF50;background:#fff;border-radius:4px;cursor:pointer;">QR画像コピー</button>'
+      + '<button type="button" id="btn-print-reserve-qr" style="padding:0.375rem 1rem;font-size:0.8125rem;border:1px solid #ff6f00;color:#ff6f00;background:#fff;border-radius:4px;cursor:pointer;">印刷</button>'
       + '</div></div>'
 
       + '<h3 style="margin:2rem 0 1rem;font-size:1rem">外観カスタマイズ</h3>'
@@ -149,6 +191,108 @@ var SettingsEditor = (function () {
       takeoutToggle.addEventListener('change', function () { _updateTakeoutQR(this.checked); });
     }
     _updateTakeoutQR(parseInt(s.takeout_enabled, 10) === 1);
+
+    // 予約LP QR (L-9)
+    function _getReserveUrl() {
+      var origin = location.origin;
+      var path = location.pathname.replace(/\/admin\/.*$/, '/customer/reserve.html');
+      return origin + path + '?store_id=' + encodeURIComponent(AdminApi.getCurrentStore());
+    }
+    function _renderReserveQR() {
+      var url = _getReserveUrl();
+      var urlEl = document.getElementById('reserve-url-text');
+      if (urlEl) urlEl.textContent = url;
+      var qrEl = document.getElementById('reserve-qr-code');
+      if (qrEl) {
+        qrEl.innerHTML = '';
+        _loadQRLib(function () {
+          new QRCode(qrEl, { text: url, width: 200, height: 200, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+        });
+      }
+    }
+    _renderReserveQR();
+
+    // U-2: テスト印刷
+    var btnTestPrint = document.getElementById('btn-test-print');
+    if (btnTestPrint) {
+      btnTestPrint.addEventListener('click', function () {
+        if (!window.PrinterService) { showToast('printer-service.js が未ロード', 'error'); return; }
+        var config = {
+          printer_type: document.getElementById('set-printer-type').value,
+          printer_ip: document.getElementById('set-printer-ip').value.trim() || null,
+          printer_port: parseInt(document.getElementById('set-printer-port').value, 10) || 80,
+          printer_paper_width: parseInt(document.getElementById('set-printer-width').value, 10) || 80
+        };
+        var testLines = [
+          { type: 'text', align: 'center', size: 'large', text: 'POSLA プリンタテスト' },
+          { type: 'text', align: 'center', text: new Date().toLocaleString('ja-JP') },
+          { type: 'line' },
+          { type: 'text', text: 'プリンタ種別: ' + config.printer_type },
+          { type: 'text', text: 'IP: ' + (config.printer_ip || '(未設定)') },
+          { type: 'text', text: '用紙幅: ' + config.printer_paper_width + 'mm' },
+          { type: 'line' },
+          { type: 'text', align: 'center', text: '正常に印刷されました' }
+        ];
+        window.PrinterService.print(config, 'test', testLines).then(function (r) {
+          if (r.success) showToast('テスト印刷を送信しました', 'success');
+          else showToast('印刷失敗: ' + (r.error || 'unknown'), 'error');
+        }).catch(function (e) { showToast('エラー: ' + e.message, 'error'); });
+      });
+    }
+
+    var btnCopyReserveUrl = document.getElementById('btn-copy-reserve-url');
+    if (btnCopyReserveUrl) {
+      btnCopyReserveUrl.addEventListener('click', function () {
+        var url = _getReserveUrl();
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(url).then(function () { showToast('URLをコピーしました', 'success'); });
+        } else {
+          var ta = document.createElement('textarea');
+          ta.value = url; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+          showToast('URLをコピーしました', 'success');
+        }
+      });
+    }
+    var btnOpenReserve = document.getElementById('btn-open-reserve');
+    if (btnOpenReserve) {
+      btnOpenReserve.addEventListener('click', function () { window.open(_getReserveUrl(), '_blank'); });
+    }
+    var btnCopyReserveQr = document.getElementById('btn-copy-reserve-qr');
+    if (btnCopyReserveQr) {
+      btnCopyReserveQr.addEventListener('click', function () {
+        var canvas = document.querySelector('#reserve-qr-code canvas');
+        if (!canvas) { showToast('QRコードが生成されていません', 'error'); return; }
+        canvas.toBlob(function (blob) {
+          if (navigator.clipboard && navigator.clipboard.write) {
+            navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function () { showToast('QR画像をコピーしました', 'success'); });
+          } else {
+            showToast('お使いのブラウザは画像コピーに対応していません', 'error');
+          }
+        });
+      });
+    }
+    var btnPrintReserveQr = document.getElementById('btn-print-reserve-qr');
+    if (btnPrintReserveQr) {
+      btnPrintReserveQr.addEventListener('click', function () {
+        var canvas = document.querySelector('#reserve-qr-code canvas');
+        if (!canvas) { showToast('QRコードが生成されていません', 'error'); return; }
+        var dataUrl = canvas.toDataURL('image/png');
+        var url = _getReserveUrl();
+        var w = window.open('', '_blank');
+        w.document.write(
+          '<html><head><title>予約LP QRコード</title>' +
+          '<style>body{font-family:sans-serif;text-align:center;padding:32px;}img{margin:24px 0;}p{font-size:0.85rem;color:#555;word-break:break-all;}</style>' +
+          '</head><body>' +
+          '<h2>📅 ご予約はこちら</h2>' +
+          '<img src="' + dataUrl + '" width="320" height="320">' +
+          '<p>' + url + '</p>' +
+          '<p>QRコードを読み取ると予約ページが開きます</p>' +
+          '</body></html>'
+        );
+        w.document.close();
+        setTimeout(function () { w.print(); }, 200);
+      });
+    }
 
     // URLコピー
     var btnCopyUrl = document.getElementById('btn-copy-takeout-url');
@@ -265,6 +409,12 @@ var SettingsEditor = (function () {
         receipt_address: document.getElementById('set-receipt-addr').value.trim(),
         receipt_phone: document.getElementById('set-receipt-phone').value.trim(),
         receipt_footer: document.getElementById('set-receipt-footer').value.trim(),
+        printer_type: document.getElementById('set-printer-type').value,
+        printer_ip: document.getElementById('set-printer-ip').value.trim() || null,
+        printer_port: parseInt(document.getElementById('set-printer-port').value, 10) || 80,
+        printer_paper_width: parseInt(document.getElementById('set-printer-width').value, 10) || 80,
+        printer_auto_kitchen: document.getElementById('set-printer-auto-kitchen').checked ? 1 : 0,
+        printer_auto_receipt: document.getElementById('set-printer-auto-receipt').checked ? 1 : 0,
         google_place_id: document.getElementById('set-google-place-id').value.trim() || null,
         takeout_enabled: document.getElementById('set-takeout-enabled').checked ? 1 : 0,
         takeout_min_prep_minutes: parseInt(document.getElementById('set-takeout-prep').value, 10) || 30,

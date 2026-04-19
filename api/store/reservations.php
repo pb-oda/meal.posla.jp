@@ -1,0 +1,376 @@
+<?php
+/**
+ * L-9 予約管理 — 店舗側 CRUD API
+ *
+ * GET ?store_id=xxx&date=YYYY-MM-DD            … 1日のガント描画用
+ * GET ?store_id=xxx&from=YYYY-MM-DD&to=...     … 範囲取得 (週次/月次)
+ * GET ?store_id=xxx&id=xxx                     … 単一予約詳細
+ * POST   { store_id, ... }                     … 新規作成 (電話受付/walk-in/サイト)
+ * PATCH  { id, store_id, ... }                 … 予約変更
+ * DELETE ?id=xxx&store_id=xxx                  … キャンセル
+ */
+
+require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/response.php';
+require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/reservation-availability.php';
+require_once __DIR__ . '/../lib/reservation-notifier.php';
+require_once __DIR__ . '/../lib/reservation-deposit.php';
+
+$method = require_method(['GET', 'POST', 'PATCH', 'DELETE']);
+$user = require_role('staff');
+$pdo = get_db();
+
+// ---------- ヘルパ ----------
+function _l9_uuid() {
+    return bin2hex(random_bytes(18));
+}
+function _l9_validate_party_size($v, $min = 1, $max = 50) {
+    $n = (int)$v;
+    if ($n < $min || $n > $max) json_error('INVALID_PARTY_SIZE', '人数が不正です', 400);
+    return $n;
+}
+function _l9_validate_datetime($s) {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?$/', (string)$s)) {
+        json_error('INVALID_DATETIME', '日時形式が不正です (YYYY-MM-DD HH:MM)', 400);
+    }
+    $ts = strtotime($s);
+    if (!$ts) json_error('INVALID_DATETIME', '日時を解釈できません', 400);
+    return date('Y-m-d H:i:s', $ts);
+}
+function _l9_load_reservation($pdo, $resId, $storeId) {
+    $stmt = $pdo->prepare('SELECT * FROM reservations WHERE id = ? AND store_id = ?');
+    $stmt->execute([$resId, $storeId]);
+    $r = $stmt->fetch();
+    if (!$r) json_error('RESERVATION_NOT_FOUND', '予約が見つかりません', 404);
+    return $r;
+}
+function _l9_assert_table_ids_capacity($pdo, $storeId, $tableIds, $partySize) {
+    if (!is_array($tableIds) || empty($tableIds)) return;
+    $place = implode(',', array_fill(0, count($tableIds), '?'));
+    $params = array_merge($tableIds, [$storeId]);
+    $stmt = $pdo->prepare("SELECT id, capacity FROM tables WHERE id IN ($place) AND store_id = ? AND is_active = 1");
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll();
+    if (count($rows) !== count($tableIds)) json_error('INVALID_TABLE_IDS', '指定テーブルが店舗に属していません', 400);
+    $cap = 0;
+    foreach ($rows as $r) $cap += (int)$r['capacity'];
+    if ($cap < $partySize) json_error('TABLE_CAPACITY_SHORT', '指定テーブルの収容人数が不足です', 400);
+}
+function _l9_upsert_customer($pdo, $tenantId, $storeId, $name, $phone, $email) {
+    if (empty($phone)) {
+        // 電話なしは新規作成のみ (識別不能なので統合しない)
+        $cid = _l9_uuid();
+        $pdo->prepare(
+            'INSERT INTO reservation_customers (id, tenant_id, store_id, customer_name, customer_email, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, NOW(), NOW())'
+        )->execute([$cid, $tenantId, $storeId, $name, $email]);
+        return $cid;
+    }
+    $stmt = $pdo->prepare('SELECT id FROM reservation_customers WHERE store_id = ? AND customer_phone = ?');
+    $stmt->execute([$storeId, $phone]);
+    $row = $stmt->fetch();
+    if ($row) {
+        $pdo->prepare('UPDATE reservation_customers SET customer_name = ?, customer_email = COALESCE(NULLIF(?, ""), customer_email), updated_at = NOW() WHERE id = ?')
+            ->execute([$name, $email, $row['id']]);
+        return $row['id'];
+    }
+    $cid = _l9_uuid();
+    $pdo->prepare(
+        'INSERT INTO reservation_customers (id, tenant_id, store_id, customer_name, customer_phone, customer_email, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())'
+    )->execute([$cid, $tenantId, $storeId, $name, $phone, $email]);
+    return $cid;
+}
+function _l9_serialize_reservation($r) {
+    return [
+        'id' => $r['id'],
+        'tenant_id' => $r['tenant_id'],
+        'store_id' => $r['store_id'],
+        'customer_name' => $r['customer_name'],
+        'customer_phone' => $r['customer_phone'],
+        'customer_email' => $r['customer_email'],
+        'party_size' => (int)$r['party_size'],
+        'reserved_at' => $r['reserved_at'],
+        'duration_min' => (int)$r['duration_min'],
+        'status' => $r['status'],
+        'source' => $r['source'],
+        'assigned_table_ids' => $r['assigned_table_ids'] ? json_decode($r['assigned_table_ids'], true) : [],
+        'course_id' => $r['course_id'],
+        'course_name' => $r['course_name'],
+        'memo' => $r['memo'],
+        'tags' => $r['tags'],
+        'language' => $r['language'],
+        'table_session_id' => $r['table_session_id'],
+        'customer_id' => $r['customer_id'],
+        'deposit_required' => (int)$r['deposit_required'],
+        'deposit_amount' => (int)$r['deposit_amount'],
+        'deposit_status' => $r['deposit_status'],
+        'cancel_policy_hours' => $r['cancel_policy_hours'] !== null ? (int)$r['cancel_policy_hours'] : null,
+        'cancel_reason' => $r['cancel_reason'],
+        'created_at' => $r['created_at'],
+        'updated_at' => $r['updated_at'],
+        'confirmed_at' => $r['confirmed_at'],
+        'seated_at' => $r['seated_at'],
+        'cancelled_at' => $r['cancelled_at'],
+    ];
+}
+
+// ---------- GET ----------
+if ($method === 'GET') {
+    $storeId = isset($_GET['store_id']) ? trim($_GET['store_id']) : '';
+    if (!$storeId) json_error('MISSING_STORE', 'store_id が必要です', 400);
+    require_store_access($storeId);
+
+    // 単一取得
+    if (!empty($_GET['id'])) {
+        $r = _l9_load_reservation($pdo, $_GET['id'], $storeId);
+        json_response(['reservation' => _l9_serialize_reservation($r)]);
+    }
+
+    $from = isset($_GET['from']) ? $_GET['from'] : (isset($_GET['date']) ? $_GET['date'] : date('Y-m-d'));
+    $to = isset($_GET['to']) ? $_GET['to'] : $from;
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+        json_error('INVALID_DATE', '日付形式が不正です', 400);
+    }
+    $fromDt = $from . ' 00:00:00';
+    $toDt = date('Y-m-d 23:59:59', strtotime($to));
+
+    $stmt = $pdo->prepare(
+        "SELECT * FROM reservations WHERE store_id = ?
+         AND reserved_at >= ? AND reserved_at <= ?
+         ORDER BY reserved_at ASC"
+    );
+    $stmt->execute([$storeId, $fromDt, $toDt]);
+    $list = [];
+    foreach ($stmt->fetchAll() as $r) $list[] = _l9_serialize_reservation($r);
+
+    // テーブル一覧 (ガント縦軸)
+    $tStmt = $pdo->prepare('SELECT id, table_code AS label, capacity, floor AS area FROM tables WHERE store_id = ? AND is_active = 1 ORDER BY floor, table_code');
+    $tStmt->execute([$storeId]);
+    $tables = $tStmt->fetchAll();
+
+    // 設定
+    $settings = get_reservation_settings($pdo, $storeId);
+
+    // サマリー
+    $summary = ['total' => count($list), 'confirmed' => 0, 'seated' => 0, 'no_show' => 0, 'cancelled_today' => 0, 'walk_in' => 0, 'guests' => 0];
+    foreach ($list as $r) {
+        if ($r['status'] === 'confirmed' || $r['status'] === 'pending') $summary['confirmed']++;
+        if ($r['status'] === 'seated') $summary['seated']++;
+        if ($r['status'] === 'no_show') $summary['no_show']++;
+        if ($r['source'] === 'walk_in') $summary['walk_in']++;
+        if ($r['status'] !== 'cancelled' && $r['status'] !== 'no_show') $summary['guests'] += $r['party_size'];
+    }
+
+    json_response([
+        'reservations' => $list,
+        'tables' => $tables,
+        'settings' => [
+            'open_time' => substr($settings['open_time'], 0, 5),
+            'close_time' => substr($settings['close_time'], 0, 5),
+            'slot_interval_min' => (int)$settings['slot_interval_min'],
+            'default_duration_min' => (int)$settings['default_duration_min'],
+            'buffer_before_min' => (int)$settings['buffer_before_min'],
+            'buffer_after_min' => (int)$settings['buffer_after_min'],
+        ],
+        'summary' => $summary,
+        'range' => ['from' => $from, 'to' => $to],
+    ]);
+}
+
+// ---------- POST (新規作成) ----------
+if ($method === 'POST') {
+    $body = get_json_body();
+    $storeId = isset($body['store_id']) ? trim($body['store_id']) : '';
+    if (!$storeId) json_error('MISSING_STORE', 'store_id が必要です', 400);
+    require_store_access($storeId);
+
+    $sStmt = $pdo->prepare('SELECT id, tenant_id, name FROM stores s WHERE id = ?');
+    $sStmt->execute([$storeId]);
+    $store = $sStmt->fetch();
+    if (!$store) json_error('STORE_NOT_FOUND', '店舗が見つかりません', 404);
+
+    $name = trim((string)($body['customer_name'] ?? ''));
+    if ($name === '') json_error('MISSING_NAME', 'お客様名が必要です', 400);
+    $phone = trim((string)($body['customer_phone'] ?? ''));
+    $email = trim((string)($body['customer_email'] ?? ''));
+    if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('INVALID_EMAIL', 'メールアドレスが不正です', 400);
+
+    $partySize = _l9_validate_party_size($body['party_size'] ?? 0);
+    $reservedAt = _l9_validate_datetime($body['reserved_at'] ?? '');
+    $settings = get_reservation_settings($pdo, $storeId);
+    $duration = isset($body['duration_min']) ? max(15, (int)$body['duration_min']) : (int)$settings['default_duration_min'];
+
+    $source = isset($body['source']) ? $body['source'] : 'phone';
+    if (!in_array($source, ['web','phone','walk_in','google','external','ai_chat'], true)) $source = 'phone';
+
+    $tableIds = isset($body['assigned_table_ids']) && is_array($body['assigned_table_ids']) ? array_values($body['assigned_table_ids']) : [];
+    if ($tableIds) _l9_assert_table_ids_capacity($pdo, $storeId, $tableIds, $partySize);
+
+    $courseId = isset($body['course_id']) ? trim((string)$body['course_id']) : null;
+    $courseName = isset($body['course_name']) ? trim((string)$body['course_name']) : null;
+    if ($courseId && !$courseName) {
+        $cStmt = $pdo->prepare('SELECT name FROM reservation_courses WHERE id = ? AND store_id = ?');
+        $cStmt->execute([$courseId, $storeId]);
+        $cRow = $cStmt->fetch();
+        if ($cRow) $courseName = $cRow['name'];
+    }
+
+    $memo = isset($body['memo']) ? (string)$body['memo'] : null;
+    $tags = isset($body['tags']) ? (string)$body['tags'] : null;
+    $language = isset($body['language']) ? (string)$body['language'] : 'ja';
+    $status = isset($body['status']) && in_array($body['status'], ['pending','confirmed','seated','no_show','cancelled','completed'], true) ? $body['status'] : 'confirmed';
+
+    // 顧客台帳更新
+    $customerId = _l9_upsert_customer($pdo, $store['tenant_id'], $storeId, $name, $phone, $email);
+
+    // ブラックリストチェック
+    if ($phone) {
+        $blStmt = $pdo->prepare('SELECT is_blacklisted, blacklist_reason FROM reservation_customers WHERE store_id = ? AND customer_phone = ?');
+        $blStmt->execute([$storeId, $phone]);
+        $bl = $blStmt->fetch();
+        if ($bl && (int)$bl['is_blacklisted'] === 1) {
+            json_error('BLACKLISTED_CUSTOMER', 'この顧客は予約不可です: ' . ($bl['blacklist_reason'] ?: ''), 403);
+        }
+    }
+
+    // デポジット判定 (店舗作成時はオプションで強制 OFF にできる)
+    $skipDeposit = !empty($body['skip_deposit']);
+    $depositRequired = 0;
+    $depositAmount = 0;
+    $depositStatus = 'not_required';
+    if (!$skipDeposit && reservation_deposit_is_available($pdo, $storeId, $store['tenant_id'], $settings)) {
+        $amt = reservation_deposit_amount($settings, $partySize);
+        if ($amt > 0) {
+            $depositRequired = 1;
+            $depositAmount = $amt;
+            $depositStatus = 'pending';
+        }
+    }
+
+    $resId = _l9_uuid();
+    $editToken = bin2hex(random_bytes(24));
+
+    $pdo->prepare(
+        "INSERT INTO reservations
+         (id, tenant_id, store_id, customer_name, customer_phone, customer_email, party_size, reserved_at, duration_min, status, source, assigned_table_ids, course_id, course_name, memo, tags, language, customer_id, deposit_required, deposit_amount, deposit_status, cancel_policy_hours, edit_token, created_by_user_id, created_at, updated_at, confirmed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)"
+    )->execute([
+        $resId, $store['tenant_id'], $storeId, $name, $phone, $email, $partySize, $reservedAt, $duration, $status, $source,
+        $tableIds ? json_encode($tableIds, JSON_UNESCAPED_UNICODE) : null,
+        $courseId, $courseName, $memo, $tags, $language, $customerId,
+        $depositRequired, $depositAmount, $depositStatus,
+        (int)$settings['cancel_deadline_hours'], $editToken, $user['user_id'],
+        $status === 'confirmed' ? date('Y-m-d H:i:s') : null,
+    ]);
+
+    $r = _l9_load_reservation($pdo, $resId, $storeId);
+
+    // 通知 (メールがあれば確認メール送信)
+    if ($r['customer_email']) {
+        $editUrl = 'https://eat.posla.jp/public/customer/reserve-detail.html?id=' . urlencode($resId) . '&t=' . urlencode($editToken);
+        send_reservation_notification($pdo, $r, 'confirm', ['edit_url' => $editUrl]);
+    }
+
+    json_response(['reservation' => _l9_serialize_reservation($r)]);
+}
+
+// ---------- PATCH (変更) ----------
+if ($method === 'PATCH') {
+    $body = get_json_body();
+    $resId = isset($body['id']) ? trim($body['id']) : '';
+    $storeId = isset($body['store_id']) ? trim($body['store_id']) : '';
+    if (!$resId || !$storeId) json_error('MISSING_PARAM', 'id と store_id が必要です', 400);
+    require_store_access($storeId);
+
+    $r = _l9_load_reservation($pdo, $resId, $storeId);
+
+    $sets = [];
+    $params = [];
+
+    if (isset($body['customer_name'])) {
+        $name = trim((string)$body['customer_name']);
+        if ($name === '') json_error('MISSING_NAME', 'お客様名が空です', 400);
+        $sets[] = 'customer_name = ?'; $params[] = $name;
+    }
+    if (isset($body['customer_phone'])) { $sets[] = 'customer_phone = ?'; $params[] = trim((string)$body['customer_phone']); }
+    if (isset($body['customer_email'])) {
+        $email = trim((string)$body['customer_email']);
+        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('INVALID_EMAIL', 'メールアドレスが不正です', 400);
+        $sets[] = 'customer_email = ?'; $params[] = $email;
+    }
+    if (isset($body['party_size'])) {
+        $ps = _l9_validate_party_size($body['party_size']);
+        $sets[] = 'party_size = ?'; $params[] = $ps;
+    }
+    if (isset($body['reserved_at'])) {
+        $sets[] = 'reserved_at = ?'; $params[] = _l9_validate_datetime($body['reserved_at']);
+    }
+    if (isset($body['duration_min'])) {
+        $sets[] = 'duration_min = ?'; $params[] = max(15, (int)$body['duration_min']);
+    }
+    if (isset($body['memo'])) { $sets[] = 'memo = ?'; $params[] = (string)$body['memo']; }
+    if (isset($body['tags'])) { $sets[] = 'tags = ?'; $params[] = (string)$body['tags']; }
+    if (isset($body['course_id'])) { $sets[] = 'course_id = ?'; $params[] = $body['course_id'] !== '' ? $body['course_id'] : null; }
+    if (isset($body['course_name'])) { $sets[] = 'course_name = ?'; $params[] = $body['course_name'] !== '' ? $body['course_name'] : null; }
+    if (isset($body['assigned_table_ids']) && is_array($body['assigned_table_ids'])) {
+        $tids = array_values($body['assigned_table_ids']);
+        $checkPS = isset($body['party_size']) ? (int)$body['party_size'] : (int)$r['party_size'];
+        if ($tids) _l9_assert_table_ids_capacity($pdo, $storeId, $tids, $checkPS);
+        $sets[] = 'assigned_table_ids = ?'; $params[] = $tids ? json_encode($tids, JSON_UNESCAPED_UNICODE) : null;
+    }
+    if (isset($body['status']) && in_array($body['status'], ['pending','confirmed','seated','no_show','cancelled','completed'], true)) {
+        $sets[] = 'status = ?'; $params[] = $body['status'];
+        if ($body['status'] === 'cancelled') { $sets[] = 'cancelled_at = NOW()'; }
+        if ($body['status'] === 'completed') { /* completed_at もあれば追加 */ }
+    }
+
+    if (empty($sets)) json_error('NO_FIELDS', '変更する項目がありません', 400);
+
+    $sets[] = 'updated_at = NOW()';
+    $params[] = $resId;
+    $params[] = $storeId;
+    $sql = 'UPDATE reservations SET ' . implode(', ', $sets) . ' WHERE id = ? AND store_id = ?';
+    $pdo->prepare($sql)->execute($params);
+
+    $r2 = _l9_load_reservation($pdo, $resId, $storeId);
+    json_response(['reservation' => _l9_serialize_reservation($r2)]);
+}
+
+// ---------- DELETE (キャンセル) ----------
+if ($method === 'DELETE') {
+    $resId = isset($_GET['id']) ? trim($_GET['id']) : '';
+    $storeId = isset($_GET['store_id']) ? trim($_GET['store_id']) : '';
+    if (!$resId || !$storeId) json_error('MISSING_PARAM', 'id と store_id が必要です', 400);
+    require_store_access($storeId);
+
+    $r = _l9_load_reservation($pdo, $resId, $storeId);
+    if (in_array($r['status'], ['cancelled','no_show','completed'], true)) {
+        json_error('ALREADY_FINAL', 'この予約は既に確定状態です: ' . $r['status'], 400);
+    }
+    $reason = isset($_GET['reason']) ? trim($_GET['reason']) : null;
+    $pdo->prepare("UPDATE reservations SET status = 'cancelled', cancelled_at = NOW(), cancel_reason = ?, updated_at = NOW() WHERE id = ? AND store_id = ?")
+        ->execute([$reason, $resId, $storeId]);
+
+    // デポジット release
+    if ($r['deposit_payment_intent_id']) {
+        $sStmt = $pdo->prepare('SELECT id, tenant_id, name FROM stores WHERE id = ?');
+        $sStmt->execute([$storeId]);
+        $store = $sStmt->fetch();
+        $rel = reservation_deposit_release($pdo, $r, $store);
+        if ($rel['success']) {
+            $pdo->prepare("UPDATE reservations SET deposit_status = 'released' WHERE id = ?")->execute([$resId]);
+        }
+    }
+
+    if ($r['customer_email']) {
+        $r2 = _l9_load_reservation($pdo, $resId, $storeId);
+        send_reservation_notification($pdo, $r2, 'cancel');
+    }
+    if ($r['customer_phone']) {
+        $pdo->prepare('UPDATE reservation_customers SET cancel_count = cancel_count + 1 WHERE store_id = ? AND customer_phone = ?')
+            ->execute([$storeId, $r['customer_phone']]);
+    }
+    json_response(['ok' => true]);
+}
