@@ -1289,7 +1289,7 @@
       +     '<label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" id="line-notify-reservation-reminder-2h"' + ((data.notify_reservation_reminder_2h === 1 || data.notify_reservation_reminder_2h === true) ? ' checked' : '') + '> 2時間前リマインド通知</label>'
       +     '<label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" id="line-notify-takeout-ready"' + ((data.notify_takeout_ready === 1 || data.notify_takeout_ready === true) ? ' checked' : '') + '> テイクアウト準備完了通知</label>'
       +   '</div>'
-      +   '<div style="font-size:0.8rem;color:#888;margin-bottom:0.9rem;">通知 ON/OFF は先に保存できます。送信機能は後続フェーズで段階的に接続します。</div>'
+      +   '<div style="font-size:0.8rem;color:#888;margin-bottom:0.9rem;">ON にした通知のうち、予約受付完了 / 前日リマインド / 2時間前リマインドは LINE 連携済の顧客に LINE でも送られます。テイクアウト準備完了は次フェーズで接続予定です。</div>'
       +   '<button class="btn btn-primary" id="line-settings-save-btn">設定を保存</button>'
       + '</div>';
 
