@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3f51b5">
   <title>管理ダッシュボード</title>
-  <link rel="stylesheet" href="css/admin.css?v=20260422-batch-ui-1">
+  <link rel="stylesheet" href="css/admin.css?v=20260422-batch-ui-1p5">
   <link rel="stylesheet" href="css/reservation-board.css?v=20260418">
   <style>
     /* L-3 Phase 3: ヘルプスタッフ表示 */
@@ -148,11 +148,18 @@
 
     <!-- カテゴリ管理(HQ) -->
     <div class="tab-panel" id="panel-hq-categories">
-      <div class="panel-header">
-        <h2 class="panel-header__title">カテゴリ一覧 <span class="panel-header__count" id="category-count"></span></h2>
-        <button class="btn btn-primary" id="btn-add-category">+ カテゴリ追加</button>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">カテゴリ一覧 <span class="panel-toolbar__count" id="category-count"></span></h2>
+          <p class="panel-toolbar__desc">メニューの大分類。ここでの並び順がセルフメニュー画面のカテゴリタブ順に反映されます。</p>
+        </div>
+        <div class="panel-toolbar__actions">
+          <button class="btn btn-primary" id="btn-add-category">+ カテゴリ追加</button>
+        </div>
       </div>
-      <div class="card"><div id="category-list"></div></div>
+      <div class="panel-body">
+        <div id="category-list"></div>
+      </div>
     </div>
 
     <!-- オプショングループ -->
@@ -202,11 +209,18 @@
 
     <!-- テーブル管理 -->
     <div class="tab-panel" id="panel-tables">
-      <div class="panel-header">
-        <h2 class="panel-header__title">テーブル一覧 <span class="panel-header__count" id="table-count"></span></h2>
-        <button class="btn btn-primary" id="btn-add-table">+ テーブル追加</button>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">テーブル一覧 <span class="panel-toolbar__count" id="table-count"></span></h2>
+          <p class="panel-toolbar__desc">店内の座席。各テーブルに QR が 1 枚割り当てられ、お客さんがスマホで読み取ると自動でそのテーブルの注文画面が開きます。「個別QR」は相席時の席ごと会計用。</p>
+        </div>
+        <div class="panel-toolbar__actions">
+          <button class="btn btn-primary" id="btn-add-table">+ テーブル追加</button>
+        </div>
       </div>
-      <div class="card"><div id="table-list"></div></div>
+      <div class="panel-body">
+        <div id="table-list"></div>
+      </div>
     </div>
 
     <!-- フロアマップ -->
@@ -297,11 +311,18 @@
 
     <!-- 在庫・レシピ管理 -->
     <div class="tab-panel" id="panel-inventory">
-      <div class="panel-header">
-        <h2 class="panel-header__title">在庫・レシピ管理 <span class="panel-header__count" id="ingredient-count"></span></h2>
-        <button class="btn btn-primary" id="btn-add-ingredient">+ 原材料追加</button>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">在庫・レシピ管理 <span class="panel-toolbar__count" id="ingredient-count"></span></h2>
+          <p class="panel-toolbar__desc">原材料の在庫数とレシピ（メニュー品目 → 原材料使用量）を管理します。レシピを登録しておくと、注文ごとに自動で在庫が引き落とされ、アラートや売切れ判定に反映されます。</p>
+        </div>
+        <div class="panel-toolbar__actions">
+          <button class="btn btn-primary" id="btn-add-ingredient">+ 原材料追加</button>
+        </div>
       </div>
-      <div id="inventory-container"></div>
+      <div class="panel-body panel-body--flush">
+        <div id="inventory-container"></div>
+      </div>
     </div>
 
     <!-- 店舗設定 -->

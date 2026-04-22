@@ -3580,3 +3580,236 @@ body.sidebar-open .admin-sidebar-backdrop {
   font-weight: 600;
 }
 
+/* ============================================================
+ * Batch-UI-1.5: content shell fix + CRUD panel toolbar/body
+ * ------------------------------------------------------------
+ * 症状: admin-layout 導入後も .admin-content が max-width:1200px
+ *       + margin:0 auto で中央寄せ → 左 sidebar と併せて本文が
+ *       細い縦柱に見える。
+ * 対応: compound override で left-aligned + 広めの max-width へ。
+ *       CRUD 3 画面 (category / tables / inventory) の panel-header
+ *       + card を panel-toolbar + panel-body 構造に置換。
+ *       他パネル (reports / ledger 等) は既存クラスのまま不変。
+ * ============================================================ */
+
+.admin-layout .admin-content {
+  max-width: 1440px;
+  margin: 0;
+  padding: var(--space-5) var(--space-6);
+}
+
+@media (max-width: 767px) {
+  .admin-layout .admin-content {
+    padding: var(--space-4) var(--space-4);
+  }
+}
+
+/* ── パネルツールバー（タイトル + desc + 件数 + アクション群） ── */
+.panel-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5) var(--space-3);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  flex-wrap: wrap;
+}
+
+.panel-toolbar__title-group {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.panel-toolbar__title {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  line-height: 1.3;
+}
+
+.panel-toolbar__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--primary-dark);
+  background: var(--primary-50);
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+.panel-toolbar__desc {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.panel-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* secondary toolbar row: filter / tabs / search を 1 段下に並べる用途 */
+.panel-toolbar__row-2 {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  margin-top: var(--space-2);
+  border-top: 1px solid var(--border-light);
+  flex-wrap: wrap;
+}
+
+/* ── パネル本体（一覧 / テーブル / サブタブ を収める枠） ── */
+.panel-body {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.panel-toolbar + .panel-body {
+  border-top: 1px solid var(--border-light);
+}
+
+/* inventory-container のようにサブタブを自前で出す場合 */
+.panel-body--flush {
+  padding: 0;
+}
+
+.panel-body--padded {
+  padding: var(--space-4) var(--space-5);
+}
+
+/* 空状態の再配置 */
+.panel-body .empty-state {
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+}
+
+/* ── panel-body 内の .list-item を業務画面向けに強化 ── */
+.panel-body .list-item {
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border-light);
+  gap: var(--space-4);
+  min-height: 60px;
+  align-items: center;
+  transition: background 0.12s;
+}
+
+.panel-body .list-item:last-child {
+  border-bottom: none;
+}
+
+.panel-body .list-item:hover {
+  background: var(--surface-2);
+}
+
+.panel-body .list-item__order {
+  flex: 0 0 36px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel-body .list-item__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.panel-body .list-item__name {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.panel-body .list-item__name .i18n-en {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+.panel-body .list-item__meta {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.panel-body .list-item__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* ── 削除ボタン: panel-body 内では ghost 化（毎行の赤を弱める） ── */
+.panel-body .list-item__actions .btn-danger,
+.panel-body .list-item__actions button[data-action*="delete-"] {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.panel-body .list-item__actions .btn-danger:hover,
+.panel-body .list-item__actions button[data-action*="delete-"]:hover {
+  background: var(--danger-light);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* 個別QR のようなオレンジ強調は残す（inline style のため自動で維持） */
+
+/* ── モバイル: toolbar 折り返し + 行縦積み ── */
+@media (max-width: 767px) {
+  .panel-toolbar {
+    padding: var(--space-3);
+    align-items: stretch;
+  }
+  .panel-toolbar__title-group {
+    flex: 1 1 100%;
+  }
+  .panel-toolbar__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .panel-body .list-item {
+    flex-wrap: wrap;
+    padding: var(--space-3);
+    min-height: 0;
+    gap: var(--space-2);
+  }
+  .panel-body .list-item__order {
+    flex: 0 0 auto;
+    text-align: left;
+  }
+  .panel-body .list-item__actions {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--border-light);
+    flex-wrap: wrap;
+  }
+}
+
+
