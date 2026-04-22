@@ -861,7 +861,9 @@ body.lang-en .menu-item__add-btn::after { content: ''; }
  *   cart-bar.classList.add('checkout-active')) は全て不変。
  * ============================================================ */
 
-/* 共通 wrapper: 複数の底部 bar を 1 段に統合 */
+/* 共通 wrapper: 複数の底部 bar を 1 段に統合
+   safe-area は wrapper に付けず各 bar の padding-bottom に入れる
+   → bar の背景色 (orange / green) が safe-area まで自然に伸びる */
 .action-bar {
   position: fixed;
   left: 0;
@@ -872,7 +874,6 @@ body.lang-en .menu-item__add-btn::after { content: ''; }
   align-items: stretch;
   z-index: 200;
   box-shadow: 0 -2px 12px rgba(0,0,0,0.14);
-  padding-bottom: var(--cm-safe-bottom, 0);
   background: transparent;
   pointer-events: none;
 }
@@ -881,23 +882,29 @@ body.lang-en .menu-item__add-btn::after { content: ''; }
   pointer-events: auto;
 }
 
-/* cart-bar: action-bar 内で flex child として挙動、固定 position は無効化 */
+/* cart-bar: action-bar 内で flex child として挙動、固定 position は無効化
+   padding-bottom に safe-area を含め、iOS ホームバー領域まで orange 背景を伸ばす */
 .action-bar > .cart-bar {
   position: static;
   z-index: auto;
   box-shadow: none;
   flex: 1 1 auto;
   min-width: 0;
+  padding-top: 0.75rem;
+  padding-bottom: calc(0.75rem + var(--cm-safe-bottom, 0px));
 }
 
-/* checkout-bar: 両方 visible 時はコンパクト右寄せ、単独時は full-width */
+/* checkout-bar: 同様に safe-area を背景色で埋める */
 .action-bar > .checkout-bar {
   position: static;
   flex: 0 0 auto;
-  padding: 10px 14px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding-top: 10px;
+  padding-bottom: calc(10px + var(--cm-safe-bottom, 0px));
+  padding-left: 14px;
+  padding-right: 14px;
 }
 
 /* Batch-E-3: 旧 .cart-bar.checkout-active ルール (bottom:56px 2段積み) を無害化
@@ -906,11 +913,13 @@ body.lang-en .menu-item__add-btn::after { content: ''; }
   bottom: auto;
 }
 
-/* cart-bar が非表示 (display:none) の場合、checkout-bar が全幅を取る */
+/* cart-bar が非表示 (display:none) の場合、checkout-bar が全幅を取る
+   padding-bottom は上の .action-bar > .checkout-bar で既に safe-area 込みなので維持 */
 .action-bar > .cart-bar[style*="display:none"] + .checkout-bar,
 .action-bar > .cart-bar[style*="display: none"] + .checkout-bar {
   flex: 1 1 auto;
-  padding: 10px 16px;
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
 .action-bar > .cart-bar[style*="display:none"] + .checkout-bar .checkout-bar__btn,
