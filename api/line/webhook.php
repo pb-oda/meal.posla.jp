@@ -10,9 +10,57 @@
 
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/line-link.php';
 
 require_method(['POST']);
 $pdo = get_db();
+
+/**
+ * LINE webhook の events 配列を分岐処理 (L-17 Phase 2A-1 スケルトン)
+ *
+ * Phase 2A-1 では下記方針:
+ *   - message     : 既リンク user の last_interaction_at を touch (0 行でも安全)
+ *   - follow      : no-op (Phase 2A-2 で account linking token 発行)
+ *   - unfollow    : no-op (Phase 2A-2 で link_status='unlinked' に)
+ *   - accountLink : no-op (Phase 2A-2 で token 検証 + upsert)
+ *   - それ以外    : ignore
+ *
+ * 予約 / 注文 / 会計処理は呼ばない。処理失敗で webhook 全体を落とさない。
+ */
+function line_dispatch_events($pdo, $tenantId, $events)
+{
+    if (!is_array($events) || count($events) === 0) {
+        return;
+    }
+    for ($i = 0; $i < count($events); $i++) {
+        $ev = $events[$i];
+        if (!is_array($ev)) continue;
+        $type = isset($ev['type']) && is_string($ev['type']) ? $ev['type'] : '';
+        $source = isset($ev['source']) && is_array($ev['source']) ? $ev['source'] : [];
+        $lineUserId = isset($source['userId']) && is_string($source['userId']) ? $source['userId'] : '';
+        if ($lineUserId === '') {
+            continue;
+        }
+        try {
+            if ($type === 'message') {
+                // 既リンクなら最終 interaction を更新。未リンクは 0 行で安全
+                line_link_touch_interaction($pdo, $tenantId, $lineUserId);
+            } elseif ($type === 'follow') {
+                // Phase 2A-2: one-time token を生成して LINE 側にメッセージ送信
+                // (予約登録時の phone/email と紐付ける経路)。現時点は no-op。
+            } elseif ($type === 'unfollow') {
+                // Phase 2A-2: link_status='unlinked' に遷移させる。現時点は no-op
+                // (誤解除の副作用を避けるため段階適用)。
+            } elseif ($type === 'accountLink') {
+                // Phase 2A-2: nonce 検証 + reservation_customers と upsert。現時点は no-op。
+            }
+        } catch (Exception $e) {
+            // Phase 2A-1: dispatch エラーで webhook 全体を 500 にしない
+            // (LINE 側は 2xx 以外で retry するため影響大)
+            error_log('[L-17 2A-1 dispatch] ' . $type . ': ' . $e->getMessage());
+        }
+    }
+}
 
 function line_settings_table_exists_webhook($pdo)
 {
@@ -96,6 +144,10 @@ $pdo->prepare(
     count($events),
     $row['tenant_id'],
 ]);
+
+// L-17 Phase 2A-1: イベント分岐 (Phase 1 の last_webhook_* 更新後に実施、
+// dispatch 失敗で webhook 応答を落とさない)
+line_dispatch_events($pdo, $row['tenant_id'], $events);
 
 json_response([
     'received'     => true,

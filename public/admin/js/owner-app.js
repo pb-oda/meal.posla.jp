@@ -228,6 +228,7 @@
         break;
       case 'external-pos':
         loadLineSettings();
+        loadLineCustomerLinks();
         loadSmaregiStatus();
         break;
       case 'shift-overview':
@@ -1385,6 +1386,129 @@
       loadLineSettings();
     }).catch(function (err) {
       showToast(err.message || 'LINE連携設定の保存に失敗しました', 'error');
+    });
+  }
+
+  // ═══════════════════════════════════
+  // L-17 Phase 2A-1: LINE 顧客連携 (read + unlink のみ)
+  // ═══════════════════════════════════
+  function loadLineCustomerLinks() {
+    var container = document.getElementById('line-customer-links-content');
+    if (!container) return;
+    container.innerHTML = '<span style="color:#888;">読み込み中...</span>';
+
+    AdminApi.getLineCustomerLinks().then(function (res) {
+      var data = (res && res.line_links) ? res.line_links : null;
+      renderLineCustomerLinks(container, data);
+    }).catch(function (err) {
+      container.innerHTML = '<p style="color:#c62828;">' + Utils.escapeHtml(err.message || '読み込みに失敗しました') + '</p>';
+    });
+  }
+
+  function _formatLineLinkDate(s) {
+    if (!s) return '—';
+    // "2026-04-22 18:30:00" のような datetime を短縮表示
+    return String(s).replace('T', ' ').substring(0, 16);
+  }
+
+  function renderLineCustomerLinks(container, data) {
+    if (!data) {
+      container.innerHTML = '<p style="color:#888;">読み込みに失敗しました。</p>';
+      return;
+    }
+    if (data.migration_applied === false) {
+      container.innerHTML =
+        '<p style="color:#888;margin:0 0 0.5rem;">LINE 顧客連携テーブルがまだ適用されていません。</p>' +
+        '<p style="font-size:0.85rem;color:#888;margin:0;">sql/migration-l17-2a-customer-line-links.sql を適用後に利用できます。</p>';
+      return;
+    }
+
+    var linked = parseInt(data.linked_count, 10) || 0;
+    var unlinked = parseInt(data.unlinked_count, 10) || 0;
+    var recent = (data.recent && data.recent.length) ? data.recent : [];
+
+    var html = '';
+    html += '<p style="color:#666;font-size:0.9rem;margin:0 0 1rem;">LINE公式アカウントの友だちと POSLA の予約顧客をひも付けた状態を一覧できます。連携がない間は既存動作に影響しません。</p>';
+
+    // summary
+    html += '<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">' +
+              '<div style="flex:1 1 160px;padding:0.75rem 1rem;background:#f5f5f5;border-radius:6px;">' +
+                '<div style="font-size:0.75rem;color:#666;">連携中</div>' +
+                '<div style="font-size:1.5rem;font-weight:700;color:' + (linked > 0 ? '#2e7d32' : '#333') + ';">' + linked + '</div>' +
+              '</div>' +
+              '<div style="flex:1 1 160px;padding:0.75rem 1rem;background:#f5f5f5;border-radius:6px;">' +
+                '<div style="font-size:0.75rem;color:#666;">解除済</div>' +
+                '<div style="font-size:1.5rem;font-weight:700;color:#999;">' + unlinked + '</div>' +
+              '</div>' +
+              '<div style="flex:1 1 200px;padding:0.75rem 1rem;background:#f5f5f5;border-radius:6px;">' +
+                '<div style="font-size:0.75rem;color:#666;">最終 interaction</div>' +
+                '<div style="font-size:0.95rem;font-weight:600;color:#333;">' + Utils.escapeHtml(_formatLineLinkDate(data.last_interaction_at)) + '</div>' +
+              '</div>' +
+            '</div>';
+
+    if (recent.length === 0) {
+      html += '<p style="color:#888;font-size:0.9rem;margin:0.5rem 0 0;">連携はまだありません。LINE 公式アカウントの友だちがサービス内の顧客とひも付くと、ここに一覧されます。(リンク作成 UI は Phase 2A-2 で追加予定)</p>';
+      container.innerHTML = html;
+      return;
+    }
+
+    html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;">' +
+            '<thead><tr style="background:#f0f0f0;text-align:left;">' +
+              '<th style="padding:0.4rem 0.5rem;width:140px;">顧客</th>' +
+              '<th style="padding:0.4rem 0.5rem;width:140px;">LINE 表示名</th>' +
+              '<th style="padding:0.4rem 0.5rem;width:180px;">LINE user ID</th>' +
+              '<th style="padding:0.4rem 0.5rem;width:140px;">店舗</th>' +
+              '<th style="padding:0.4rem 0.5rem;width:120px;">状態</th>' +
+              '<th style="padding:0.4rem 0.5rem;width:130px;">連携日時</th>' +
+              '<th style="padding:0.4rem 0.5rem;width:80px;">操作</th>' +
+            '</tr></thead><tbody>';
+
+    for (var i = 0; i < recent.length; i++) {
+      var r = recent[i];
+      var isLinked = r.link_status === 'linked';
+      var statusColor = isLinked ? '#2e7d32' : '#999';
+      var statusText = isLinked ? '連携中' : '解除済';
+      var action = '';
+      if (isLinked) {
+        action = '<button class="btn btn-sm line-link-unlink-btn" data-link-id="' + Utils.escapeHtml(r.id) + '" style="color:#c62828;border-color:#c62828;">解除</button>';
+      } else {
+        action = '<span style="color:#bbb;font-size:0.8rem;">—</span>';
+      }
+
+      html += '<tr style="border-bottom:1px solid #eee;">' +
+                '<td style="padding:0.4rem 0.5rem;">' + Utils.escapeHtml(r.customer_name || '(名称なし)') + '</td>' +
+                '<td style="padding:0.4rem 0.5rem;color:#555;">' + Utils.escapeHtml(r.display_name || '—') + '</td>' +
+                '<td style="padding:0.4rem 0.5rem;font-family:monospace;font-size:0.8rem;color:#888;">' + Utils.escapeHtml(r.line_user_id_masked || '—') + '</td>' +
+                '<td style="padding:0.4rem 0.5rem;color:#555;">' + Utils.escapeHtml(r.store_name || '—') + '</td>' +
+                '<td style="padding:0.4rem 0.5rem;color:' + statusColor + ';font-weight:600;">' + statusText + '</td>' +
+                '<td style="padding:0.4rem 0.5rem;font-size:0.8rem;color:#888;">' + Utils.escapeHtml(_formatLineLinkDate(r.linked_at)) + '</td>' +
+                '<td style="padding:0.4rem 0.5rem;">' + action + '</td>' +
+              '</tr>';
+    }
+    html += '</tbody></table></div>';
+
+    container.innerHTML = html;
+    bindLineCustomerLinksEvents(container);
+  }
+
+  function bindLineCustomerLinksEvents(container) {
+    var btns = container.querySelectorAll('.line-link-unlink-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener('click', function (e) {
+        var linkId = e.currentTarget.getAttribute('data-link-id');
+        if (!linkId) return;
+        if (!confirm('この顧客の LINE 連携を解除しますか？\n(LINE 側の友だち関係は変わりません)')) return;
+        unlinkLineCustomerLink(linkId);
+      });
+    }
+  }
+
+  function unlinkLineCustomerLink(linkId) {
+    AdminApi.unlinkLineCustomer(linkId).then(function () {
+      showToast('LINE 連携を解除しました', 'success');
+      loadLineCustomerLinks();
+    }).catch(function (err) {
+      showToast(err.message || '解除に失敗しました', 'error');
     });
   }
 

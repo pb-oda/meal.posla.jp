@@ -89,6 +89,15 @@ var AdminApi = (function () {
     return request('PATCH', '/owner/line-settings.php', data);
   }
 
+  // L-17 Phase 2A-1: LINE 顧客連携
+  function getLineCustomerLinks() {
+    return request('GET', '/owner/line-customer-links.php');
+  }
+
+  function unlinkLineCustomer(linkId) {
+    return request('DELETE', '/owner/line-customer-links.php?id=' + encodeURIComponent(linkId));
+  }
+
   // --- 店舗管理（owner） ---
   function getStores() {
     return request('GET', '/owner/stores.php');
@@ -759,6 +768,8 @@ var AdminApi = (function () {
     updateTenant: updateTenant,
     getLineSettings: getLineSettings,
     updateLineSettings: updateLineSettings,
+    getLineCustomerLinks: getLineCustomerLinks,
+    unlinkLineCustomer: unlinkLineCustomer,
     getStores: getStores,
     getStore: getStore,
     createStore: createStore,
