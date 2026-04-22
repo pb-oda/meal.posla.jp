@@ -137,9 +137,10 @@
     .action-bar > .cart-bar { position:static; z-index:auto; box-shadow:none; flex:1 1 auto; min-width:0; padding-bottom:calc(0.75rem + env(safe-area-inset-bottom, 0px)); bottom:auto; }
     .action-bar > .checkout-bar { position:static; flex:0 0 auto; display:flex; align-items:center; justify-content:center; padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px)); box-shadow:none; }
     .action-bar > .cart-bar[style*="display:none"] + .checkout-bar,
-    .action-bar > .cart-bar[style*="display: none"] + .checkout-bar { flex:1 1 auto; }
+    .action-bar > .cart-bar[style*="display: none"] + .checkout-bar { flex:1 1 auto; padding-left:32px; padding-right:32px; }
+    /* max-width を 340px に抑えて緑の余白を左右に確保、ボタンの「強すぎる白」を抑制 */
     .action-bar > .cart-bar[style*="display:none"] + .checkout-bar .checkout-bar__btn,
-    .action-bar > .cart-bar[style*="display: none"] + .checkout-bar .checkout-bar__btn { max-width:400px; width:100%; margin:0 auto; }
+    .action-bar > .cart-bar[style*="display: none"] + .checkout-bar .checkout-bar__btn { max-width:340px; width:100%; margin:0 auto; }
     body { padding-bottom:calc(80px + env(safe-area-inset-bottom, 0px)) !important; }
     .checkout-modal { position:fixed; inset:0; z-index:2100; display:none; }
     .checkout-modal.open { display:block; }
