@@ -669,7 +669,9 @@
     html += '<button class="to-btn to-btn--secondary" id="to-check-status" style="margin-top:1rem;">ステータスを更新</button>';
 
     // L-17 Phase 3A: LINE で受取通知を受け取る導線 (opt-in)
-    html += '<div id="to-line-link-wrap" style="margin-top:1.5rem;padding:1rem;background:#fff;border:1px solid #e0e0e0;border-radius:8px;text-align:left;">';
+    // 店舗が notify_takeout_ready=1 かつ LINE連携有効なテナントでのみ表示する。
+    // 初期は hidden、status API の takeout_ready_enabled で on/off 判定する。
+    html += '<div id="to-line-link-wrap" style="display:none;margin-top:1.5rem;padding:1rem;background:#fff;border:1px solid #e0e0e0;border-radius:8px;text-align:left;">';
     html += '<div style="font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;color:#06C755;">&#x1F4AC; LINEで受取通知を受け取る</div>';
     html += '<p style="font-size:0.8rem;color:#666;margin-bottom:0.75rem;line-height:1.5;">準備が完了したら店舗公式 LINE からお知らせします。下のボタンでリンクコードを発行し、店舗の LINE トークに送信してください。</p>';
     html += '<button class="to-btn to-btn--secondary" id="to-line-token-btn" style="width:100%;">リンクコードを発行する</button>';
@@ -688,7 +690,9 @@
       tokenBtn.addEventListener('click', function () { issueLineLinkToken(); });
     }
 
-    // ポーリング開始
+    // ポーリング開始 + 初回は即 checkStatus を呼んで takeout_ready_enabled を
+    // 早く取得 (CTA 表示判定を POLL_INTERVAL 待たずに行うため)
+    checkStatus();
     startStatusPolling();
   }
 
@@ -742,6 +746,14 @@
       }
     }).catch(function (err) {
       if (btn) { btn.disabled = false; btn.textContent = 'リンクコードを発行する'; }
+      // Phase 3A hotfix: 店舗側で notify_takeout_ready が OFF のときは
+      // CTA 自体を隠し、ユーザーに「この店舗は未対応」と伝える
+      if (err && err.code === 'TAKEOUT_READY_DISABLED') {
+        var lineWrap = document.getElementById('to-line-link-wrap');
+        if (lineWrap) lineWrap.style.display = 'none';
+        showToast('この店舗では LINE 受取通知は有効化されていません');
+        return;
+      }
       var msg = (err && err.message) ? err.message : '発行に失敗しました';
       showToast(msg);
     });
@@ -789,6 +801,17 @@
             pickupEl.textContent = '受取時間: ' + t;
             if (!_selectedSlot) _selectedSlot = t;
           }
+        }
+
+        // L-17 Phase 3A hotfix: 店舗が notify_takeout_ready を有効化して
+        // いる時だけ LINE CTA を表示する。未設定 / OFF では CTA を非表示に
+        // 保ち、UI 文言と実挙動のズレを防ぐ。
+        var lineWrap = document.getElementById('to-line-link-wrap');
+        if (lineWrap) {
+          var takeoutReadyEnabled = (data.takeout_ready_enabled === 1 || data.takeout_ready_enabled === true);
+          // 既に ready 以降の状態では発行しても意味が無いので CTA を隠す
+          var terminalForCta = (data.status === 'ready' || data.status === 'served' || data.status === 'paid');
+          lineWrap.style.display = (takeoutReadyEnabled && !terminalForCta) ? 'block' : 'none';
         }
       })
       .catch(function () {});

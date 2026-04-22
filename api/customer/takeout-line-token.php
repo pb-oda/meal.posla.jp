@@ -76,6 +76,11 @@ try {
 if (!$settings || (int)$settings['is_enabled'] !== 1 || empty($settings['channel_access_token'])) {
     json_error('LINE_NOT_CONFIGURED', 'この店舗では LINE 連携が有効化されていません', 400);
 }
+// Phase 3A hotfix: notify_takeout_ready=0 のテナントには token を発行しない
+// (UI 文言「準備完了したらお知らせします」と実挙動のズレを防ぐ defense-in-depth)
+if ((int)$settings['notify_takeout_ready'] !== 1) {
+    json_error('TAKEOUT_READY_DISABLED', 'この店舗では準備完了 LINE 通知が有効化されていません', 400);
+}
 
 // migration 未適用の場合は controlled error
 if (!takeout_token_table_exists($pdo)) {

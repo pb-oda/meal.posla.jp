@@ -180,10 +180,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if (!$orderId) json_error('MISSING_ORDER', 'order_idが必要です', 400);
         if (!$phone) json_error('MISSING_PHONE', '電話番号が必要です', 400);
 
+        // L-17 Phase 3A hotfix: stores JOIN で tenant_id を引き、UI の LINE CTA
+        // 表示判定に使う takeout_ready_enabled / is_enabled を一緒に返す
         $stmt = $pdo->prepare(
-            "SELECT id, status, customer_name, customer_phone, pickup_at, total_amount, items, memo, created_at
-             FROM orders
-             WHERE id = ? AND customer_phone = ? AND order_type = 'takeout'"
+            "SELECT o.id, o.store_id, o.status, o.customer_name, o.customer_phone,
+                    o.pickup_at, o.total_amount, o.items, o.memo, o.created_at,
+                    s.tenant_id
+             FROM orders o
+             JOIN stores s ON s.id = o.store_id
+             WHERE o.id = ? AND o.customer_phone = ? AND o.order_type = 'takeout'"
         );
         $stmt->execute([$orderId, $phone]);
         $order = $stmt->fetch();
@@ -203,6 +208,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         }
 
+        // L-17 Phase 3A hotfix: LINE CTA 表示判定用フラグ
+        // tenant_line_settings 未適用 / 未設定 / flag OFF は全て 0 扱い (silent)
+        $takeoutReadyEnabled = 0;
+        $lineEnabled = 0;
+        try {
+            $lsStmt = $pdo->prepare(
+                'SELECT is_enabled, notify_takeout_ready, channel_access_token
+                   FROM tenant_line_settings WHERE tenant_id = ?'
+            );
+            $lsStmt->execute([$order['tenant_id']]);
+            $ls = $lsStmt->fetch();
+            if ($ls && (int)$ls['is_enabled'] === 1 && !empty($ls['channel_access_token'])) {
+                $lineEnabled = 1;
+                if ((int)$ls['notify_takeout_ready'] === 1) {
+                    $takeoutReadyEnabled = 1;
+                }
+            }
+        } catch (PDOException $e) {
+            // tenant_line_settings 未適用環境では 0 のまま
+        }
+
         json_response([
             'order_id' => $order['id'],
             'status' => $order['status'],
@@ -212,6 +238,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'items' => json_decode($order['items'], true) ?: [],
             'payment_status' => $paymentStatus,
             'created_at' => $order['created_at'],
+            'line_enabled' => $lineEnabled,
+            'takeout_ready_enabled' => $takeoutReadyEnabled,
         ]);
     }
 
