@@ -713,6 +713,86 @@ body.lang-en .menu-item__add-btn::after { content: ''; }
 }
 
 /* ============================================================
+ * Batch-E-1b (2026-04-22): banner base 定義を menu.html inline <style>
+ * から移設。state-bar の override (上記 L631-713) と合わせて、customer
+ * 側上部状態帯の見た目定義を customer.css 1 箇所に集約する。
+ *
+ * 他社参考 (公式、抽象化):
+ *  - Square QR Code Ordering: https://squareup.com/us/en/online-ordering/qr-code-ordering
+ *    → モバイル注文画面で状態情報は軽く 1 段で読む、注文の邪魔をしない
+ *  - Toast Ordering Screens: https://support.toasttab.com/en/article/New-POS-Experience-Ordering-Screens
+ *    → 主操作を邪魔しない補助情報、低頻度情報は弱く現在の文脈だけ読ませる
+ * 模倣しない: Square / Toast のブランドカラー、POS タイル UI。
+ *
+ * banner 本体の表示制御は既存 JS の style.display トグルを維持し、
+ * display:none は HTML 側 inline で温存 (reset すると JS が機能しない)。
+ * ============================================================ */
+
+/* plan / lo で共有する pulse アニメーション */
+@keyframes pulse-warn {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ── plan-banner (時間指定 / 食べ放題等のプランモード) ── */
+.plan-banner {
+  background: linear-gradient(135deg, #ff6f00, #ff8f00);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+}
+.plan-banner__name {
+  font-weight: 700;
+}
+.plan-banner__time {
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+.plan-banner__time--warning {
+  color: #fff3cd;
+  animation: pulse-warn 1s infinite;
+}
+.plan-banner__time--ended {
+  color: #ffcdd2;
+  font-weight: 700;
+}
+
+/* plan モード時のメニュー価格色 (plan-banner と一体運用) */
+.menu-item__price--plan {
+  color: #ff6f00;
+  font-weight: 700;
+}
+
+/* ── course-banner (コースモード) ── */
+.course-banner {
+  background: linear-gradient(135deg, #2e7d32, #43a047);
+  color: #fff;
+  padding: 0.75rem 1rem;
+  text-align: center;
+}
+.course-banner__name {
+  font-weight: 700;
+  font-size: 1rem;
+}
+.course-banner__sub {
+  font-size: 0.8rem;
+  margin-top: 2px;
+  opacity: 0.9;
+}
+
+/* ── lo-banner (O-3: ラストオーダー) ── */
+.lo-banner {
+  background: #d32f2f;
+  color: #fff;
+  padding: 0.625rem 1rem;
+  text-align: center;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  animation: pulse-warn 1.5s infinite;
+}
+
+/* ============================================================
  * Batch-E-2 (2026-04-22): 商品カード強化 + カテゴリ追跡
  *
  * 他社参考 (公式、抽象化):
