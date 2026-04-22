@@ -3812,4 +3812,348 @@ body.sidebar-open .admin-sidebar-backdrop {
   }
 }
 
+/* ============================================================
+ * Batch-UI-1.6: スタッフホーム画面 (#panel-staff-home)
+ * ------------------------------------------------------------
+ * 仮置き中央寄せから業務画面としての階層 (header / primary /
+ * secondary / tertiary) に再編。attendance-clock.js の staff panel
+ * 分岐もここで装飾する (inline style 撤廃)。
+ * ============================================================ */
+
+.staff-home {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.staff-home__header {
+  padding: 0 var(--space-1);
+}
+
+.staff-home__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.staff-home__subtitle {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+/* ── カード共通 ────────────────────────── */
+.staff-home__card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.staff-home__card--primary {
+  border-color: var(--primary-light);
+  box-shadow: 0 4px 14px rgba(63, 81, 181, 0.12);
+}
+
+.staff-home__card-head {
+  padding: var(--space-4) var(--space-5) var(--space-2);
+}
+
+.staff-home__card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.staff-home__card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--primary-50);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.staff-home__card--primary .staff-home__card-icon {
+  background: var(--primary);
+  color: #fff;
+}
+
+.staff-home__card-desc {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.staff-home__card-body {
+  padding: var(--space-3) var(--space-5) var(--space-5);
+}
+
+.staff-home__card-body--grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+/* ── シフトアクションボタン (2 列) ──────── */
+.staff-home__action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: var(--space-4) var(--space-4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: transform 0.1s, box-shadow 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.staff-home__action:hover {
+  border-color: var(--primary-light);
+  background: var(--primary-50);
+  box-shadow: var(--shadow-sm);
+}
+
+.staff-home__action:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.staff-home__action:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.staff-home__action-title {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.staff-home__action-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+/* ── 業務ツール (tertiary、staff ロールでは JS で非表示) ── */
+.staff-home__tools {
+  padding: var(--space-4) var(--space-4);
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.staff-home__tools-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-3);
+}
+
+.staff-home__tools-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.staff-home__tool-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--space-3) var(--space-2);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  min-height: 72px;
+}
+
+.staff-home__tool-link:hover {
+  background: var(--primary-50);
+  color: var(--primary-dark);
+  border-color: var(--primary-light);
+}
+
+.staff-home__tool-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.staff-home__tool-name {
+  text-align: center;
+  line-height: 1.3;
+}
+
+.staff-home__gps-status {
+  margin: var(--space-3) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── 勤怠打刻 (attendance-clock.js の staff panel 分岐) ── */
+.staff-clock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+.staff-clock__status {
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+  font-weight: 600;
+  min-height: 24px;
+  text-align: center;
+}
+
+.staff-clock__working {
+  display: inline-block;
+  color: var(--success);
+  font-weight: 700;
+  padding: 2px 8px;
+  background: var(--success-light);
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
+.staff-clock__buttons {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  width: 100%;
+}
+
+.staff-clock__btn {
+  flex: 1 1 0;
+  max-width: 260px;
+  padding: var(--space-4) var(--space-4);
+  border: none;
+  border-radius: var(--radius);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+  transition: transform 0.08s, box-shadow 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.staff-clock__btn--in {
+  background: var(--success);
+  box-shadow: 0 3px 0 #1b5e20;
+}
+
+.staff-clock__btn--in:hover:not(:disabled) {
+  background: #388e3c;
+}
+
+.staff-clock__btn--out {
+  background: var(--danger);
+  box-shadow: 0 3px 0 #b71c1c;
+}
+
+.staff-clock__btn--out:hover:not(:disabled) {
+  background: #c62828;
+}
+
+.staff-clock__btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.staff-clock__btn:disabled {
+  background: #eceff1;
+  color: #90a4ae;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* ── スタッフ画面へ戻るバー (panel-shift-my / panel-shift-availability) ── */
+.staff-back-bar {
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.btn-back-to-staff-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.btn-back-to-staff-home:hover {
+  background: var(--primary-50);
+  color: var(--primary-dark);
+  border-color: var(--primary-light);
+}
+
+/* ── モバイル: grid を 1 列に、打刻ボタンは縦積み ── */
+@media (max-width: 480px) {
+  .staff-home {
+    padding: var(--space-4) var(--space-3) var(--space-6);
+    gap: var(--space-4);
+  }
+  .staff-home__card-head {
+    padding: var(--space-3) var(--space-4) var(--space-2);
+  }
+  .staff-home__card-body {
+    padding: var(--space-3) var(--space-4) var(--space-4);
+  }
+  .staff-home__card-body--grid {
+    grid-template-columns: 1fr;
+  }
+  .staff-home__tools-grid {
+    grid-template-columns: 1fr;
+  }
+  .staff-clock__buttons {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .staff-clock__btn {
+    max-width: 100%;
+  }
+  .staff-back-bar {
+    padding: var(--space-2) var(--space-3);
+  }
+}
+
+
 

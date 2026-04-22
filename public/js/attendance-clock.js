@@ -28,11 +28,13 @@
         _timer: null,
         _container: null,
         _gpsData: null,       // L-3b: { gpsRequired, storeLat, storeLng, gpsRadiusMeters }
+        _isStaffPanel: false, // Batch-UI-1.6: staff-home へ挿入されている場合 true
 
         init: function(storeId, gpsData, targetSelector) {
             this.storeId = storeId;
             this._gpsData = gpsData || null;
             this._targetSelector = targetSelector || null;
+            this._isStaffPanel = this._targetSelector === '#staff-attendance-slot';
             this._insertUI();
             this._checkStatus();
         },
@@ -60,17 +62,17 @@
             var container = document.createElement('div');
             container.id = 'attendance-clock-container';
 
-            // スタッフ画面（panel-staff-home）に挿入する場合は大きめのスタイル
-            var isStaffPanel = this._targetSelector === '#staff-attendance-slot';
-            if (isStaffPanel) {
-                container.style.cssText = 'display:flex;flex-direction:column;gap:0.75rem;align-items:center;padding:1rem;';
+            if (this._isStaffPanel) {
+                // Batch-UI-1.6: class ベース（admin.css の .staff-clock-* で装飾）
+                container.className = 'staff-clock';
                 container.innerHTML =
-                    '<div id="att-clock-status" style="font-size:1rem;color:#333;font-weight:bold;"></div>' +
-                    '<div style="display:flex;gap:1rem;justify-content:center;">' +
-                    '<button id="att-clock-in-btn" class="btn btn-primary" style="display:none;font-size:1.125rem;padding:1rem 2.5rem;background:#43a047;border:none;border-radius:6px;color:#fff;font-weight:bold;cursor:pointer;">🟢 出勤</button>' +
-                    '<button id="att-clock-out-btn" class="btn btn-primary" style="display:none;font-size:1.125rem;padding:1rem 2.5rem;background:#e53935;border:none;border-radius:6px;color:#fff;font-weight:bold;cursor:pointer;">🔴 退勤</button>' +
+                    '<div id="att-clock-status" class="staff-clock__status"></div>' +
+                    '<div class="staff-clock__buttons">' +
+                    '<button id="att-clock-in-btn" type="button" class="staff-clock__btn staff-clock__btn--in" style="display:none;">🟢 出勤する</button>' +
+                    '<button id="att-clock-out-btn" type="button" class="staff-clock__btn staff-clock__btn--out" style="display:none;">🔴 退勤する</button>' +
                     '</div>';
             } else {
+                // 既存の header フォールバック経路（互換のため不変）
                 container.style.cssText = 'display:inline-flex;align-items:center;gap:8px;margin-left:auto;padding:4px 12px;';
                 container.innerHTML =
                     '<span id="att-clock-status"></span>' +
@@ -138,14 +140,23 @@
 
             if (self.status === 'working' && self.currentRecord) {
                 // 勤務中: 出勤=無効、退勤=有効
-                inBtn.textContent = '出勤済';
-                inBtn.style.cssText = _disabledStyle;
-                inBtn.disabled = true;
+                if (self._isStaffPanel) {
+                    inBtn.textContent = '出勤済';
+                    inBtn.disabled = true;
 
-                outBtn.textContent = '退勤する';
-                outBtn.style.cssText = _btnStyle + 'background:#e74c3c;color:#fff;cursor:pointer;';
-                outBtn.disabled = false;
-                outBtn.addEventListener('click', function() { self.clockOut(); });
+                    outBtn.textContent = '🔴 退勤する';
+                    outBtn.disabled = false;
+                    outBtn.addEventListener('click', function() { self.clockOut(); });
+                } else {
+                    inBtn.textContent = '出勤済';
+                    inBtn.style.cssText = _disabledStyle;
+                    inBtn.disabled = true;
+
+                    outBtn.textContent = '退勤する';
+                    outBtn.style.cssText = _btnStyle + 'background:#e74c3c;color:#fff;cursor:pointer;';
+                    outBtn.disabled = false;
+                    outBtn.addEventListener('click', function() { self.clockOut(); });
+                }
 
                 self._updateElapsed(statusEl);
                 self._timer = setInterval(function() { self._updateElapsed(statusEl); }, 60000);
@@ -153,14 +164,23 @@
                 // 未出勤: 出勤=有効、退勤=無効
                 statusEl.textContent = '';
 
-                inBtn.textContent = '出勤する';
-                inBtn.style.cssText = _btnStyle + 'background:#27ae60;color:#fff;cursor:pointer;';
-                inBtn.disabled = false;
-                inBtn.addEventListener('click', function() { self.clockIn(); });
+                if (self._isStaffPanel) {
+                    inBtn.textContent = '🟢 出勤する';
+                    inBtn.disabled = false;
+                    inBtn.addEventListener('click', function() { self.clockIn(); });
 
-                outBtn.textContent = '退勤';
-                outBtn.style.cssText = _disabledStyle;
-                outBtn.disabled = true;
+                    outBtn.textContent = '退勤';
+                    outBtn.disabled = true;
+                } else {
+                    inBtn.textContent = '出勤する';
+                    inBtn.style.cssText = _btnStyle + 'background:#27ae60;color:#fff;cursor:pointer;';
+                    inBtn.disabled = false;
+                    inBtn.addEventListener('click', function() { self.clockIn(); });
+
+                    outBtn.textContent = '退勤';
+                    outBtn.style.cssText = _disabledStyle;
+                    outBtn.disabled = true;
+                }
             }
         },
 
@@ -172,8 +192,13 @@
             var hours = Math.floor(diffMs / 3600000);
             var minutes = Math.floor((diffMs % 3600000) / 60000);
             var clockInTime = this.currentRecord.clock_in.substring(11, 16);
-            statusEl.innerHTML = '<span style="color:#27ae60;font-weight:bold;">勤務中</span> ' +
-                                 esc(clockInTime) + '~ (' + hours + 'h' + ('0' + minutes).slice(-2) + 'm)';
+            if (this._isStaffPanel) {
+                statusEl.innerHTML = '<span class="staff-clock__working">勤務中</span> ' +
+                                     esc(clockInTime) + '〜 (' + hours + 'h' + ('0' + minutes).slice(-2) + 'm)';
+            } else {
+                statusEl.innerHTML = '<span style="color:#27ae60;font-weight:bold;">勤務中</span> ' +
+                                     esc(clockInTime) + '~ (' + hours + 'h' + ('0' + minutes).slice(-2) + 'm)';
+            }
         },
 
         // L-3b: GPS必須かどうか判定

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3f51b5">
   <title>管理ダッシュボード</title>
-  <link rel="stylesheet" href="css/admin.css?v=20260422-batch-ui-1p5">
+  <link rel="stylesheet" href="css/admin.css?v=20260422-batch-ui-1p6">
   <link rel="stylesheet" href="css/reservation-board.css?v=20260418">
   <style>
     /* L-3 Phase 3: ヘルプスタッフ表示 */
@@ -402,14 +402,14 @@
       <div id="shift-view-calendar" class="shift-view"></div>
     </div>
     <div class="tab-panel" id="panel-shift-my">
-      <div class="staff-back-bar" data-role-min="staff" data-role-max="staff" style="padding:0.5rem 1rem; background:#fafafa; border-bottom:1px solid #e0e0e0;">
-        <button type="button" class="btn btn-back-to-staff-home" style="background:transparent; border:1px solid #ccc; color:#333; padding:0.4rem 0.8rem; border-radius:6px; cursor:pointer; font-size:0.9rem;">← スタッフ画面に戻る</button>
+      <div class="staff-back-bar" data-role-min="staff" data-role-max="staff">
+        <button type="button" class="btn-back-to-staff-home">← スタッフ画面に戻る</button>
       </div>
       <div id="shift-view-my-shift" class="shift-view"></div>
     </div>
     <div class="tab-panel" id="panel-shift-availability">
-      <div class="staff-back-bar" data-role-min="staff" data-role-max="staff" style="padding:0.5rem 1rem; background:#fafafa; border-bottom:1px solid #e0e0e0;">
-        <button type="button" class="btn btn-back-to-staff-home" style="background:transparent; border:1px solid #ccc; color:#333; padding:0.4rem 0.8rem; border-radius:6px; cursor:pointer; font-size:0.9rem;">← スタッフ画面に戻る</button>
+      <div class="staff-back-bar" data-role-min="staff" data-role-max="staff">
+        <button type="button" class="btn-back-to-staff-home">← スタッフ画面に戻る</button>
       </div>
       <div id="shift-view-availability" class="shift-view"></div>
     </div>
@@ -429,31 +429,62 @@
       <div id="shift-view-help" class="shift-view"></div>
     </div>
 
-    <!-- スタッフ向け案内 -->
+    <!-- スタッフ向けホーム（Batch-UI-1.6 で再設計） -->
     <div class="tab-panel" id="panel-staff-home" style="display:none;">
-      <div style="text-align:center; padding:3rem 1rem;">
-        <h2 style="margin-bottom:1rem; color:#333;">スタッフ画面</h2>
-        <p style="color:#666; margin-bottom:2rem;">以下の画面をご利用ください。</p>
-        <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
-          <a href="../handy/index.html" id="staff-tool-handy" class="btn btn-primary" style="font-size:1.125rem; padding:1rem 2rem; text-decoration:none; background:#1a237e;">ハンディPOS</a>
-          <a href="../kds/index.html" id="staff-tool-kds" class="btn btn-primary" style="font-size:1.125rem; padding:1rem 2rem; text-decoration:none;">KDS（キッチン）</a>
-          <a href="../kds/accounting.html" id="staff-tool-register" class="btn btn-primary" style="font-size:1.125rem; padding:1rem 2rem; text-decoration:none;">POSレジ</a>
-        </div>
-        <p id="staff-gps-status" style="display:none; margin-top:1rem; color:#666;"></p>
+      <div class="staff-home">
+        <header class="staff-home__header">
+          <h2 class="staff-home__title">スタッフ画面</h2>
+          <p class="staff-home__subtitle">今日の業務、おつかれさまです。まず勤怠打刻からどうぞ。</p>
+        </header>
 
-        <!-- 勤怠打刻（スタッフ画面に統合、2026-04-19） -->
-        <div id="staff-attendance-section" style="display:none; margin-top:2rem; padding:1.5rem; border:1px solid #e0e0e0; border-radius:8px; background:#fafafa;">
-          <p style="color:#666; margin-bottom:0.75rem; font-size:0.95rem;">勤怠打刻</p>
-          <div id="staff-attendance-slot"></div>
-        </div>
-
-        <div id="staff-shift-links" style="display:none; margin-top:2rem; padding-top:2rem; border-top:1px solid #e0e0e0;">
-          <p style="color:#666; margin-bottom:1rem;">シフト管理</p>
-          <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
-            <button class="btn btn-primary" id="btn-staff-my-shift" style="font-size:1.125rem; padding:1rem 2rem; background:#00897b;">マイシフト</button>
-            <button class="btn btn-primary" id="btn-staff-availability" style="font-size:1.125rem; padding:1rem 2rem; background:#00897b;">希望シフト提出</button>
+        <!-- Primary: 勤怠打刻（最優先） -->
+        <section class="staff-home__card staff-home__card--primary" id="staff-attendance-section" style="display:none;">
+          <div class="staff-home__card-head">
+            <h3 class="staff-home__card-title"><span class="staff-home__card-icon">🕐</span>勤怠打刻</h3>
+            <p class="staff-home__card-desc">出勤時・退勤時にタップしてください。GPS 必須の店舗では、位置情報の許可が必要になります。</p>
           </div>
-        </div>
+          <div class="staff-home__card-body">
+            <div id="staff-attendance-slot"></div>
+          </div>
+        </section>
+
+        <!-- Secondary: シフト管理 -->
+        <section class="staff-home__card" id="staff-shift-links" style="display:none;">
+          <div class="staff-home__card-head">
+            <h3 class="staff-home__card-title"><span class="staff-home__card-icon">📅</span>シフト</h3>
+            <p class="staff-home__card-desc">確定したシフトの確認と、来月の希望提出はこちらから。</p>
+          </div>
+          <div class="staff-home__card-body staff-home__card-body--grid">
+            <button type="button" class="staff-home__action" id="btn-staff-my-shift">
+              <span class="staff-home__action-title">マイシフト</span>
+              <span class="staff-home__action-desc">今月の確定シフトを確認</span>
+            </button>
+            <button type="button" class="staff-home__action" id="btn-staff-availability">
+              <span class="staff-home__action-title">希望シフト提出</span>
+              <span class="staff-home__action-desc">来月のシフト希望を入力</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Tertiary: 業務ツール（staff ロールでは JS で非表示化されます） -->
+        <section class="staff-home__tools" id="staff-tools-section">
+          <div class="staff-home__tools-title">業務ツール</div>
+          <div class="staff-home__tools-grid">
+            <a href="../handy/index.html" id="staff-tool-handy" class="staff-home__tool-link">
+              <span class="staff-home__tool-icon" aria-hidden="true">📱</span>
+              <span class="staff-home__tool-name">ハンディPOS</span>
+            </a>
+            <a href="../kds/index.html" id="staff-tool-kds" class="staff-home__tool-link">
+              <span class="staff-home__tool-icon" aria-hidden="true">👨‍🍳</span>
+              <span class="staff-home__tool-name">KDS</span>
+            </a>
+            <a href="../kds/accounting.html" id="staff-tool-register" class="staff-home__tool-link">
+              <span class="staff-home__tool-icon" aria-hidden="true">💳</span>
+              <span class="staff-home__tool-name">POSレジ</span>
+            </a>
+          </div>
+          <p id="staff-gps-status" class="staff-home__gps-status" style="display:none;"></p>
+        </section>
       </div>
     </div>
 
@@ -601,7 +632,7 @@
   <script src="../js/shift-manager.js?v=20260406b"></script>
   <script src="../js/shift-calendar.js?v=20260408bF"></script>
   <script src="js/shift-help.js?v=20260408p1be"></script>
-  <script src="../js/attendance-clock.js?v=20260419-staffpanel"></script>
+  <script src="../js/attendance-clock.js?v=20260422-staffhome"></script>
   <script src="js/reservation-board.js?v=20260418d"></script>
   <script>
   // L-9 予約管理 — タブ表示時に ReservationBoard を初期化
@@ -1040,7 +1071,7 @@
       }
 
       // スタッフはハンディ/KDS/レジ不要（device アカウントで運用）
-      // ツールリンクを無条件非表示
+      // ツールリンクを無条件非表示 + staff-home 下段のツールセクション枠も非表示
       if (_role === 'staff') {
         var _staffToolIds = ['staff-tool-handy','staff-tool-kds','staff-tool-register','header-tool-handy','header-tool-kds','header-tool-register'];
         for (var ti = 0; ti < _staffToolIds.length; ti++) {
@@ -1049,6 +1080,8 @@
         }
         var _gpsStatusEl = document.getElementById('staff-gps-status');
         if (_gpsStatusEl) _gpsStatusEl.style.display = 'none';
+        var _toolsSection = document.getElementById('staff-tools-section');
+        if (_toolsSection) _toolsSection.style.display = 'none';
       }
 
       // スタッフ向けシフトリンク表示（shift_management機能が有効な場合）
