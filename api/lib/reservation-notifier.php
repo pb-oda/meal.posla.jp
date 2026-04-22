@@ -332,13 +332,13 @@ if (!function_exists('send_reservation_notification')) {
         $tpl = build_reservation_template($type, $reservation, $store, $lang, $extra);
         if (!$tpl) return array('success' => false, 'error' => 'UNKNOWN_TEMPLATE');
 
-        // L-17 Phase 2B-1 / 2C: confirm / reminder_24h 時に LINE 並行送信を試みる
-        // (送信失敗しても続行、email 側の返り値を壊さない)
-        if ($type === 'confirm' || $type === 'reminder_24h') {
+        // L-17 Phase 2B-1: confirm 時は email より先に LINE 並行送信を試みる
+        // (reservation-create.php / deposit-webhook / store/reservations.php から
+        //  1 回だけ呼ばれ retry loop が無いため、先送りによる重複送信リスク無し)
+        if ($type === 'confirm') {
             try {
                 _l9_send_reservation_line($pdo, $reservation, $type, $store, $tpl);
             } catch (Exception $e) {
-                // LINE 側で想定外例外が出ても email/caller を落とさない
                 error_log('[L-17 line_send] ' . $type . ': ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
             }
         }
@@ -365,6 +365,22 @@ if (!function_exists('send_reservation_notification')) {
             $r['success'] ? null : $r['error'],
             'email'
         );
+
+        // L-17 Phase 2C (hotfix): reminder_24h は email 成功後にのみ LINE を送る。
+        // cron (reservation-reminders.php) は email 成功 ($r['success']) だけ
+        // reminder_24h_sent_at を更新するため、email 失敗時は cron が 2h 時間窓内で
+        // 再実行される。LINE を email 前に送っていると「LINE 成功 + email 失敗」
+        // の場合、次回 cron で LINE が重複 push されるリスクがある。email 成功を
+        // 待ってから LINE を送ることで、sent_at 更新と整合し重複が発生しない。
+        // email 永続失敗時は LINE も送られないが、トレードオフとして許容。
+        if ($type === 'reminder_24h' && $r['success']) {
+            try {
+                _l9_send_reservation_line($pdo, $reservation, $type, $store, $tpl);
+            } catch (Exception $e) {
+                error_log('[L-17 line_send] ' . $type . ': ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            }
+        }
+
         return $r;
     }
 }
