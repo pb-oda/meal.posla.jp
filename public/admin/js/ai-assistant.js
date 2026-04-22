@@ -504,14 +504,14 @@ var AiAssistant = (function () {
 
       if (!trimmed) {
         if (inList) { html += '</ul>'; inList = false; }
-        html += '<div style="height:0.5rem;"></div>';
+        html += '<div class="ai-content-spacer"></div>';
         continue;
       }
 
       // 水平線（--- / ===）
       if (/^[-=]{3,}$/.test(trimmed)) {
         if (inList) { html += '</ul>'; inList = false; }
-        html += '<hr style="margin:0.75rem 0;border:none;border-top:1px solid rgba(0,0,0,0.08);">';
+        html += '<hr class="ai-content-hr">';
         continue;
       }
 
@@ -1090,18 +1090,18 @@ var AiAssistant = (function () {
           msg = 'マニュアル knowledge base が未生成です。POSLA運営にお問い合わせください (scripts/build-helpdesk-prompt.php の実行が必要)';
         }
         ansEl.textContent = '⚠ ' + msg;
-        ansEl.style.color = '#c62828';
+        ansEl.classList.add('ai-hd-answer--error');
         return;
       }
       var text = (json.data && json.data.text) || '';
-      ansEl.style.color = '#333';
+      ansEl.classList.remove('ai-hd-answer--error');
       ansEl.textContent = text;
     })
     .catch(function (err) {
       btn.disabled = false;
       btn.textContent = '質問する';
       ansEl.textContent = '⚠ 通信エラー: ' + err.message;
-      ansEl.style.color = '#c62828';
+      ansEl.classList.add('ai-hd-answer--error');
     });
   }
 
@@ -1201,13 +1201,8 @@ var AiAssistant = (function () {
     if (!_statusMsg) return;
     _statusMsg.textContent = text;
     _statusMsg.style.display = '';
-    if (type === 'error') {
-      _statusMsg.style.background = '#ffebee';
-      _statusMsg.style.color = '#c62828';
-    } else {
-      _statusMsg.style.background = '#fff3e0';
-      _statusMsg.style.color = '#e65100';
-    }
+    _statusMsg.classList.remove('ai-status-msg--error', 'ai-status-msg--warn');
+    _statusMsg.classList.add(type === 'error' ? 'ai-status-msg--error' : 'ai-status-msg--warn');
   }
 
   function _hideMsg() {

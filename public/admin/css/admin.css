@@ -4537,11 +4537,11 @@ body.sidebar-open .admin-sidebar-backdrop {
 .error-stats-table tbody tr {
   border-bottom: 1px solid var(--border-light);
 }
-.error-stats-table th--no { width: 80px; }
-.error-stats-table th--code { width: 120px; }
-.error-stats-table th--http { width: 60px; text-align: center; }
-.error-stats-table th--count { width: 80px; text-align: right; }
-.error-stats-table th--time { width: 130px; }
+.error-stats-table .th--no { width: 80px; }
+.error-stats-table .th--code { width: 120px; }
+.error-stats-table .th--http { width: 60px; text-align: center; }
+.error-stats-table .th--count { width: 80px; text-align: right; }
+.error-stats-table .th--time { width: 130px; }
 
 .error-stats-table__http {
   text-align: center;
@@ -4989,3 +4989,29 @@ body.sidebar-open .admin-sidebar-backdrop {
   font-size: var(--fs-sm);
 }
 @keyframes ai-spin { to { transform: rotate(360deg); } }
+
+/* Batch-A2 小修正 (2026-04-22): _formatResponse の静的 spacer/hr と
+ * _showMsg / helpdesk 応答の色分けを class に寄せる */
+.ai-content-spacer {
+  height: 0.5rem;
+}
+.ai-content-hr {
+  margin: 0.75rem 0;
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* ai-status-msg の error / warn モディファイア */
+.ai-status-msg--error {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+.ai-status-msg--warn {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+/* helpdesk 応答エリアのエラー色 (既定は継承色) */
+.ai-hd-answer--error {
+  color: var(--danger);
+}
