@@ -15,6 +15,7 @@ api/config/database.php
 # api/.htaccess: SetEnv で本番 DB credentials を保持するため repo に含めない。
 # テンプレートは api/.htaccess.example を参照（H-01 解消、2026-04-22）
 api/.htaccess
+api/.htaccess.*.local
 
 # User uploads
 uploads/
@@ -41,6 +42,13 @@ docs/manual/.vitepress/cache/
 # VitePress Basic Auth credentials (never commit — Sakura 本番のみに配置)
 public/docs-internal/.htpasswd
 public/docs-internal/.htaccess
+
+# /public/ ルート Basic 認証 credentials (sandbox eat.posla.jp、2026-04-22
+# 追加)。ハッシュ済み .htpasswd と .htaccess はサーバー上のみで管理、
+# local repo には入れない。
+public/.htpasswd
+public/.htaccess
+.htpasswd
 
 # IDE
 .vscode/
