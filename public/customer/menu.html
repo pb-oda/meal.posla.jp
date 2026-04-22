@@ -131,8 +131,10 @@
     .checkout-bar { background:#2d7a4f; padding:10px 16px; text-align:center; display:none; }
     .checkout-bar__btn { background:#fff; color:#2d7a4f; border:none; border-radius:8px; padding:12px 40px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; max-width:400px; }
     .checkout-bar__btn:active { opacity:0.8; }
-    /* Batch-E-3: action-bar wrapper による新レイアウト (inline 版、外部 CSS キャッシュ対策で inline にも配置) */
-    .action-bar { position:fixed; left:0; right:0; bottom:0; display:flex; flex-direction:row; align-items:stretch; z-index:200; box-shadow:0 -2px 12px rgba(0,0,0,0.14); background:transparent; pointer-events:none; }
+    /* Batch-E-3: action-bar wrapper による新レイアウト (inline 版、外部 CSS キャッシュ対策で inline にも配置)
+       iOS Safari URL バー開閉時の再描画による flicker 対策で GPU layer 化 */
+    .action-bar { position:fixed; left:0; right:0; bottom:0; display:flex; flex-direction:row; align-items:stretch; z-index:200; box-shadow:0 -2px 12px rgba(0,0,0,0.14); background:transparent; pointer-events:none; -webkit-transform:translateZ(0); transform:translateZ(0); will-change:transform; -webkit-backface-visibility:hidden; backface-visibility:hidden; }
+    .action-bar > .cart-bar, .action-bar > .checkout-bar { -webkit-transform:translateZ(0); transform:translateZ(0); }
     .action-bar > * { pointer-events:auto; }
     .action-bar > .cart-bar { position:static; z-index:auto; box-shadow:none; flex:1 1 auto; min-width:0; padding-bottom:calc(0.75rem + env(safe-area-inset-bottom, 0px)); bottom:auto; }
     .action-bar > .checkout-bar { position:static; flex:0 0 auto; display:flex; align-items:center; justify-content:center; padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px)); box-shadow:none; }
