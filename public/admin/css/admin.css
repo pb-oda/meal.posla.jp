@@ -4155,5 +4155,107 @@ body.sidebar-open .admin-sidebar-backdrop {
   }
 }
 
+/* ============================================================
+ * Batch-C (2026-04-22): シフト残サブタブの業務説明 + 集計 inline 清掃
+ *
+ * 他社参考 (公式、抽象化):
+ *  - 7shifts: https://www.7shifts.com/restaurant-employee-scheduling-software/
+ *    → 各タブの役割が初見で分かる業務説明。weekly グリッドは既存維持
+ *  - Deputy: https://www.deputy.com/features/scheduling-software
+ *    → 勤怠一覧の「一覧 + 修正導線」の役割分担
+ *  - When I Work: https://wheniwork.com/
+ *    → 毎日使っても疲れない staff UI。タブヘッダーの情報密度は抑え気味
+ *  模倣しない: 各社ブランドカラー、AI 自動作成 UI (既存 Gemini 連携は別)
+ *
+ * 既存 .shift-view / .shift-section-header / .shift-table / .shift-dialog-*
+ * / ID (shift-view-*) は全て不変。shift-manager.js の load/render 関数群の
+ * 公開 API も不変。
+ * ============================================================ */
+
+/* シフトサブタブ上部の業務説明 (subtle accent bar) */
+.shift-tab-hint {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--primary-50);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+/* 集計サマリーの inline style を置換 */
+.shift-summary__warnings {
+  background: var(--warning-light);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.shift-summary__warnings-title {
+  color: #e65100;
+  font-weight: 700;
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+.shift-summary__warnings-item {
+  margin-top: var(--space-1);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.shift-summary__warnings-item--error { color: #c62828; }
+.shift-summary__warnings-item--warn  { color: #e65100; }
+
+.shift-summary__infos {
+  background: var(--info-light);
+  border: 1px solid var(--info);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.shift-summary__infos-item {
+  color: #1565c0;
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.shift-summary__stats {
+  display: flex;
+  gap: var(--space-5);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.shift-summary__stat {
+  background: var(--surface-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  min-width: 160px;
+}
+
+.shift-summary__stat-label {
+  font-weight: 700;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+}
+
+.shift-summary__stat-value {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 4px;
+  display: block;
+  line-height: 1.1;
+}
+
+
 
 

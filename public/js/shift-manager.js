@@ -986,7 +986,7 @@
             html += '<button class="btn btn-sm' + (self._summaryPeriod === 'monthly' ? ' btn-primary' : '') + '" id="summary-monthly">月次</button>';
             html += '</div>';
 
-            // 労基法警告パネル
+            // 労基法警告パネル (Batch-C: class ベースに変更、admin.css の .shift-summary__* で装飾)
             if (data.labor_warnings && data.labor_warnings.length > 0) {
                 var errors = [];
                 var warnings = [];
@@ -999,33 +999,33 @@
                 }
                 var alertCount = errors.length + warnings.length;
                 if (alertCount > 0) {
-                    html += '<div style="background:#fff3e0;border:1px solid #ff9800;border-radius:8px;padding:12px 16px;margin-bottom:1rem;">';
-                    html += '<strong style="color:#e65100;">⚠ 労基法チェック（' + alertCount + '件の警告）</strong>';
+                    html += '<div class="shift-summary__warnings">';
+                    html += '<strong class="shift-summary__warnings-title">⚠ 労基法チェック（' + alertCount + '件の警告）</strong>';
                     for (var ei = 0; ei < errors.length; ei++) {
-                        html += '<div style="color:#c62828;margin-top:4px;">🔴 ' + esc(errors[ei].message) + '</div>';
+                        html += '<div class="shift-summary__warnings-item shift-summary__warnings-item--error">🔴 ' + esc(errors[ei].message) + '</div>';
                     }
                     for (var wi = 0; wi < warnings.length; wi++) {
-                        html += '<div style="color:#e65100;margin-top:4px;">🟡 ' + esc(warnings[wi].message) + '</div>';
+                        html += '<div class="shift-summary__warnings-item shift-summary__warnings-item--warn">🟡 ' + esc(warnings[wi].message) + '</div>';
                     }
                     html += '</div>';
                 }
                 if (infos.length > 0) {
-                    html += '<div style="background:#e3f2fd;border:1px solid #2196f3;border-radius:8px;padding:12px 16px;margin-bottom:1rem;">';
+                    html += '<div class="shift-summary__infos">';
                     for (var ii = 0; ii < infos.length; ii++) {
-                        html += '<div style="color:#1565c0;margin-top:2px;">🔵 ' + esc(infos[ii].message) + '</div>';
+                        html += '<div class="shift-summary__infos-item">🔵 ' + esc(infos[ii].message) + '</div>';
                     }
                     html += '</div>';
                 }
             }
 
-            // 合計
-            html += '<div style="display:flex;gap:1.5rem;margin-bottom:1rem;flex-wrap:wrap;">';
-            html += '<div style="background:var(--bg-secondary,#f5f5f5);padding:12px 16px;border-radius:8px;"><strong>総労働時間</strong><br><span style="font-size:1.5rem;">' + data.total_hours + 'h</span></div>';
+            // 合計 (Batch-C: class ベースに変更)
+            html += '<div class="shift-summary__stats">';
+            html += '<div class="shift-summary__stat"><span class="shift-summary__stat-label">総労働時間</span><span class="shift-summary__stat-value">' + data.total_hours + 'h</span></div>';
             if (data.labor_cost_total > 0) {
-                html += '<div style="background:var(--bg-secondary,#f5f5f5);padding:12px 16px;border-radius:8px;"><strong>総人件費</strong><br><span style="font-size:1.5rem;">¥' + data.labor_cost_total.toLocaleString() + '</span></div>';
+                html += '<div class="shift-summary__stat"><span class="shift-summary__stat-label">総人件費</span><span class="shift-summary__stat-value">¥' + data.labor_cost_total.toLocaleString() + '</span></div>';
             }
             if (data.night_premium_total > 0) {
-                html += '<div style="background:var(--bg-secondary,#f5f5f5);padding:12px 16px;border-radius:8px;"><strong>深夜手当合計</strong><br><span style="font-size:1.5rem;">¥' + data.night_premium_total.toLocaleString() + '</span></div>';
+                html += '<div class="shift-summary__stat"><span class="shift-summary__stat-label">深夜手当合計</span><span class="shift-summary__stat-value">¥' + data.night_premium_total.toLocaleString() + '</span></div>';
             }
             html += '</div>';
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3f51b5">
   <title>管理ダッシュボード</title>
-  <link rel="stylesheet" href="css/admin.css?v=20260422-batch-a">
+  <link rel="stylesheet" href="css/admin.css?v=20260422-batch-c">
   <link rel="stylesheet" href="css/reservation-board.css?v=20260422-batch-a">
   <style>
     /* L-3 Phase 3: ヘルプスタッフ表示 */
@@ -537,6 +537,7 @@
     </div>
 
     <div class="tab-panel" id="panel-shift-calendar">
+      <p class="shift-tab-hint">週間のシフト割当を一覧で確認・編集。行はスタッフ、列は日付。セルタップで時間編集ダイアログが開きます。AI 提案は別ボタンから呼び出し可能。</p>
       <div id="shift-view-calendar" class="shift-view"></div>
     </div>
     <div class="tab-panel" id="panel-shift-my">
@@ -552,18 +553,22 @@
       <div id="shift-view-availability" class="shift-view"></div>
     </div>
     <div class="tab-panel" id="panel-shift-attendance">
+      <p class="shift-tab-hint">スタッフの出退勤打刻の一覧。打刻忘れや時刻誤りは各行の「修正」から編集できます（監査ログに記録）。</p>
       <div id="shift-view-attendance" class="shift-view"></div>
     </div>
     <div class="tab-panel" id="panel-shift-templates">
+      <p class="shift-tab-hint">曜日 × 時間帯で固定シフトを事前登録。テンプレートから週次のシフト自動生成が可能で、週のベース組み立てに使います。</p>
       <div id="shift-view-templates" class="shift-view"></div>
     </div>
     <div class="tab-panel" id="panel-shift-settings">
       <div id="shift-view-shift-settings" class="shift-view"></div>
     </div>
     <div class="tab-panel" id="panel-shift-summary">
+      <p class="shift-tab-hint">週次・月次の総労働時間と人件費。労基法違反の自動チェック（週40時間超・連続勤務等）付き。閉店後の振り返りに使います。</p>
       <div id="shift-view-summary" class="shift-view"></div>
     </div>
     <div class="tab-panel" id="panel-shift-help">
+      <p class="shift-tab-hint">店舗間のヘルプ要請。人手不足時に他店舗へ応援依頼を送信、受信側は承認/却下で対応。</p>
       <div id="shift-view-help" class="shift-view"></div>
     </div>
 
