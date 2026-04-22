@@ -102,12 +102,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
+        // require_auth() / require_role() の返り値 key は 'user_id' (auth.php L49)
         $tokenRow = line_link_token_issue(
             $pdo,
             $user['tenant_id'],
             $customer['store_id'],
             $customer['id'],
-            isset($user['id']) ? $user['id'] : null,
+            isset($user['user_id']) ? $user['user_id'] : null,
             30
         );
     } catch (Exception $e) {

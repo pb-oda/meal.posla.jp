@@ -204,8 +204,14 @@ $pdo->prepare(
 
 // L-17 Phase 2A-2: イベント分岐 (Phase 1 の last_webhook_* 更新後に実施、
 // dispatch 失敗で webhook 応答を落とさない)
+// is_enabled=0 時は follow 返信 / LINK 消費 / unfollow unlink を行わない。
+// ただし signature 検証と last_webhook_* 更新は続行し、owner が設定途中でも
+// webhook 到達をデバッグできるようにする。
 $channelAccessToken = isset($row['channel_access_token']) ? (string)$row['channel_access_token'] : '';
-line_dispatch_events($pdo, $row['tenant_id'], $channelAccessToken, $events);
+$isEnabled = (int)($row['is_enabled'] ?? 0);
+if ($isEnabled === 1) {
+    line_dispatch_events($pdo, $row['tenant_id'], $channelAccessToken, $events);
+}
 
 json_response([
     'received'     => true,
