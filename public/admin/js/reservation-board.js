@@ -123,7 +123,7 @@
   // ---------- Gantt ----------
   function loadGantt() {
     var body = document.getElementById('rb-tab-body');
-    body.innerHTML = renderTopBar() + '<div id="rb-kpi-area"></div><div id="rb-attention-area"></div><div class="rb-gantt-wrap"><div id="rb-gantt-area"><div class="rb-loading">読み込み中…</div></div></div>';
+    body.innerHTML = '<div class="rb-stickyhead">' + renderTopBar() + '<div id="rb-kpi-area"></div><div id="rb-attention-area"></div></div><div class="rb-gantt-wrap"><div id="rb-gantt-area"><div class="rb-loading">読み込み中…</div></div></div>';
     bindTopBar();
     apiGet('/reservations.php?store_id=' + encodeURIComponent(_storeId) + '&date=' + _state.date, function (err, data) {
       if (err) {

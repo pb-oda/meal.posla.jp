@@ -113,12 +113,23 @@
 }
 
 /* ------------------------------------------------------------
- * Top bar (sticky): 日付ナビ + 密度 + フィルタ + アクション
+ * Sticky ヘッダーラッパー
+ *   topbar / KPI / attention を単一の sticky ブロックとして扱う。
+ *   個別の top オフセットを廃止することで、topbar が flex-wrap で
+ *   折り返したとき KPI と重ならない (Finding 1 対応)。
  * ------------------------------------------------------------ */
-.rb-topbar {
+.rb-stickyhead {
   position: sticky;
   top: 0;
   z-index: 30;
+  background: var(--rb-surface);
+}
+
+/* ------------------------------------------------------------
+ * Top bar: 日付ナビ + 密度 + フィルタ + アクション
+ *   (rb-stickyhead 内部に配置されるので個別 sticky は不要)
+ * ------------------------------------------------------------ */
+.rb-topbar {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -243,12 +254,10 @@
 .rb-topbar button.rb-btn--primary { /* already styled above */ }
 
 /* ------------------------------------------------------------
- * KPI ストリップ (sticky)
+ * KPI ストリップ
+ *   (rb-stickyhead 内部に配置されるので個別 sticky は不要)
  * ------------------------------------------------------------ */
 .rb-kpi {
-  position: sticky;
-  top: 61px;
-  z-index: 25;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1px;
@@ -1119,7 +1128,6 @@
   }
 
   .rb-kpi {
-    top: 55px;
     grid-template-columns: repeat(2, 1fr);
   }
   .rb-kpi__card { padding: 10px 12px; min-height: 60px; }
