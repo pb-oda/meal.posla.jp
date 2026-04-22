@@ -37,6 +37,10 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
+  /* Batch-E-2 fix: sticky category-nav と高さを一致させ、スクロール時に
+     category-nav がヘッダー裏に隠れる既存バグを解消 */
+  min-height: var(--cm-header-h, 56px);
+  box-sizing: border-box;
 }
 
 .customer-header__store {
@@ -70,7 +74,8 @@ body {
   border-bottom: 1px solid var(--border);
   padding: 0 0.5rem;
   position: sticky;
-  top: 44px;
+  /* Batch-E-2 fix: --cm-header-h (56px) と一致させてヘッダー裏に隠れない */
+  top: var(--cm-header-h, 56px);
   z-index: 90;
 }
 
@@ -610,7 +615,9 @@ body.lang-en .menu-item__add-btn::after { content: ''; }
   --cm-surface-1: #ffffff;
   --cm-surface-2: #fafafa;
 
-  --cm-header-h: 44px;
+  /* customer-header 実高さ (content 1rem + padding 0.75rem*2 + lang-selector/takeout
+     ボタンの border 含めて ~56px。category-nav の sticky top 位置と合わせる) */
+  --cm-header-h: 56px;
   --cm-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
