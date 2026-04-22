@@ -7,7 +7,7 @@
  *   - 各モジュール init / load
  *   - タブ切り替え（店舗管理・ユーザー管理は独立タブ）
  *   - イベント委譲（追加ボタン、リスト操作）
- *   - ユーザー管理のstaffフィルタ（owner画面ではstaff非表示）
+ *   - ユーザー管理
  *
  * ES5 IIFE パターン
  */
@@ -75,16 +75,6 @@
     if (typeof MenuTemplateEditor !== 'undefined') {
       MenuTemplateEditor.init(document.getElementById('hq-menu-template-list'));
     }
-
-    // ユーザーリストのstaffフィルタ（owner画面ではowner/managerのみ管理）
-    var userListEl = document.getElementById('user-list');
-    new MutationObserver(function () {
-      userListEl.querySelectorAll('tbody tr').forEach(function (tr) {
-        if (tr.querySelector('.badge--staff')) {
-          tr.style.display = 'none';
-        }
-      });
-    }).observe(userListEl, { childList: true });
 
     // デフォルトタブ表示
     activateTab('cross-store');
@@ -237,6 +227,7 @@
         loadApiKeyManager();
         break;
       case 'external-pos':
+        loadLineSettings();
         loadSmaregiStatus();
         break;
       case 'shift-overview':
@@ -1091,34 +1082,23 @@
     });
   }
 
-  // --- モーダルからstaffオプションを除去するヘルパー ---
-  function removeStaffRoleOption() {
-    var roleSelect = document.getElementById('user-role');
-    if (roleSelect) {
-      var staffOpt = roleSelect.querySelector('option[value="staff"]');
-      if (staffOpt) staffOpt.remove();
-    }
-  }
-
   // --- イベントハンドラ ---
   function setupEventHandlers() {
-    // ユーザー追加ボタン（staff選択肢を除去）
+    // ユーザー追加ボタン
     document.getElementById('btn-add-user').addEventListener('click', function () {
       UserEditor.openAddModal();
-      removeStaffRoleOption();
     });
     // 店舗追加ボタン
     document.getElementById('btn-add-store').addEventListener('click', function () {
       StoreEditor.openAddModal();
     });
 
-    // ユーザーリストのイベント委譲（編集時もstaff選択肢を除去）
+    // ユーザーリストのイベント委譲
     document.getElementById('user-list').addEventListener('click', function (e) {
       var btn = e.target.closest('[data-action]');
       if (!btn) return;
       if (btn.dataset.action === 'edit-user') {
         UserEditor.openEditModal(btn.dataset.id);
-        removeStaffRoleOption();
       }
       else if (btn.dataset.action === 'delete-user') UserEditor.confirmDelete(btn.dataset.id);
     });
@@ -1208,6 +1188,203 @@
     var modalOverlay = document.getElementById('admin-modal-overlay');
     modalOverlay.addEventListener('click', function (e) {
       if (e.target === modalOverlay) modalOverlay.classList.remove('open');
+    });
+  }
+
+  // ═══════════════════════════════════
+  // L-17: LINE連携
+  // ═══════════════════════════════════
+  var _lineSettingsCache = null;
+
+  function loadLineSettings() {
+    var container = document.getElementById('line-settings-content');
+    if (!container) return;
+    container.innerHTML = '<span style="color:#888;">読み込み中...</span>';
+
+    AdminApi.getLineSettings().then(function (res) {
+      _lineSettingsCache = res.line || null;
+      renderLineSettings(container, _lineSettingsCache);
+    }).catch(function (err) {
+      container.innerHTML = '<p style="color:#c62828;">' + Utils.escapeHtml(err.message) + '</p>';
+    });
+  }
+
+  function renderLineSettings(container, data) {
+    if (!data) return;
+
+    if (data.migration_applied === false) {
+      container.innerHTML = '<div style="padding:0.75rem 1rem;background:#fff3e0;border-left:4px solid #ff9800;border-radius:6px;color:#6d4c41;">'
+        + '<strong>DB migration 未適用</strong><br>'
+        + '<span style="font-size:0.85rem;color:#666;">sql/migration-l17-line-settings.sql を適用後に利用できます。</span>'
+        + '</div>';
+      return;
+    }
+
+    var enabled = (data.is_enabled === 1 || data.is_enabled === true);
+    var statusText = enabled ? '有効' : '無効';
+    var statusColor = enabled ? '#2e7d32' : '#666';
+    var statusBg = enabled ? '#e8f5e9' : '#f5f5f5';
+    var webhookMeta = data.last_webhook_at
+      ? ('最終受信: ' + Utils.escapeHtml(data.last_webhook_at) + (data.last_webhook_event_type ? ' / ' + Utils.escapeHtml(data.last_webhook_event_type) : '') + ' / ' + (data.last_webhook_event_count || 0) + '件')
+      : 'まだ webhook は受信していません';
+
+    container.innerHTML = ''
+      + '<p style="color:#666;font-size:0.9rem;margin:0 0 1rem;">店舗が保有する LINE公式アカウントを POSLA に接続します。未設定のままなら既存動作は一切変わりません。</p>'
+      + '<div style="margin-bottom:1rem;padding:0.75rem 1rem;background:' + statusBg + ';border-radius:6px;border-left:4px solid ' + (enabled ? '#4caf50' : '#bdbdbd') + ';">'
+      +   '<span style="font-weight:600;color:' + statusColor + ';">LINE連携: ' + statusText + '</span><br>'
+      +   '<span style="display:inline-block;margin-top:0.35rem;font-size:0.85rem;color:#666;">' + Utils.escapeHtml(webhookMeta) + '</span>'
+      + '</div>'
+      + '<div style="margin-bottom:1rem;">'
+      +   '<label style="display:block;font-weight:600;margin-bottom:0.4rem;">Webhook URL</label>'
+      +   '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">'
+      +     '<input class="form-input" id="line-webhook-url" type="text" readonly value="' + Utils.escapeHtml(data.webhook_url || '') + '" style="flex:1;min-width:280px;font-family:monospace;font-size:0.85rem;">'
+      +     '<button class="btn btn-sm" id="line-copy-webhook-btn">コピー</button>'
+      +   '</div>'
+      +   '<div style="font-size:0.8rem;color:#888;margin-top:0.35rem;">LINE Developers Console の Webhook URL に設定してください。</div>'
+      + '</div>'
+      + '<div style="display:grid;gap:1rem;margin-bottom:1rem;">'
+      +   '<div>'
+      +     '<label style="display:block;font-weight:600;margin-bottom:0.4rem;">Channel Access Token</label>'
+      +     '<div style="margin-bottom:0.35rem;">'
+      +       (data.channel_access_token_set
+                ? '<span style="font-family:monospace;font-size:0.9rem;color:#555;">' + Utils.escapeHtml(data.channel_access_token_masked || '') + '</span>'
+                : '<span style="color:#999;font-size:0.85rem;">未設定</span>')
+      +     '</div>'
+      +     '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">'
+      +       '<input class="form-input" id="line-access-token-input" type="password" placeholder="新しい token を入力..." style="flex:1;min-width:240px;">'
+      +       '<button class="btn btn-primary btn-sm" id="line-access-token-save">保存</button>'
+      +       '<button class="btn btn-sm" id="line-access-token-delete" style="color:#c62828;border-color:#c62828;">削除</button>'
+      +     '</div>'
+      +   '</div>'
+      +   '<div>'
+      +     '<label style="display:block;font-weight:600;margin-bottom:0.4rem;">Channel Secret</label>'
+      +     '<div style="margin-bottom:0.35rem;">'
+      +       (data.channel_secret_set
+                ? '<span style="font-family:monospace;font-size:0.9rem;color:#555;">' + Utils.escapeHtml(data.channel_secret_masked || '') + '</span>'
+                : '<span style="color:#999;font-size:0.85rem;">未設定</span>')
+      +     '</div>'
+      +     '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">'
+      +       '<input class="form-input" id="line-channel-secret-input" type="password" placeholder="新しい secret を入力..." style="flex:1;min-width:240px;">'
+      +       '<button class="btn btn-primary btn-sm" id="line-channel-secret-save">保存</button>'
+      +       '<button class="btn btn-sm" id="line-channel-secret-delete" style="color:#c62828;border-color:#c62828;">削除</button>'
+      +     '</div>'
+      +   '</div>'
+      +   '<div>'
+      +     '<label style="display:block;font-weight:600;margin-bottom:0.4rem;">LIFF ID（任意）</label>'
+      +     '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">'
+      +       '<input class="form-input" id="line-liff-id-input" type="text" value="' + Utils.escapeHtml(data.liff_id || '') + '" placeholder="LIFF ID を入力..." style="flex:1;min-width:240px;">'
+      +       '<button class="btn btn-primary btn-sm" id="line-liff-id-save">保存</button>'
+      +     '</div>'
+      +   '</div>'
+      + '</div>'
+      + '<div style="padding:0.85rem 1rem;background:#fafafa;border:1px solid #eee;border-radius:8px;">'
+      +   '<label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;margin-bottom:0.9rem;">'
+      +     '<input type="checkbox" id="line-enabled-toggle"' + (enabled ? ' checked' : '') + '> LINE連携を有効化する'
+      +   '</label>'
+      +   '<div style="display:grid;gap:0.55rem;margin-bottom:0.9rem;">'
+      +     '<label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" id="line-notify-reservation-created"' + ((data.notify_reservation_created === 1 || data.notify_reservation_created === true) ? ' checked' : '') + '> 予約受付完了通知</label>'
+      +     '<label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" id="line-notify-reservation-reminder-day"' + ((data.notify_reservation_reminder_day === 1 || data.notify_reservation_reminder_day === true) ? ' checked' : '') + '> 前日リマインド通知</label>'
+      +     '<label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" id="line-notify-takeout-ready"' + ((data.notify_takeout_ready === 1 || data.notify_takeout_ready === true) ? ' checked' : '') + '> テイクアウト準備完了通知</label>'
+      +   '</div>'
+      +   '<div style="font-size:0.8rem;color:#888;margin-bottom:0.9rem;">通知 ON/OFF は先に保存できます。送信機能は後続フェーズで段階的に接続します。</div>'
+      +   '<button class="btn btn-primary" id="line-settings-save-btn">設定を保存</button>'
+      + '</div>';
+
+    bindLineSettingsEvents();
+  }
+
+  function bindLineSettingsEvents() {
+    var copyBtn = document.getElementById('line-copy-webhook-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function () {
+        var input = document.getElementById('line-webhook-url');
+        if (!input) return;
+        input.select();
+        input.setSelectionRange(0, input.value.length);
+        try {
+          document.execCommand('copy');
+          showToast('Webhook URL をコピーしました', 'success');
+        } catch (e) {
+          showToast('Webhook URL のコピーに失敗しました', 'error');
+        }
+      });
+    }
+
+    var tokenSave = document.getElementById('line-access-token-save');
+    if (tokenSave) {
+      tokenSave.addEventListener('click', function () {
+        var input = document.getElementById('line-access-token-input');
+        var value = input ? input.value.trim() : '';
+        if (!value) {
+          showToast('Channel Access Token を入力してください', 'error');
+          return;
+        }
+        saveLineSettings({ channel_access_token: value });
+      });
+    }
+
+    var tokenDelete = document.getElementById('line-access-token-delete');
+    if (tokenDelete) {
+      tokenDelete.addEventListener('click', function () {
+        if (!confirm('Channel Access Token を削除しますか？')) return;
+        saveLineSettings({ channel_access_token: null });
+      });
+    }
+
+    var secretSave = document.getElementById('line-channel-secret-save');
+    if (secretSave) {
+      secretSave.addEventListener('click', function () {
+        var input = document.getElementById('line-channel-secret-input');
+        var value = input ? input.value.trim() : '';
+        if (!value) {
+          showToast('Channel Secret を入力してください', 'error');
+          return;
+        }
+        saveLineSettings({ channel_secret: value });
+      });
+    }
+
+    var secretDelete = document.getElementById('line-channel-secret-delete');
+    if (secretDelete) {
+      secretDelete.addEventListener('click', function () {
+        if (!confirm('Channel Secret を削除しますか？')) return;
+        saveLineSettings({ channel_secret: null });
+      });
+    }
+
+    var liffSave = document.getElementById('line-liff-id-save');
+    if (liffSave) {
+      liffSave.addEventListener('click', function () {
+        var input = document.getElementById('line-liff-id-input');
+        var value = input ? input.value.trim() : '';
+        saveLineSettings({ liff_id: value || null });
+      });
+    }
+
+    var settingsSave = document.getElementById('line-settings-save-btn');
+    if (settingsSave) {
+      settingsSave.addEventListener('click', function () {
+        var enabled = document.getElementById('line-enabled-toggle');
+        var notifyReservation = document.getElementById('line-notify-reservation-created');
+        var notifyReminder = document.getElementById('line-notify-reservation-reminder-day');
+        var notifyTakeout = document.getElementById('line-notify-takeout-ready');
+        saveLineSettings({
+          is_enabled: enabled && enabled.checked ? 1 : 0,
+          notify_reservation_created: notifyReservation && notifyReservation.checked ? 1 : 0,
+          notify_reservation_reminder_day: notifyReminder && notifyReminder.checked ? 1 : 0,
+          notify_takeout_ready: notifyTakeout && notifyTakeout.checked ? 1 : 0
+        });
+      });
+    }
+  }
+
+  function saveLineSettings(payload) {
+    AdminApi.updateLineSettings(payload).then(function (res) {
+      _lineSettingsCache = res.line || null;
+      showToast('LINE連携設定を保存しました', 'success');
+      loadLineSettings();
+    }).catch(function (err) {
+      showToast(err.message || 'LINE連携設定の保存に失敗しました', 'error');
     });
   }
 

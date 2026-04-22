@@ -81,6 +81,14 @@ var AdminApi = (function () {
     return request('PATCH', '/owner/tenants.php', data);
   }
 
+  function getLineSettings() {
+    return request('GET', '/owner/line-settings.php');
+  }
+
+  function updateLineSettings(data) {
+    return request('PATCH', '/owner/line-settings.php', data);
+  }
+
   // --- 店舗管理（owner） ---
   function getStores() {
     return request('GET', '/owner/stores.php');
@@ -749,6 +757,8 @@ var AdminApi = (function () {
     me: me,
     getTenant: getTenant,
     updateTenant: updateTenant,
+    getLineSettings: getLineSettings,
+    updateLineSettings: updateLineSettings,
     getStores: getStores,
     getStore: getStore,
     createStore: createStore,

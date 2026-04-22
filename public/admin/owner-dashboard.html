@@ -60,7 +60,7 @@
     <button class="tab-nav__btn" data-tab="subscription">契約・プラン</button>
     <button class="tab-nav__btn" data-tab="payment">決済設定</button>
     <button class="tab-nav__btn" data-tab="shift-overview">シフト概況</button>
-    <button class="tab-nav__btn" data-tab="external-pos">外部POS連携</button>
+    <button class="tab-nav__btn" data-tab="external-pos">外部連携</button>
   </nav>
 
   <!-- 店舗セレクター（非表示、StoreSelector初期化用） -->
@@ -178,9 +178,15 @@
       </div>
     </div>
 
-    <!-- 外部POS連携 -->
+    <!-- 外部連携 -->
     <div class="owner-tab-panel" id="owner-panel-external-pos">
-      <div class="panel-header"><h2 class="panel-header__title">外部POS連携（スマレジ）</h2></div>
+      <div class="panel-header"><h2 class="panel-header__title">外部連携</h2></div>
+
+      <!-- LINE連携 -->
+      <div id="line-integration-section" class="card" style="margin-bottom:20px; padding:20px;">
+        <h3 style="margin:0 0 1rem;font-size:1rem;">LINE公式アカウント連携</h3>
+        <div id="line-settings-content">読み込み中...</div>
+      </div>
 
       <!-- 接続状態セクション -->
       <div id="smaregi-connection-status" class="card" style="margin-bottom:20px; padding:20px;">
@@ -228,7 +234,7 @@
 
   <!-- JS -->
   <script src="../shared/js/utils.js?v=20260419-phaseB"></script>
-  <script src="js/admin-api.js?v=20260420-r1"></script>
+  <script src="js/admin-api.js?v=20260422-line1"></script>
   <script src="js/store-selector.js"></script>
   <script src="js/cross-store-report.js?v=20260420-r1"></script>
   <script src="js/abc-analytics.js"></script>
@@ -238,7 +244,7 @@
   <script src="js/menu-template-editor.js?v=20260408a"></script>
   <script src="js/ai-assistant.js?v=20260422-batch-a2b"></script>
   <script src="../js/shift-manager.js?v=20260406b"></script>
-  <script src="js/owner-app.js?v=20260409p135"></script>
+  <script src="js/owner-app.js?v=20260422-line1"></script>
   <script src="../shared/js/posla-helpdesk-fab.js?v=20260419-cb1c"></script>
 
   <!-- グローバルトースト（dashboard.htmlと同一パターン） -->
