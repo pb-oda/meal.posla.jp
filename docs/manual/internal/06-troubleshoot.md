@@ -13,6 +13,13 @@ maintainer: POSLA運営
 
 POSLA運営（プラスビリーフ）がテナントからの問い合わせやシステム障害に対応するためのガイドです。本章は **L1（一次受け）→ L2（設定変更）→ L3（システム障害）** の各段階で参照できるように構成しています。
 
+::: warning ⚠️ 現行 sandbox 環境前提の具体例
+
+本章の障害対応コマンド例（SSH / mysql / tail / grep）は **現行 sandbox 環境（さくらのレンタルサーバ、`odah@odah.sakura.ne.jp` / `/home/odah/www/eat-posla/` / `mysql80.odah.sakura.ne.jp` / `/home/odah/log/php_errors.log`）を前提とした実例**です。障害切り分けの原則は vendor-neutral ですが、コマンド中のパス・ホスト名は本番では読み替えてください。
+
+**§6.15「現行 sandbox（Sakura）障害時の対応」は、現行 sandbox 固有の参考情報**です。本番インフラが決まったら同等のプロバイダ障害対応フローに置き換えてください。
+:::
+
 ::: tip この章を読む順番（おすすめ）
 1. お客様問い合わせの一次対応 → **6.1 テナントからの問い合わせ対応** + **6.2 問い合わせ別対応フロー**
 2. error_log を見る人 → **6.9-b エラーカタログと error_log** + **6.11 error_log 調査クエリ集**
@@ -1094,8 +1101,9 @@ HAVING distinct_ips >= 3;
 # 1. ヘルスチェック
 curl https://eat.posla.jp/api/monitor/ping.php
 
-# 2. DB 接続確認
-mysql -h mysql80.odah.sakura.ne.jp -u odah_eat-posla -podah_eat-posla odah_eat-posla -e "SELECT 1"
+# 2. DB 接続確認（credentials は env 経由で供給）
+source ~/.posla-sandbox.env
+mysql -h "$POSLA_DB_HOST" -u "$POSLA_DB_USER" -p"$POSLA_DB_PASS" "$POSLA_DB_NAME" -e "SELECT 1"
 
 # 3. cron が再開しているか
 mysql -h ... -e "SELECT setting_value FROM posla_settings WHERE setting_key='monitor_last_heartbeat'"

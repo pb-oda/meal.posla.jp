@@ -13,6 +13,10 @@ maintainer: POSLA運営
 
 POSLA管理画面（`/public/posla-admin/`）は、プラスビリーフ社内のPOSLA運営スタッフが使用する管理コンソールです。テナント管理・APIキー設定・ダッシュボード統計・運用監視を提供します。テナント向けの管理ダッシュボード（`/public/admin/`）とは完全に分離された画面です。
 
+::: tip 現行 sandbox: Sakura コンパネ / phpMyAdmin への言及について
+本章の一部障害対応手順（§1.1.3 緊急復旧 SQL 等）で「Sakura コンパネ」「Sakura phpMyAdmin」への言及があります。これは **現行 sandbox 環境（さくらのレンタルサーバ）前提の参考情報**です。本番では対応する infra のコントロールパネル / DB 管理ツールに読み替えてください。
+:::
+
 ::: tip 右下の AI ヘルプデスク FAB（internal モード、2026-04-19 設置）
 POSLA 管理画面にも管理ダッシュボードと同じ **オレンジ色 ? ボタン**（右下、60×60 円形 FAB）が常駐します。POSLA 運営チームが利用するため、knowledge base は **internal モード**（`helpdesk-prompt-internal.txt`、tenant + operations + internal 8 章 + SYSTEM_SPECIFICATION）で動作します。テナント側 FAB より広い知識ベースを参照可能。詳細は [tenant/14.6](../tenant/14-ai.md#146-ai-ヘルプデスク管理画面共通-fab) 参照。
 :::

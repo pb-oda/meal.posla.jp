@@ -13,6 +13,10 @@ maintainer: POSLA運営
 
 POSLAはStripe Billingを使用したSaaS型のサブスクリプション課金モデルを採用しています。
 
+::: tip 現行 sandbox: SSH によるログ grep 例
+本章後段のトラブルシュート節で `ssh odah@odah.sakura.ne.jp 'tail ~/www/eat-posla/_logs/...'` のようなコマンド例が登場します。これは **現行 sandbox 環境（さくらのレンタルサーバ）前提の実例**です。debugger の切り分けフローは vendor-neutral、具体値は本番では読み替えてください。
+:::
+
 ::: tip 2026-04-09 α-1 構成（確定）
 2026-04-09 より、**単一プラン + アドオン**構成に切り替わりました。本章は α-1 構成で書かれています。機能判定（`check_plan_feature`）は α-1 ベースで一本化済（`hq_menu_broadcast` のみ判定、それ以外は常に true）。ただし POSLA 管理画面のテナント編集 API（`api/posla/tenants.php`）では旧 3 プラン文字列（`standard` / `pro` / `enterprise`）も互換のため受付可能。新規テナントには α-1 構成のみ推奨。
 :::

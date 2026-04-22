@@ -13,6 +13,10 @@ maintainer: POSLA運営
 
 POSLAのテナント決済は2つのパターンで動作します。テナントごとに選択可能で、バックエンドが自動で経路を切り替えます。
 
+::: tip 現行 sandbox: SSH によるログ grep 例
+本章後段の Webhook / Payment トラブルシュート節で `ssh odah@odah.sakura.ne.jp 'tail ~/www/eat-posla/_logs/...'` のようなコマンド例が登場します。これは **現行 sandbox 環境（さくらのレンタルサーバ）前提の実例**です。切り分けフロー（error_log grep + Stripe ID 追跡）は vendor-neutral、具体値は本番では読み替えてください。
+:::
+
 ::: tip この章を読む順番（運営者向け）
 1. **4.1 2つのパターン** で全体像を把握
 2. **4.2 / 4.3 / 4.4** で技術的な分岐ロジック

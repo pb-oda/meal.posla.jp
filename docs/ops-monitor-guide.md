@@ -1,13 +1,15 @@
 # I-1 運用支援エージェント ガイド
 
+> ⚠️ **現行 sandbox 環境前提の実例**: 本ドキュメントの cron 登録手順・PHP パス・ログ path は **さくらのレンタルサーバを前提とした実例**です。監視ロジック（正系 cron + 副系 uptime probe + Slack + メール通知）は vendor-neutral。本番インフラ確定後は具体値（`/home/odah/www/eat-posla/` / `/usr/local/bin/php` / Sakura コンパネ）を読み替えてください。
+
 ## 目的
 
-POSLA サーバーの異常を検知して Hiro / 運営チームに即時通知する。
+POSLA サーバーの異常を検知して運営チーム（support@posla.jp）に即時通知する。
 **AI (Gemini) や POSLA 本体が同時停止してもアラートが届く**設計。
 
 ## 2系統の監視
 
-### 正系: Sakura サーバー内 cron
+### 正系: サーバー内 cron（現行 sandbox 参考: Sakura）
 
 - **実行頻度**: 5分毎
 - **対象**: `api/cron/monitor-health.php`
@@ -15,15 +17,15 @@ POSLA サーバーの異常を検知して Hiro / 運営チームに即時通知
   1. PHP エラーログ (`/home/odah/log/php_errors.log`) の直近 5 分を走査
   2. `subscription_events` テーブルの失敗ログを検知
   3. `reservation_notifications_log` のメール送信失敗を検知
-  4. 異常時: `monitor_events` に記録 + Slack webhook 通知 + 連続3件以上で Hiro メール
+  4. 異常時: `monitor_events` に記録 + Slack webhook 通知 + 連続3件以上で 運営通知先（support@posla.jp）
 
 ### 副系: 外部 uptime サービス
 
 - **実行頻度**: 5分毎 (外部から)
-- **対象**: `https://eat.posla.jp/public/api/monitor/ping.php`
+- **対象**: `https://eat.posla.jp/api/monitor/ping.php`
 - **レスポンス**: `{ ok: true, db: 'ok', last_heartbeat: ..., cron_lag_sec: N }`
 - **判定**:
-  - 応答なし (サーバーダウン) → 外部サービスが Hiro メールへアラート
+  - 応答なし (サーバーダウン) → 外部サービスが 運営通知先（support@posla.jp）へアラート
   - `ok: false` → 同上
   - `cron_lag_sec > 900` → cron が止まっている警告
 
@@ -31,7 +33,7 @@ POSLA サーバーの異常を検知して Hiro / 運営チームに即時通知
 
 ## 初期設定手順
 
-### 1. Sakura cron 登録 (正系)
+### 1. cron 登録（正系、現行 sandbox 参考: Sakura）
 
 ```bash
 # コンパネ → 共有サーバー → Cron 設定
@@ -39,10 +41,12 @@ POSLA サーバーの異常を検知して Hiro / 運営チームに即時通知
 /usr/local/bin/php /home/odah/www/eat-posla/api/cron/monitor-health.php
 
 # または HTTP 経由 (CLI 不可の場合):
-curl -H "X-POSLA-CRON-SECRET: <secret>" https://eat.posla.jp/public/api/cron/monitor-health.php
+curl -H "X-POSLA-CRON-SECRET: <secret>" https://eat.posla.jp/api/cron/monitor-health.php
 ```
 
-- 環境変数 `POSLA_CRON_SECRET` を設定 (posla_settings.monitor_cron_secret と同値)
+- `POSLA_CRON_SECRET` は **HTTP 経由で cron を叩く場合のみ**必要（CLI 実行だけなら不要）
+- ただし server 移行 / 本番ドメイン切替時は、**CLI 側では `.htaccess` が読まれない**ため、`POSLA_DB_*` / `POSLA_APP_BASE_URL` / `POSLA_FROM_EMAIL` / `POSLA_SUPPORT_EMAIL` / `POSLA_ALLOWED_*` を crontab か wrapper script にも渡す
+- 本番 VPS では `.htaccess` に依存せず **vhost / PHP-FPM pool env / systemd EnvironmentFile** 等の server-level env 管理を推奨（HTTP / CLI 両経路で env を統一できる）。詳細は internal docs の [5.3.5 env 供給手段の選択肢](./manual/internal/05-operations.md#535-env-供給手段の選択肢現行-sandbox-vs-本番-vps-推奨) を参照
 
 ### 2. Slack Webhook 設定
 
@@ -53,7 +57,7 @@ curl -H "X-POSLA-CRON-SECRET: <secret>" https://eat.posla.jp/public/api/cron/mon
 
 ### 3. 運営通知メール設定
 
-- `posla_settings.ops_notify_email` に Hiro 個人メール
+- `posla_settings.ops_notify_email` に POSLA運営窓口（support@posla.jp）
 - デフォルト: `info@posla.jp`
 - 重大異常 (連続3件) 時に送信
 
@@ -62,9 +66,9 @@ curl -H "X-POSLA-CRON-SECRET: <secret>" https://eat.posla.jp/public/api/cron/mon
 UptimeRobot 例:
 1. アカウント作成 (無料)
 2. 「New Monitor」→ Type: HTTP(s)
-3. URL: `https://eat.posla.jp/public/api/monitor/ping.php`
+3. URL: `https://eat.posla.jp/api/monitor/ping.php`
 4. 間隔: 5 分
-5. アラート先: Hiro個人メール
+5. アラート先: POSLA運営窓口（support@posla.jp）
 6. Sakura がダウンしても別系統でメールが届く
 
 ## 検知対象の拡張予定
