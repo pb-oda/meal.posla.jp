@@ -699,83 +699,64 @@
                 return allTools || visTools.indexOf(tool) !== -1;
             }
 
-            var html = '<div class="shift-section-header"><h3>シフト設定</h3></div>' +
-                '<div class="shift-settings-form">' +
-                '<label>希望提出締切日（毎月N日）<input type="number" id="set-deadline" min="1" max="28" value="' + settings.submission_deadline_day + '"></label>' +
-                '<label>デフォルト休憩時間（分）<input type="number" id="set-break" min="0" max="120" value="' + settings.default_break_minutes + '"></label>' +
-                '<label>残業判定閾値（分/日）<input type="number" id="set-overtime" min="60" max="720" value="' + settings.overtime_threshold_minutes + '"></label>' +
-                '<label>早出打刻許容（分）<input type="number" id="set-early" min="0" max="60" value="' + settings.early_clock_in_minutes + '"></label>' +
-                '<label>自動退勤（時間）<input type="number" id="set-auto" min="1" max="24" value="' + settings.auto_clock_out_hours + '"></label>' +
-
-                // L-3b: GPS出退勤制御
-                '<hr style="margin:1.5rem 0;border-color:#e0e0e0;">' +
-                '<h4 style="margin-bottom:0.5rem;">GPS出退勤制御</h4>' +
-                '<label>GPS出退勤 <select id="set-gps-required">' +
-                '<option value="0"' + (settings.gps_required === 0 ? ' selected' : '') + '>無効</option>' +
-                '<option value="1"' + (settings.gps_required === 1 ? ' selected' : '') + '>有効（必須）</option>' +
-                '</select></label>' +
-                '<div id="gps-detail-fields" style="' + (settings.gps_required === 1 ? '' : 'display:none;') + '">' +
-                '<button class="btn btn-primary" id="set-gps-detect" type="button" style="margin-bottom:1rem;width:100%;padding:0.6rem;">📍 現在地から店舗位置を設定</button>' +
-                '<label>店舗緯度 <input type="number" id="set-lat" step="0.0000001" min="-90" max="90" value="' + (settings.store_lat !== null ? settings.store_lat : '') + '" placeholder="35.6812362"></label>' +
-                '<label>店舗経度 <input type="number" id="set-lng" step="0.0000001" min="-180" max="180" value="' + (settings.store_lng !== null ? settings.store_lng : '') + '" placeholder="139.7671248"></label>' +
-                '<label>許容半径（m） <input type="number" id="set-radius" min="50" max="1000" value="' + settings.gps_radius_meters + '"></label>' +
+            var parts = [];
+            parts.push(
+                '<div class="shift-settings-header">' +
+                  '<h3 class="shift-settings-header__title">シフト設定</h3>' +
+                  '<span class="shift-settings-header__badge">店舗ごと</span>' +
                 '</div>' +
+                '<div class="shift-settings-cards">'
+            );
+            parts.push(self._renderSettingsCardBasic(settings));
+            parts.push(self._renderSettingsCardGps(settings));
+            parts.push(self._renderSettingsCardTools(settings, isToolChecked));
+            parts.push(self._renderSettingsCardWage(settings));
+            parts.push('</div>');
 
-                // L-3b: スタッフ表示ツール
-                '<hr style="margin:1.5rem 0;border-color:#e0e0e0;">' +
-                '<h4 style="margin-bottom:0.5rem;">スタッフ表示ツール</h4>' +
-                '<p style="color:#666;font-size:0.85rem;margin-bottom:0.5rem;">チェックなし＝全ツール表示。チェックしたツールのみスタッフ画面に表示されます。</p>' +
-                '<label style="display:inline-flex;align-items:center;gap:4px;margin-right:1rem;"><input type="checkbox" id="set-tool-handy"' + (isToolChecked('handy') ? ' checked' : '') + '> ハンディPOS</label>' +
-                '<label style="display:inline-flex;align-items:center;gap:4px;margin-right:1rem;"><input type="checkbox" id="set-tool-kds"' + (isToolChecked('kds') ? ' checked' : '') + '> KDS</label>' +
-                '<label style="display:inline-flex;align-items:center;gap:4px;"><input type="checkbox" id="set-tool-register"' + (isToolChecked('register') ? ' checked' : '') + '> POSレジ</label>' +
-
-                // L-3 Phase 2: デフォルト時給
-                '<hr style="margin:1.5rem 0;border-color:#e0e0e0;">' +
-                '<h4 style="margin-bottom:0.5rem;">人件費設定</h4>' +
-                '<label>デフォルト時給（円） <input type="number" id="set-hourly-rate" min="0" max="10000" value="' + (settings.default_hourly_rate !== null ? settings.default_hourly_rate : '') + '" placeholder="未設定"></label>' +
-                '<p style="color:#666;font-size:0.85rem;margin-top:0.25rem;">スタッフ個別の時給はユーザー管理で設定できます。空欄＝人件費計算なし</p>' +
-
-                '<div style="margin-top:1.5rem;"><button class="btn btn-primary" id="set-save">保存</button></div>' +
-                '</div>';
-
-            container.innerHTML = html;
+            container.innerHTML = parts.join('');
 
             // GPS有効/無効の切替で詳細フィールド表示制御
             var gpsSelect = document.getElementById('set-gps-required');
             var gpsDetail = document.getElementById('gps-detail-fields');
-            gpsSelect.addEventListener('change', function() {
-                gpsDetail.style.display = this.value === '1' ? '' : 'none';
-            });
+            if (gpsSelect && gpsDetail) {
+                gpsSelect.addEventListener('change', function() {
+                    gpsDetail.style.display = this.value === '1' ? '' : 'none';
+                });
+            }
 
             // 現在地取得ボタン
             var detectBtn = document.getElementById('set-gps-detect');
-            detectBtn.addEventListener('click', function() {
-                if (!navigator.geolocation) {
-                    alert('このブラウザは位置情報に対応していません');
-                    return;
-                }
-                detectBtn.textContent = '📍 取得中...';
-                detectBtn.disabled = true;
-                navigator.geolocation.getCurrentPosition(
-                    function(pos) {
-                        document.getElementById('set-lat').value = pos.coords.latitude.toFixed(7);
-                        document.getElementById('set-lng').value = pos.coords.longitude.toFixed(7);
-                        detectBtn.textContent = '📍 現在地から店舗位置を設定';
-                        detectBtn.disabled = false;
-                    },
-                    function(err) {
-                        alert('位置情報の取得に失敗しました: ' + err.message);
-                        detectBtn.textContent = '📍 現在地から店舗位置を設定';
-                        detectBtn.disabled = false;
-                    },
-                    { enableHighAccuracy: true, timeout: 10000 }
-                );
-            });
+            if (detectBtn) {
+                detectBtn.addEventListener('click', function() {
+                    if (!navigator.geolocation) {
+                        alert('このブラウザは位置情報に対応していません');
+                        return;
+                    }
+                    detectBtn.textContent = '📍 取得中...';
+                    detectBtn.disabled = true;
+                    navigator.geolocation.getCurrentPosition(
+                        function(pos) {
+                            document.getElementById('set-lat').value = pos.coords.latitude.toFixed(7);
+                            document.getElementById('set-lng').value = pos.coords.longitude.toFixed(7);
+                            detectBtn.textContent = '📍 現在地から店舗位置を設定';
+                            detectBtn.disabled = false;
+                        },
+                        function(err) {
+                            alert('位置情報の取得に失敗しました: ' + err.message);
+                            detectBtn.textContent = '📍 現在地から店舗位置を設定';
+                            detectBtn.disabled = false;
+                        },
+                        { enableHighAccuracy: true, timeout: 10000 }
+                    );
+                });
+            }
 
-            // 保存ボタン
-            document.getElementById('set-save').addEventListener('click', function() {
-                var latVal = document.getElementById('set-lat').value;
-                var lngVal = document.getElementById('set-lng').value;
+            // 保存ハンドラ: 全カードの保存ボタン（#set-save-basic/gps/tools/wage）+ 既存互換 #set-save
+            function handleSave() {
+                var latEl = document.getElementById('set-lat');
+                var lngEl = document.getElementById('set-lng');
+                var latVal = latEl ? latEl.value : '';
+                var lngVal = lngEl ? lngEl.value : '';
 
                 // スタッフ表示ツール CSV 生成
                 var toolChecks = [];
@@ -808,7 +789,143 @@
                     if (err) { alert('保存に失敗しました: ' + (err.message || '')); return; }
                     alert('設定を保存しました');
                 });
-            });
+            }
+            var saveIds = ['set-save', 'set-save-basic', 'set-save-gps', 'set-save-tools', 'set-save-wage'];
+            for (var si = 0; si < saveIds.length; si++) {
+                var btn = document.getElementById(saveIds[si]);
+                if (btn) btn.addEventListener('click', handleSave);
+            }
+        },
+
+        // Batch-UI-1: 基本設定カード
+        _renderSettingsCardBasic: function(s) {
+            return '' +
+                '<section class="shift-card">' +
+                  '<div class="shift-card__head">' +
+                    '<h3 class="shift-card__title"><span class="shift-card__title-icon">⚙</span>基本設定</h3>' +
+                    '<p class="shift-card__desc">希望提出・休憩・残業・打刻まわりの運用ルール。間違えると給与計算に影響するため、変更は月初めが無難です。</p>' +
+                  '</div>' +
+                  '<div class="shift-card__body">' +
+                    '<div class="form-field">' +
+                      '<label class="form-field__label" for="set-deadline">希望提出締切日 <span class="form-field__label-sub">毎月N日</span></label>' +
+                      '<input class="form-field__input" type="number" id="set-deadline" min="1" max="28" value="' + s.submission_deadline_day + '">' +
+                      '<p class="form-field__hint">1〜28 の範囲。例: 15 → 毎月15日に翌月希望シフトを締切。</p>' +
+                    '</div>' +
+                    '<div class="form-field">' +
+                      '<label class="form-field__label" for="set-break">デフォルト休憩時間 <span class="form-field__label-sub">分</span></label>' +
+                      '<input class="form-field__input" type="number" id="set-break" min="0" max="120" value="' + s.default_break_minutes + '">' +
+                      '<p class="form-field__hint">シフト作成時に自動適用される休憩の初期値。スタッフ個別に変更可。</p>' +
+                    '</div>' +
+                    '<div class="form-field">' +
+                      '<label class="form-field__label" for="set-overtime">残業判定閾値 <span class="form-field__label-sub">分/日</span></label>' +
+                      '<input class="form-field__input" type="number" id="set-overtime" min="60" max="720" value="' + s.overtime_threshold_minutes + '">' +
+                      '<p class="form-field__hint">1 日の労働時間がこの分数を超えた分を残業として集計。法定は 480 分（8 時間）目安。</p>' +
+                    '</div>' +
+                    '<div class="form-field">' +
+                      '<label class="form-field__label" for="set-early">早出打刻許容 <span class="form-field__label-sub">分</span></label>' +
+                      '<input class="form-field__input" type="number" id="set-early" min="0" max="60" value="' + s.early_clock_in_minutes + '">' +
+                      '<p class="form-field__hint">シフト開始より何分前まで出勤打刻を許可するか。0 = 定刻のみ。</p>' +
+                    '</div>' +
+                    '<div class="form-field">' +
+                      '<label class="form-field__label" for="set-auto">自動退勤 <span class="form-field__label-sub">時間</span></label>' +
+                      '<input class="form-field__input" type="number" id="set-auto" min="1" max="24" value="' + s.auto_clock_out_hours + '">' +
+                      '<p class="form-field__hint">出勤から N 時間経過しても退勤打刻がない場合、自動退勤で締める。打刻忘れ対策。</p>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="shift-card__save">' +
+                    '<span class="shift-card__save-hint">保存は全カード共通（ペイロード統合送信）</span>' +
+                    '<button class="btn btn-primary" id="set-save-basic" type="button">保存</button>' +
+                  '</div>' +
+                '</section>';
+        },
+
+        // Batch-UI-1: GPS 出退勤カード
+        _renderSettingsCardGps: function(s) {
+            var gpsOn = (s.gps_required === 1);
+            return '' +
+                '<section class="shift-card">' +
+                  '<div class="shift-card__head">' +
+                    '<h3 class="shift-card__title"><span class="shift-card__title-icon">📍</span>GPS 出退勤</h3>' +
+                    '<p class="shift-card__desc">店舗の位置から離れた場所での打刻を防ぐ機能。有効時、スタッフの端末で位置情報の許可が必要になります。</p>' +
+                  '</div>' +
+                  '<div class="shift-card__body">' +
+                    '<div class="form-field">' +
+                      '<label class="form-field__label" for="set-gps-required">GPS 出退勤</label>' +
+                      '<select class="form-field__select" id="set-gps-required">' +
+                        '<option value="0"' + (gpsOn ? '' : ' selected') + '>無効</option>' +
+                        '<option value="1"' + (gpsOn ? ' selected' : '') + '>有効（必須）</option>' +
+                      '</select>' +
+                      '<p class="form-field__hint">有効にすると、以下の「店舗緯度・経度・許容半径」の範囲外からは打刻できなくなります。</p>' +
+                    '</div>' +
+                    '<div id="gps-detail-fields"' + (gpsOn ? '' : ' style="display:none;"') + '>' +
+                      '<button class="form-action-button" id="set-gps-detect" type="button">📍 現在地から店舗位置を設定</button>' +
+                      '<div class="form-row" style="margin-top:12px;">' +
+                        '<div class="form-field">' +
+                          '<label class="form-field__label" for="set-lat">店舗緯度</label>' +
+                          '<input class="form-field__input" type="number" id="set-lat" step="0.0000001" min="-90" max="90" value="' + (s.store_lat !== null ? s.store_lat : '') + '" placeholder="35.6812362">' +
+                        '</div>' +
+                        '<div class="form-field">' +
+                          '<label class="form-field__label" for="set-lng">店舗経度</label>' +
+                          '<input class="form-field__input" type="number" id="set-lng" step="0.0000001" min="-180" max="180" value="' + (s.store_lng !== null ? s.store_lng : '') + '" placeholder="139.7671248">' +
+                        '</div>' +
+                      '</div>' +
+                      '<div class="form-field" style="margin-top:12px;">' +
+                        '<label class="form-field__label" for="set-radius">許容半径 <span class="form-field__label-sub">m</span></label>' +
+                        '<input class="form-field__input" type="number" id="set-radius" min="50" max="1000" value="' + s.gps_radius_meters + '">' +
+                        '<p class="form-field__hint">店舗を中心とした円の半径。街中店舗は 100〜200m、駐車場が広い郊外店舗は 300〜500m が目安。</p>' +
+                      '</div>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="shift-card__save">' +
+                    '<span class="shift-card__save-hint">現在地取得はブラウザで位置情報許可が必要です</span>' +
+                    '<button class="btn btn-primary" id="set-save-gps" type="button">保存</button>' +
+                  '</div>' +
+                '</section>';
+        },
+
+        // Batch-UI-1: スタッフ表示ツールカード
+        _renderSettingsCardTools: function(s, isToolChecked) {
+            return '' +
+                '<section class="shift-card">' +
+                  '<div class="shift-card__head">' +
+                    '<h3 class="shift-card__title"><span class="shift-card__title-icon">🧰</span>スタッフ表示ツール</h3>' +
+                    '<p class="shift-card__desc">スタッフが業務中に開ける端末の種類を絞り込みます。チェックなし ＝ 全ツール表示。チェックしたツールのみスタッフ側に出現します。</p>' +
+                  '</div>' +
+                  '<div class="shift-card__body">' +
+                    '<div class="shift-tool-checks">' +
+                      '<label class="shift-tool-check"><input type="checkbox" id="set-tool-handy"' + (isToolChecked('handy') ? ' checked' : '') + '> ハンディPOS</label>' +
+                      '<label class="shift-tool-check"><input type="checkbox" id="set-tool-kds"' + (isToolChecked('kds') ? ' checked' : '') + '> KDS</label>' +
+                      '<label class="shift-tool-check"><input type="checkbox" id="set-tool-register"' + (isToolChecked('register') ? ' checked' : '') + '> POSレジ</label>' +
+                    '</div>' +
+                    '<p class="form-field__hint">device ロール（端末アカウント）はこの設定の対象外です（KDS/レジ専用）。人のスタッフだけに適用されます。</p>' +
+                  '</div>' +
+                  '<div class="shift-card__save">' +
+                    '<span class="shift-card__save-hint">全チェックまたは全未チェック ＝ 全ツール表示</span>' +
+                    '<button class="btn btn-primary" id="set-save-tools" type="button">保存</button>' +
+                  '</div>' +
+                '</section>';
+        },
+
+        // Batch-UI-1: 人件費設定カード
+        _renderSettingsCardWage: function(s) {
+            return '' +
+                '<section class="shift-card">' +
+                  '<div class="shift-card__head">' +
+                    '<h3 class="shift-card__title"><span class="shift-card__title-icon">💴</span>人件費設定</h3>' +
+                    '<p class="shift-card__desc">シフト集計・レポートで人件費を算出する際の基準値。スタッフ個別に上書きしたい場合は「ユーザー管理」から設定できます。</p>' +
+                  '</div>' +
+                  '<div class="shift-card__body">' +
+                    '<div class="form-field">' +
+                      '<label class="form-field__label" for="set-hourly-rate">デフォルト時給 <span class="form-field__label-sub">円</span></label>' +
+                      '<input class="form-field__input" type="number" id="set-hourly-rate" min="0" max="10000" value="' + (s.default_hourly_rate !== null ? s.default_hourly_rate : '') + '" placeholder="未設定">' +
+                      '<p class="form-field__hint">空欄にすると人件費計算が行われません。深夜（22時〜翌5時）は自動で 1.25 倍されます。</p>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="shift-card__save">' +
+                    '<span class="shift-card__save-hint">変更は翌月シフトの試算から反映</span>' +
+                    '<button class="btn btn-primary" id="set-save-wage" type="button">保存</button>' +
+                  '</div>' +
+                '</section>';
         },
 
         // ──────────────────────────────

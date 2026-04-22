@@ -57,6 +57,39 @@ body {
   --shadow-lg: 0 4px 16px rgba(0,0,0,0.15);
   --radius: 8px;
   --radius-sm: 4px;
+
+  /* Batch-UI-1: spacing scale (4 / 8 / 12 / 16 / 20 / 24 / 32 / 48) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  /* Batch-UI-1: font scale */
+  --fs-xs: 0.75rem;    /* 12px */
+  --fs-sm: 0.8125rem;  /* 13px */
+  --fs-md: 0.9375rem;  /* 15px */
+  --fs-lg: 1.0625rem;  /* 17px */
+  --fs-xl: 1.25rem;    /* 20px */
+
+  /* Batch-UI-1: semantic surfaces & sidebar dims */
+  --surface-0: #f0f2f5;     /* body bg (alias of bg-body) */
+  --surface-1: #ffffff;     /* card bg */
+  --surface-2: #f7f8fb;     /* muted card bg */
+  --surface-sidebar: #1a237e;  /* sidebar deep indigo */
+  --surface-sidebar-hover: #283593;
+  --surface-sidebar-active: #3f51b5;
+  --on-sidebar: rgba(255,255,255,0.92);
+  --on-sidebar-muted: rgba(255,255,255,0.62);
+
+  --sidebar-w: 240px;
+  --sidebar-w-tablet: 208px;
+  --header-h: 56px;
+  --header-h-mobile: 52px;
+  --subtab-h: 43px;
 }
 
 /* -----------------------------------------------
@@ -2904,3 +2937,646 @@ body.role-staff .tab-nav__btn[data-role-min="staff"] { display: inline-flex; }
 #attendance-clock-container {
   font-size: 0.85rem;
 }
+
+/* ============================================================
+ * Batch-UI-1: サイドバー中心レイアウト
+ * ------------------------------------------------------------
+ * 既存の .tab-nav / .tab-nav__btn / .sub-tab-nav / data-group /
+ * data-tab は保持。レイアウトだけ compound selector で
+ * sidebar 側と main 側に分離する。
+ * ============================================================ */
+
+/* 骨格 */
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  align-items: stretch;
+}
+
+.admin-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ── サイドバー ─────────────────────────── */
+.admin-sidebar {
+  flex: 0 0 var(--sidebar-w);
+  width: var(--sidebar-w);
+  background: var(--surface-sidebar);
+  color: var(--on-sidebar);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  z-index: 120;
+}
+
+.admin-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-5);
+  height: var(--header-h);
+  flex: 0 0 auto;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  color: #fff;
+  font-weight: 700;
+  font-size: var(--fs-md);
+  letter-spacing: 0.02em;
+}
+
+.admin-sidebar__brand-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.admin-sidebar__close {
+  display: none;
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--on-sidebar);
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 8px;
+}
+
+/* 親タブを縦に並べる（スコープされた上書き） */
+.admin-sidebar .tab-nav {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  border-bottom: none;
+  padding: var(--space-3) var(--space-3);
+  position: static;
+  top: auto;
+  overflow-x: visible;
+  overflow-y: auto;
+  gap: 2px;
+}
+
+.admin-sidebar .tab-nav__btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--on-sidebar);
+  background: transparent;
+  border: none;
+  border-bottom: none;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  white-space: normal;
+  transition: background 0.15s, color 0.15s;
+}
+
+.admin-sidebar .tab-nav__btn:hover {
+  background: var(--surface-sidebar-hover);
+  color: #fff;
+}
+
+.admin-sidebar .tab-nav__btn.active {
+  background: var(--surface-sidebar-active);
+  color: #fff;
+  border-bottom-color: transparent;
+  box-shadow: inset 3px 0 0 #fff;
+}
+
+/* role 別表示を inline-flex → flex に（縦レイアウト用） */
+body.role-owner .admin-sidebar .tab-nav__btn[data-role-min="owner"],
+body.role-owner .admin-sidebar .tab-nav__btn[data-role-min="manager"],
+body.role-owner .admin-sidebar .tab-nav__btn[data-role-min="staff"],
+body.role-manager .admin-sidebar .tab-nav__btn[data-role-min="manager"],
+body.role-manager .admin-sidebar .tab-nav__btn[data-role-min="staff"],
+body.role-staff .admin-sidebar .tab-nav__btn[data-role-min="staff"] {
+  display: flex;
+}
+
+/* サイドバー下段: ショートカット + バージョン */
+.admin-sidebar__footer {
+  flex: 0 0 auto;
+  padding: var(--space-3);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.admin-sidebar__footer-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--on-sidebar-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0 var(--space-2);
+  margin-bottom: 2px;
+}
+
+.admin-sidebar .header-shortcuts {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-sidebar .header-shortcut {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--on-sidebar);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+
+.admin-sidebar .header-shortcut:hover {
+  background: rgba(255,255,255,0.12);
+}
+
+.admin-sidebar .header-shortcut--customer {
+  background: rgba(255,152,0,0.2);
+  border-color: rgba(255,152,0,0.35);
+}
+
+.admin-sidebar .header-shortcut--handy {
+  background: rgba(83,109,254,0.25);
+  border-color: rgba(83,109,254,0.4);
+}
+
+/* サイドバーのオーバーレイ背景（モバイル） */
+.admin-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.48);
+  z-index: 110;
+}
+
+body.sidebar-open .admin-sidebar-backdrop {
+  display: block;
+}
+
+/* ── メイン内ヘッダー ─────────────────────── */
+.admin-layout .admin-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-header);
+  color: #fff;
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-5);
+  box-shadow: var(--shadow-md);
+}
+
+.admin-sidebar-toggle {
+  display: none;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.22);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.admin-sidebar-toggle:hover {
+  background: rgba(255,255,255,0.22);
+}
+
+/* sub-tab-nav: sidebar 配下だと top:56px（tab-nav が上にないため） */
+.admin-layout .sub-tab-nav {
+  top: var(--header-h);
+}
+
+/* ── ユーザーメニュー（ドロップダウン） ─────── */
+.admin-user-menu {
+  position: relative;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-user-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.22);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  max-width: 180px;
+}
+
+.admin-user-menu__trigger:hover {
+  background: rgba(255,255,255,0.22);
+}
+
+.admin-user-menu__avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.admin-user-menu__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+.admin-user-menu__caret {
+  opacity: 0.75;
+  font-size: 10px;
+  margin-left: 2px;
+}
+
+.admin-user-menu__drop {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 220px;
+  background: #fff;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-2);
+  z-index: 150;
+}
+
+.admin-user-menu.open .admin-user-menu__drop {
+  display: block;
+}
+
+.admin-user-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+}
+
+.admin-user-menu__item:hover {
+  background: var(--primary-50);
+  color: var(--primary-dark);
+}
+
+.admin-user-menu__item--danger {
+  color: var(--danger);
+}
+
+.admin-user-menu__item--danger:hover {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.admin-user-menu__sep {
+  height: 1px;
+  background: var(--border-light);
+  margin: var(--space-1) 0;
+}
+
+/* ── レスポンシブ ─────────────────────────── */
+
+/* Tablet: 幅狭め */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .admin-sidebar {
+    flex-basis: var(--sidebar-w-tablet);
+    width: var(--sidebar-w-tablet);
+  }
+  .admin-sidebar .tab-nav__btn {
+    font-size: var(--fs-xs);
+    padding: var(--space-2) var(--space-3);
+  }
+}
+
+/* Mobile: off-canvas drawer */
+@media (max-width: 767px) {
+  .admin-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    height: 100vh;
+    width: 280px;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease-out;
+    box-shadow: 8px 0 24px rgba(0,0,0,0.25);
+  }
+  body.sidebar-open .admin-sidebar {
+    transform: translateX(0);
+  }
+  .admin-sidebar__close {
+    display: inline-flex;
+  }
+  .admin-sidebar-toggle {
+    display: inline-flex;
+  }
+  .admin-layout .admin-header {
+    height: var(--header-h-mobile);
+    padding: 0 var(--space-3);
+    gap: var(--space-2);
+  }
+  .admin-layout .sub-tab-nav {
+    top: var(--header-h-mobile);
+  }
+  /* モバイル時: ユーザーメニューのトリガーを名前非表示（avatar + caret のみ） */
+  .admin-user-menu__name { display: none; }
+  .admin-user-menu__trigger {
+    padding: var(--space-1) var(--space-2);
+  }
+  /* 店舗セレクター: 省略表示（元の規則を踏襲） */
+  .admin-layout .store-selector__label { display: none; }
+}
+
+/* ============================================================
+ * Batch-UI-1: シフト設定カード
+ * ------------------------------------------------------------
+ * shift-manager.js の _renderSettings が出力する DOM
+ * （インラインスタイルを廃し class 経由）
+ * ============================================================ */
+
+.shift-settings-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  max-width: 820px;
+  padding: var(--space-2) 0 var(--space-6);
+}
+
+@media (min-width: 1100px) {
+  .shift-settings-cards {
+    grid-template-columns: 1fr 1fr;
+    max-width: 1100px;
+  }
+  .shift-card--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.shift-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.shift-card__head {
+  padding: var(--space-4) var(--space-5) var(--space-3);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--surface-2);
+}
+
+.shift-card__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.shift-card__title-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--primary-50);
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.shift-card__desc {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.shift-card__body {
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* カード内フォームフィールド */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field__label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-field__label-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.form-field__input,
+.form-field__select {
+  padding: 0.5rem 0.625rem;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-field__input:focus,
+.form-field__select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(63,81,181,0.14);
+}
+
+.form-field__input[type="number"] {
+  max-width: 220px;
+}
+
+.form-field__hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 2px 0 0;
+}
+
+/* 2カラム（例: 緯度/経度） */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+@media (max-width: 480px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* チェックボックス行 */
+.shift-tool-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.shift-tool-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.shift-tool-check:hover {
+  background: var(--primary-50);
+  border-color: var(--primary-light);
+}
+
+.shift-tool-check input[type="checkbox"] {
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+/* GPS 現在地ボタン */
+.form-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: #fff;
+  background: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+  width: 100%;
+}
+
+.form-action-button:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.form-action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* カード保存バー */
+.shift-card__save {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface-2);
+  border-top: 1px solid var(--border-light);
+}
+
+.shift-card__save-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-right: auto;
+}
+
+.shift-card__save .btn {
+  min-width: 120px;
+}
+
+/* セクション見出し（既存互換用 shim、触る範囲） */
+.shift-settings-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.shift-settings-header__title {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.shift-settings-header__badge {
+  font-size: var(--fs-xs);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary-50);
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+

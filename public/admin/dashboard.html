@@ -5,28 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3f51b5">
   <title>管理ダッシュボード</title>
-  <link rel="stylesheet" href="css/admin.css?v=20260419-headerbtn">
+  <link rel="stylesheet" href="css/admin.css?v=20260422-batch-ui-1">
   <link rel="stylesheet" href="css/reservation-board.css?v=20260418">
   <style>
     /* L-3 Phase 3: ヘルプスタッフ表示 */
     .shift-help { background: #fff3e0 !important; border-left: 3px solid #e65100; }
     .help-badge { background: #e65100; color: #fff; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; margin-right: 2px; }
     .shift-help-swatch { display: inline-block; width: 12px; height: 12px; background: #fff3e0; border: 1px solid #e65100; }
-    /* P1-5: パスワード変更ボタン */
-    .btn-change-password {
-      background: transparent;
-      border: 1px solid var(--border, #ddd);
-      color: var(--text-secondary, #666);
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      margin-right: 8px;
-    }
-    .btn-change-password:hover {
-      background: var(--bg-hover, #f5f5f5);
-      color: var(--text-primary, #333);
-    }
   </style>
   <!-- PWA -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -34,46 +19,76 @@
 </head>
 <body>
 
-  <!-- ヘッダー -->
-  <header class="admin-header">
-    <div class="admin-header__left">
-      <span class="admin-header__title" id="header-tenant-name">管理画面</span>
-      <div class="store-selector" id="store-selector-wrap">
-        <span class="store-selector__label">店舗:</span>
-        <span class="store-selector__name" id="store-name">-</span>
-        <a href="#" class="store-selector__change" id="store-change-link" style="display:none">店舗切替</a>
-        <select class="store-selector__select" id="store-select" style="display:none"></select>
-      </div>
-    </div>
-    <div class="admin-header__actions">
-      <div class="header-shortcuts" id="header-shortcuts" data-role-max="manager">
-        <a class="header-shortcut header-shortcut--handy" id="header-tool-handy" href="../handy/index.html" target="_blank" title="ハンディPOS">ハンディ</a>
-        <a class="header-shortcut" id="header-tool-kds" href="../kds/index.html" target="_blank" title="キッチンディスプレイ">KDS</a>
-        <a class="header-shortcut" id="header-tool-register" href="../kds/accounting.html" target="_blank" title="POSレジ（KDS会計ステーション）">レジ</a>
-        <a class="header-shortcut header-shortcut--customer" id="link-customer-menu" href="#" target="_blank" title="顧客メニュー（選択中店舗）">注文画面</a>
-      </div>
-      <span class="admin-header__user" id="header-user-name">-</span>
-      <a class="btn-change-password" href="/public/docs-tenant/" target="_blank" rel="noopener" title="取扱説明書を開く" style="text-decoration:none;" data-role-min="manager">📖 取扱説明書</a>
-      <button class="btn-change-password" id="btn-change-password" type="button" title="パスワード変更">パスワード変更</button>
-      <button class="btn-logout" id="btn-logout">ログアウト</button>
-    </div>
-  </header>
+  <!-- Batch-UI-1: sidebar backdrop (mobile drawer overlay) -->
+  <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
 
-  <!-- タブナビゲーション（グループ化） -->
-  <nav class="tab-nav" id="tab-nav">
-    <!-- グループ親タブ -->
-    <button class="tab-nav__btn tab-nav__btn--group" data-group="menu" data-role-min="manager" data-requires-store>メニュー管理</button>
-    <button class="tab-nav__btn tab-nav__btn--group" data-group="plan" data-role-min="manager" data-requires-store>プラン・コース</button>
-    <button class="tab-nav__btn tab-nav__btn--group" data-group="table" data-role-min="manager" data-requires-store>テーブル・フロア</button>
-    <button class="tab-nav__btn tab-nav__btn--group" data-group="inventory" data-role-min="manager" data-role-max="manager" data-requires-store>在庫・レシピ</button>
-    <button class="tab-nav__btn tab-nav__btn--group" data-group="report" data-role-min="manager" data-requires-store>レポート</button>
-    <button class="tab-nav__btn tab-nav__btn--group" data-group="config" data-role-min="manager" data-requires-store>店舗設定</button>
-    <button class="tab-nav__btn tab-nav__btn--group" data-group="takeout" data-role-min="manager" data-requires-store>テイクアウト</button>
-    <button class="tab-nav__btn tab-nav__btn--group" data-group="ai" data-role-min="manager" data-requires-store>AIアシスタント</button>
-    <button class="tab-nav__btn tab-nav__btn--group" data-group="reservation" data-role-min="manager" data-requires-store>予約管理</button>
-    <button class="tab-nav__btn tab-nav__btn--group" data-group="shift" data-role-min="staff" data-requires-store>シフト管理</button>
-    <!-- owner専用タブは owner-dashboard.html に移動済み -->
-  </nav>
+  <div class="admin-layout">
+
+    <!-- サイドバー（親タブ + ショートカット） -->
+    <aside class="admin-sidebar" id="admin-sidebar" aria-label="メインナビゲーション">
+      <div class="admin-sidebar__brand">
+        <span class="admin-sidebar__brand-logo" aria-hidden="true">P</span>
+        <span id="sidebar-brand-name">POSLA</span>
+        <button class="admin-sidebar__close" id="admin-sidebar-close" type="button" aria-label="閉じる">×</button>
+      </div>
+
+      <!-- タブナビゲーション（グループ親タブ、縦並び）—— data-* 互換保持 -->
+      <nav class="tab-nav" id="tab-nav">
+        <button class="tab-nav__btn tab-nav__btn--group" data-group="menu" data-role-min="manager" data-requires-store>メニュー管理</button>
+        <button class="tab-nav__btn tab-nav__btn--group" data-group="plan" data-role-min="manager" data-requires-store>プラン・コース</button>
+        <button class="tab-nav__btn tab-nav__btn--group" data-group="table" data-role-min="manager" data-requires-store>テーブル・フロア</button>
+        <button class="tab-nav__btn tab-nav__btn--group" data-group="inventory" data-role-min="manager" data-role-max="manager" data-requires-store>在庫・レシピ</button>
+        <button class="tab-nav__btn tab-nav__btn--group" data-group="report" data-role-min="manager" data-requires-store>レポート</button>
+        <button class="tab-nav__btn tab-nav__btn--group" data-group="config" data-role-min="manager" data-requires-store>店舗設定</button>
+        <button class="tab-nav__btn tab-nav__btn--group" data-group="takeout" data-role-min="manager" data-requires-store>テイクアウト</button>
+        <button class="tab-nav__btn tab-nav__btn--group" data-group="ai" data-role-min="manager" data-requires-store>AIアシスタント</button>
+        <button class="tab-nav__btn tab-nav__btn--group" data-group="reservation" data-role-min="manager" data-requires-store>予約管理</button>
+        <button class="tab-nav__btn tab-nav__btn--group" data-group="shift" data-role-min="staff" data-requires-store>シフト管理</button>
+      </nav>
+
+      <!-- 業務ショートカット（サイドバー下段） -->
+      <div class="admin-sidebar__footer" data-role-max="manager">
+        <div class="admin-sidebar__footer-title">業務ツール</div>
+        <div class="header-shortcuts" id="header-shortcuts">
+          <a class="header-shortcut header-shortcut--handy" id="header-tool-handy" href="../handy/index.html" target="_blank" title="ハンディPOS">ハンディPOS</a>
+          <a class="header-shortcut" id="header-tool-kds" href="../kds/index.html" target="_blank" title="キッチンディスプレイ">KDS</a>
+          <a class="header-shortcut" id="header-tool-register" href="../kds/accounting.html" target="_blank" title="POSレジ">POSレジ</a>
+          <a class="header-shortcut header-shortcut--customer" id="link-customer-menu" href="#" target="_blank" title="注文画面">注文画面</a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- メイン: ヘッダー + サブタブ + コンテンツ -->
+    <div class="admin-main">
+
+      <!-- ヘッダー -->
+      <header class="admin-header">
+        <button class="admin-sidebar-toggle" id="admin-sidebar-toggle" type="button" aria-label="メニュー" aria-controls="admin-sidebar">☰</button>
+        <div class="admin-header__left">
+          <span class="admin-header__title" id="header-tenant-name">管理画面</span>
+          <div class="store-selector" id="store-selector-wrap">
+            <span class="store-selector__label">店舗:</span>
+            <span class="store-selector__name" id="store-name">-</span>
+            <a href="#" class="store-selector__change" id="store-change-link" style="display:none">店舗切替</a>
+            <select class="store-selector__select" id="store-select" style="display:none"></select>
+          </div>
+        </div>
+
+        <!-- ユーザーメニュー（取扱説明書 / パスワード変更 / ログアウト を集約） -->
+        <div class="admin-user-menu" id="admin-user-menu">
+          <button class="admin-user-menu__trigger" id="admin-user-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="admin-user-menu__avatar" id="admin-user-menu-avatar">–</span>
+            <span class="admin-user-menu__name" id="header-user-name">-</span>
+            <span class="admin-user-menu__caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="admin-user-menu__drop" id="admin-user-menu-drop" role="menu">
+            <a class="admin-user-menu__item" href="/public/docs-tenant/" target="_blank" rel="noopener" role="menuitem" data-role-min="manager">📖 取扱説明書</a>
+            <button class="admin-user-menu__item" id="btn-change-password" type="button" role="menuitem">🔑 パスワード変更</button>
+            <div class="admin-user-menu__sep"></div>
+            <button class="admin-user-menu__item admin-user-menu__item--danger" id="btn-logout" type="button" role="menuitem">⎋ ログアウト</button>
+          </div>
+        </div>
+      </header>
 
   <!-- サブタブバー -->
   <div class="sub-tab-wrap">
@@ -421,7 +436,9 @@
       </div>
     </div>
 
-  </div>
+  </div><!-- /.admin-content -->
+    </div><!-- /.admin-main -->
+  </div><!-- /.admin-layout -->
 
   <!-- 共通モーダル -->
   <div class="modal-overlay" id="admin-modal-overlay">
@@ -445,6 +462,86 @@
 
   <!-- トースト -->
   <div class="admin-toast" id="admin-toast"></div>
+
+  <!-- Batch-UI-1: サイドバー開閉 + ユーザーメニュー開閉 -->
+  <script>
+  (function () {
+    'use strict';
+    // サイドバー drawer (mobile)
+    var toggleBtn = document.getElementById('admin-sidebar-toggle');
+    var closeBtn = document.getElementById('admin-sidebar-close');
+    var backdrop = document.getElementById('admin-sidebar-backdrop');
+    var sidebar = document.getElementById('admin-sidebar');
+    function openSidebar() {
+      document.body.classList.add('sidebar-open');
+      if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+    }
+    function closeSidebar() {
+      document.body.classList.remove('sidebar-open');
+      if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+    }
+    if (toggleBtn) toggleBtn.addEventListener('click', function () {
+      if (document.body.classList.contains('sidebar-open')) closeSidebar(); else openSidebar();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+    if (backdrop) backdrop.addEventListener('click', closeSidebar);
+    // モバイルでサイドバー内の親タブを押したら閉じる（sub-tab 表示は main 側に残るため、drawer は閉じて良い）
+    if (sidebar) {
+      sidebar.addEventListener('click', function (e) {
+        if (window.innerWidth > 767) return;
+        var t = e.target;
+        while (t && t !== sidebar) {
+          if (t.classList && t.classList.contains('tab-nav__btn')) { closeSidebar(); return; }
+          t = t.parentNode;
+        }
+      });
+    }
+
+    // ユーザーメニュー drop-down
+    var menu = document.getElementById('admin-user-menu');
+    var menuTrigger = document.getElementById('admin-user-menu-trigger');
+    if (menu && menuTrigger) {
+      menuTrigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var isOpen = menu.classList.toggle('open');
+        menuTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+      document.addEventListener('click', function (e) {
+        if (!menu.classList.contains('open')) return;
+        if (menu.contains(e.target)) return;
+        menu.classList.remove('open');
+        menuTrigger.setAttribute('aria-expanded', 'false');
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && menu.classList.contains('open')) {
+          menu.classList.remove('open');
+          menuTrigger.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    // avatar: ユーザー名の最初の1文字を拾う
+    function updateAvatar() {
+      var avatar = document.getElementById('admin-user-menu-avatar');
+      var nameEl = document.getElementById('header-user-name');
+      if (!avatar || !nameEl) return;
+      var name = (nameEl.textContent || '').trim();
+      if (!name || name === '-') { avatar.textContent = '–'; return; }
+      avatar.textContent = name.charAt(0);
+    }
+    // header-user-name が他の JS で更新されたあとに avatar を合わせる
+    setTimeout(updateAvatar, 400);
+    setTimeout(updateAvatar, 1200);
+    // MutationObserver で name 更新に追従（fallback つき）
+    try {
+      var target = document.getElementById('header-user-name');
+      if (target && window.MutationObserver) {
+        var mo = new MutationObserver(updateAvatar);
+        mo.observe(target, { childList: true, characterData: true, subtree: true });
+      }
+    } catch (e) { /* noop */ }
+  })();
+  </script>
 
   <!-- JS -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
