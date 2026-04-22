@@ -13,6 +13,13 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/line-link.php';
 require_once __DIR__ . '/../lib/line-link-token.php';
 require_once __DIR__ . '/../lib/line-messaging.php';
+// L-17 Phase 3A: takeout link/token も LINK:XXXXXX の消費先候補に加える
+if (file_exists(__DIR__ . '/../lib/takeout-line-link.php')) {
+    require_once __DIR__ . '/../lib/takeout-line-link.php';
+}
+if (file_exists(__DIR__ . '/../lib/takeout-line-token.php')) {
+    require_once __DIR__ . '/../lib/takeout-line-token.php';
+}
 
 require_method(['POST']);
 $pdo = get_db();
@@ -61,18 +68,31 @@ function line_dispatch_events($pdo, $tenantId, $channelAccessToken, $events)
                 }
 
                 if ($linkCode !== '') {
+                    // L-17 Phase 3A: reservation → takeout の順に token を試行。
+                    // どちらも TOKEN_NOT_FOUND / expired の場合のみ reply をエラー扱い。
+                    // 先に見つかった側が勝つ。UNIQUE は tenant 内で (reservation token
+                    // 表) と (takeout token 表) が別物なので衝突は発生しない。
                     $res = line_link_token_consume($pdo, $tenantId, $linkCode, $lineUserId);
+                    $consumedBy = 'reservation';
+                    $resIsFound = ($res['success'] || ($res['error'] !== 'TOKEN_NOT_FOUND' && $res['error'] !== 'TOKEN_TABLE_MISSING'));
+                    if (!$resIsFound && function_exists('takeout_token_consume')) {
+                        // reservation 側で見つからなかった場合だけ takeout 側を試行
+                        $tkRes = takeout_token_consume($pdo, $tenantId, $linkCode, $lineUserId);
+                        $tkIsFound = ($tkRes['success'] || ($tkRes['error'] !== 'TOKEN_NOT_FOUND' && $tkRes['error'] !== 'TOKEN_TABLE_MISSING'));
+                        if ($tkIsFound) {
+                            $res = $tkRes;
+                            $consumedBy = 'takeout';
+                        }
+                    }
+
                     if ($res['success']) {
-                        // reply: 連携完了
+                        $okMsg = $consumedBy === 'takeout'
+                            ? "LINE連携が完了しました。\nご注文の準備ができ次第、こちらにお知らせします。"
+                            : "LINE連携が完了しました。\nこれからはご予約の確定などをこちらにお知らせします。";
                         if ($channelAccessToken && $replyToken) {
-                            line_reply_message(
-                                $channelAccessToken,
-                                $replyToken,
-                                [line_text_message("LINE連携が完了しました。\nこれからはご予約の確定などをこちらにお知らせします。")]
-                            );
+                            line_reply_message($channelAccessToken, $replyToken, [line_text_message($okMsg)]);
                         }
                     } else {
-                        // reply: エラー内容に応じた簡潔なメッセージ
                         $errMap = [
                             'TOKEN_NOT_FOUND'    => 'リンクコードが見つかりませんでした。店舗から届いたコードをご確認ください。',
                             'TOKEN_ALREADY_USED' => 'このリンクコードは既に使用済みです。',
@@ -83,16 +103,15 @@ function line_dispatch_events($pdo, $tenantId, $channelAccessToken, $events)
                             ? $errMap[$res['error']]
                             : 'リンクに失敗しました。お手数ですが店舗にご確認ください。';
                         if ($channelAccessToken && $replyToken) {
-                            line_reply_message(
-                                $channelAccessToken,
-                                $replyToken,
-                                [line_text_message($msgText)]
-                            );
+                            line_reply_message($channelAccessToken, $replyToken, [line_text_message($msgText)]);
                         }
                     }
                 } else {
-                    // 通常メッセージ: 既リンクなら interaction touch
+                    // 通常メッセージ: 既リンクなら interaction touch (reservation + takeout 両方)
                     line_link_touch_interaction($pdo, $tenantId, $lineUserId);
+                    if (function_exists('takeout_link_touch_interaction')) {
+                        takeout_link_touch_interaction($pdo, $tenantId, $lineUserId);
+                    }
                 }
             } elseif ($type === 'follow') {
                 if ($channelAccessToken && $replyToken) {
@@ -108,6 +127,10 @@ function line_dispatch_events($pdo, $tenantId, $channelAccessToken, $events)
             } elseif ($type === 'unfollow') {
                 // soft unlink (履歴は link_status='unlinked' で残す、再 follow 時に再リンク可能)
                 line_link_unlink_by_line_user($pdo, $tenantId, $lineUserId);
+                // L-17 Phase 3A: takeout link も同時に soft unlink
+                if (function_exists('takeout_link_unlink_by_line_user')) {
+                    takeout_link_unlink_by_line_user($pdo, $tenantId, $lineUserId);
+                }
             } elseif ($type === 'accountLink') {
                 // official LINE Account Linking の nonce 検証経路 (現状未採用)
                 // Phase 2A-2 採用: POSLA one-time token (message 経路) で完結

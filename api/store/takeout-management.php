@@ -9,6 +9,13 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
+// L-17 Phase 3B-1: status='ready' 時に LINE push を並行。ヘルパ未同梱でも落ちない
+if (file_exists(__DIR__ . '/../lib/line-messaging.php')) {
+    require_once __DIR__ . '/../lib/line-messaging.php';
+}
+if (file_exists(__DIR__ . '/../lib/takeout-line-link.php')) {
+    require_once __DIR__ . '/../lib/takeout-line-link.php';
+}
 
 require_method(['GET', 'PATCH']);
 $user = require_auth();
@@ -102,6 +109,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $note = null;
     if ($newStatus === 'served') {
         $note = '店頭支払いの場合はレジで会計してください';
+    }
+
+    // L-17 Phase 3B-1: status='ready' 時に LINE push を並行実行。
+    // 送信失敗でも PATCH 応答 / status 更新は成功のまま (controlled return)。
+    // tenant_line_settings.is_enabled / notify_takeout_ready / 連携済み条件は
+    // takeout_notify_ready_line() 内部でチェックし、未達なら silent skip。
+    if ($newStatus === 'ready' && function_exists('takeout_notify_ready_line')) {
+        try {
+            takeout_notify_ready_line($pdo, $orderId, $storeId);
+        } catch (Exception $e) {
+            error_log('[L-17 3B-1 takeout_ready_line] order=' . $orderId . ': ' . $e->getMessage());
+        }
     }
 
     json_response(['ok' => true, 'order_id' => $orderId, 'status' => $newStatus, 'note' => $note]);

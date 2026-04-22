@@ -667,6 +667,15 @@
     html += '<div class="to-complete__pickup">受取時間: ' + escapeHtml(_selectedSlot || '---') + '</div>';
     html += '<div class="to-complete__status" id="to-status-display">ステータス: 受付済み</div>';
     html += '<button class="to-btn to-btn--secondary" id="to-check-status" style="margin-top:1rem;">ステータスを更新</button>';
+
+    // L-17 Phase 3A: LINE で受取通知を受け取る導線 (opt-in)
+    html += '<div id="to-line-link-wrap" style="margin-top:1.5rem;padding:1rem;background:#fff;border:1px solid #e0e0e0;border-radius:8px;text-align:left;">';
+    html += '<div style="font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;color:#06C755;">&#x1F4AC; LINEで受取通知を受け取る</div>';
+    html += '<p style="font-size:0.8rem;color:#666;margin-bottom:0.75rem;line-height:1.5;">準備が完了したら店舗公式 LINE からお知らせします。下のボタンでリンクコードを発行し、店舗の LINE トークに送信してください。</p>';
+    html += '<button class="to-btn to-btn--secondary" id="to-line-token-btn" style="width:100%;">リンクコードを発行する</button>';
+    html += '<div id="to-line-token-display" style="display:none;margin-top:0.75rem;padding:0.75rem;background:#E8F5E9;border-radius:6px;"></div>';
+    html += '</div>';
+
     html += '</div>';
     sec.innerHTML = html;
 
@@ -674,8 +683,68 @@
       checkStatus();
     });
 
+    var tokenBtn = document.getElementById('to-line-token-btn');
+    if (tokenBtn) {
+      tokenBtn.addEventListener('click', function () { issueLineLinkToken(); });
+    }
+
     // ポーリング開始
     startStatusPolling();
+  }
+
+  // L-17 Phase 3A: LINE リンクコード発行
+  function issueLineLinkToken() {
+    if (!_orderId || !_orderPhone) {
+      showToast('注文情報が取得できません');
+      return;
+    }
+    var btn = document.getElementById('to-line-token-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '発行中...'; }
+
+    apiPost('/customer/takeout-line-token.php', {
+      order_id: _orderId,
+      phone: _orderPhone
+    }).then(function (data) {
+      if (btn) { btn.disabled = false; btn.textContent = 'リンクコードを再発行する'; }
+      var display = document.getElementById('to-line-token-display');
+      if (!display) return;
+      var storeName = data.store_name || '店舗';
+      var html = ''
+        + '<div style="font-size:0.75rem;color:#2E7D32;margin-bottom:0.25rem;">以下のコードを「' + escapeHtml(storeName) + '」の公式 LINE に送信してください</div>'
+        + '<div id="to-line-token-code" style="font-size:1.5rem;font-weight:700;color:#2E7D32;background:#fff;padding:0.5rem;border-radius:4px;text-align:center;letter-spacing:0.15em;font-family:monospace;margin:0.5rem 0;">LINK:' + escapeHtml(data.token) + '</div>'
+        + '<div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">'
+        +   '<button class="to-btn to-btn--secondary" id="to-line-copy-btn" style="flex:1;font-size:0.8rem;padding:0.5rem;">&#x1F4CB; コピー</button>'
+        + '</div>'
+        + '<div style="font-size:0.7rem;color:#666;line-height:1.5;">有効期限: ' + escapeHtml(String(data.expires_at || '').replace('T', ' ').substring(0, 16)) + '（30 分）<br>公式 LINE の友だちになったうえで、トーク画面にこのコードを送信してください。</div>';
+      display.innerHTML = html;
+      display.style.display = 'block';
+
+      var copyBtn = document.getElementById('to-line-copy-btn');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', function () {
+          var codeEl = document.getElementById('to-line-token-code');
+          if (!codeEl) return;
+          var txt = codeEl.textContent || '';
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).then(function () { showToast('コピーしました'); });
+          } else {
+            try {
+              var range = document.createRange();
+              range.selectNodeContents(codeEl);
+              var sel = window.getSelection();
+              sel.removeAllRanges();
+              sel.addRange(range);
+              document.execCommand('copy');
+              showToast('コピーしました');
+            } catch (e) { showToast('コピーに失敗しました'); }
+          }
+        });
+      }
+    }).catch(function (err) {
+      if (btn) { btn.disabled = false; btn.textContent = 'リンクコードを発行する'; }
+      var msg = (err && err.message) ? err.message : '発行に失敗しました';
+      showToast(msg);
+    });
   }
 
   function startStatusPolling() {
