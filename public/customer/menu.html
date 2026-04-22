@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#ff6f00">
   <title>セルフオーダー</title>
-  <link rel="stylesheet" href="css/customer.css?v=20260405b">
+  <link rel="stylesheet" href="css/customer.css?v=20260422-batch-e1">
   <style>
     .plan-banner { background:linear-gradient(135deg,#ff6f00,#ff8f00); color:#fff; padding:0.5rem 1rem; text-align:center; font-size:0.875rem; }
     .plan-banner__name { font-weight:700; }
@@ -190,20 +190,23 @@
     </div>
   </header>
 
-  <!-- プランバナー（食べ放題時のみ表示） -->
-  <div class="plan-banner" id="plan-banner" style="display:none">
-    <div class="plan-banner__name" id="plan-banner-name"></div>
-    <div class="plan-banner__time" id="plan-banner-time"></div>
-  </div>
+  <!-- Batch-E-1: state-bar で plan / course / lo を 1 本の帯に集約 -->
+  <div class="state-bar" id="state-bar">
+    <!-- プランバナー（食べ放題時のみ表示） -->
+    <div class="plan-banner" id="plan-banner" style="display:none">
+      <div class="plan-banner__name" id="plan-banner-name"></div>
+      <div class="plan-banner__time" id="plan-banner-time"></div>
+    </div>
 
-  <!-- コースバナー（コース時のみ表示） -->
-  <div class="course-banner" id="course-banner" style="display:none">
-    <div class="course-banner__name" id="course-banner-name"></div>
-    <div class="course-banner__sub" id="course-banner-sub"></div>
-  </div>
+    <!-- コースバナー（コース時のみ表示） -->
+    <div class="course-banner" id="course-banner" style="display:none">
+      <div class="course-banner__name" id="course-banner-name"></div>
+      <div class="course-banner__sub" id="course-banner-sub"></div>
+    </div>
 
-  <!-- O-3: ラストオーダーバナー -->
-  <div class="lo-banner" id="lo-banner" style="display:none">ラストオーダーです。ご注文はお早めに！</div>
+    <!-- O-3: ラストオーダーバナー -->
+    <div class="lo-banner" id="lo-banner" style="display:none">ラストオーダーです。ご注文はお早めに！</div>
+  </div>
 
   <!-- カテゴリナビ -->
   <nav class="category-nav" id="category-nav"></nav>
