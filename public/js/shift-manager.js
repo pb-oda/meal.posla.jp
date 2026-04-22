@@ -379,6 +379,8 @@
         _renderAvailabilities: function(container, existing, startStr, endDt) {
             var self = this;
             var startDt = new Date(startStr + 'T00:00:00');
+            var endStr = self._formatDate(endDt);
+            var todayStr = self._formatDate(new Date());
 
             // 既存データをマップ化
             var existMap = {};
@@ -386,13 +388,19 @@
                 existMap[existing[e].target_date] = existing[e];
             }
 
-            var html = '<div class="shift-section-header">' +
-                       '<button class="btn btn-sm" id="avail-prev">◀ 前の週</button>' +
-                       '<h3>' + startStr + ' 〜 ' + self._formatDate(endDt) + ' シフト希望</h3>' +
-                       '<button class="btn btn-sm" id="avail-next">次の週 ▶</button>' +
-                       '</div>';
+            // Batch-C3: 週ヘッダー (前週ナビ + タイトル + 範囲 + 補助説明)
+            var html = '<header class="avail-head">' +
+                       '<button class="btn btn-sm avail-head__nav" id="avail-prev">◀ 前の週</button>' +
+                       '<div class="avail-head__title-group">' +
+                       '<h3 class="avail-head__title">シフト希望</h3>' +
+                       '<p class="avail-head__range">' + startStr + ' 〜 ' + endStr + '</p>' +
+                       '<p class="avail-head__desc">この週に働ける日と時間帯を教えてください。あとから同じ画面で変更・再提出できます。</p>' +
+                       '</div>' +
+                       '<button class="btn btn-sm avail-head__nav" id="avail-next">次の週 ▶</button>' +
+                       '</header>';
 
             html += '<div class="avail-form">';
+            html += '<div class="avail-day-list">';
             var dt = new Date(startDt);
             for (var d = 0; d < 7; d++) {
                 var dateStr = self._formatDate(dt);
@@ -401,39 +409,72 @@
                 var pStart = (ex.preferred_start || '').substring(0, 5);
                 var pEnd = (ex.preferred_end || '').substring(0, 5);
 
-                html += '<div class="avail-day" data-date="' + dateStr + '">' +
-                        '<div class="avail-day-label">' + (dt.getMonth() + 1) + '/' + dt.getDate() + '(' + DAY_NAMES[dt.getDay()] + ')</div>' +
-                        '<div class="avail-btns">' +
-                        '<button class="avail-btn' + (avail === 'available' ? ' active' : '') + '" data-val="available">○ 出勤可</button>' +
-                        '<button class="avail-btn' + (avail === 'preferred' ? ' active' : '') + '" data-val="preferred">◎ 希望</button>' +
-                        '<button class="avail-btn' + (avail === 'unavailable' ? ' active' : '') + '" data-val="unavailable">× 不可</button>' +
+                // Batch-C3: 文脈 modifier (今日 / 週末 / 過去) と 状態 modifier
+                var dayCls = 'avail-day avail-day--state-' + avail;
+                if (dateStr === todayStr) dayCls += ' avail-day--today';
+                else if (dateStr < todayStr) dayCls += ' avail-day--past';
+                var dow = dt.getDay();
+                if (dow === 0 || dow === 6) dayCls += ' avail-day--weekend';
+
+                html += '<div class="' + dayCls + '" data-date="' + dateStr + '">' +
+                        '<div class="avail-day__head">' +
+                        '<div class="avail-day__date">' + (dt.getMonth() + 1) + '/' + dt.getDate() + '</div>' +
+                        '<div class="avail-day__dow">' + DAY_NAMES[dow] + '</div>' +
+                        '</div>' +
+                        '<div class="avail-btns" role="radiogroup" aria-label="' + dateStr + ' の出勤可否">' +
+                        '<button type="button" class="avail-btn' + (avail === 'available' ? ' active' : '') + '" data-val="available" aria-pressed="' + (avail === 'available') + '">' +
+                        '<span class="avail-btn__icon">○</span><span class="avail-btn__label">出勤可</span>' +
+                        '</button>' +
+                        '<button type="button" class="avail-btn' + (avail === 'preferred' ? ' active' : '') + '" data-val="preferred" aria-pressed="' + (avail === 'preferred') + '">' +
+                        '<span class="avail-btn__icon">◎</span><span class="avail-btn__label">希望</span>' +
+                        '</button>' +
+                        '<button type="button" class="avail-btn' + (avail === 'unavailable' ? ' active' : '') + '" data-val="unavailable" aria-pressed="' + (avail === 'unavailable') + '">' +
+                        '<span class="avail-btn__icon">×</span><span class="avail-btn__label">不可</span>' +
+                        '</button>' +
                         '</div>' +
                         '<div class="avail-times"' + (avail === 'unavailable' ? ' style="display:none"' : '') + '>' +
-                        '<input type="time" class="avail-start" value="' + (pStart || '09:00') + '"> 〜 ' +
-                        '<input type="time" class="avail-end" value="' + (pEnd || '18:00') + '">' +
-                        '</div></div>';
+                        '<input type="time" class="avail-start" value="' + (pStart || '09:00') + '" aria-label="開始時刻">' +
+                        '<span class="avail-times__sep">〜</span>' +
+                        '<input type="time" class="avail-end" value="' + (pEnd || '18:00') + '" aria-label="終了時刻">' +
+                        '</div>' +
+                        '</div>';
                 dt.setDate(dt.getDate() + 1);
             }
+            html += '</div>'; // .avail-day-list
 
             html += '<div class="avail-note-wrap">' +
-                    '<label>メモ<textarea id="avail-note" rows="2" placeholder="午前のみ希望、など"></textarea></label>' +
+                    '<label class="avail-note-label" for="avail-note">店長宛てのメモ<span class="avail-note-opt">(任意)</span></label>' +
+                    '<textarea id="avail-note" class="avail-note" rows="2" placeholder="例: 試験期間中 / 午前のみ / 通院で中抜けあり"></textarea>' +
                     '</div>';
-            html += '<button class="btn btn-primary" id="avail-submit">提出する</button>';
-            html += '</div>';
+            html += '<div class="avail-submit-row">' +
+                    '<button type="button" class="btn btn-primary avail-submit" id="avail-submit">この週の希望を提出する</button>' +
+                    '</div>';
+            html += '</div>'; // .avail-form
 
             container.innerHTML = html;
 
-            // 可/希望/不可ボタン切替
+            // 可/希望/不可ボタン切替 (Batch-C3: day card 側の state modifier も同期)
             var availBtns = container.querySelectorAll('.avail-btn');
             for (var b = 0; b < availBtns.length; b++) {
                 availBtns[b].addEventListener('click', function() {
                     var parent = this.parentElement;
                     var btns = parent.querySelectorAll('.avail-btn');
-                    for (var x = 0; x < btns.length; x++) btns[x].classList.remove('active');
+                    for (var x = 0; x < btns.length; x++) {
+                        btns[x].classList.remove('active');
+                        btns[x].setAttribute('aria-pressed', 'false');
+                    }
                     this.classList.add('active');
+                    this.setAttribute('aria-pressed', 'true');
+                    var val = this.getAttribute('data-val');
                     var times = this.parentElement.parentElement.querySelector('.avail-times');
                     if (times) {
-                        times.style.display = this.getAttribute('data-val') === 'unavailable' ? 'none' : '';
+                        times.style.display = val === 'unavailable' ? 'none' : '';
+                    }
+                    // Batch-C3: day card 側の状態 class を更新
+                    var dayCard = this.parentElement.parentElement;
+                    if (dayCard) {
+                        dayCard.classList.remove('avail-day--state-available', 'avail-day--state-preferred', 'avail-day--state-unavailable');
+                        dayCard.classList.add('avail-day--state-' + val);
                     }
                 });
             }
