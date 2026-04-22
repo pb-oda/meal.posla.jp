@@ -54,11 +54,11 @@ var ShiftHelp = (function() {
     function loadRequests() {
         var container = document.getElementById(_containerId);
         if (!container) return;
-        container.innerHTML = '<p style="text-align:center;padding:1rem;color:#888;">読み込み中...</p>';
+        container.innerHTML = '<p class="help-loading">読み込み中...</p>';
 
         apiCall('GET', API_BASE + 'help-requests.php?store_id=' + encodeURIComponent(_storeId), null, function(data, err) {
             if (err) {
-                container.innerHTML = '<p class="error" style="padding:1rem;">ヘルプ要請の取得に失敗しました: ' + esc(err.message || '') + '</p>';
+                container.innerHTML = '<p class="help-error">ヘルプ要請の取得に失敗しました: ' + esc(err.message || '') + '</p>';
                 return;
             }
             _renderRequests(data.sent || [], data.received || []);
@@ -76,24 +76,24 @@ var ShiftHelp = (function() {
             '</div>';
 
         // 送信/受信タブ
-        html += '<div class="help-tabs" style="display:flex;gap:0;margin-bottom:1rem;">' +
+        html += '<div class="help-tabs">' +
             '<button class="btn btn-sm help-tab-btn' + (_activeTab === 'sent' ? ' btn-primary' : '') + '" data-help-tab="sent">送信 (' + sent.length + ')</button>' +
             '<button class="btn btn-sm help-tab-btn' + (_activeTab === 'received' ? ' btn-primary' : '') + '" data-help-tab="received">受信 (' + received.length + ')</button>' +
             '</div>';
 
         // 送信一覧
-        html += '<div class="help-tab-content" id="help-tab-sent" style="' + (_activeTab === 'sent' ? '' : 'display:none;') + '">';
+        html += '<div class="help-tab-content" id="help-tab-sent"' + (_activeTab === 'sent' ? '' : ' hidden') + '>';
         if (sent.length === 0) {
-            html += '<p style="color:#888;padding:1rem;">送信した要請はありません</p>';
+            html += '<p class="help-empty">送信した要請はありません</p>';
         } else {
             html += _buildTable(sent, 'sent');
         }
         html += '</div>';
 
         // 受信一覧
-        html += '<div class="help-tab-content" id="help-tab-received" style="' + (_activeTab === 'received' ? '' : 'display:none;') + '">';
+        html += '<div class="help-tab-content" id="help-tab-received"' + (_activeTab === 'received' ? '' : ' hidden') + '>';
         if (received.length === 0) {
-            html += '<p style="color:#888;padding:1rem;">受信した要請はありません</p>';
+            html += '<p class="help-empty">受信した要請はありません</p>';
         } else {
             html += _buildTable(received, 'received');
         }
@@ -111,8 +111,8 @@ var ShiftHelp = (function() {
                 for (var i = 0; i < allTabs.length; i++) {
                     allTabs[i].classList.toggle('btn-primary', allTabs[i].getAttribute('data-help-tab') === _activeTab);
                 }
-                document.getElementById('help-tab-sent').style.display = (_activeTab === 'sent') ? '' : 'none';
-                document.getElementById('help-tab-received').style.display = (_activeTab === 'received') ? '' : 'none';
+                document.getElementById('help-tab-sent').hidden = (_activeTab !== 'sent');
+                document.getElementById('help-tab-received').hidden = (_activeTab !== 'received');
             });
         }
 
@@ -137,7 +137,7 @@ var ShiftHelp = (function() {
 
     // ── テーブル構築 ──
     function _buildTable(rows, type) {
-        var html = '<table class="shift-table" style="width:100%;"><thead><tr>';
+        var html = '<table class="shift-table help-table"><thead><tr>';
         html += '<th>日付</th><th>時間帯</th>';
         html += (type === 'sent') ? '<th>送信先</th>' : '<th>送信元</th>';
         html += '<th>人数</th><th>役割</th><th>状態</th><th>派遣スタッフ</th><th>操作</th>';
@@ -162,10 +162,10 @@ var ShiftHelp = (function() {
             // 操作ボタン
             var actions = '';
             if (type === 'sent' && r.status === 'pending') {
-                actions = '<button class="btn btn-sm" data-help-action="cancel" data-request-id="' + esc(r.id) + '" style="color:#e53935;">キャンセル</button>';
+                actions = '<button class="btn btn-sm help-cancel-btn" data-help-action="cancel" data-request-id="' + esc(r.id) + '">キャンセル</button>';
             } else if (type === 'received' && r.status === 'pending') {
                 actions = '<button class="btn btn-sm btn-primary" data-help-action="approve" data-request-id="' + esc(r.id) + '">承認</button> ' +
-                    '<button class="btn btn-sm" data-help-action="reject" data-request-id="' + esc(r.id) + '" style="color:#e53935;">却下</button>';
+                    '<button class="btn btn-sm help-cancel-btn" data-help-action="reject" data-request-id="' + esc(r.id) + '">却下</button>';
             }
 
             html += '<tr>' +
@@ -181,7 +181,7 @@ var ShiftHelp = (function() {
 
             // メモ行（あれば）
             if (r.note || r.response_note) {
-                html += '<tr><td colspan="8" style="font-size:0.8rem;color:#666;border-top:none;padding-top:0;">';
+                html += '<tr class="help-note-row"><td colspan="8">';
                 if (r.note) html += '依頼メモ: ' + esc(r.note);
                 if (r.note && r.response_note) html += ' / ';
                 if (r.response_note) html += '回答: ' + esc(r.response_note);
@@ -195,11 +195,10 @@ var ShiftHelp = (function() {
 
     // ── ステータスバッジ ──
     function _statusBadge(status) {
-        var colors = { pending: '#ff9800', approved: '#4caf50', rejected: '#e53935', cancelled: '#9e9e9e' };
         var labels = { pending: '待機中', approved: '承認済', rejected: '却下', cancelled: 'キャンセル' };
-        var c = colors[status] || '#999';
         var l = labels[status] || status;
-        return '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;color:#fff;background:' + c + ';">' + esc(l) + '</span>';
+        var modifier = (labels[status]) ? status : 'pending';
+        return '<span class="shift-status-badge shift-status-badge--' + modifier + '">' + esc(l) + '</span>';
     }
 
     // ── 新規要請ダイアログ ──
@@ -287,11 +286,11 @@ var ShiftHelp = (function() {
 
             var staffHtml = '';
             if (staffList.length === 0) {
-                staffHtml = '<p style="color:#888;">この店舗にスタッフが登録されていません</p>';
+                staffHtml = '<p class="help-empty-inline">この店舗にスタッフが登録されていません</p>';
             } else {
                 for (var i = 0; i < staffList.length; i++) {
                     var s = staffList[i];
-                    staffHtml += '<label style="display:block;margin:4px 0;">' +
+                    staffHtml += '<label class="help-staff-label">' +
                         '<input type="checkbox" class="help-staff-cb" value="' + esc(s.id) + '"> ' +
                         esc(s.display_name || s.username) +
                         '</label>';
@@ -301,7 +300,7 @@ var ShiftHelp = (function() {
             overlay.innerHTML = '<div class="shift-dialog">' +
                 '<h3>ヘルプ要請の承認</h3>' +
                 '<p>派遣するスタッフを選択してください:</p>' +
-                '<div style="max-height:200px;overflow-y:auto;margin-bottom:10px;">' + staffHtml + '</div>' +
+                '<div class="help-staff-list">' + staffHtml + '</div>' +
                 '<label>回答メモ<input type="text" id="help-approve-note" class="form-input" placeholder="任意"></label>' +
                 '<div class="shift-dialog-actions">' +
                 '<button class="btn btn-primary" id="help-approve-btn">承認</button>' +
@@ -360,7 +359,7 @@ var ShiftHelp = (function() {
             '<h3>ヘルプ要請の却下</h3>' +
             '<label>却下理由<input type="text" id="help-reject-note" class="form-input" placeholder="理由を入力"></label>' +
             '<div class="shift-dialog-actions">' +
-            '<button class="btn" id="help-reject-btn" style="background:#e53935;color:#fff;">却下</button>' +
+            '<button class="btn help-reject-btn" id="help-reject-btn">却下</button>' +
             '<button class="btn" id="help-reject-cancel">キャンセル</button>' +
             '</div></div>';
 

@@ -4172,17 +4172,7 @@ body.sidebar-open .admin-sidebar-backdrop {
  * 公開 API も不変。
  * ============================================================ */
 
-/* シフトサブタブ上部の業務説明 (subtle accent bar) */
-.shift-tab-hint {
-  margin: 0 0 var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  background: var(--primary-50);
-  border-left: 3px solid var(--primary);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  line-height: 1.55;
-}
+/* Batch-C2: .shift-tab-hint は panel-toolbar__desc に統合されたため廃止 */
 
 /* 集計サマリーの inline style を置換 */
 .shift-summary__warnings {
@@ -4256,6 +4246,187 @@ body.sidebar-open .admin-sidebar-backdrop {
   line-height: 1.1;
 }
 
+/* ============================================================
+ * Batch-C2 追加: shift 系の inline style 残りを class 化
+ * shift-manager.js (テンプレート / 集計) / shift-calendar.js /
+ * shift-help.js の視覚要素をトークンに合わせて再定義。
+ * ============================================================ */
 
+/* テンプレート曜日選択 (shift-manager.js) */
+.shift-tpl-dow {
+  margin-bottom: var(--space-2);
+}
+.shift-tpl-dow__title {
+  font-weight: 600;
+}
+.shift-tpl-dow__toggle {
+  font-size: var(--fs-xs);
+  margin-left: var(--space-2);
+}
+.shift-tpl-dow__checks {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+.shift-tpl-dow__label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
 
+/* 集計サマリー期間切替 (shift-manager.js) */
+.shift-summary-period {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+.shift-summary__daily-h4 {
+  margin-top: var(--space-5);
+}
+
+/* カレンダー (shift-calendar.js) */
+.cal-ai-btn,
+.cal-ai-btn.btn {
+  background: #7c4dff;
+  color: #fff;
+}
+.cal-ai-btn:hover,
+.cal-ai-btn:focus {
+  background: #6a3cd8;
+  color: #fff;
+}
+.cal-avail-hint {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+.cal-helper-info {
+  color: #e65100;
+}
+.cal-cost-row {
+  /* 既存 .cal-total-row に加える用途。視覚は据え置き */
+}
+.cal-cost-row .cal-name-col,
+.cal-cost-row .cal-total-cell {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.cal-week-cost {
+  margin-top: var(--space-2);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+}
+
+/* ヘルプ要請 (shift-help.js) */
+.help-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+.help-empty {
+  color: var(--text-muted);
+  padding: var(--space-4);
+  margin: 0;
+}
+.help-loading {
+  text-align: center;
+  padding: var(--space-4);
+  color: var(--text-muted);
+  margin: 0;
+}
+.help-error {
+  padding: var(--space-4);
+  color: var(--danger);
+  margin: 0;
+}
+.help-table {
+  width: 100%;
+}
+
+/* ステータスバッジ */
+.shift-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: var(--fs-xs);
+  color: #fff;
+  line-height: 1.4;
+}
+.shift-status-badge--pending   { background: var(--warning); }
+.shift-status-badge--approved  { background: var(--success); }
+.shift-status-badge--rejected  { background: var(--danger); }
+.shift-status-badge--cancelled { background: #9e9e9e; }
+
+/* 操作ボタン */
+.help-cancel-btn,
+.help-cancel-btn.btn {
+  color: var(--danger);
+}
+.help-reject-btn,
+.help-reject-btn.btn {
+  background: var(--danger);
+  color: #fff;
+}
+.help-reject-btn:hover,
+.help-reject-btn:focus {
+  background: #c62828;
+  color: #fff;
+}
+
+/* メモ行 (shift-help.js _buildTable) */
+.help-note-row td {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  border-top: none;
+  padding-top: 0;
+}
+
+/* 承認ダイアログ: スタッフ選択 */
+.help-staff-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: var(--space-3);
+}
+.help-staff-label {
+  display: block;
+  margin: 4px 0;
+}
+.help-empty-inline {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* AI 提案ダイアログ (shift-calendar.js) */
+.cal-ai-content {
+  min-height: 200px;
+}
+.cal-ai-raw {
+  font-size: 0.75rem;
+  max-height: 200px;
+  overflow: auto;
+}
+.cal-ai-summary {
+  background: var(--success-light);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.cal-ai-cost {
+  margin-bottom: var(--space-3);
+}
+.cal-ai-warn {
+  color: #e65100;
+  margin-bottom: 4px;
+}
+.cal-ai-table {
+  margin-top: var(--space-3);
+}
+.cal-ai-reason {
+  font-size: var(--fs-xs);
+  max-width: 200px;
+}
 

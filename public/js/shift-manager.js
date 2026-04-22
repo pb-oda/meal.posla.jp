@@ -244,12 +244,12 @@
                 dayHtml = '<label>曜日<select id="tpl-dow">' + dayOptions + '</select></label>';
             } else {
                 // 新規時はチェックボックスで複数選択
-                dayHtml = '<div style="margin-bottom:8px;"><span style="font-weight:600;">曜日</span>' +
-                    ' <a href="#" id="tpl-dow-all" style="font-size:0.85rem;margin-left:8px;">全選択</a>' +
-                    ' <a href="#" id="tpl-dow-none" style="font-size:0.85rem;margin-left:4px;">全解除</a></div>' +
-                    '<div id="tpl-dow-checks" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">';
+                dayHtml = '<div class="shift-tpl-dow"><span class="shift-tpl-dow__title">曜日</span>' +
+                    ' <a href="#" id="tpl-dow-all" class="shift-tpl-dow__toggle">全選択</a>' +
+                    ' <a href="#" id="tpl-dow-none" class="shift-tpl-dow__toggle">全解除</a></div>' +
+                    '<div id="tpl-dow-checks" class="shift-tpl-dow__checks">';
                 for (var d = 0; d < 7; d++) {
-                    dayHtml += '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;">' +
+                    dayHtml += '<label class="shift-tpl-dow__label">' +
                         '<input type="checkbox" class="tpl-dow-cb" value="' + d + '"> ' + DAY_NAMES[d] + '</label>';
                 }
                 dayHtml += '</div>';
@@ -981,8 +981,8 @@
             html += '</div>';
 
             // 期間切替
-            html += '<div style="margin-bottom:1rem;">';
-            html += '<button class="btn btn-sm' + (self._summaryPeriod === 'weekly' ? ' btn-primary' : '') + '" id="summary-weekly">週次</button> ';
+            html += '<div class="shift-summary-period">';
+            html += '<button class="btn btn-sm' + (self._summaryPeriod === 'weekly' ? ' btn-primary' : '') + '" id="summary-weekly">週次</button>';
             html += '<button class="btn btn-sm' + (self._summaryPeriod === 'monthly' ? ' btn-primary' : '') + '" id="summary-monthly">月次</button>';
             html += '</div>';
 
@@ -1064,7 +1064,7 @@
 
             // 日別テーブル
             if (data.daily_summary.length > 0) {
-                html += '<h4 style="margin-top:1.5rem;">日別</h4>';
+                html += '<h4 class="shift-summary__daily-h4">日別</h4>';
                 html += '<table class="shift-table"><thead><tr>';
                 html += '<th>日付</th><th>出勤人数</th><th>労働時間</th><th>人件費</th>';
                 html += '</tr></thead><tbody>';

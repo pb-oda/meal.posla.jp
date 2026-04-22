@@ -167,7 +167,7 @@
                 '</div>' +
                 '<div class="cal-actions">' +
                 '<button class="btn btn-sm" id="cal-apply-tpl">テンプレート適用</button> ' +
-                '<button class="btn btn-sm" id="cal-ai-suggest" style="background:#7c4dff;color:#fff;">AI提案</button> ' +
+                '<button class="btn btn-sm cal-ai-btn" id="cal-ai-suggest">AI提案</button> ' +
                 '<button class="btn btn-sm btn-primary" id="cal-publish">確定する</button>' +
                 '</div>';
 
@@ -234,7 +234,7 @@
                         else cellClass += ' avail-available';
                         // 希望時間帯をツールチップ風に表示
                         if (cellAvail.availability !== 'unavailable' && cellAvail.preferred_start && cellAvail.preferred_end) {
-                            availHint = '<div style="font-size:0.65rem;color:#666;line-height:1.2;">希望 ' +
+                            availHint = '<div class="cal-avail-hint">希望 ' +
                                 esc(cellAvail.preferred_start.substring(0, 5)) + '-' +
                                 esc(cellAvail.preferred_end.substring(0, 5)) + '</div>';
                         }
@@ -248,7 +248,7 @@
                             var helpClass = isHelp ? ' shift-help' : '';
                             var helpBadge = isHelp ? '<span class="help-badge">ヘルプ</span>' : '';
                             var helperInfo = (isHelp && sa.helper_store_name) ?
-                                '<br><small style="color:#e65100;">(' + esc(sa.helper_store_name) + ')</small>' : '';
+                                '<br><small class="cal-helper-info">(' + esc(sa.helper_store_name) + ')</small>' : '';
                             cellContent += '<div class="cal-shift ' + statusClass + helpClass + '" data-id="' + sa.id + '">' +
                                 helpBadge +
                                 esc(sa.start_time.substring(0, 5)) + '-' + esc(sa.end_time.substring(0, 5)) +
@@ -317,9 +317,9 @@
 
             // 人件費合計行
             if (hasRates || weekLaborCost > 0) {
-                html += '<tr class="cal-total-row"><td class="cal-name-col" style="font-size:0.85rem;color:#666;">推定人件費</td>';
+                html += '<tr class="cal-total-row cal-cost-row"><td class="cal-name-col">推定人件費</td>';
                 for (var lc = 0; lc < dayCosts.length; lc++) {
-                    html += '<td class="cal-total-cell" style="font-size:0.8rem;color:#666;">' +
+                    html += '<td class="cal-total-cell">' +
                         (dayCosts[lc] > 0 ? '¥' + dayCosts[lc].toLocaleString() : '') + '</td>';
                 }
                 html += '</tr>';
@@ -339,7 +339,7 @@
 
             // L-3 Phase 2: 週間推定人件費
             if (weekLaborCost > 0) {
-                html += '<div style="margin-top:0.5rem;font-size:0.9rem;color:#333;">推定週間人件費: <strong>¥' + weekLaborCost.toLocaleString() + '</strong></div>';
+                html += '<div class="cal-week-cost">推定週間人件費: <strong>¥' + weekLaborCost.toLocaleString() + '</strong></div>';
             }
 
             container.innerHTML = html;
@@ -580,9 +580,9 @@
             overlay.innerHTML = '<div class="shift-dialog shift-dialog-wide">' +
                 '<h3>AI最適シフト提案</h3>' +
                 '<p>' + startDate + ' 〜 ' + endDate + '</p>' +
-                '<div id="ai-suggest-content" style="min-height:200px;"><p>データを収集中...</p></div>' +
+                '<div id="ai-suggest-content" class="cal-ai-content"><p>データを収集中...</p></div>' +
                 '<div class="shift-dialog-actions">' +
-                '<button class="btn btn-primary" id="ai-suggest-apply" style="display:none">全て採用</button>' +
+                '<button class="btn btn-primary" id="ai-suggest-apply" hidden>全て採用</button>' +
                 '<button class="btn" id="ai-suggest-cancel">閉じる</button>' +
                 '</div></div>';
             document.body.appendChild(overlay);
@@ -610,7 +610,7 @@
                         var result = JSON.parse(jsonStr);
                     } catch (e) {
                         document.getElementById('ai-suggest-content').innerHTML = '<p class="error">AIの応答をパースできませんでした。再試行してください。</p>' +
-                            '<details><summary>生データ</summary><pre style="font-size:0.75rem;max-height:200px;overflow:auto;">' + esc(responseText) + '</pre></details>';
+                            '<details><summary>生データ</summary><pre class="cal-ai-raw">' + esc(responseText) + '</pre></details>';
                         return;
                     }
                     self._renderAiSuggestResult(overlay, result, suggestData, startDate, endDate);
@@ -676,22 +676,22 @@
 
             // サマリー
             if (summary) {
-                html += '<div style="background:#e8f5e9;border-radius:8px;padding:10px 14px;margin-bottom:10px;">' + esc(summary) + '</div>';
+                html += '<div class="cal-ai-summary">' + esc(summary) + '</div>';
             }
 
             // 推定人件費
             if (estCost > 0) {
-                html += '<div style="margin-bottom:10px;">推定週間人件費: <strong>¥' + estCost.toLocaleString() + '</strong></div>';
+                html += '<div class="cal-ai-cost">推定週間人件費: <strong>¥' + estCost.toLocaleString() + '</strong></div>';
             }
 
             // 警告
             for (var w = 0; w < warnings.length; w++) {
-                html += '<div style="color:#e65100;margin-bottom:4px;">⚠ ' + esc(warnings[w]) + '</div>';
+                html += '<div class="cal-ai-warn">⚠ ' + esc(warnings[w]) + '</div>';
             }
 
             // 提案テーブル
             if (suggestions.length > 0) {
-                html += '<table class="shift-table" style="margin-top:10px;"><thead><tr>';
+                html += '<table class="shift-table cal-ai-table"><thead><tr>';
                 html += '<th>スタッフ</th><th>日付</th><th>開始</th><th>終了</th><th>役割</th><th>理由</th>';
                 html += '</tr></thead><tbody>';
                 for (var s = 0; s < suggestions.length; s++) {
@@ -702,7 +702,7 @@
                     html += '<td>' + esc(sg.start_time) + '</td>';
                     html += '<td>' + esc(sg.end_time) + '</td>';
                     html += '<td>' + esc(sg.role_type || '-') + '</td>';
-                    html += '<td style="font-size:0.8rem;max-width:200px;">' + esc(sg.reason || '') + '</td>';
+                    html += '<td class="cal-ai-reason">' + esc(sg.reason || '') + '</td>';
                     html += '</tr>';
                 }
                 html += '</tbody></table>';
@@ -715,7 +715,7 @@
             // 採用ボタン表示
             var applyBtn = document.getElementById('ai-suggest-apply');
             if (applyBtn && suggestions.length > 0) {
-                applyBtn.style.display = '';
+                applyBtn.hidden = false;
                 applyBtn.addEventListener('click', function() {
                     applyBtn.disabled = true;
                     applyBtn.textContent = '登録中...';
