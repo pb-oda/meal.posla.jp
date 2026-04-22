@@ -120,6 +120,13 @@
     .lang-selector__option:hover, .lang-selector__option:active { background:#fff3e0; }
     .lang-selector__option.active { background:#ff6f00; color:#fff; font-weight:700; }
     .lang-selector__option span { font-size:1.125rem; }
+    /* Batch-E-3 iPhone fix: customer-header が縦に膨張する問題を強制抑制 */
+    .customer-header { flex-wrap: nowrap !important; flex-direction: row !important; height: 56px !important; min-height: 56px !important; max-height: 56px !important; overflow: hidden !important; padding: 0 16px !important; }
+    .customer-header__info { display: inline-flex !important; align-items: center !important; gap: 6px !important; overflow: hidden !important; min-width: 0 !important; flex-shrink: 1 !important; flex-wrap: nowrap !important; }
+    .customer-header__info > .customer-header__store { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; max-width: 42vw !important; display: inline-block !important; margin-left: 0 !important; }
+    .customer-header__info > .customer-header__table { white-space: nowrap !important; flex-shrink: 0 !important; display: inline-block !important; margin-left: 6px !important; }
+    .customer-header__takeout { flex-shrink: 0 !important; white-space: nowrap !important; }
+    .lang-selector { flex-shrink: 0 !important; }
     /* L-8: セルフレジ (Batch-E-3 で .action-bar 内配置に変更、position は外から上書き) */
     .checkout-bar { background:#2d7a4f; padding:10px 16px; text-align:center; display:none; }
     .checkout-bar__btn { background:#fff; color:#2d7a4f; border:none; border-radius:8px; padding:12px 40px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; max-width:400px; }
