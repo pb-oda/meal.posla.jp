@@ -74,6 +74,10 @@
   --rs-header-h: 60px;
   --rs-stepper-h: 40px;
 
+  /* sticky .rs-nav の概算高さ (padding 12 + btn 56 + padding 12 + border 1 ≈ 80px)。
+     .rs-ai-fab と .rs-toast をこの上に常時押し上げ、step 2〜5 の重なりを回避する。 */
+  --rs-nav-h: 80px;
+
   /* 主 CTA の safe-area */
   --rs-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -807,7 +811,9 @@ html, body {
 .rs-ai-fab {
   position: fixed;
   right: var(--rs-space-4);
-  bottom: calc(var(--rs-space-4) + var(--rs-safe-bottom));
+  /* sticky .rs-nav (bottom:0) の上に常時配置。step 1 (nav なし) では
+     やや高めに見えるが実害なし。step 2〜5 で nav 上に重ならないことが優先 */
+  bottom: calc(var(--rs-nav-h) + var(--rs-space-3) + var(--rs-safe-bottom));
   z-index: 80;
 }
 
@@ -954,7 +960,8 @@ html, body {
  * ------------------------------------------------------------ */
 .rs-toast {
   position: fixed;
-  bottom: calc(96px + var(--rs-safe-bottom));
+  /* .rs-nav (sticky bottom:0) の上に配置、FAB とは中央寄せ vs 右寄せで水平に競合なし */
+  bottom: calc(var(--rs-nav-h) + var(--rs-space-3) + var(--rs-safe-bottom));
   left: 50%;
   transform: translateX(-50%);
   background: rgba(33,33,33,0.94);
