@@ -120,11 +120,20 @@
     .lang-selector__option:hover, .lang-selector__option:active { background:#fff3e0; }
     .lang-selector__option.active { background:#ff6f00; color:#fff; font-weight:700; }
     .lang-selector__option span { font-size:1.125rem; }
-    /* L-8: セルフレジ */
-    .checkout-bar { position:fixed; bottom:0; left:0; right:0; background:#2d7a4f; padding:10px 16px; text-align:center; z-index:199; display:none; }
+    /* L-8: セルフレジ (Batch-E-3 で .action-bar 内配置に変更、position は外から上書き) */
+    .checkout-bar { background:#2d7a4f; padding:10px 16px; text-align:center; display:none; }
     .checkout-bar__btn { background:#fff; color:#2d7a4f; border:none; border-radius:8px; padding:12px 40px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; max-width:400px; }
     .checkout-bar__btn:active { opacity:0.8; }
-    .cart-bar.checkout-active { bottom:56px; }
+    /* Batch-E-3: action-bar wrapper による新レイアウト (inline 版、外部 CSS キャッシュ対策で inline にも配置) */
+    .action-bar { position:fixed; left:0; right:0; bottom:0; display:flex; flex-direction:row; align-items:stretch; z-index:200; box-shadow:0 -2px 12px rgba(0,0,0,0.14); background:transparent; pointer-events:none; }
+    .action-bar > * { pointer-events:auto; }
+    .action-bar > .cart-bar { position:static; z-index:auto; box-shadow:none; flex:1 1 auto; min-width:0; padding-bottom:calc(0.75rem + env(safe-area-inset-bottom, 0px)); bottom:auto; }
+    .action-bar > .checkout-bar { position:static; flex:0 0 auto; display:flex; align-items:center; justify-content:center; padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px)); box-shadow:none; }
+    .action-bar > .cart-bar[style*="display:none"] + .checkout-bar,
+    .action-bar > .cart-bar[style*="display: none"] + .checkout-bar { flex:1 1 auto; }
+    .action-bar > .cart-bar[style*="display:none"] + .checkout-bar .checkout-bar__btn,
+    .action-bar > .cart-bar[style*="display: none"] + .checkout-bar .checkout-bar__btn { max-width:400px; width:100%; margin:0 auto; }
+    body { padding-bottom:calc(80px + env(safe-area-inset-bottom, 0px)) !important; }
     .checkout-modal { position:fixed; inset:0; z-index:2100; display:none; }
     .checkout-modal.open { display:block; }
     .checkout-modal__overlay { position:absolute; inset:0; background:rgba(0,0,0,0.6); }
