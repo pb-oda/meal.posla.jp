@@ -1076,9 +1076,9 @@ HAVING distinct_ips >= 3;
 
 ---
 
-## 6.15 Sakura 障害時の対応
+## 6.15 インフラ全体障害時の対応（現行 sandbox 参考）
 
-### 6.15.1 Sakura 全体障害の確認
+### 6.15.1 現行 sandbox 全体障害の確認
 
 ```
 1. https://help.sakura.ad.jp/  → 障害情報を確認
@@ -1293,7 +1293,7 @@ A. 6.10.3 / 6.10.4 参照。`index.html` 差し替え or `.htaccess` で全 API 
 ### Q21. 監査ログを 1 年以上保持したい
 A. `audit_log` の retention は `DELETE FROM audit_log WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 YEAR)` で削除。それより長くしたい場合は別 DB or S3 にアーカイブ。
 
-### Q22. Sakura のメール送信制限を超えたら？
+### Q22. sandbox メール送信制限を超えたら？
 A. 短時間大量送信で 30 分〜数時間ブロックされる。予約リマインダーが大量送信タイミングと重なると発生。送信間隔を空けるか、外部 SMTP（SendGrid 等）に切り替える。
 
 ### Q23. テナントが自分でパスワードリセットできない

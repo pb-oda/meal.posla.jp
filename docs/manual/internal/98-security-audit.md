@@ -126,7 +126,7 @@ maintainer: posla
 - Critical 3（C-01/C-02/C-03）全て 403 維持
 - HSTS / login rate-limit / Connect callback CSRF 全て不変
 
-#### Phase 3（2026-04-22 午後）: Sakura DB password rotation ✅ resolved
+#### Phase 3（2026-04-22 午後）: sandbox DB password rotation ✅ resolved
 
 - MySQL 8.0.44 の `odah_eat-posla@%` に対し `SET PASSWORD = '<new>'` で rotation 実行
 - 新 password: 48 hex chars（`bin2hex(random_bytes(24))` で server 上生成、shell-safe）

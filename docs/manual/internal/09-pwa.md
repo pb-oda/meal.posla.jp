@@ -744,7 +744,7 @@ expect { \"Enter passphrase\" { send \"oda0428\r\"; exp_continue }; eof }"
 
 expect -c "
 set timeout 30
-spawn ssh -i id_ecdsa.pem -o StrictHostKeyChecking=no odah@odah.sakura.ne.jp bash -c 'mysql -h mysql80.odah.sakura.ne.jp -u odah_eat-posla -podah_eat-posla odah_eat-posla < /tmp/check-vapid.sql'
+spawn ssh -i id_ecdsa.pem -o StrictHostKeyChecking=no odah@odah.sakura.ne.jp bash -c 'source ~/.posla-sandbox.env && mysql -h "$POSLA_DB_HOST" -u "$POSLA_DB_USER" -p"$POSLA_DB_PASS" "$POSLA_DB_NAME" < /tmp/check-vapid.sql'
 expect { \"Enter passphrase\" { send \"oda0428\r\"; exp_continue }; eof }"
 ```
 
@@ -766,9 +766,10 @@ echo "=== EXTRACTED SQL ==="
 sed -n '/^INSERT INTO posla_settings/,/;$/p' /tmp/vapid-output.txt > /tmp/vapid-insert.sql
 cat /tmp/vapid-insert.sql
 echo "=== EXECUTING INSERT ==="
-mysql -h mysql80.odah.sakura.ne.jp -u odah_eat-posla -podah_eat-posla odah_eat-posla < /tmp/vapid-insert.sql
+source ~/.posla-sandbox.env
+mysql -h "$POSLA_DB_HOST" -u "$POSLA_DB_USER" -p"$POSLA_DB_PASS" "$POSLA_DB_NAME" < /tmp/vapid-insert.sql
 echo "=== VERIFY ==="
-mysql -h mysql80.odah.sakura.ne.jp -u odah_eat-posla -podah_eat-posla odah_eat-posla < /tmp/check-vapid.sql
+mysql -h "$POSLA_DB_HOST" -u "$POSLA_DB_USER" -p"$POSLA_DB_PASS" "$POSLA_DB_NAME" < /tmp/check-vapid.sql
 echo "=== DONE ==="
 EOF
 
