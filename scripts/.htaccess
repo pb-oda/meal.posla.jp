@@ -1,0 +1,6 @@
+# Deny all web access to scripts/ directory.
+# 本ディレクトリの build script / audit script / output (helpdesk prompt, error
+# catalog) は CLI 実行 + デプロイ経路でのみ使用する。public web からの直アクセスは遮断する。
+# (C-01 / C-03 Critical fix, 2026-04-21)
+
+Require all denied
