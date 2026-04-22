@@ -1,79 +1,1167 @@
-/* L-9 予約管理 — 店舗側ガント台帳 */
+/* ============================================================
+ * L-9 予約管理 — 店舗側ガント台帳 / 顧客 / コース / 設定 / 統計
+ * Batch-UI-2 (2026-04-22): 業務画面としての完成度を重視した再設計
+ *   - 3 層 sticky ヘッダー (topbar / KPI / attention)
+ *   - 右 drawer 化 (tablet/desktop の詳細表示)
+ *   - 密度切替 (compact / normal / loose)
+ *   - admin.css のトークン統合
+ *   - モバイル最適化
+ * 既存クラス名 (.rb-*) と data-* 属性は保持。
+ * ============================================================ */
 
-.rb-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px; background: #fafafa; border-bottom: 1px solid #e0e0e0; }
-.rb-toolbar__date { display: flex; align-items: center; gap: 4px; }
-.rb-toolbar input[type="date"] { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; }
-.rb-toolbar button { padding: 6px 14px; border: 1px solid #ccc; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
-.rb-toolbar button.rb-btn--primary { background: #1976d2; color: #fff; border-color: #1976d2; }
-.rb-summary { display: flex; gap: 16px; margin-left: auto; flex-wrap: wrap; }
-.rb-summary__item { font-size: 0.85rem; color: #555; }
-.rb-summary__item strong { font-size: 1.1rem; color: #212121; margin-right: 4px; }
-.rb-tab-nav { display: flex; gap: 0; border-bottom: 1px solid #e0e0e0; padding: 0 12px; }
-.rb-tab-nav button { background: none; border: none; padding: 12px 16px; cursor: pointer; font-size: 0.95rem; color: #666; border-bottom: 3px solid transparent; }
-.rb-tab-nav button.rb-tab--active { color: #1976d2; border-bottom-color: #1976d2; font-weight: 600; }
+/* ------------------------------------------------------------
+ * トークン (admin.css の --space-*, --fs-*, --surface-* を継承)
+ * ------------------------------------------------------------ */
+#reservation-board-container {
+  --rb-accent: #1e40af;           /* primary アクセント */
+  --rb-accent-soft: #e0e7ff;
+  --rb-border: #e5e7eb;
+  --rb-border-strong: #d1d5db;
+  --rb-surface: #ffffff;
+  --rb-surface-muted: #f9fafb;
+  --rb-surface-hover: #f3f4f6;
+  --rb-text: #111827;
+  --rb-text-sub: #4b5563;
+  --rb-text-mute: #9ca3af;
 
-.rb-gantt { position: relative; overflow: auto; border: 1px solid #e0e0e0; max-height: 70vh; background: #fff; }
+  /* 予約状態 (base は彩度やや抑えめ、border で構造) */
+  --rb-st-confirmed-bg: #dbeafe;
+  --rb-st-confirmed-bd: #2563eb;
+  --rb-st-confirmed-fg: #1e3a8a;
+  --rb-st-pending-bg:   #fef3c7;
+  --rb-st-pending-bd:   #d97706;
+  --rb-st-pending-fg:   #92400e;
+  --rb-st-seated-bg:    #dcfce7;
+  --rb-st-seated-bd:    #16a34a;
+  --rb-st-seated-fg:    #14532d;
+  --rb-st-noshow-bg:    #fee2e2;
+  --rb-st-noshow-bd:    #dc2626;
+  --rb-st-noshow-fg:    #7f1d1d;
+  --rb-st-cancelled-bg: #f3f4f6;
+  --rb-st-cancelled-bd: #9ca3af;
+  --rb-st-cancelled-fg: #4b5563;
+  --rb-st-completed-bg: #ede9fe;
+  --rb-st-completed-bd: #7c3aed;
+  --rb-st-completed-fg: #4c1d95;
+
+  --rb-alert: #b91c1c;
+  --rb-alert-soft: #fee2e2;
+  --rb-warn:  #b45309;
+  --rb-warn-soft: #fef3c7;
+
+  --rb-radius: 10px;
+  --rb-radius-sm: 6px;
+  --rb-shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --rb-shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --rb-shadow-lg: 0 12px 32px rgba(0,0,0,0.14);
+
+  color: var(--rb-text);
+  font-size: 14px;
+}
+
+/* ------------------------------------------------------------
+ * Shell & タブ帯
+ * ------------------------------------------------------------ */
+.rb-shell {
+  background: var(--rb-surface-muted);
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius);
+  overflow: hidden;
+  box-shadow: var(--rb-shadow-sm);
+}
+
+.rb-tab-nav {
+  display: flex;
+  gap: 2px;
+  padding: 6px;
+  background: var(--rb-surface);
+  border-bottom: 1px solid var(--rb-border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rb-tab-nav button {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--rb-text-sub);
+  border-radius: var(--rb-radius-sm);
+  border-bottom: none;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+  font-family: inherit;
+}
+
+.rb-tab-nav button:hover {
+  background: var(--rb-surface-hover);
+  color: var(--rb-text);
+}
+
+.rb-tab-nav button.rb-tab--active {
+  background: var(--rb-accent-soft);
+  color: var(--rb-accent);
+  border-bottom: none;
+}
+
+.rb-tab-nav button:focus-visible {
+  outline: 2px solid var(--rb-accent);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------
+ * Top bar (sticky): 日付ナビ + 密度 + フィルタ + アクション
+ * ------------------------------------------------------------ */
+.rb-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--rb-surface);
+  border-bottom: 1px solid var(--rb-border);
+  flex-wrap: wrap;
+}
+
+.rb-topbar__date {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--rb-surface-muted);
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  padding: 2px;
+}
+
+.rb-topbar__date input[type="date"] {
+  border: none;
+  background: transparent;
+  padding: 6px 8px;
+  font-size: 14px;
+  color: var(--rb-text);
+  font-family: inherit;
+  outline: none;
+  min-width: 140px;
+}
+
+.rb-topbar__date button {
+  background: transparent;
+  border: none;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--rb-text-sub);
+  border-radius: var(--rb-radius-sm);
+  line-height: 1;
+  font-family: inherit;
+}
+
+.rb-topbar__date button:hover {
+  background: var(--rb-surface-hover);
+  color: var(--rb-text);
+}
+
+.rb-topbar__date button:last-child {
+  font-size: 13px;
+  padding: 6px 12px;
+  font-weight: 600;
+}
+
+.rb-topbar__spacer { flex: 1 1 auto; }
+
+.rb-topbar__actions {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rb-density {
+  display: inline-flex;
+  background: var(--rb-surface-muted);
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  padding: 2px;
+  font-size: 12px;
+}
+
+.rb-density__btn {
+  background: transparent;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  color: var(--rb-text-sub);
+  border-radius: 4px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.rb-density__btn--active {
+  background: var(--rb-surface);
+  color: var(--rb-accent);
+  box-shadow: var(--rb-shadow-sm);
+}
+
+/* ボタン (統合) */
+.rb-btn {
+  padding: 8px 14px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface);
+  border-radius: var(--rb-radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rb-text);
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+  font-family: inherit;
+}
+
+.rb-btn:hover { background: var(--rb-surface-hover); }
+.rb-btn:focus-visible { outline: 2px solid var(--rb-accent); outline-offset: 2px; }
+
+.rb-btn--primary {
+  background: var(--rb-accent);
+  color: #fff;
+  border-color: var(--rb-accent);
+  box-shadow: var(--rb-shadow-sm);
+}
+.rb-btn--primary:hover { background: #1e3a8a; }
+
+.rb-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--rb-text-sub);
+}
+.rb-btn--ghost:hover { background: var(--rb-surface-hover); color: var(--rb-text); }
+
+/* 旧クラス互換 (.rb-btn--primary は toolbar の button として） */
+.rb-topbar button.rb-btn--primary { /* already styled above */ }
+
+/* ------------------------------------------------------------
+ * KPI ストリップ (sticky)
+ * ------------------------------------------------------------ */
+.rb-kpi {
+  position: sticky;
+  top: 61px;
+  z-index: 25;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1px;
+  padding: 0;
+  background: var(--rb-border);
+  border-bottom: 1px solid var(--rb-border);
+}
+
+.rb-kpi__card {
+  background: var(--rb-surface);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 74px;
+}
+
+.rb-kpi__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rb-text-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rb-kpi__value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--rb-text);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.rb-kpi__value-unit {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--rb-text-sub);
+  margin-left: 2px;
+}
+
+.rb-kpi__sub {
+  font-size: 11px;
+  color: var(--rb-text-mute);
+  margin-top: 2px;
+}
+
+.rb-kpi__card--attention {
+  background: linear-gradient(0deg, var(--rb-warn-soft), var(--rb-surface));
+}
+.rb-kpi__card--attention .rb-kpi__value { color: var(--rb-warn); }
+.rb-kpi__card--attention .rb-kpi__label { color: var(--rb-warn); }
+.rb-kpi__card--attention.rb-kpi__card--critical {
+  background: linear-gradient(0deg, var(--rb-alert-soft), var(--rb-surface));
+}
+.rb-kpi__card--attention.rb-kpi__card--critical .rb-kpi__value,
+.rb-kpi__card--attention.rb-kpi__card--critical .rb-kpi__label { color: var(--rb-alert); }
+
+.rb-kpi__dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--rb-warn);
+  display: inline-block;
+}
+.rb-kpi__card--critical .rb-kpi__dot { background: var(--rb-alert); }
+
+/* ------------------------------------------------------------
+ * Attention panel (条件表示)
+ * ------------------------------------------------------------ */
+.rb-attention {
+  background: var(--rb-warn-soft);
+  border-bottom: 1px solid #fcd34d;
+  padding: 10px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  color: #78350f;
+}
+
+.rb-attention__icon {
+  width: 24px; height: 24px; flex-shrink: 0;
+  border-radius: 50%; background: var(--rb-warn);
+  color: #fff; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700;
+}
+
+.rb-attention__body { flex: 1 1 auto; min-width: 0; }
+
+.rb-attention__title {
+  font-weight: 700;
+  color: #92400e;
+  margin: 0 0 3px;
+}
+
+.rb-attention__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 12px;
+}
+
+.rb-attention__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: #fff;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  cursor: pointer;
+  color: #92400e;
+  transition: background 0.1s;
+  font-family: inherit;
+  font-size: 12px;
+}
+.rb-attention__item:hover { background: var(--rb-warn-soft); }
+
+/* ------------------------------------------------------------
+ * Gantt 本体
+ * ------------------------------------------------------------ */
+.rb-gantt-wrap {
+  background: var(--rb-surface);
+}
+
+.rb-gantt {
+  position: relative;
+  overflow: auto;
+  max-height: calc(100vh - 260px);
+  background: var(--rb-surface);
+  -webkit-overflow-scrolling: touch;
+}
+
 .rb-gantt__inner { position: relative; }
-.rb-gantt__header { position: sticky; top: 0; background: #fafafa; z-index: 10; display: flex; border-bottom: 2px solid #ccc; }
-.rb-gantt__corner { position: sticky; left: 0; min-width: 140px; max-width: 140px; padding: 8px; background: #fafafa; border-right: 2px solid #ccc; font-weight: 600; z-index: 11; }
-.rb-gantt__hours { display: flex; }
-.rb-gantt__hour { min-width: 60px; padding: 8px 4px; text-align: center; border-right: 1px solid #eee; font-size: 0.85rem; color: #666; }
-.rb-gantt__row { display: flex; border-bottom: 1px solid #eee; min-height: 48px; position: relative; }
-.rb-gantt__row-label { position: sticky; left: 0; min-width: 140px; max-width: 140px; padding: 8px; background: #fafafa; border-right: 2px solid #ccc; font-size: 0.9rem; z-index: 5; }
-.rb-gantt__row-label small { display: block; color: #888; font-size: 0.75rem; }
-.rb-gantt__row-area { position: relative; flex: 1; }
-.rb-gantt__row-area > .rb-gantt__cell { position: absolute; top: 0; bottom: 0; border-right: 1px solid #f0f0f0; }
-.rb-gantt__row-area > .rb-gantt__cell--hour { border-right-color: #ddd; }
 
-.rb-rsv { position: absolute; top: 4px; bottom: 4px; border-radius: 6px; padding: 4px 8px; cursor: pointer; overflow: hidden; font-size: 0.78rem; line-height: 1.2; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-.rb-rsv--confirmed { background: #bbdefb; border: 1px solid #1976d2; color: #0d47a1; }
-.rb-rsv--pending { background: #fff9c4; border: 1px solid #f57c00; color: #e65100; }
-.rb-rsv--seated { background: #c8e6c9; border: 1px solid #2e7d32; color: #1b5e20; }
-.rb-rsv--no_show { background: #ffcdd2; border: 1px solid #c62828; color: #b71c1c; opacity: 0.8; }
-.rb-rsv--cancelled { background: #cfd8dc; border: 1px solid #607d8b; color: #455a64; opacity: 0.6; }
-.rb-rsv--completed { background: #d1c4e9; border: 1px solid #5e35b1; color: #311b92; }
-.rb-rsv__name { font-weight: 700; }
-.rb-rsv__meta { display: flex; gap: 6px; }
-.rb-rsv__tags { font-size: 0.7rem; }
-.rb-rsv--vip::before { content: '★'; color: #ffd600; margin-right: 2px; }
+.rb-gantt__header {
+  position: sticky;
+  top: 0;
+  background: var(--rb-surface-muted);
+  z-index: 10;
+  display: flex;
+  border-bottom: 1px solid var(--rb-border);
+}
 
-.rb-empty { padding: 32px; text-align: center; color: #888; }
+.rb-gantt__corner {
+  position: sticky;
+  left: 0;
+  min-width: 140px;
+  max-width: 140px;
+  padding: 10px 12px;
+  background: var(--rb-surface-muted);
+  border-right: 1px solid var(--rb-border);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--rb-text-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+}
 
-/* Detail panel (modal) */
-.rb-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
-.rb-modal__content { background: #fff; border-radius: 8px; padding: 20px; max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; }
-.rb-modal__close { position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888; }
-.rb-modal h3 { margin: 0 0 12px; }
-.rb-modal__row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 0.9rem; }
-.rb-modal__row > span:first-child { color: #777; }
-.rb-modal__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
-.rb-modal__actions button { padding: 10px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem; }
-.rb-btn-seat { background: #2e7d32; color: #fff; }
-.rb-btn-noshow { background: #c62828; color: #fff; }
-.rb-btn-cancel { background: #607d8b; color: #fff; }
-.rb-btn-edit { background: #1976d2; color: #fff; }
-.rb-btn-resend { background: #ef6c00; color: #fff; }
-.rb-modal__form-group { margin-bottom: 12px; }
-.rb-modal__form-group label { display: block; font-size: 0.85rem; color: #555; margin-bottom: 4px; }
-.rb-modal__form-group input, .rb-modal__form-group select, .rb-modal__form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; box-sizing: border-box; font-family: inherit; }
+.rb-gantt__hours {
+  display: flex;
+}
 
-.rb-table-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
-.rb-table-list label { display: flex; align-items: center; gap: 4px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
-.rb-table-list input { margin: 0; }
+.rb-gantt__hour {
+  min-width: 120px;
+  max-width: 120px;
+  padding: 10px 6px;
+  text-align: left;
+  border-right: 1px solid var(--rb-border);
+  font-size: 12px;
+  color: var(--rb-text-sub);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
 
-.rb-qr-img { display: block; margin: 12px auto; max-width: 200px; }
-.rb-qr-url { word-break: break-all; font-family: monospace; font-size: 0.8rem; background: #f5f5f5; padding: 8px; border-radius: 4px; }
+.rb-gantt__row {
+  display: flex;
+  border-bottom: 1px solid var(--rb-border);
+  min-height: 56px;
+  position: relative;
+  transition: background 0.1s;
+}
 
-/* Customer list */
-.rb-customers { padding: 12px; }
-.rb-customers__filters { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-.rb-customers__filters input, .rb-customers__filters select { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; }
-.rb-customers__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
-.rb-customer-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; cursor: pointer; }
-.rb-customer-card:hover { border-color: #1976d2; }
-.rb-customer-card__name { font-weight: 700; }
-.rb-customer-card__meta { color: #666; font-size: 0.85rem; margin-top: 4px; }
-.rb-customer-card__tags { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
-.rb-tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: #e0e0e0; }
-.rb-tag--vip { background: #ffd600; color: #000; }
-.rb-tag--blacklist { background: #c62828; color: #fff; }
+.rb-gantt__row:hover { background: var(--rb-surface-muted); }
+
+.rb-gantt__row-label {
+  position: sticky;
+  left: 0;
+  min-width: 140px;
+  max-width: 140px;
+  padding: 10px 12px;
+  background: var(--rb-surface);
+  border-right: 1px solid var(--rb-border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rb-text);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.rb-gantt__row:hover .rb-gantt__row-label { background: var(--rb-surface-muted); }
+
+.rb-gantt__row-label small {
+  display: block;
+  color: var(--rb-text-mute);
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.rb-gantt__row-area {
+  position: relative;
+  flex: 1;
+}
+
+.rb-gantt__row-area > .rb-gantt__cell {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-right: 1px dashed var(--rb-border);
+}
+
+.rb-gantt__row-area > .rb-gantt__cell--hour {
+  border-right: 1px solid var(--rb-border-strong);
+}
+
+/* Now marker (現在時刻の縦線) */
+.rb-gantt__now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--rb-alert);
+  box-shadow: 0 0 8px rgba(220,38,38,0.35);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.rb-gantt__now::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--rb-alert);
+}
+
+/* ------------------------------------------------------------
+ * 予約ブロック
+ * ------------------------------------------------------------ */
+.rb-rsv {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: var(--rb-radius-sm);
+  padding: 6px 8px;
+  cursor: pointer;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.25;
+  box-shadow: var(--rb-shadow-sm);
+  border: 1px solid transparent;
+  border-left-width: 3px;
+  transition: transform 0.08s, box-shadow 0.12s;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 56px;
+}
+
+.rb-rsv:hover {
+  box-shadow: var(--rb-shadow-md);
+  transform: translateY(-1px);
+  z-index: 2;
+}
+
+.rb-rsv:focus-visible {
+  outline: 2px solid var(--rb-accent);
+  outline-offset: 1px;
+  z-index: 2;
+}
+
+.rb-rsv__time {
+  font-weight: 700;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rb-rsv__party {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255,255,255,0.55);
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.rb-rsv__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rb-rsv__name {
+  font-weight: 600;
+  font-size: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rb-rsv__meta {
+  font-size: 10.5px;
+  opacity: 0.82;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rb-rsv__tags {
+  display: inline-flex;
+  gap: 3px;
+  font-size: 10px;
+  margin-top: 1px;
+}
+
+/* 状態別 */
+.rb-rsv--confirmed {
+  background: var(--rb-st-confirmed-bg);
+  border-color: var(--rb-st-confirmed-bd);
+  color: var(--rb-st-confirmed-fg);
+}
+.rb-rsv--pending {
+  background: var(--rb-st-pending-bg);
+  border-color: var(--rb-st-pending-bd);
+  color: var(--rb-st-pending-fg);
+}
+.rb-rsv--seated {
+  background: var(--rb-st-seated-bg);
+  border-color: var(--rb-st-seated-bd);
+  color: var(--rb-st-seated-fg);
+}
+.rb-rsv--no_show {
+  background: var(--rb-st-noshow-bg);
+  border-color: var(--rb-st-noshow-bd);
+  color: var(--rb-st-noshow-fg);
+  opacity: 0.82;
+}
+.rb-rsv--cancelled {
+  background: var(--rb-st-cancelled-bg);
+  border-color: var(--rb-st-cancelled-bd);
+  color: var(--rb-st-cancelled-fg);
+  opacity: 0.7;
+}
+.rb-rsv--completed {
+  background: var(--rb-st-completed-bg);
+  border-color: var(--rb-st-completed-bd);
+  color: var(--rb-st-completed-fg);
+}
+
+.rb-rsv--vip::before {
+  content: '★';
+  color: #eab308;
+  text-shadow: 0 0 4px rgba(234,179,8,0.5);
+  margin-right: 2px;
+}
+
+.rb-rsv--narrow .rb-rsv__meta,
+.rb-rsv--narrow .rb-rsv__tags { display: none; }
+
+.rb-rsv--narrow .rb-rsv__name {
+  font-size: 11px;
+}
+
+/* 未割当行 (Gantt 下段、旧互換用。attention に集約した後はほぼ出ない) */
+.rb-gantt__row--unassigned {
+  background: linear-gradient(90deg, var(--rb-warn-soft), var(--rb-surface) 30%);
+}
+
+.rb-gantt__row--unassigned .rb-gantt__row-label {
+  background: var(--rb-warn-soft);
+  color: #92400e;
+}
+
+/* ------------------------------------------------------------
+ * 空 / 読み込み中
+ * ------------------------------------------------------------ */
+.rb-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--rb-text-mute);
+  font-size: 13px;
+}
+
+.rb-loading {
+  padding: 24px;
+  text-align: center;
+  color: var(--rb-text-mute);
+  font-size: 13px;
+}
+
+/* ------------------------------------------------------------
+ * Detail モーダル / drawer
+ *   - .rb-modal (既存) は中央モーダル (edit/create/customer/course/qr)
+ *   - .rb-modal--drawer (detail) は ≥768px で右 drawer 化
+ * ------------------------------------------------------------ */
+.rb-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.45);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: rb-modal-fade 0.15s ease-out;
+}
+
+@keyframes rb-modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rb-modal__content {
+  background: var(--rb-surface);
+  border-radius: var(--rb-radius);
+  padding: 24px;
+  max-width: 540px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: var(--rb-shadow-lg);
+  animation: rb-modal-pop 0.18s ease-out;
+}
+
+@keyframes rb-modal-pop {
+  from { transform: translateY(8px) scale(0.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.rb-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--rb-surface-muted);
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--rb-text-sub);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background 0.1s;
+  font-family: inherit;
+}
+
+.rb-modal__close:hover {
+  background: var(--rb-surface-hover);
+  color: var(--rb-text);
+}
+
+.rb-modal h3 {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--rb-text);
+  padding-right: 40px;
+}
+
+.rb-modal__row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rb-border);
+  font-size: 13px;
+  gap: 12px;
+}
+
+.rb-modal__row > span:first-child {
+  color: var(--rb-text-mute);
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.rb-modal__row > span:last-child {
+  color: var(--rb-text);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.rb-modal__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rb-border);
+}
+
+.rb-modal__actions button,
+.rb-modal__actions a {
+  padding: 9px 14px;
+  border-radius: var(--rb-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+  transition: background 0.12s, box-shadow 0.12s;
+}
+
+.rb-modal__actions button:focus-visible,
+.rb-modal__actions a:focus-visible {
+  outline: 2px solid var(--rb-accent);
+  outline-offset: 2px;
+}
+
+.rb-btn-seat   { background: var(--rb-st-seated-bd); color: #fff; }
+.rb-btn-seat:hover { background: #15803d; }
+.rb-btn-noshow { background: var(--rb-st-noshow-bd); color: #fff; }
+.rb-btn-noshow:hover { background: #b91c1c; }
+.rb-btn-cancel { background: var(--rb-surface-muted); color: var(--rb-text); border-color: var(--rb-border-strong); }
+.rb-btn-cancel:hover { background: var(--rb-surface-hover); }
+.rb-btn-edit   { background: var(--rb-accent); color: #fff; }
+.rb-btn-edit:hover { background: #1e3a8a; }
+.rb-btn-resend { background: #d97706; color: #fff; }
+.rb-btn-resend:hover { background: #b45309; }
+
+.rb-modal__form-group { margin-bottom: 14px; }
+.rb-modal__form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rb-text-sub);
+  margin-bottom: 5px;
+}
+.rb-modal__form-group input,
+.rb-modal__form-group select,
+.rb-modal__form-group textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--rb-border-strong);
+  border-radius: var(--rb-radius-sm);
+  font-size: 14px;
+  box-sizing: border-box;
+  font-family: inherit;
+  color: var(--rb-text);
+  background: var(--rb-surface);
+  transition: border-color 0.12s, box-shadow 0.12s;
+  outline: none;
+}
+.rb-modal__form-group input:focus,
+.rb-modal__form-group select:focus,
+.rb-modal__form-group textarea:focus {
+  border-color: var(--rb-accent);
+  box-shadow: 0 0 0 3px rgba(30,64,175,0.15);
+}
+
+/* detail 用: status pill + grid */
+.rb-detail__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-right: 40px;
+}
+.rb-detail__title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--rb-text);
+}
+.rb-detail__sub {
+  font-size: 13px;
+  color: var(--rb-text-sub);
+}
+.rb-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+}
+.rb-status-pill--confirmed { background: var(--rb-st-confirmed-bg); color: var(--rb-st-confirmed-fg); border-color: var(--rb-st-confirmed-bd); }
+.rb-status-pill--pending   { background: var(--rb-st-pending-bg);   color: var(--rb-st-pending-fg);   border-color: var(--rb-st-pending-bd); }
+.rb-status-pill--seated    { background: var(--rb-st-seated-bg);    color: var(--rb-st-seated-fg);    border-color: var(--rb-st-seated-bd); }
+.rb-status-pill--no_show   { background: var(--rb-st-noshow-bg);    color: var(--rb-st-noshow-fg);    border-color: var(--rb-st-noshow-bd); }
+.rb-status-pill--cancelled { background: var(--rb-st-cancelled-bg); color: var(--rb-st-cancelled-fg); border-color: var(--rb-st-cancelled-bd); }
+.rb-status-pill--completed { background: var(--rb-st-completed-bg); color: var(--rb-st-completed-fg); border-color: var(--rb-st-completed-bd); }
+
+/* ------------------------------------------------------------
+ * Drawer (tablet / desktop 時の detail モーダル)
+ * ------------------------------------------------------------ */
+@media (min-width: 768px) {
+  .rb-modal--drawer {
+    align-items: stretch;
+    justify-content: flex-end;
+    padding: 0;
+    animation: rb-modal-fade 0.12s ease-out;
+  }
+  .rb-modal--drawer .rb-modal__content {
+    max-width: 480px;
+    width: 480px;
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+    padding: 28px 28px 24px;
+    animation: rb-drawer-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+    box-shadow: -12px 0 32px rgba(0,0,0,0.18);
+    overflow-y: auto;
+  }
+}
+
+@keyframes rb-drawer-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rb-modal, .rb-modal__content, .rb-modal--drawer .rb-modal__content {
+    animation: none !important;
+  }
+}
+
+/* ------------------------------------------------------------
+ * テーブル割当リスト (modal 内)
+ * ------------------------------------------------------------ */
+.rb-table-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+
+.rb-table-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--rb-border-strong);
+  border-radius: var(--rb-radius-sm);
+  cursor: pointer;
+  background: var(--rb-surface);
+  font-size: 13px;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.rb-table-list label:hover {
+  background: var(--rb-surface-muted);
+  border-color: var(--rb-accent);
+}
+
+.rb-table-list input { margin: 0; accent-color: var(--rb-accent); }
+
+/* ------------------------------------------------------------
+ * Customers / Courses / Stats shared
+ * ------------------------------------------------------------ */
+.rb-customers { padding: 16px; }
+
+.rb-customers__filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.rb-customers__filters input[type="text"],
+.rb-customers__filters input[type="date"],
+.rb-customers__filters select {
+  padding: 8px 11px;
+  border: 1px solid var(--rb-border-strong);
+  border-radius: var(--rb-radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--rb-surface);
+  color: var(--rb-text);
+  outline: none;
+}
+
+.rb-customers__filters input:focus,
+.rb-customers__filters select:focus {
+  border-color: var(--rb-accent);
+  box-shadow: 0 0 0 3px rgba(30,64,175,0.12);
+}
+
+.rb-customers__filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--rb-text-sub);
+  cursor: pointer;
+}
+
+.rb-customers__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.rb-customer-card {
+  background: var(--rb-surface);
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius);
+  padding: 14px;
+  cursor: pointer;
+  transition: border-color 0.1s, box-shadow 0.12s, transform 0.08s;
+}
+
+.rb-customer-card:hover {
+  border-color: var(--rb-accent);
+  box-shadow: var(--rb-shadow-md);
+  transform: translateY(-1px);
+}
+
+.rb-customer-card__name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--rb-text);
+}
+
+.rb-customer-card__meta {
+  color: var(--rb-text-sub);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.rb-customer-card__tags {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.rb-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--rb-surface-muted);
+  color: var(--rb-text-sub);
+  font-weight: 600;
+}
+.rb-tag--vip { background: #fef3c7; color: #92400e; }
+.rb-tag--blacklist { background: var(--rb-alert); color: #fff; }
+
+/* settings / stats の微調整 */
+#rb-settings-form {
+  max-width: 680px;
+  padding: 4px;
+}
+#rb-settings-form hr {
+  border: none;
+  border-top: 1px solid var(--rb-border);
+  margin: 18px 0 12px;
+}
+#rb-settings-form h4 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rb-text-sub);
+  margin: 0 0 10px;
+}
+
+.rb-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+.rb-stats-table th,
+.rb-stats-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--rb-border);
+  text-align: left;
+}
+.rb-stats-table th {
+  font-weight: 600;
+  color: var(--rb-text-sub);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--rb-surface-muted);
+}
+.rb-stats-table td:nth-child(n+2),
+.rb-stats-table th:nth-child(n+2) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rb-bar {
+  display: inline-block;
+  background: var(--rb-accent);
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+  text-align: left;
+}
+
+/* QR 印刷エリア */
+#rb-seat-qr {
+  display: inline-block;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius);
+  margin: 10px 0;
+}
+
+/* ------------------------------------------------------------
+ * モバイル (<768px)
+ * ------------------------------------------------------------ */
+@media (max-width: 767px) {
+  #reservation-board-container { font-size: 13px; }
+
+  .rb-tab-nav {
+    padding: 4px;
+    gap: 0;
+  }
+  .rb-tab-nav button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .rb-topbar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .rb-topbar__actions {
+    order: 3;
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .rb-topbar__date input[type="date"] {
+    min-width: 120px;
+    font-size: 13px;
+  }
+
+  .rb-kpi {
+    top: 55px;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .rb-kpi__card { padding: 10px 12px; min-height: 60px; }
+  .rb-kpi__value { font-size: 18px; }
+  .rb-kpi__label { font-size: 10px; }
+
+  .rb-gantt {
+    max-height: calc(100vh - 220px);
+  }
+  .rb-gantt__corner,
+  .rb-gantt__row-label {
+    min-width: 100px;
+    max-width: 100px;
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  /* モバイル時は detail モーダルを下から bottom sheet 化 */
+  .rb-modal--drawer .rb-modal__content {
+    max-width: 100%;
+    max-height: 85vh;
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    margin-top: auto;
+    animation: rb-sheet-up 0.22s ease-out;
+  }
+  .rb-modal--drawer {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  @keyframes rb-sheet-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .rb-modal__content {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .rb-kpi { grid-template-columns: 1fr 1fr; }
+  .rb-customers__list { grid-template-columns: 1fr; }
+}
