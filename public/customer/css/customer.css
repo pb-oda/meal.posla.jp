@@ -846,4 +846,122 @@ body.lang-en .menu-item__add-btn::after { content: ''; }
   word-break: break-word;
 }
 
+/* ============================================================
+ * Batch-E-3 (2026-04-22): action-bar 統合 + bottom sheet トーン揃え
+ *
+ * 他社参考 (公式、抽象化):
+ *  - Square QR Code Ordering: https://squareup.com/us/en/online-ordering/qr-code-ordering
+ *    → カート bar は 1 本 sticky、決済 CTA 1 つで完結。複数 bar を縦積みしない
+ *  - Toast Ordering Screens: https://support.toasttab.com/en/article/New-POS-Experience-Ordering-Screens
+ *    → 主操作と副操作が混ざらない。両方並ぶ場合も、主=大 / 副=小 で視覚重み差を付ける
+ *  模倣しない: ブランドカラー、POS 専用タイル、決済 UI 独自導線
+ *
+ * 既存 #cart-bar / #checkout-bar / #btn-view-cart / #btn-checkout / 全 class /
+ * 既存 JS (cart-bar.style.display / checkout-bar.style.display /
+ *   cart-bar.classList.add('checkout-active')) は全て不変。
+ * ============================================================ */
+
+/* 共通 wrapper: 複数の底部 bar を 1 段に統合 */
+.action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  z-index: 200;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.14);
+  padding-bottom: var(--cm-safe-bottom, 0);
+  background: transparent;
+  pointer-events: none;
+}
+
+.action-bar > * {
+  pointer-events: auto;
+}
+
+/* cart-bar: action-bar 内で flex child として挙動、固定 position は無効化 */
+.action-bar > .cart-bar {
+  position: static;
+  z-index: auto;
+  box-shadow: none;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* checkout-bar: 両方 visible 時はコンパクト右寄せ、単独時は full-width */
+.action-bar > .checkout-bar {
+  position: static;
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Batch-E-3: 旧 .cart-bar.checkout-active ルール (bottom:56px 2段積み) を無害化
+   親 .action-bar が flex で制御するので、このクラスが付いても位置は変わらない */
+.action-bar > .cart-bar.checkout-active {
+  bottom: auto;
+}
+
+/* cart-bar が非表示 (display:none) の場合、checkout-bar が全幅を取る */
+.action-bar > .cart-bar[style*="display:none"] + .checkout-bar,
+.action-bar > .cart-bar[style*="display: none"] + .checkout-bar {
+  flex: 1 1 auto;
+  padding: 10px 16px;
+}
+
+.action-bar > .cart-bar[style*="display:none"] + .checkout-bar .checkout-bar__btn,
+.action-bar > .cart-bar[style*="display: none"] + .checkout-bar .checkout-bar__btn {
+  max-width: 400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* 両方 visible 時: checkout-bar のボタンはコンパクト (アイコン+短ラベル) */
+.action-bar > .cart-bar:not([style*="display:none"]):not([style*="display: none"]) ~ .checkout-bar .checkout-bar__btn {
+  padding: 10px 16px;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+/* cart-bar / checkout-bar の背景 shadow は action-bar 側に委譲 */
+.action-bar > .cart-bar,
+.action-bar > .checkout-bar {
+  box-shadow: none;
+}
+
+/* 共通 bottom-sheet トーン (cart-overlay / checkout-modal / option-modal)
+   既存 class は維持、sheet content 部の padding-bottom に safe-area を追加して
+   iOS ホームバーと被らないようにする */
+.cart-modal,
+.checkout-modal__content,
+.option-modal {
+  padding-bottom: var(--cm-safe-bottom, 0);
+}
+
+/* .cart-modal__footer にも safe-area を反映 (footer が一番下なので) */
+.cart-modal__footer {
+  padding-bottom: calc(1rem + var(--cm-safe-bottom, 0px));
+}
+
+/* .checkout-modal__body 末尾ボタンが safe-area と被らないように */
+.checkout-modal__body {
+  padding-bottom: calc(16px + var(--cm-safe-bottom, 0px));
+}
+
+/* モバイル: action-bar が両方 visible 時、padding を絞って横スペース確保 */
+@media (max-width: 380px) {
+  .action-bar > .checkout-bar {
+    padding: 10px 10px;
+  }
+  .action-bar > .cart-bar:not([style*="display:none"]):not([style*="display: none"]) ~ .checkout-bar .checkout-bar__btn {
+    padding: 10px 12px;
+    font-size: 0.8125rem;
+  }
+}
+
+
 

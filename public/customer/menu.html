@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#ff6f00">
   <title>セルフオーダー</title>
-  <link rel="stylesheet" href="css/customer.css?v=20260422-batch-e2d">
+  <link rel="stylesheet" href="css/customer.css?v=20260422-batch-e3">
   <style>
     .plan-banner { background:linear-gradient(135deg,#ff6f00,#ff8f00); color:#fff; padding:0.5rem 1rem; text-align:center; font-size:0.875rem; }
     .plan-banner__name { font-weight:700; }
@@ -222,18 +222,20 @@
     <div class="loading-overlay"><span class="loading-spinner"></span> メニューを読み込み中...</div>
   </main>
 
-  <!-- カートバー -->
-  <div class="cart-bar" id="cart-bar" style="display:none">
-    <div class="cart-bar__info">
-      <span class="cart-bar__count" id="cart-count">0</span>品
-      <span class="cart-bar__total" id="cart-total">&yen;0</span>
+  <!-- Batch-E-3: cart-bar + checkout-bar を action-bar で統合 (縦 2 段 → 横 1 段) -->
+  <div class="action-bar" id="action-bar">
+    <!-- カートバー -->
+    <div class="cart-bar" id="cart-bar" style="display:none">
+      <div class="cart-bar__info">
+        <span class="cart-bar__count" id="cart-count">0</span>品
+        <span class="cart-bar__total" id="cart-total">&yen;0</span>
+      </div>
+      <button class="cart-bar__btn" id="btn-view-cart">注文を確認</button>
     </div>
-    <button class="cart-bar__btn" id="btn-view-cart">注文を確認</button>
-  </div>
-
-  <!-- L-8: セルフレジ — チェックアウトバー -->
-  <div class="checkout-bar" id="checkout-bar">
-    <button class="checkout-bar__btn" id="btn-checkout">お会計</button>
+    <!-- L-8: セルフレジ — チェックアウトバー -->
+    <div class="checkout-bar" id="checkout-bar">
+      <button class="checkout-bar__btn" id="btn-checkout">お会計</button>
+    </div>
   </div>
 
   <!-- カートモーダル -->
