@@ -229,6 +229,7 @@
       case 'external-pos':
         loadLineSettings();
         loadLineCustomerLinks();
+        loadLineLinkTokens();
         loadSmaregiStatus();
         break;
       case 'shift-overview':
@@ -1509,6 +1510,187 @@
       loadLineCustomerLinks();
     }).catch(function (err) {
       showToast(err.message || '解除に失敗しました', 'error');
+    });
+  }
+
+  // ═══════════════════════════════════
+  // L-17 Phase 2A-2: リンク用 one-time token
+  // ═══════════════════════════════════
+  var _lineLinkTokensCache = null;
+  var _lineLinkTokenLastIssued = null;
+
+  function loadLineLinkTokens() {
+    var container = document.getElementById('line-link-tokens-content');
+    if (!container) return;
+    container.innerHTML = '<span style="color:#888;">読み込み中...</span>';
+
+    AdminApi.getLineLinkTokens().then(function (res) {
+      var data = (res && res.tokens) ? res.tokens : null;
+      _lineLinkTokensCache = data;
+      renderLineLinkTokens(container, data);
+    }).catch(function (err) {
+      container.innerHTML = '<p style="color:#c62828;">' + Utils.escapeHtml(err.message || '読み込みに失敗しました') + '</p>';
+    });
+  }
+
+  function _formatLineTokenDate(s) {
+    if (!s) return '—';
+    return String(s).replace('T', ' ').substring(0, 16);
+  }
+
+  function renderLineLinkTokens(container, data) {
+    if (!data) {
+      container.innerHTML = '<p style="color:#888;">読み込みに失敗しました。</p>';
+      return;
+    }
+    if (data.migration_applied === false) {
+      container.innerHTML =
+        '<p style="color:#888;margin:0 0 0.5rem;">リンク用トークン用マイグレーションがまだ適用されていません。</p>' +
+        '<p style="font-size:0.85rem;color:#888;margin:0;">sql/migration-l17-2a2-line-link-tokens.sql を適用後に利用できます。</p>';
+      return;
+    }
+
+    var html = '';
+    html += '<p style="color:#666;font-size:0.9rem;margin:0 0 1rem;">' +
+            '顧客に LINE 公式アカウントで「<code>LINK:XXXXXX</code>」と送信してもらうと、予約顧客と LINE が連携されます。' +
+            'トークンの有効期限は 30 分、1 回のみ使用できます。</p>';
+
+    // 発行フォーム
+    html += '<div style="background:#fafafa;border:1px solid #e0e0e0;border-radius:6px;padding:1rem;margin-bottom:1rem;">' +
+              '<div style="font-weight:600;margin-bottom:0.5rem;font-size:0.9rem;">新しいトークンを発行</div>' +
+              '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;margin-bottom:0.5rem;">' +
+                '<input type="text" id="line-token-customer-id-input" placeholder="reservation_customer_id (UUID)" style="flex:1;min-width:260px;padding:0.4rem 0.6rem;border:1px solid #ccc;border-radius:4px;font-family:monospace;font-size:0.85rem;">' +
+                '<button class="btn btn-primary btn-sm" id="line-token-issue-by-id-btn">この顧客ID で発行</button>' +
+              '</div>' +
+              '<div style="font-size:0.8rem;color:#888;margin:0.35rem 0 0.75rem;">または</div>' +
+              '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">' +
+                '<input type="text" id="line-token-store-id-input" placeholder="store_id (UUID)" style="flex:1;min-width:220px;padding:0.4rem 0.6rem;border:1px solid #ccc;border-radius:4px;font-family:monospace;font-size:0.85rem;">' +
+                '<input type="tel" id="line-token-phone-input" placeholder="customer_phone (例: 090-1234-5678)" style="flex:1;min-width:200px;padding:0.4rem 0.6rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;">' +
+                '<button class="btn btn-primary btn-sm" id="line-token-issue-by-phone-btn">店舗×電話番号で発行</button>' +
+              '</div>' +
+              '<div style="font-size:0.78rem;color:#aaa;margin-top:0.5rem;">' +
+                '※ reservation_customer_id は予約顧客の内部 UUID です (予約管理画面から取得)。' +
+              '</div>' +
+            '</div>';
+
+    // 直近発行結果
+    if (_lineLinkTokenLastIssued) {
+      var t = _lineLinkTokenLastIssued;
+      var cname = (t.customer && t.customer.customer_name) ? t.customer.customer_name : '(名称なし)';
+      html += '<div style="background:#e8f5e9;border:1px solid #66bb6a;border-radius:6px;padding:1rem;margin-bottom:1rem;">' +
+                '<div style="font-weight:600;margin-bottom:0.35rem;color:#2e7d32;font-size:0.9rem;">発行済トークン (コピーして顧客にお伝えください)</div>' +
+                '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;margin:0.5rem 0;">' +
+                  '<code id="line-token-last-code" style="font-size:1.5rem;font-weight:700;color:#2e7d32;background:#fff;padding:0.35rem 0.75rem;border-radius:4px;letter-spacing:0.15em;">LINK:' + Utils.escapeHtml(t.token) + '</code>' +
+                  '<button class="btn btn-sm" id="line-token-copy-btn">コピー</button>' +
+                '</div>' +
+                '<div style="font-size:0.85rem;color:#555;">顧客: <strong>' + Utils.escapeHtml(cname) + '</strong> / 有効期限: ' + Utils.escapeHtml(_formatLineTokenDate(t.expires_at)) + '</div>' +
+              '</div>';
+    }
+
+    // active tokens list
+    var active = (data.active && data.active.length) ? data.active : [];
+    html += '<div style="font-weight:600;margin-bottom:0.5rem;font-size:0.9rem;">有効なトークン</div>';
+    if (active.length === 0) {
+      html += '<p style="color:#888;font-size:0.9rem;margin:0;">現在有効なトークンはありません。</p>';
+    } else {
+      html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;">' +
+              '<thead><tr style="background:#f0f0f0;text-align:left;">' +
+                '<th style="padding:0.4rem 0.5rem;width:120px;">コード</th>' +
+                '<th style="padding:0.4rem 0.5rem;">顧客</th>' +
+                '<th style="padding:0.4rem 0.5rem;width:140px;">電話番号</th>' +
+                '<th style="padding:0.4rem 0.5rem;width:140px;">店舗</th>' +
+                '<th style="padding:0.4rem 0.5rem;width:140px;">有効期限</th>' +
+                '<th style="padding:0.4rem 0.5rem;width:90px;">操作</th>' +
+              '</tr></thead><tbody>';
+      for (var i = 0; i < active.length; i++) {
+        var a = active[i];
+        html += '<tr style="border-bottom:1px solid #eee;">' +
+                  '<td style="padding:0.4rem 0.5rem;font-family:monospace;font-weight:700;color:#2e7d32;letter-spacing:0.1em;">' + Utils.escapeHtml(a.token) + '</td>' +
+                  '<td style="padding:0.4rem 0.5rem;">' + Utils.escapeHtml(a.customer_name || '(名称なし)') + '</td>' +
+                  '<td style="padding:0.4rem 0.5rem;color:#555;">' + Utils.escapeHtml(a.customer_phone || '—') + '</td>' +
+                  '<td style="padding:0.4rem 0.5rem;color:#555;">' + Utils.escapeHtml(a.store_name || '—') + '</td>' +
+                  '<td style="padding:0.4rem 0.5rem;font-size:0.8rem;color:#888;">' + Utils.escapeHtml(_formatLineTokenDate(a.expires_at)) + '</td>' +
+                  '<td style="padding:0.4rem 0.5rem;">' +
+                    '<button class="btn btn-sm line-token-revoke-btn" data-token-id="' + Utils.escapeHtml(a.id) + '" style="color:#c62828;border-color:#c62828;">失効</button>' +
+                  '</td>' +
+                '</tr>';
+      }
+      html += '</tbody></table></div>';
+    }
+
+    container.innerHTML = html;
+    bindLineLinkTokensEvents(container);
+  }
+
+  function bindLineLinkTokensEvents(container) {
+    var issueIdBtn = container.querySelector('#line-token-issue-by-id-btn');
+    if (issueIdBtn) {
+      issueIdBtn.addEventListener('click', function () {
+        var cid = (document.getElementById('line-token-customer-id-input') || {}).value;
+        cid = (cid || '').trim();
+        if (!cid) { showToast('reservation_customer_id を入力してください', 'error'); return; }
+        issueLineLinkTokenCall({ reservation_customer_id: cid });
+      });
+    }
+    var issuePhoneBtn = container.querySelector('#line-token-issue-by-phone-btn');
+    if (issuePhoneBtn) {
+      issuePhoneBtn.addEventListener('click', function () {
+        var sid = (document.getElementById('line-token-store-id-input') || {}).value;
+        var phone = (document.getElementById('line-token-phone-input') || {}).value;
+        sid = (sid || '').trim();
+        phone = (phone || '').trim();
+        if (!sid || !phone) { showToast('store_id と customer_phone を両方入力してください', 'error'); return; }
+        issueLineLinkTokenCall({ store_id: sid, customer_phone: phone });
+      });
+    }
+    var copyBtn = container.querySelector('#line-token-copy-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function () {
+        var codeEl = document.getElementById('line-token-last-code');
+        if (!codeEl) return;
+        var txt = codeEl.textContent || '';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(txt).then(function () {
+            showToast('コピーしました', 'success');
+          });
+        } else {
+          // fallback: select + execCommand
+          var range = document.createRange();
+          range.selectNodeContents(codeEl);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          try { document.execCommand('copy'); showToast('コピーしました', 'success'); } catch (e) { showToast('コピーに失敗しました', 'error'); }
+        }
+      });
+    }
+    var revokeBtns = container.querySelectorAll('.line-token-revoke-btn');
+    for (var i = 0; i < revokeBtns.length; i++) {
+      revokeBtns[i].addEventListener('click', function (e) {
+        var tokenId = e.currentTarget.getAttribute('data-token-id');
+        if (!tokenId) return;
+        if (!confirm('このトークンを失効させますか？')) return;
+        revokeLineLinkTokenCall(tokenId);
+      });
+    }
+  }
+
+  function issueLineLinkTokenCall(body) {
+    AdminApi.issueLineLinkToken(body).then(function (res) {
+      _lineLinkTokenLastIssued = res.token || null;
+      showToast('トークンを発行しました', 'success');
+      loadLineLinkTokens();
+    }).catch(function (err) {
+      showToast(err.message || 'トークン発行に失敗しました', 'error');
+    });
+  }
+
+  function revokeLineLinkTokenCall(tokenId) {
+    AdminApi.revokeLineLinkToken(tokenId).then(function () {
+      showToast('トークンを失効しました', 'success');
+      loadLineLinkTokens();
+    }).catch(function (err) {
+      showToast(err.message || '失効に失敗しました', 'error');
     });
   }
 

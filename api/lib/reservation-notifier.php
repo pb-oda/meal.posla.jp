@@ -8,6 +8,16 @@
  * - 多言語 (ja/en/zh-Hans/ko) テンプレート対応
  */
 
+require_once __DIR__ . '/../config/app.php';
+// L-17 Phase 2B-1: confirm 時 LINE 並行送信用 (optional include)
+// ファイルが無い環境でも落ちないよう存在チェック付き
+if (file_exists(__DIR__ . '/line-link.php')) {
+    require_once __DIR__ . '/line-link.php';
+}
+if (file_exists(__DIR__ . '/line-messaging.php')) {
+    require_once __DIR__ . '/line-messaging.php';
+}
+
 if (!function_exists('_l9_mail_send')) {
     /**
      * 実送信。返り値: ['success'=>bool, 'error'=>string|null]
@@ -43,16 +53,23 @@ if (!function_exists('_l9_mail_send')) {
 }
 
 if (!function_exists('_l9_log_notification')) {
-    function _l9_log_notification($pdo, $reservationId, $storeId, $type, $recipient, $subject, $body, $status, $error = null) {
+    /**
+     * @param string $channel 'email' | 'sms' | 'line' (L-17 Phase 2B-1: channel 引数化)
+     */
+    function _l9_log_notification($pdo, $reservationId, $storeId, $type, $recipient, $subject, $body, $status, $error = null, $channel = 'email') {
+        // enum 値のみ許可。未知値は 'email' にフォールバック
+        if (!in_array($channel, array('email', 'sms', 'line'), true)) {
+            $channel = 'email';
+        }
         try {
             $logId = bin2hex(random_bytes(18));
             $pdo->prepare(
                 "INSERT INTO reservation_notifications_log
                  (id, reservation_id, store_id, notification_type, channel, recipient, subject, body_excerpt, status, error_message, sent_at, created_at)
-                 VALUES (?, ?, ?, ?, 'email', ?, ?, ?, ?, ?, ?, NOW())"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
             )->execute(array(
-                $logId, $reservationId, $storeId, $type, $recipient,
-                mb_substr($subject, 0, 250), mb_substr($body, 0, 1000),
+                $logId, $reservationId, $storeId, $type, $channel, $recipient,
+                mb_substr((string)$subject, 0, 250), mb_substr((string)$body, 0, 1000),
                 $status, $error,
                 $status === 'sent' ? date('Y-m-d H:i:s') : null,
             ));
@@ -190,16 +207,108 @@ if (!function_exists('build_reservation_template')) {
     }
 }
 
+if (!function_exists('_l9_send_reservation_line')) {
+    /**
+     * L-17 Phase 2B-1: confirm 時に LINE 並行送信を試みる内部ヘルパ。
+     *
+     * 以下の全てを満たす場合のみ push を実行する:
+     *   1. tenant_line_settings が適用済で is_enabled=1
+     *   2. tenant_line_settings.channel_access_token が空でない
+     *   3. tenant_line_settings.notify_reservation_created=1 (L-17 Phase 1 設定)
+     *   4. reservation.customer_id がセットされている
+     *   5. reservation_customer_line_links に link_status='linked' な行がある
+     *
+     * 送信結果に関わらず reservation_notifications_log に channel='line' で
+     * 1 行残す。送信失敗で exception は投げない (caller は email 結果を優先)。
+     *
+     * @return array ['attempted'=>bool, 'success'=>bool, 'error'=>?string]
+     */
+    function _l9_send_reservation_line($pdo, $reservation, $type, $store, $tpl) {
+        if ($type !== 'confirm') {
+            return array('attempted' => false, 'success' => false, 'error' => 'LINE_TYPE_NOT_SUPPORTED');
+        }
+        if (!function_exists('line_link_get_by_customer') || !function_exists('line_push_message')) {
+            // ヘルパ未同梱 (phase 2A-1 未適用等) の環境では何もせず quiet skip
+            return array('attempted' => false, 'success' => false, 'error' => 'LINE_HELPERS_MISSING');
+        }
+        if (empty($reservation['customer_id'])) {
+            return array('attempted' => false, 'success' => false, 'error' => 'NO_CUSTOMER_ID');
+        }
+        $tenantId = isset($store['tenant_id']) ? $store['tenant_id'] : null;
+        if (!$tenantId) {
+            return array('attempted' => false, 'success' => false, 'error' => 'NO_TENANT_ID');
+        }
+
+        // tenant_line_settings を参照 (テーブル未作成なら silent skip)
+        try {
+            $stmt = $pdo->prepare(
+                'SELECT channel_access_token, is_enabled, notify_reservation_created
+                   FROM tenant_line_settings
+                  WHERE tenant_id = ?'
+            );
+            $stmt->execute(array($tenantId));
+            $settings = $stmt->fetch();
+        } catch (PDOException $e) {
+            return array('attempted' => false, 'success' => false, 'error' => 'LINE_SETTINGS_TABLE_MISSING');
+        }
+        if (!$settings) {
+            return array('attempted' => false, 'success' => false, 'error' => 'NO_LINE_SETTINGS');
+        }
+        if ((int)$settings['is_enabled'] !== 1) {
+            return array('attempted' => false, 'success' => false, 'error' => 'LINE_NOT_ENABLED');
+        }
+        if ((int)$settings['notify_reservation_created'] !== 1) {
+            return array('attempted' => false, 'success' => false, 'error' => 'NOTIFY_FLAG_OFF');
+        }
+        if (empty($settings['channel_access_token'])) {
+            return array('attempted' => false, 'success' => false, 'error' => 'NO_ACCESS_TOKEN');
+        }
+
+        // linked customer -> line_user_id 解決 (未連携なら skip)
+        $link = line_link_get_by_customer($pdo, $tenantId, $reservation['customer_id']);
+        if (!$link || empty($link['line_user_id'])) {
+            return array('attempted' => false, 'success' => false, 'error' => 'NOT_LINKED');
+        }
+
+        // LINE は subject 概念がないので「件名 + 本文」を 1 text message に結合。
+        // 本文はメールと同じ template をそのまま流用 (多言語対応は email と共通)。
+        $text = $tpl['subject'] . "\n\n" . $tpl['body'];
+        $messages = array(line_text_message($text));
+
+        $r = line_push_message($settings['channel_access_token'], $link['line_user_id'], $messages);
+
+        _l9_log_notification(
+            $pdo,
+            $reservation['id'],
+            $reservation['store_id'],
+            $type,
+            'line:' . substr($link['line_user_id'], 0, 8) . '…',
+            $tpl['subject'],
+            $text,
+            $r['success'] ? 'sent' : 'failed',
+            $r['success'] ? null : (isset($r['error']) ? (string)$r['error'] : 'LINE_SEND_FAILED'),
+            'line'
+        );
+
+        return array(
+            'attempted' => true,
+            'success'   => (bool)$r['success'],
+            'error'     => $r['success'] ? null : (isset($r['error']) ? $r['error'] : 'LINE_SEND_FAILED'),
+        );
+    }
+}
+
 if (!function_exists('send_reservation_notification')) {
     /**
-     * 予約通知メール送信のメインエントリ
+     * 予約通知のメインエントリ (メール + L-17 Phase 2B-1 で confirm だけ LINE 並行)
+     *
+     * email 送信結果が基本の返り値 (caller との互換性)。LINE 送信は confirm 時
+     * にのみ並行で試み、結果は reservation_notifications_log に channel='line'
+     * で残す。LINE 送信失敗でこの関数の success/error は変わらない。
      *
      * @return array ['success'=>bool, 'error'=>string|null]
      */
     function send_reservation_notification($pdo, $reservation, $type, $extra = array()) {
-        if (empty($reservation['customer_email'])) {
-            return array('success' => false, 'error' => 'NO_EMAIL');
-        }
         $store = _l9_resolve_store_info($pdo, $reservation['store_id']);
         if (!$store) return array('success' => false, 'error' => 'STORE_NOT_FOUND');
 
@@ -209,8 +318,23 @@ if (!function_exists('send_reservation_notification')) {
         $tpl = build_reservation_template($type, $reservation, $store, $lang, $extra);
         if (!$tpl) return array('success' => false, 'error' => 'UNKNOWN_TEMPLATE');
 
+        // L-17 Phase 2B-1: confirm 時のみ LINE 並行送信を試みる (失敗しても続行)
+        if ($type === 'confirm') {
+            try {
+                _l9_send_reservation_line($pdo, $reservation, $type, $store, $tpl);
+            } catch (Exception $e) {
+                // LINE 側で想定外例外が出ても email/caller を落とさない
+                error_log('[L-17 2B-1 line_send] ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            }
+        }
+
+        // メール送信 (従来挙動)
+        if (empty($reservation['customer_email'])) {
+            return array('success' => false, 'error' => 'NO_EMAIL');
+        }
+
         $fromName = $store['name'];
-        $fromEmail = 'noreply@eat.posla.jp';
+        $fromEmail = APP_FROM_EMAIL;
         $replyTo = !empty($settings['notification_email']) ? $settings['notification_email'] : null;
 
         $r = _l9_mail_send($reservation['customer_email'], $tpl['subject'], $tpl['body'], $fromName, $fromEmail, $replyTo);
@@ -223,7 +347,8 @@ if (!function_exists('send_reservation_notification')) {
             $tpl['subject'],
             $tpl['body'],
             $r['success'] ? 'sent' : 'failed',
-            $r['success'] ? null : $r['error']
+            $r['success'] ? null : $r['error'],
+            'email'
         );
         return $r;
     }

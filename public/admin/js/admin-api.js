@@ -98,6 +98,19 @@ var AdminApi = (function () {
     return request('DELETE', '/owner/line-customer-links.php?id=' + encodeURIComponent(linkId));
   }
 
+  // L-17 Phase 2A-2: リンク用 one-time token
+  function getLineLinkTokens() {
+    return request('GET', '/owner/line-link-tokens.php');
+  }
+
+  function issueLineLinkToken(data) {
+    return request('POST', '/owner/line-link-tokens.php', data);
+  }
+
+  function revokeLineLinkToken(tokenId) {
+    return request('DELETE', '/owner/line-link-tokens.php?id=' + encodeURIComponent(tokenId));
+  }
+
   // --- 店舗管理（owner） ---
   function getStores() {
     return request('GET', '/owner/stores.php');
@@ -770,6 +783,9 @@ var AdminApi = (function () {
     updateLineSettings: updateLineSettings,
     getLineCustomerLinks: getLineCustomerLinks,
     unlinkLineCustomer: unlinkLineCustomer,
+    getLineLinkTokens: getLineLinkTokens,
+    issueLineLinkToken: issueLineLinkToken,
+    revokeLineLinkToken: revokeLineLinkToken,
     getStores: getStores,
     getStore: getStore,
     createStore: createStore,
