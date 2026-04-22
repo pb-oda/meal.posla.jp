@@ -97,7 +97,7 @@
     "category": "認証・認可",
     "http_status": 403,
     "message": "本人確認に失敗しました",
-    "occurrences": 36,
+    "occurrences": 46,
     "files": [
       "api/customer/reservation-cancel.php",
       "api/customer/reservation-deposit-checkout.php",
@@ -108,8 +108,18 @@
       "api/owner/analytics-abc.php",
       "api/owner/users.php",
       "api/posla/monitor-events.php",
+      "api/push/test.php",
       "api/store/active-sessions.php",
       "api/store/ai-generate.php",
+      "api/store/emergency-payment-external-method.php",
+      "api/store/emergency-payment-ledger.php",
+      "api/store/emergency-payment-manual-transfer.php",
+      "api/store/emergency-payment-manual-void.php",
+      "api/store/emergency-payment-resolution.php",
+      "api/store/emergency-payment-transfer-void.php",
+      "api/store/emergency-payment-transfer.php",
+      "api/store/emergency-payments.php",
+      "api/store/payment-void.php",
       "api/store/reservation-courses.php",
       "api/store/reservation-customers.php",
       "api/store/reservation-settings.php",
@@ -193,7 +203,7 @@
     "category": "認証・認可",
     "http_status": 403,
     "message": "セッションが無効です",
-    "occurrences": 14,
+    "occurrences": 15,
     "files": [
       "api/customer/checkout-confirm.php",
       "api/customer/checkout-session.php",
@@ -481,8 +491,8 @@
     "errorNo": "E1005",
     "category": "システム / インフラ",
     "http_status": 500,
-    "message": "処理に失敗しました。時間を置いて再試行してください。",
-    "occurrences": 17,
+    "message": "emergency_payments テーブル未作成の可能性 (migration-pwa4-emergency-payments.sql)",
+    "occurrences": 33,
     "files": [
       "api/customer/reservation-create.php",
       "api/customer/satisfaction-rating.php",
@@ -490,9 +500,20 @@
       "api/kds/close-table.php",
       "api/kds/orders.php",
       "api/owner/ingredients.php",
+      "api/push/subscribe.php",
+      "api/push/unsubscribe.php",
       "api/signup/register.php",
       "api/smaregi/store-mapping.php",
+      "api/store/emergency-payment-external-method.php",
+      "api/store/emergency-payment-ledger.php",
+      "api/store/emergency-payment-manual-transfer.php",
+      "api/store/emergency-payment-manual-void.php",
+      "api/store/emergency-payment-resolution.php",
+      "api/store/emergency-payment-transfer-void.php",
+      "api/store/emergency-payment-transfer.php",
+      "api/store/emergency-payments.php",
       "api/store/handy-order.php",
+      "api/store/payment-void.php",
       "api/store/process-payment.php",
       "api/store/refund-payment.php",
       "api/store/shift/apply-ai-suggestions.php",
@@ -838,8 +859,9 @@
     "category": "リソース未発見",
     "http_status": 404,
     "message": "品目が見つかりません",
-    "occurrences": 1,
+    "occurrences": 2,
     "files": [
+      "api/customer/satisfaction-rating.php",
       "api/kds/update-item-status.php"
     ]
   },
@@ -848,7 +870,7 @@
     "category": "リソース未発見",
     "http_status": 404,
     "message": "メニューが見つかりません",
-    "occurrences": 68,
+    "occurrences": 77,
     "files": [
       "api/connect/disconnect.php",
       "api/customer/menu.php",
@@ -871,10 +893,17 @@
       "api/store/active-sessions.php",
       "api/store/course-phases.php",
       "api/store/course-templates.php",
+      "api/store/emergency-payment-external-method.php",
+      "api/store/emergency-payment-manual-transfer.php",
+      "api/store/emergency-payment-manual-void.php",
+      "api/store/emergency-payment-resolution.php",
+      "api/store/emergency-payment-transfer-void.php",
+      "api/store/emergency-payment-transfer.php",
       "api/store/handy-order.php",
       "api/store/kds-stations.php",
       "api/store/local-items.php",
       "api/store/menu-overrides.php",
+      "api/store/payment-void.php",
       "api/store/plan-menu-items.php",
       "api/store/process-payment.php",
       "api/store/refund-payment.php",
@@ -919,8 +948,9 @@
     "category": "リソース未発見",
     "http_status": 404,
     "message": "注文が見つかりません",
-    "occurrences": 2,
+    "occurrences": 3,
     "files": [
+      "api/customer/satisfaction-rating.php",
       "api/kds/update-status.php",
       "api/smaregi/sync-order.php"
     ]
@@ -1550,49 +1580,6 @@
       "api/store/terminal-intent.php"
     ]
   },
-  "INVALID_ITEM": {
-    "errorNo": "E1003",
-    "category": "システム / インフラ (未分類)",
-    "http_status": 404,
-    "message": "存在しないメニュー品目が含まれています",
-    "occurrences": 2,
-    "files": [
-      "api/lib/order-validator.php",
-      "api/store/process-payment.php"
-    ]
-  },
-  "INVALID_OPTION": {
-    "errorNo": "E1004",
-    "category": "システム / インフラ (未分類)",
-    "http_status": 404,
-    "message": "存在しないオプションが含まれています",
-    "occurrences": 1,
-    "files": [
-      "api/lib/order-validator.php"
-    ]
-  },
-  "INVALID_QUANTITY": {
-    "errorNo": "E1005",
-    "category": "システム / インフラ (未分類)",
-    "http_status": 400,
-    "message": "数量が不正です",
-    "occurrences": 2,
-    "files": [
-      "api/lib/order-validator.php"
-    ]
-  },
-  "STRIPE_MISMATCH": {
-    "errorNo": "E1006",
-    "category": "システム / インフラ (未分類)",
-    "http_status": 403,
-    "message": "決済情報が一致しません (metadata 不足)",
-    "occurrences": 20,
-    "files": [
-      "api/customer/checkout-confirm.php",
-      "api/customer/takeout-payment.php",
-      "api/store/process-payment.php"
-    ]
-  },
   "ALREADY_REFUNDED": {
     "errorNo": "E6001",
     "category": "決済・返金・Stripe・サブスク",
@@ -1794,7 +1781,7 @@
     "category": "決済・返金・Stripe・サブスク",
     "http_status": 500,
     "message": "プラットフォームの Stripe キーが設定されていません",
-    "occurrences": 1,
+    "occurrences": 2,
     "files": [
       "api/store/refund-payment.php"
     ]
@@ -2281,7 +2268,7 @@
     "category": "入力検証",
     "http_status": 400,
     "message": "store_id, table_id, session_token は必須です",
-    "occurrences": 44,
+    "occurrences": 46,
     "files": [
       "api/auth/change-password.php",
       "api/auth/login.php",
@@ -2308,6 +2295,8 @@
       "api/owner/users.php",
       "api/posla/change-password.php",
       "api/posla/login.php",
+      "api/push/subscribe.php",
+      "api/push/unsubscribe.php",
       "api/signup/register.php",
       "api/store/active-sessions.php",
       "api/store/kds-stations.php",
@@ -2531,7 +2520,7 @@
     "category": "入力検証",
     "http_status": 400,
     "message": "store_id は必須です",
-    "occurrences": 42,
+    "occurrences": 43,
     "files": [
       "api/customer/ai-waiter.php",
       "api/customer/menu.php",
@@ -2542,6 +2531,7 @@
       "api/kds/call-alerts.php",
       "api/lib/auth.php",
       "api/public/store-status.php",
+      "api/push/test.php",
       "api/smaregi/import-menu.php",
       "api/store/course-csv.php",
       "api/store/course-phases.php",
@@ -2771,8 +2761,8 @@
     "errorNo": "E2073",
     "category": "入力検証",
     "http_status": 400,
-    "message": "store_id は必須です",
-    "occurrences": 41,
+    "message": "store_id が必要です",
+    "occurrences": 75,
     "files": [
       "api/auth/device-register.php",
       "api/kds/advance-phase.php",
@@ -2781,7 +2771,16 @@
       "api/store/course-templates.php",
       "api/store/daily-recommendations.php",
       "api/store/device-registration-token.php",
+      "api/store/emergency-payment-external-method.php",
+      "api/store/emergency-payment-ledger.php",
+      "api/store/emergency-payment-manual-transfer.php",
+      "api/store/emergency-payment-manual-void.php",
+      "api/store/emergency-payment-resolution.php",
+      "api/store/emergency-payment-transfer-void.php",
+      "api/store/emergency-payment-transfer.php",
+      "api/store/emergency-payments.php",
       "api/store/handy-order.php",
+      "api/store/payment-void.php",
       "api/store/plan-menu-items.php",
       "api/store/process-payment.php",
       "api/store/refund-payment.php",
@@ -2796,11 +2795,18 @@
     "errorNo": "E7001",
     "category": "メニュー・在庫",
     "http_status": 409,
-    "message": "この注文は既に他の操作で確定されました。画面を更新してご確認ください。",
-    "occurrences": 3,
+    "message": "取消機能の migration が未適用です (migration-pwa4d5a-payment-void.sql)",
+    "occurrences": 52,
     "files": [
       "api/customer/checkout-confirm.php",
+      "api/store/emergency-payment-external-method.php",
+      "api/store/emergency-payment-manual-transfer.php",
+      "api/store/emergency-payment-manual-void.php",
+      "api/store/emergency-payment-resolution.php",
+      "api/store/emergency-payment-transfer-void.php",
+      "api/store/emergency-payment-transfer.php",
       "api/store/handy-order.php",
+      "api/store/payment-void.php",
       "api/store/process-payment.php"
     ]
   },
@@ -2843,6 +2849,149 @@
     "occurrences": 1,
     "files": [
       "api/owner/categories.php"
+    ]
+  },
+  "INVALID_REASON": {
+    "errorNo": "E2074",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "理由コードが正しくありません",
+    "occurrences": 1,
+    "files": [
+      "api/customer/satisfaction-rating.php"
+    ]
+  },
+  "INVALID_SCOPE": {
+    "errorNo": "E2075",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "scope の指定が正しくありません",
+    "occurrences": 1,
+    "files": [
+      "api/push/subscribe.php"
+    ]
+  },
+  "STORE_REQUIRED": {
+    "errorNo": "E2076",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "store_id は必須です (scope=owner のみ NULL 許容)",
+    "occurrences": 1,
+    "files": [
+      "api/push/subscribe.php"
+    ]
+  },
+  "INVALID_TARGET": {
+    "errorNo": "E2077",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "target は self / store のいずれかです",
+    "occurrences": 1,
+    "files": [
+      "api/push/test.php"
+    ]
+  },
+  "VOIDED_PAYMENT": {
+    "errorNo": "E6025",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 409,
+    "message": "この決済は既に論理取消されています。領収書を発行できません。",
+    "occurrences": 1,
+    "files": [
+      "api/store/receipt.php"
+    ]
+  },
+  "REFUNDED_PAYMENT": {
+    "errorNo": "E6026",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 409,
+    "message": "この決済は返金処理中または返金済みです。領収書を発行できません。",
+    "occurrences": 1,
+    "files": [
+      "api/store/receipt.php"
+    ]
+  },
+  "ALREADY_VOIDED": {
+    "errorNo": "E6027",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 409,
+    "message": "この決済は既に論理取消されています。返金はできません。",
+    "occurrences": 1,
+    "files": [
+      "api/store/refund-payment.php"
+    ]
+  },
+  "PAYMENT_RECORD_FAILED": {
+    "errorNo": "E6028",
+    "category": "決済・返金・Stripe・サブスク",
+    "http_status": 500,
+    "message": "決済は完了しましたが注文の記録に失敗しました。お手数ですが店舗へ直接お問い合わせください。",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-payment.php"
+    ]
+  },
+  "INVALID_ITEM": {
+    "errorNo": "E1003",
+    "category": "システム / インフラ (未分類)",
+    "http_status": 404,
+    "message": "存在しないメニュー品目が含まれています",
+    "occurrences": 2,
+    "files": [
+      "api/lib/order-validator.php",
+      "api/store/process-payment.php"
+    ]
+  },
+  "INVALID_OPTION": {
+    "errorNo": "E1004",
+    "category": "システム / インフラ (未分類)",
+    "http_status": 404,
+    "message": "存在しないオプションが含まれています",
+    "occurrences": 1,
+    "files": [
+      "api/lib/order-validator.php"
+    ]
+  },
+  "INVALID_QUANTITY": {
+    "errorNo": "E1005",
+    "category": "システム / インフラ (未分類)",
+    "http_status": 400,
+    "message": "数量が不正です",
+    "occurrences": 2,
+    "files": [
+      "api/lib/order-validator.php"
+    ]
+  },
+  "STRIPE_MISMATCH": {
+    "errorNo": "E1006",
+    "category": "システム / インフラ (未分類)",
+    "http_status": 403,
+    "message": "決済情報が一致しません (metadata 不足)",
+    "occurrences": 20,
+    "files": [
+      "api/customer/checkout-confirm.php",
+      "api/customer/takeout-payment.php",
+      "api/store/process-payment.php"
+    ]
+  },
+  "FORBIDDEN_FIELD": {
+    "errorNo": "E3040",
+    "category": "認証・認可",
+    "http_status": 400,
+    "message": "カード番号等の機密情報は受け付けません。外部端末で決済してください",
+    "occurrences": 1,
+    "files": [
+      "api/store/emergency-payments.php"
+    ]
+  },
+  "FORBIDDEN_SCOPE": {
+    "errorNo": "E3041",
+    "category": "認証・認可",
+    "http_status": 403,
+    "message": "scope=owner は owner ロールのみ指定可能です",
+    "occurrences": 1,
+    "files": [
+      "api/push/subscribe.php"
     ]
   }
 }
