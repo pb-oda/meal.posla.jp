@@ -321,6 +321,12 @@ var HandyApp = (function () {
       var cancelBtn = e.target.closest('.ts-card__cancel-btn');
       if (cancelBtn) {
         cancelSession(cancelBtn.dataset.sessionId, cancelBtn.dataset.tableCode);
+        return;
+      }
+      // Batch-X: 既存セッションに plan を後付け (QR 先行ケース対応)
+      var startPlanBtn = e.target.closest('.ts-card__start-plan-btn');
+      if (startPlanBtn) {
+        openStartPlanModal(startPlanBtn.dataset.sessionId, startPlanBtn.dataset.tableCode);
       }
     });
 
@@ -1214,11 +1220,15 @@ var HandyApp = (function () {
         html += '<button class="ts-card__open-btn" data-table-id="' + t.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="margin-top:4px;background:#43a047;color:#fff;border:none;padding:0.5rem;border-radius:6px;cursor:pointer;width:100%;font-size:0.85rem;">📲 QR開放 (5分)</button>';
       }
       if (t.session) {
-        html += '<div style="display:flex;gap:0.5rem;margin-top:0.5rem">';
-        html += '<button class="ts-card__memo-btn" data-session-id="' + t.session.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="flex:1;font-size:0.85rem;padding:0.5rem;border:1px solid #90a4ae;border-radius:6px;background:#455a64;color:#fff;cursor:pointer">メモ編集</button>';
-        html += '<button class="ts-card__sub-qr-btn" data-session-id="' + t.session.id + '" data-table-id="' + t.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="flex:1;font-size:0.85rem;padding:0.5rem;border:1px solid #ff6f00;border-radius:6px;background:#ff6f00;color:#fff;cursor:pointer">個別QR</button>';
-        html += '<button class="ts-card__cancel-btn" data-session-id="' + t.session.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="flex:1">着席キャンセル</button>';
+        html += '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">';
+        html += '<button class="ts-card__memo-btn" data-session-id="' + t.session.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="flex:1;min-width:0;font-size:0.85rem;padding:0.5rem;border:1px solid #90a4ae;border-radius:6px;background:#455a64;color:#fff;cursor:pointer">メモ編集</button>';
+        html += '<button class="ts-card__sub-qr-btn" data-session-id="' + t.session.id + '" data-table-id="' + t.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="flex:1;min-width:0;font-size:0.85rem;padding:0.5rem;border:1px solid #ff6f00;border-radius:6px;background:#ff6f00;color:#fff;cursor:pointer">個別QR</button>';
+        html += '<button class="ts-card__cancel-btn" data-session-id="' + t.session.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="flex:1;min-width:0">着席キャンセル</button>';
         html += '</div>';
+        // Batch-X: plan / course なし + プラン登録あり → 「プラン開始」ボタン
+        if (!t.session.planName && !t.session.courseName && _timeLimitPlans && _timeLimitPlans.length > 0) {
+          html += '<button class="ts-card__start-plan-btn" data-session-id="' + t.session.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="margin-top:0.4rem;width:100%;font-size:0.85rem;padding:0.5rem;border:1px solid #ff6f00;border-radius:6px;background:#fff;color:#ff6f00;cursor:pointer;font-weight:600">🍽 プラン開始</button>';
+        }
       }
 
       html += '</div>';
@@ -1415,6 +1425,71 @@ var HandyApp = (function () {
         }
       })
       .catch(function (e) { showToast('通信エラー: ' + e.message, 3000); });
+  }
+
+  // Batch-X: 既存セッションへのプラン後付け modal
+  //   PATCH /api/store/table-sessions.php?id=... { plan_id } を呼ぶ
+  //   POST の着席フローと異なり、既に seated 状態のセッションに対して実行する
+  function openStartPlanModal(sessionId, tableCode) {
+    if (_guardOfflineOrStale()) return;
+    if (!_timeLimitPlans || _timeLimitPlans.length === 0) {
+      showToast('食べ放題プランが登録されていません', 3000);
+      return;
+    }
+
+    var planOptions = '';
+    _timeLimitPlans.forEach(function (p) {
+      planOptions += '<option value="' + p.id + '">' + Utils.escapeHtml(p.name) + ' (' + p.duration_min + '分 ¥' + Number(p.price).toLocaleString() + ')</option>';
+    });
+
+    els.optTitle.textContent = tableCode + ' にプラン開始';
+    els.optBody.innerHTML =
+      '<div class="opt-group">'
+      + '<div class="opt-group__title">開始するプラン</div>'
+      + '<select id="start-plan-select" class="ctx-select" style="width:100%">' + planOptions + '</select>'
+      + '</div>'
+      + '<div class="opt-group">'
+      + '<div class="opt-group__title" style="color:#666;font-size:0.8rem">注意</div>'
+      + '<div style="font-size:0.8rem;color:#666;line-height:1.5">プランは「今から」開始し、制限時間は現在時刻から計算されます。既存の注文は保持されます。</div>'
+      + '</div>';
+
+    els.optPrice.textContent = '';
+    els.optAdd.textContent = 'プラン開始';
+    els.optAdd.disabled = false;
+    els.optOverlay.classList.add('show');
+
+    var newAdd = els.optAdd.cloneNode(true);
+    els.optAdd.parentNode.replaceChild(newAdd, els.optAdd);
+    els.optAdd = newAdd;
+
+    els.optAdd.addEventListener('click', function () {
+      if (_guardOfflineOrStale()) return;
+      var planId = document.getElementById('start-plan-select').value;
+      if (!planId) return;
+
+      els.optAdd.disabled = true;
+      els.optAdd.textContent = '処理中...';
+
+      apiFetch('/store/table-sessions.php?id=' + encodeURIComponent(sessionId), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ store_id: _storeId, plan_id: planId })
+      }).then(function (json) {
+        if (!json.ok) {
+          showToast(apiErrorMsg(json) || 'プラン開始に失敗しました', 3500);
+          els.optAdd.disabled = false;
+          els.optAdd.textContent = 'プラン開始';
+          return;
+        }
+        closeOptionModal();
+        showToast(tableCode + ' にプランを開始しました', 3000);
+        loadTableStatus();
+      }).catch(function (err) {
+        showToast((err && err.message) || '通信エラー', 3000);
+        els.optAdd.disabled = false;
+        els.optAdd.textContent = 'プラン開始';
+      });
+    });
   }
 
   function openSeatModal(tableId, tableCode) {

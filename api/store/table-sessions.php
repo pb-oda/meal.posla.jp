@@ -256,6 +256,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         }
     }
 
+    // Batch-X: 既存セッションに plan_id を後付け (QR 先行で plan が紐付いていないケース対応)
+    //   POST 時と同じバリデーションを適用:
+    //     - plan 存在確認 (store_id スコープ + is_active)
+    //     - 既に plan or course が設定済み→ 拒否 (排他性)
+    //     - session が paid/closed → 拒否
+    //   成功時は time_limit_min / last_order_min / expires_at / last_order_at を自動計算
+    if (array_key_exists('plan_id', $data) && $data['plan_id'] !== null && $data['plan_id'] !== '') {
+        if (in_array($session['status'], ['paid', 'closed'])) {
+            json_error('SESSION_CLOSED', 'このセッションは既に終了しています', 409);
+        }
+        if (!empty($session['plan_id'])) {
+            json_error('PLAN_ALREADY_SET', 'このセッションには既にプランが設定されています', 409);
+        }
+        if (!empty($session['course_id'])) {
+            json_error('COURSE_SET', 'コースセッションにはプランを後付けできません', 409);
+        }
+
+        $planId = $data['plan_id'];
+        $stmt = $pdo->prepare('SELECT * FROM time_limit_plans WHERE id = ? AND store_id = ? AND is_active = 1');
+        $stmt->execute([$planId, $storeId]);
+        $plan = $stmt->fetch();
+        if (!$plan) json_error('PLAN_NOT_FOUND', 'プランが見つかりません', 404);
+
+        $timeLimitMin = (int)$plan['duration_min'];
+        $lastOrderMin = (int)$plan['last_order_min'];
+        $now = new DateTime();
+        $expiresAt = (clone $now)->modify("+{$timeLimitMin} minutes")->format('Y-m-d H:i:s');
+        $loMinutes = $timeLimitMin - $lastOrderMin;
+        $lastOrderAt = (clone $now)->modify("+{$loMinutes} minutes")->format('Y-m-d H:i:s');
+
+        $fields[] = 'plan_id = ?';        $params[] = $planId;
+        $fields[] = 'time_limit_min = ?'; $params[] = $timeLimitMin;
+        $fields[] = 'last_order_min = ?'; $params[] = $lastOrderMin;
+        $fields[] = 'expires_at = ?';     $params[] = $expiresAt;
+        $fields[] = 'last_order_at = ?';  $params[] = $lastOrderAt;
+    }
+
     if (empty($fields)) json_error('NO_FIELDS', '更新項目がありません', 400);
     $params[] = $id;
     $pdo->prepare('UPDATE table_sessions SET ' . implode(', ', $fields) . ' WHERE id = ?')->execute($params);
