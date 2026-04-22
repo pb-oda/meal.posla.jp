@@ -999,3 +999,119 @@ html, body {
   .rs-section { padding: var(--rs-space-4); }
   .rs-nav { padding: var(--rs-space-3) var(--rs-space-4) calc(var(--rs-space-3) + var(--rs-safe-bottom)); margin-inline: calc(var(--rs-space-4) * -1); }
 }
+
+/* ============================================================
+ * Batch-D-2 (2026-04-22): keyboard focus + inline style cleanup
+ *   - rs-cal-day / rs-slot を button 化したため UA reset を追加
+ *   - disabled 状態を button attribute と既存 modifier の両方で扱う
+ *   - completion / AI fallback の inline style を class に逃がす
+ * 他社参考 (公式、抽象化):
+ *   - TableCheck diner: Tab / Enter で step が崩れない
+ *     https://support-diners.tablecheck.com/
+ *       hc/en-us/articles/900000972966-How-to-Make-a-Reservation
+ *   - OpenTable Reservation Management: 完了画面は静かな整理、主操作 1 本
+ *     https://www.opentable.com/restaurant-solutions/products/
+ *       reservation-management/
+ *   - Toast Ordering Screens: focus / 押下状態の一貫性、主/副 CTA の重み差
+ *     https://support.toasttab.com/en/article/
+ *       New-POS-Experience-Ordering-Screens
+ * 模倣しない: 他社ブランドカラー / 会員誘導 / POS タイル
+ * ============================================================ */
+
+/* button 化した要素の UA reset */
+.rs-cal-day,
+.rs-slot {
+  padding: 0;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: center;
+  color: var(--rs-text);
+}
+
+/* .rs-slot は元々 padding 指定ありなので再適用 */
+.rs-slot {
+  padding: var(--rs-space-3) var(--rs-space-2);
+}
+
+/* button attribute の disabled 状態 — 既存 --past/--closed/--full と統一見た目 */
+.rs-cal-day:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.rs-slot:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ボタン系のサイズ modifier — OpenTable 原則: 主 CTA 1 本 */
+.rs-btn--full {
+  width: 100%;
+  margin-top: var(--rs-space-3);
+}
+
+/* a 要素に .rs-btn を適用する場合の調整 (管理リンク等) */
+.rs-btn--link {
+  text-decoration: none;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Confirm: キャンセル期限注意書き */
+.rs-section__sub--cancel-note {
+  margin-top: var(--rs-space-3);
+}
+
+/* Completion: 来店時の案内 (OpenTable 原則: 静かな読みやすさ) */
+.rs-completion__visit-note {
+  margin: var(--rs-space-3) 0 0;
+  color: var(--rs-muted);
+  font-size: var(--rs-fs-sm);
+  line-height: 1.55;
+}
+
+/* Completion: window.close() 失敗時フォールバック画面 */
+.rs-completion__goodbye {
+  text-align: center;
+  padding: var(--rs-space-8) var(--rs-space-4);
+  color: var(--rs-muted);
+  font-size: var(--rs-fs-sm);
+  line-height: 1.6;
+}
+
+/* AI fallback: missing 補足行 */
+.rs-ai-result__missing {
+  margin-top: var(--rs-space-1);
+}
+
+/* AI fallback: 別時間帯提案ラベル */
+.rs-ai-result__label--alt-top {
+  margin-top: var(--rs-space-3);
+}
+
+/* AI fallback: 別時間帯 chip コンテナ */
+.rs-ai-alt-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* AI fallback: chip 風の小さな時間帯ボタン */
+.rs-slot--compact {
+  padding: 6px var(--rs-space-3);
+  font-size: var(--rs-fs-sm);
+  min-height: 36px;
+}
+
+.rs-slot--compact .rs-slot__time {
+  font-size: var(--rs-fs-sm);
+}
+
+/* AI modal: form-group の上部スペーサー (textarea 下の name 欄用) */
+.rs-form-group--top-gap {
+  margin-top: var(--rs-space-3);
+}

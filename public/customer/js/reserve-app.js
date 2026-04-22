@@ -415,13 +415,17 @@
           else if (heat.level === 'high') cls += ' rs-cal-day--high';
         }
       }
-      if (_state.date === iso) cls += ' rs-cal-day--selected';
-      html += '<div class="' + cls + '" data-date="' + iso + '" data-disabled="' + (disabled ? '1' : '0') + '">';
-      html += '<div class="rs-cal-day__num">' + d + '</div>';
+      var selected = (_state.date === iso);
+      if (selected) cls += ' rs-cal-day--selected';
+      var dayAttrs = 'type="button" class="' + cls + '" data-date="' + iso + '" data-disabled="' + (disabled ? '1' : '0') + '"';
+      if (disabled) dayAttrs += ' disabled aria-disabled="true"';
+      if (selected) dayAttrs += ' aria-pressed="true"';
+      html += '<button ' + dayAttrs + '>';
+      html += '<span class="rs-cal-day__num">' + d + '</span>';
       if (heatMap[iso] && heatMap[iso].level === 'closed') {
-        html += '<div class="rs-cal-day__label">' + t('closed') + '</div>';
+        html += '<span class="rs-cal-day__label">' + t('closed') + '</span>';
       }
-      html += '</div>';
+      html += '</button>';
     }
     html += '</div>';
     return html;
@@ -541,15 +545,19 @@
       var s = slots[i];
       var cls = 'rs-slot';
       if (!s.available) cls += ' rs-slot--unavailable rs-slot--full';
-      if (_state.time === s.time) cls += ' rs-slot--selected';
-      html += '<div class="' + cls + '" data-time="' + s.time + '" data-disabled="' + (s.available ? '0' : '1') + '">';
-      html += '<div class="rs-slot__time">' + s.time + '</div>';
+      var slotSelected = (_state.time === s.time);
+      if (slotSelected) cls += ' rs-slot--selected';
+      var slotAttrs = 'type="button" class="' + cls + '" data-time="' + s.time + '" data-disabled="' + (s.available ? '0' : '1') + '"';
+      if (!s.available) slotAttrs += ' disabled aria-disabled="true"';
+      if (slotSelected) slotAttrs += ' aria-pressed="true"';
+      html += '<button ' + slotAttrs + '>';
+      html += '<span class="rs-slot__time">' + s.time + '</span>';
       if (s.available && s.remaining_capacity) {
-        html += '<div class="rs-slot__bag">' + t('remaining_seats', { n: s.remaining_capacity }) + '</div>';
+        html += '<span class="rs-slot__bag">' + t('remaining_seats', { n: s.remaining_capacity }) + '</span>';
       } else if (!s.available) {
-        html += '<div class="rs-slot__bag">×</div>';
+        html += '<span class="rs-slot__bag">×</span>';
       }
-      html += '</div>';
+      html += '</button>';
     }
     html += '</div>';
     wrap.innerHTML = html;
@@ -628,7 +636,7 @@
       html += '<div class="rs-deposit-banner"><strong>' + t('deposit.amount') + ': ¥' + depositAmount.toLocaleString() + '</strong><br>' + t('deposit.notice') + '</div>';
     }
     if (_info.cancel_deadline_hours) {
-      html += '<p class="rs-section__sub" style="margin-top:12px;">' + t('cancel.deadline', { n: _info.cancel_deadline_hours }) + '</p>';
+      html += '<p class="rs-section__sub rs-section__sub--cancel-note">' + t('cancel.deadline', { n: _info.cancel_deadline_hours }) + '</p>';
     }
 
     html += '<div class="rs-nav">';
@@ -686,9 +694,9 @@
     if (_state.email) {
       html += '<div class="rs-success-banner">' + escapeHtml(t('completion.email_sent')) + '</div>';
     }
-    html += '<p style="margin-top:12px;">' + escapeHtml(t('completion.show_at_visit')) + '</p>';
+    html += '<p class="rs-completion__visit-note">' + escapeHtml(t('completion.show_at_visit')) + '</p>';
     html += '<div class="rs-completion__actions">';
-    html += '<a class="rs-btn rs-btn--primary" style="text-decoration:none;text-align:center;" href="' + escapeHtml(_completed.edit_url) + '">' + t('completion.manage') + '</a>';
+    html += '<a class="rs-btn rs-btn--primary rs-btn--link" href="' + escapeHtml(_completed.edit_url) + '">' + t('completion.manage') + '</a>';
     html += '<button class="rs-btn rs-btn--secondary" id="rs-complete-new">' + escapeHtml(t('completion.new')) + '</button>';
     html += '<button class="rs-btn rs-btn--secondary" id="rs-complete-close">' + escapeHtml(t('completion.close')) + '</button>';
     html += '</div>';
@@ -713,20 +721,27 @@
       window.close();
       setTimeout(function () {
         // window.close() が失敗した場合のフォールバック
-        document.getElementById('reserve-app').innerHTML = '<div style="text-align:center;padding:64px 16px;color:#666;">' + escapeHtml(t('completion.closed_thanks')) + '</div>';
+        document.getElementById('reserve-app').innerHTML = '<div class="rs-completion__goodbye">' + escapeHtml(t('completion.closed_thanks')) + '</div>';
       }, 200);
     });
   }
 
   // ---------- AI ----------
+  function _aiModalKeydown(e) {
+    if (e.key === 'Escape' || e.keyCode === 27) {
+      closeAiModal();
+    }
+  }
   function openAiModal() {
     renderAiModalForm();
     document.getElementById('rs-ai-modal').hidden = false;
+    document.addEventListener('keydown', _aiModalKeydown);
     var inp = document.getElementById('rs-ai-input');
     if (inp) inp.focus();
   }
   function closeAiModal() {
     document.getElementById('rs-ai-modal').hidden = true;
+    document.removeEventListener('keydown', _aiModalKeydown);
   }
 
   function renderAiModalForm() {
@@ -738,7 +753,7 @@
     html += '<h2>' + escapeHtml(t('ai.title')) + '</h2>';
     html += '<p class="rs-ai-help">' + escapeHtml(t('ai.help')) + '</p>';
     html += '<textarea id="rs-ai-input" class="rs-ai-input" rows="3" placeholder="' + escapeHtml(t('ai.placeholder')) + '"></textarea>';
-    html += '<div class="rs-form-group" style="margin-top:12px;"><label>' + t('label.name') + '<span class="rs-required">' + t('required') + '</span></label>';
+    html += '<div class="rs-form-group rs-form-group--top-gap"><label>' + t('label.name') + '<span class="rs-required">' + t('required') + '</span></label>';
     html += '<input type="text" id="rs-ai-name" placeholder="' + escapeHtml(t('placeholder.name')) + '" maxlength="120" value="' + escapeHtml(_state.name || '') + '"></div>';
     html += '<div class="rs-form-group"><label>' + t('label.phone') + ' <span class="rs-required">' + phoneReq + '</span></label>';
     html += '<input type="tel" id="rs-ai-phone" placeholder="' + escapeHtml(t('placeholder.phone')) + '" maxlength="40" value="' + escapeHtml(_state.phone || '') + '"></div>';
@@ -746,7 +761,7 @@
       html += '<div class="rs-form-group"><label>' + t('label.email') + ' <span class="rs-required">' + emailReq + '</span></label>';
       html += '<input type="email" id="rs-ai-email" placeholder="' + escapeHtml(t('placeholder.email')) + '" maxlength="190" value="' + escapeHtml(_state.email || '') + '"></div>';
     }
-    html += '<button class="rs-btn rs-btn--primary" id="rs-ai-submit" style="width:100%;margin-top:8px;">' + t('btn.confirm') + '</button>';
+    html += '<button type="button" class="rs-btn rs-btn--primary rs-btn--full" id="rs-ai-submit">' + t('btn.confirm') + '</button>';
     html += '<div class="rs-ai-result" id="rs-ai-result" hidden></div>';
     body.innerHTML = html;
     document.getElementById('rs-ai-submit').addEventListener('click', submitAi);
@@ -789,8 +804,8 @@
           }
         }
         var errHtml = '<div class="rs-ai-confidence-low">⚠ ' + t('ai.confidence_low') + '</div>';
-        if (missing.length) errHtml += '<div class="rs-ai-confidence-low" style="margin-top:4px;">' + t('ai.missing') + ': ' + missing.join(', ') + '</div>';
-        errHtml += '<button class="rs-btn rs-btn--secondary" id="rs-ai-fallback" style="margin-top:10px;width:100%;">' + t('ai.apply') + '</button>';
+        if (missing.length) errHtml += '<div class="rs-ai-confidence-low rs-ai-result__missing">' + t('ai.missing') + ': ' + missing.join(', ') + '</div>';
+        errHtml += '<button type="button" class="rs-btn rs-btn--secondary rs-btn--full" id="rs-ai-fallback">' + t('ai.apply') + '</button>';
         resultEl.innerHTML = errHtml;
         resultEl.hidden = false;
         document.getElementById('rs-ai-fallback').addEventListener('click', function () {
@@ -811,7 +826,7 @@
       if (resHour < openHour || resHour >= closeHour) {
         btn.disabled = false; btn.textContent = t('btn.confirm');
         var noTimeHtml = '<div class="rs-ai-confidence-low">⚠ 時刻が指定されていません。「19時」など時刻を含めて入力してください</div>';
-        noTimeHtml += '<button class="rs-btn rs-btn--secondary" id="rs-ai-fallback" style="margin-top:10px;width:100%;">' + t('ai.apply') + '</button>';
+        noTimeHtml += '<button type="button" class="rs-btn rs-btn--secondary rs-btn--full" id="rs-ai-fallback">' + t('ai.apply') + '</button>';
         resultEl.innerHTML = noTimeHtml;
         resultEl.hidden = false;
         document.getElementById('rs-ai-fallback').addEventListener('click', function () {
@@ -846,10 +861,10 @@
           var recoverHtml = '<div class="rs-ai-confidence-low">' + escapeHtml(msg2) + '</div>';
           // SLOT_UNAVAILABLE の場合、別時間帯候補を提案
           if (err2.code === 'SLOT_UNAVAILABLE' && _state.date && _state.partySize) {
-            recoverHtml += '<div class="rs-ai-result__label" style="margin-top:10px;">' + escapeHtml(_state.date) + ' の他の空き時間:</div>';
-            recoverHtml += '<div id="rs-ai-alt-slots" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">読み込み中…</div>';
+            recoverHtml += '<div class="rs-ai-result__label rs-ai-result__label--alt-top">' + escapeHtml(_state.date) + ' の他の空き時間:</div>';
+            recoverHtml += '<div id="rs-ai-alt-slots" class="rs-ai-alt-slots">読み込み中…</div>';
           }
-          recoverHtml += '<button class="rs-btn rs-btn--secondary" id="rs-ai-fallback" style="margin-top:10px;width:100%;">' + t('ai.apply') + '</button>';
+          recoverHtml += '<button type="button" class="rs-btn rs-btn--secondary rs-btn--full" id="rs-ai-fallback">' + t('ai.apply') + '</button>';
           resultEl.innerHTML = recoverHtml;
           resultEl.hidden = false;
           document.getElementById('rs-ai-fallback').addEventListener('click', function () {
@@ -865,7 +880,7 @@
               for (var si = 0; si < d3.slots.length; si++) if (d3.slots[si].available) avail.push(d3.slots[si].time);
               if (!avail.length) { altWrap.textContent = '空きなし'; return; }
               var ah = '';
-              for (var ai = 0; ai < avail.length; ai++) ah += '<button class="rs-slot" style="padding:6px 12px;cursor:pointer;" data-alt-time="' + avail[ai] + '">' + avail[ai] + '</button>';
+              for (var ai = 0; ai < avail.length; ai++) ah += '<button type="button" class="rs-slot rs-slot--compact" data-alt-time="' + avail[ai] + '">' + avail[ai] + '</button>';
               altWrap.innerHTML = ah;
               var altBtns = altWrap.querySelectorAll('[data-alt-time]');
               for (var bi = 0; bi < altBtns.length; bi++) {
