@@ -133,7 +133,21 @@
   <div id="pos-toast" class="handy-toast"></div>
 
   <script src="../shared/js/utils.js"></script>
-  <script src="js/pos-register.js?v=20260407p14"></script>
+  <script src="../js/offline-detector.js"></script>
+  <!-- Phase 3: オフライン時の表示耐性 (PosRegister 初期化前に読み込む) -->
+  <script src="../shared/js/offline-snapshot.js?v=20260420-pwa3"></script>
+  <script src="../shared/js/offline-state-banner.js?v=20260420-pwa3"></script>
+  <script>
+    (function () {
+      'use strict';
+      if (typeof OfflineStateBanner === 'undefined') return;
+      OfflineStateBanner.init({
+        scope: 'pos-register',
+        onRetry: function () { try { location.reload(); } catch (e) {} }
+      });
+    })();
+  </script>
+  <script src="js/pos-register.js?v=20260420-pwa3"></script>
   <script>
   (function () {
     'use strict';
@@ -141,5 +155,10 @@
   })();
   </script>
   <script src="pwa-register.js"></script>
+  <script src="../shared/js/standard-env-banner.js?v=20260420-env"></script>
+  <script>StandardEnvBanner.init('pos-register');</script>
+  <!-- Phase 1: PWA 更新マネージャ -->
+  <script src="../shared/js/pwa-update-manager.js?v=20260420-pwa1"></script>
+  <script>PWAUpdateManager.init({ scope: 'pos-register', cachePrefix: 'posla-handy-' });</script>
 </body>
 </html>

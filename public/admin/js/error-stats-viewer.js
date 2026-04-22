@@ -25,6 +25,52 @@ var ErrorStatsViewer = (function () {
     E9: '顧客・予約・AI'
   };
 
+  // メッセージ内の DB / API フィールド名を運用者向け日本語に置換する辞書
+  var FIELD_LABELS = {
+    'menu_template_id': 'メニュー',
+    'menu_item_id': 'メニュー',
+    'plan_id':     'プラン',
+    'course_id':   'コース',
+    'option_id':   'オプション',
+    'category_id': 'カテゴリ',
+    'store_id':    '店舗',
+    'tenant_id':   'アカウント',
+    'table_id':    'テーブル',
+    'user_id':     'ユーザー',
+    'staff_id':    'スタッフ',
+    'payment_id':  '会計',
+    'order_id':    '注文',
+    'order_item_id': '注文品目',
+    'reservation_id': '予約',
+    'session_token': 'セッション',
+    'session_id':  'セッション',
+    'sub_session_id': 'サブセッション',
+    'shift_assignment_id': 'シフト',
+    'ingredient_id': '原材料',
+    'recipe_id':   'レシピ',
+    'start_date':  '開始日',
+    'end_date':    '終了日',
+    'received_amount': '預かり金',
+    'idempotency_key': '送信キー',
+    'staff_pin':   'PIN',
+    'cashier_pin': 'PIN',
+    'idempotencyKey': '送信キー'
+  };
+
+  function _humanize(msg) {
+    if (!msg) return '';
+    var s = String(msg);
+    // 長い key から先に置換 (menu_template_id を menu_item_id 置換より先に)
+    var keys = Object.keys(FIELD_LABELS).sort(function (a, b) { return b.length - a.length; });
+    for (var i = 0; i < keys.length; i++) {
+      // 単語境界 (英数字_でない) で囲まれた完全一致のみ置換
+      var k = keys[i];
+      var re = new RegExp('(^|[^A-Za-z0-9_])' + k + '(?![A-Za-z0-9_])', 'g');
+      s = s.replace(re, '$1' + FIELD_LABELS[k]);
+    }
+    return s;
+  }
+
   function init(container, storeId) {
     _container = container;
     _storeId   = storeId;
@@ -167,7 +213,7 @@ var ErrorStatsViewer = (function () {
         + '<td style="padding:0.4rem 0.5rem;">' + noLink + '</td>'
         + '<td style="padding:0.4rem 0.5rem;font-family:monospace;font-size:0.8rem;">' + Utils.escapeHtml(t.code) + '</td>'
         + '<td style="padding:0.4rem 0.5rem;text-align:center;color:' + statusColor + ';font-weight:bold;">' + t.http_status + '</td>'
-        + '<td style="padding:0.4rem 0.5rem;color:#555;">' + Utils.escapeHtml(t.message || '') + '</td>'
+        + '<td style="padding:0.4rem 0.5rem;color:#555;">' + Utils.escapeHtml(_humanize(t.message || '')) + '</td>'
         + '<td style="padding:0.4rem 0.5rem;text-align:right;font-weight:bold;color:' + (t.count >= 10 ? '#d9534f' : '#333') + ';">' + t.count + '</td>'
         + '<td style="padding:0.4rem 0.5rem;font-size:0.75rem;color:#888;">' + Utils.escapeHtml((t.last_seen || '').replace('T', ' ').substring(0, 16)) + '</td>'
         + '</tr>';

@@ -10,8 +10,12 @@
 
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
 
 require_method(['GET']);
+
+// H-03: 翻訳辞書取得 DoS 防御 — 1IP あたり 60 回 / 5 分（UI ロード時 1 回想定）
+check_rate_limit('customer-ui-translations', 60, 300);
 
 $lang = $_GET['lang'] ?? 'ja';
 

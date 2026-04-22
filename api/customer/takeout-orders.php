@@ -393,9 +393,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // オンライン決済の場合: チェックアウトURL生成
     if ($paymentMethod === 'online') {
+        // 2026-04-21: success/cancel URL を本番 docroot (/public/customer/) 配下に合わせて固定。
+        // 旧実装は dirname(dirname($_SERVER['SCRIPT_NAME'])) で /api/customer/ からの相対計算を
+        // していたが、本番の実配置では takeout.html は /public/customer/takeout.html で配信される
+        // ため、decision 成功後の Stripe success redirect が 404 になり、takeout.html onload 経由で
+        // 呼ばれる takeout-payment.php のチェーンが動かず payments 行が作られない問題があった。
+        // checkout-session.php:101 と同じく /public/customer/... を明示する。
         $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
                  . '://' . $_SERVER['HTTP_HOST'];
-        $takeoutPageUrl = $baseUrl . dirname(dirname($_SERVER['SCRIPT_NAME'])) . '/customer/takeout.html';
+        $takeoutPageUrl = $baseUrl . '/public/customer/takeout.html';
         $successUrl = $takeoutPageUrl . '?store_id=' . urlencode($storeId)
                     . '&order_id=' . urlencode($orderId)
                     . '&payment_status=success'

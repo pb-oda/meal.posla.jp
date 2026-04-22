@@ -87,6 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         json_response(['ok' => true, 'active' => $active ? true : false]);
     } catch (PDOException $e) {
-        json_error('MIGRATION_REQUIRED', 'ラストオーダー機能にはデータベースの更新が必要です: ' . $e->getMessage(), 500);
+        // H-14: browser 応答から内部メッセージを排除、詳細は error_log にのみ残す
+        error_log('[H-14][api/store/last-order.php] migration_required: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        json_error('MIGRATION_REQUIRED', 'ラストオーダー機能にはデータベースの更新が必要です', 500);
     }
 }

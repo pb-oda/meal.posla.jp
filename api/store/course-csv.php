@@ -257,7 +257,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->commit();
     } catch (Exception $e) {
         $pdo->rollBack();
-        json_error('IMPORT_FAILED', 'インポートに失敗しました: ' . $e->getMessage(), 500);
+        // H-14: browser 応答から内部メッセージを排除、詳細は error_log にのみ残す
+        error_log('[H-14][api/store/course-csv.php] csv_import_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        json_error('IMPORT_FAILED', 'インポートに失敗しました', 500);
     }
 
     json_response([

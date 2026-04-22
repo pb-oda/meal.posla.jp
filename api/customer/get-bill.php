@@ -9,8 +9,12 @@
 
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
 
 require_method(['GET']);
+
+// H-03: session_token 推測 + 大量取得 DoS 防御 — 1IP あたり 30 回 / 5 分
+check_rate_limit('get-bill', 30, 300);
 
 $storeId      = $_GET['store_id'] ?? null;
 $tableId      = $_GET['table_id'] ?? null;

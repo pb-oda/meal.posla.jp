@@ -395,18 +395,37 @@ function create_stripe_terminal_intent($secretKey, $amountYen, $currency, $refer
 }
 
 /**
+ * 4d-5c-bb-E: Stripe `/v1/refunds` の `reason` パラメータは enum 制約あり
+ *   ('duplicate' / 'fraudulent' / 'requested_by_customer' のみ受理)。
+ * 呼び出し側 (refund-payment.php) は DB `payments.refund_reason` に自由文を保存したいため
+ * `$reason` には任意文字列が入り得る。Stripe API へ送る時点でのみ canonical enum に正規化する。
+ * null / 空文字 / enum 外の値 → 'requested_by_customer' に fallback。enum 値はそのまま素通し。
+ * DB 側 refund_reason には呼び出し側で依然として自由文がそのまま保存される (本関数は Stripe API 送信だけに作用)。
+ *
+ * @param mixed $reason 自由文または enum 値
+ * @return string 'duplicate' | 'fraudulent' | 'requested_by_customer'
+ */
+function _normalize_stripe_refund_reason($reason) {
+    $allowed = ['duplicate', 'fraudulent', 'requested_by_customer'];
+    if (is_string($reason) && $reason !== '' && in_array($reason, $allowed, true)) {
+        return $reason;
+    }
+    return 'requested_by_customer';
+}
+
+/**
  * C-R1: Stripe Refund を作成（Pattern A: テナント自前キー）
  * @param string $secretKey テナントの Stripe Secret Key
  * @param string $paymentIntentId pi_xxx
  * @param int $amountYen 返金額（円）。null = 全額返金
- * @param string $reason 'requested_by_customer' | 'duplicate' | 'fraudulent'
+ * @param string $reason 自由文可。Stripe API 送信時のみ enum 正規化される (_normalize_stripe_refund_reason)
  * @return array ['success' => bool, 'refund_id' => string|null, 'status' => string|null, 'error' => string|null]
  */
 function create_stripe_refund($secretKey, $paymentIntentId, $amountYen, $reason) {
     $url = 'https://api.stripe.com/v1/refunds';
     $params = [
         'payment_intent' => $paymentIntentId,
-        'reason'         => $reason ?: 'requested_by_customer',
+        'reason'         => _normalize_stripe_refund_reason($reason),
     ];
     if ($amountYen !== null) {
         $params['amount'] = (int)$amountYen;
@@ -452,7 +471,7 @@ function create_stripe_connect_refund($platformSecretKey, $connectAccountId, $pa
     $url = 'https://api.stripe.com/v1/refunds';
     $params = [
         'payment_intent'       => $paymentIntentId,
-        'reason'               => $reason ?: 'requested_by_customer',
+        'reason'               => _normalize_stripe_refund_reason($reason),
         'refund_application_fee' => $refundApplicationFee ? 'true' : 'false',
     ];
     if ($amountYen !== null) {
@@ -484,6 +503,70 @@ function create_stripe_connect_refund($platformSecretKey, $connectAccountId, $pa
     }
 
     return ['success' => false, 'refund_id' => $refundId, 'status' => $status, 'error' => 'Stripe Connect: 返金ステータス ' . $status];
+}
+
+/**
+ * 4d-5c-bb-D: destination charges (Checkout + transfer_data[destination]) 用の Refund
+ *
+ * Stripe Connect Checkout session を `create_stripe_connect_checkout_session` 経由で作成した場合、
+ * PaymentIntent は **Platform アカウント側**に存在し (destination charges パターン)、
+ * `Stripe-Account:` header を付けて Connect アカウント側で refund しようとすると
+ * "No such payment_intent" の 404 になる。
+ *
+ * destination charges の正しい refund 方式:
+ *   POST /v1/refunds
+ *   Authorization: Bearer <platform_key>   (Stripe-Account ヘッダは付けない)
+ *   payment_intent=pi_xxx
+ *   refund_application_fee=true             (Platform 取り分も返金)
+ *   reverse_transfer=true                    (Connect への transfer を引き戻し)
+ *
+ * Pattern B (`create_stripe_connect_refund`) は Stripe-Account 付きで direct charges (Terminal など) 向け、
+ * Pattern A (`create_stripe_refund`) は tenant Direct key + app_fee/reverse_transfer フラグなし、
+ * のため destination charges (`gateway_name='stripe_connect'`) にはどちらも不適合。本関数が 3 つ目の分岐を提供する。
+ *
+ * @param string $platformSecretKey POSLA プラットフォームの Stripe Secret Key (posla_settings)
+ * @param string $paymentIntentId   pi_xxx (Platform 側に存在する)
+ * @param int|null $amountYen       null=全額
+ * @param string $reason
+ * @return array ['success' => bool, 'refund_id' => string|null, 'status' => string|null, 'error' => string|null]
+ */
+function create_stripe_destination_refund($platformSecretKey, $paymentIntentId, $amountYen, $reason) {
+    $url = 'https://api.stripe.com/v1/refunds';
+    $params = [
+        'payment_intent'          => $paymentIntentId,
+        'reason'                  => _normalize_stripe_refund_reason($reason),
+        'refund_application_fee'  => 'true',
+        'reverse_transfer'        => 'true',
+    ];
+    if ($amountYen !== null) {
+        $params['amount'] = (int)$amountYen;
+    }
+    $postFields = http_build_query($params);
+
+    // Stripe-Account ヘッダなし (Platform context)
+    $headers = [
+        'Authorization: Bearer ' . $platformSecretKey,
+    ];
+
+    $result = _gateway_curl_post($url, $postFields, $headers, true);
+    if ($result['curl_error']) {
+        return ['success' => false, 'refund_id' => null, 'status' => null, 'error' => $result['curl_error']];
+    }
+
+    $body = json_decode($result['body'], true);
+    if ($result['http_code'] >= 400 || !$body) {
+        $errMsg = isset($body['error']['message']) ? $body['error']['message'] : '不明なエラー';
+        return ['success' => false, 'refund_id' => null, 'status' => null, 'error' => 'Stripe Destination: ' . $errMsg];
+    }
+
+    $status = isset($body['status']) ? $body['status'] : '';
+    $refundId = isset($body['id']) ? $body['id'] : '';
+
+    if ($status === 'succeeded' || $status === 'pending') {
+        return ['success' => true, 'refund_id' => $refundId, 'status' => $status, 'error' => null];
+    }
+
+    return ['success' => false, 'refund_id' => $refundId, 'status' => $status, 'error' => 'Stripe Destination: 返金ステータス ' . $status];
 }
 
 function create_stripe_connect_terminal_intent($platformSecretKey, $connectAccountId, $amountYen, $currency, $applicationFee, $referenceId, $extraMetadata = []) {

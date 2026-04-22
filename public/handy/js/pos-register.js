@@ -219,7 +219,29 @@ var PosRegister = (function () {
           if (!silent) loadOrders();
         }
       }
-    }).catch(function () {});
+      // Phase 3: snapshot 保存
+      if (typeof OfflineSnapshot !== 'undefined') {
+        OfflineSnapshot.save('pos-register', _storeId, 'tables-status', json.data);
+      }
+      if (typeof OfflineStateBanner !== 'undefined') OfflineStateBanner.markFresh();
+    }).catch(function () {
+      // Phase 3: 初回失敗のみ snapshot 復元
+      if (_tables && _tables.length > 0) {
+        if (typeof OfflineStateBanner !== 'undefined') OfflineStateBanner.markStale();
+        return;
+      }
+      if (typeof OfflineSnapshot !== 'undefined' && _storeId) {
+        var snap = OfflineSnapshot.load('pos-register', _storeId, 'tables-status');
+        if (snap && snap.data) {
+          _tables = snap.data.tables || [];
+          renderTables();
+          if (typeof OfflineStateBanner !== 'undefined') {
+            OfflineStateBanner.setLastSuccessAt(snap.savedAt);
+            OfflineStateBanner.markStale();
+          }
+        }
+      }
+    });
 
     // テイクアウト注文もロード
     loadTakeoutOrders();
@@ -232,7 +254,21 @@ var PosRegister = (function () {
         return !o.table_id && o.status !== 'paid' && o.status !== 'cancelled';
       });
       if (_isTakeoutMode) renderOrders();
-    }).catch(function () {});
+      if (typeof OfflineSnapshot !== 'undefined' && _storeId) {
+        OfflineSnapshot.save('pos-register', _storeId, 'takeout-orders', json.data);
+      }
+    }).catch(function () {
+      if (_takeoutOrders && _takeoutOrders.length > 0) return;
+      if (typeof OfflineSnapshot !== 'undefined' && _storeId) {
+        var snap = OfflineSnapshot.load('pos-register', _storeId, 'takeout-orders');
+        if (snap && snap.data) {
+          _takeoutOrders = (snap.data.orders || []).filter(function (o) {
+            return !o.table_id && o.status !== 'paid' && o.status !== 'cancelled';
+          });
+          if (_isTakeoutMode) renderOrders();
+        }
+      }
+    });
   }
 
   function loadOrders() {
@@ -251,7 +287,32 @@ var PosRegister = (function () {
       renderOrders();
       renderTaxArea();
       updateSubmitState();
-    }).catch(function () {});
+      if (typeof OfflineSnapshot !== 'undefined' && _storeId) {
+        OfflineSnapshot.save('pos-register', _storeId, 'table-orders-' + _selectedTable.id, json.data);
+      }
+    }).catch(function () {
+      // 既存の _orders があれば残す (stale バナーのみ表示)
+      if (_orders && _orders.length > 0) {
+        if (typeof OfflineStateBanner !== 'undefined') OfflineStateBanner.markStale();
+        return;
+      }
+      if (typeof OfflineSnapshot !== 'undefined' && _storeId && _selectedTable) {
+        var snap = OfflineSnapshot.load('pos-register', _storeId, 'table-orders-' + _selectedTable.id);
+        if (snap && snap.data) {
+          _orders = (snap.data.orders || []).filter(function (o) {
+            return o.table_id === _selectedTable.id && o.status !== 'paid' && o.status !== 'cancelled';
+          });
+          calcTax();
+          renderOrders();
+          renderTaxArea();
+          updateSubmitState();
+          if (typeof OfflineStateBanner !== 'undefined') {
+            OfflineStateBanner.setLastSuccessAt(snap.savedAt);
+            OfflineStateBanner.markStale();
+          }
+        }
+      }
+    });
   }
 
   // ==== Selection ====
@@ -564,6 +625,12 @@ var PosRegister = (function () {
   // ==== Payment processing ====
   function processPayment() {
     if (els.submitBtn.disabled) return;
+
+    // Phase 3: offline または stale 中の決済は絶対に実行しない (キューもしない)
+    if (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isOfflineOrStale && OfflineStateBanner.isOfflineOrStale()) {
+      toast('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u307E\u305F\u306F\u53E4\u3044\u30C7\u30FC\u30BF\u8868\u793A\u4E2D\u3067\u3059\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002', 'error');
+      return;
+    }
 
     var sourceOrders = _isTakeoutMode ? _takeoutOrders : _orders;
     var orderIds = sourceOrders.map(function (o) { return o.id; });

@@ -297,6 +297,11 @@ var AdminApi = (function () {
     return storeGet('/store/staff-report.php', { from: from, to: to });
   }
 
+  // --- R1: 満足度・低評価分析レポート ---
+  function getRatingReport(from, to) {
+    return storeGet('/store/rating-report.php', { from: from, to: to });
+  }
+
   // --- 併売分析（バスケット分析） ---
   function getBasketAnalysis(from, to, minSupport) {
     return storeGet('/store/basket-analysis.php', { from: from, to: to, min_support: minSupport });
@@ -787,6 +792,7 @@ var AdminApi = (function () {
     getOrderHistory: getOrderHistory,
     getTurnoverReport: getTurnoverReport,
     getStaffReport: getStaffReport,
+    getRatingReport: getRatingReport,
     getBasketAnalysis: getBasketAnalysis,
     getDemandForecastData: getDemandForecastData,
     getCrossStoreReport: getCrossStoreReport,
@@ -860,7 +866,23 @@ var AdminApi = (function () {
     getReceiptSettings: getReceiptSettings,
     updateReceiptSettings: updateReceiptSettings,
     getReceiptsByDate: getReceiptsByDate,
-    getReceiptDetail: getReceiptDetail
+    getReceiptDetail: getReceiptDetail,
+    // PWA Phase 4b-2: 緊急会計台帳 (読み取り専用)
+    getEmergencyPaymentLedger: getEmergencyPaymentLedger,
+    // PWA Phase 4c-1: 緊急会計の管理者解決
+    resolveEmergencyPayment: resolveEmergencyPayment,
+    // PWA Phase 4c-2: 緊急会計の payments 転記
+    transferEmergencyPayment: transferEmergencyPayment,
+    // PWA Phase 4d-3: 緊急会計の外部分類編集 (other_external 限定)
+    updateEmergencyExternalMethod: updateEmergencyExternalMethod,
+    // PWA Phase 4d-4a: 緊急会計の手入力売上計上 (orderIds 空の記録を payments へ)
+    manualTransferEmergencyPayment: manualTransferEmergencyPayment,
+    // PWA Phase 4d-5a: 手入力計上の void (論理取消)
+    voidManualEmergencyPayment: voidManualEmergencyPayment,
+    // PWA Phase 4d-5b: 注文紐付き緊急会計転記の void (payments only、orders 非干渉)
+    voidTransferEmergencyPayment: voidTransferEmergencyPayment,
+    // PWA Phase 4d-5c-ba: 通常会計 payments の void (dine_in / handy、返金未実施のみ)
+    voidNormalPayment: voidNormalPayment
   };
 
   // N-1: 今日のおすすめ API
@@ -897,5 +919,96 @@ var AdminApi = (function () {
   }
   function getReceiptDetail(receiptId) {
     return request('GET', '/store/receipt.php?id=' + encodeURIComponent(receiptId) + '&detail=1');
+  }
+
+  // PWA Phase 4b-2: 緊急会計台帳 (manager/owner のみ)
+  function getEmergencyPaymentLedger(from, to, status) {
+    var params = {};
+    if (from)   params.from = from;
+    if (to)     params.to = to;
+    if (status) params.status = status;
+    return storeGet('/store/emergency-payment-ledger.php', params);
+  }
+
+  // PWA Phase 4c-1: 緊急会計の管理者解決 (manager/owner のみ)
+  // action: 'confirm' | 'duplicate' | 'reject' | 'pending'
+  // note:   duplicate / reject は必須、confirm / pending は任意
+  function resolveEmergencyPayment(emergencyPaymentId, action, note) {
+    return request('POST', '/store/emergency-payment-resolution.php', {
+      store_id: _currentStoreId,
+      emergency_payment_id: emergencyPaymentId,
+      action: action,
+      note: (note === undefined || note === null) ? '' : String(note)
+    });
+  }
+
+  // PWA Phase 4c-2: 緊急会計の payments 転記 (manager/owner のみ)
+  // 前提: resolution_status === 'confirmed' かつ synced_payment_id が空
+  // 成功時レスポンス: { paymentId, transferred:true, idempotent:false }
+  // 既に転記済み:   { paymentId, transferred:false, idempotent:true }
+  function transferEmergencyPayment(emergencyPaymentId, note) {
+    return request('POST', '/store/emergency-payment-transfer.php', {
+      store_id: _currentStoreId,
+      emergency_payment_id: emergencyPaymentId,
+      note: (note === undefined || note === null) ? '' : String(note)
+    });
+  }
+
+  // Phase 4d-3: other_external の外部分類を後追いで設定する
+  function updateEmergencyExternalMethod(emergencyPaymentId, externalMethodType) {
+    return request('POST', '/store/emergency-payment-external-method.php', {
+      store_id: _currentStoreId,
+      emergency_payment_id: emergencyPaymentId,
+      external_method_type: String(externalMethodType || '')
+    });
+  }
+
+  // Phase 4d-4a: 手入力記録 (orderIds 空) を payments に計上する専用 API
+  //   - 注文紐付きの転記 (transferEmergencyPayment) とは別経路
+  //   - 売上レポート (sales-report.php) には仕様上出ない (orders ベース集計のため)
+  //   - 取引ジャーナル / レジ分析 (cashLog / externalMethodBreakdown) には反映される
+  function manualTransferEmergencyPayment(emergencyPaymentId, note) {
+    return request('POST', '/store/emergency-payment-manual-transfer.php', {
+      store_id: _currentStoreId,
+      emergency_payment_id: emergencyPaymentId,
+      note: (note === undefined || note === null) ? '' : String(note)
+    });
+  }
+
+  // Phase 4d-5a: 手入力計上 (manual-transfer 由来) の void (論理取消)
+  //   対象: order_ids=[] AND note に emergency_manual_transfer を含む payments のみ
+  //   通常会計 / 注文紐付き transfer は API 側で 409 に落ちる (4d-5b/c へ)
+  function voidManualEmergencyPayment(emergencyPaymentId, reason) {
+    return request('POST', '/store/emergency-payment-manual-void.php', {
+      store_id: _currentStoreId,
+      emergency_payment_id: emergencyPaymentId,
+      reason: (reason === undefined || reason === null) ? '' : String(reason)
+    });
+  }
+
+  // Phase 4d-5b: 注文紐付き緊急会計転記 (emergency-payment-transfer.php 経由) の void
+  //   対象: orderIds>0 AND payments.note に emergency_transfer src= を含む (manual_transfer は除外)
+  //   orders.status は paid のまま維持。table_sessions / session_token は戻さない。
+  //   残リスク: sales-report.php / turnover-report.php には残る (4d-5c で統合予定)
+  function voidTransferEmergencyPayment(emergencyPaymentId, reason) {
+    return request('POST', '/store/emergency-payment-transfer-void.php', {
+      store_id: _currentStoreId,
+      emergency_payment_id: emergencyPaymentId,
+      reason: (reason === undefined || reason === null) ? '' : String(reason)
+    });
+  }
+
+  // Phase 4d-5c-ba: 通常会計 payments の void (cash/card/qr 全て)
+  //   対象: order_ids JSON_LENGTH>0 AND note に emergency_ 接頭辞なし AND refund_status=none
+  //         AND 紐づく orders 全件 status='paid' かつ order_type IN('dine_in','handy')
+  //   orders.status / table_sessions / session_token は維持 (accounting void のみ)
+  //   売上集計 (sales-report/turnover-report/register-report) は 4d-5c-a で voided 除外済み
+  //   takeout / gateway 返金済み / split の部分 void は 4d-5c-bb で対応予定
+  function voidNormalPayment(paymentId, reason) {
+    return request('POST', '/store/payment-void.php', {
+      store_id: _currentStoreId,
+      payment_id: paymentId,
+      reason: (reason === undefined || reason === null) ? '' : String(reason)
+    });
   }
 })();

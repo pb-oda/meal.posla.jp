@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 // ビルドモード切替: VP_MODE=tenant | internal
-// ・tenant    → 顧客向け (tenant/ のみ) → public/docs-tenant/
+// ・tenant    → 顧客向け (tenant/ + operations/) → public/docs-tenant/
 // ・internal  → 弊社向け (tenant/ + internal/) → public/docs-internal/ (Basic認証で保護)
 // 未指定時は tenant（誤ビルドで internal が混入することを防ぐデフォルト）
 var MODE = process.env.VP_MODE || 'tenant'
@@ -10,7 +10,7 @@ var MODE_CONF = {
   tenant: {
     base: '/public/docs-tenant/',
     outDir: '../../public/docs-tenant',
-    title: 'POSLA 取扱説明書',
+    title: 'POSLA ご利用ガイド',
     srcExclude: [
       'internal/**',
       'MANUAL_STATUS.md',
@@ -20,11 +20,15 @@ var MODE_CONF = {
   internal: {
     base: '/public/docs-internal/',
     outDir: '../../public/docs-internal',
-    title: 'POSLA 取扱説明書 (POSLA社内向け)',
+    title: 'POSLA 運営マニュアル',
     srcExclude: [
+      'index.md',
       'MANUAL_STATUS.md',
       'README.md'
-    ]
+    ],
+    rewrites: {
+      'internal/index.md': 'index.md'
+    }
   }
 }
 
@@ -47,13 +51,13 @@ var tenantSidebar = [
     { text: 'カテゴリ・テンプレート・オプション', link: '/tenant/04-menu' }
   ]},
   { text: '5. テーブル・フロアマップ', collapsed: false, items: [
-    { text: 'テーブル登録・フロアマップ・セッション', link: '/tenant/05-tables' }
+    { text: 'テーブル登録・フロアマップ・QRコード', link: '/tenant/05-tables' }
   ]},
   { text: '6. 注文管理（ハンディPOS）', collapsed: false, items: [
     { text: '店内注文・テイクアウト・履歴', link: '/tenant/06-orders' }
   ]},
   { text: '7. KDS（キッチンディスプレイ）', collapsed: false, items: [
-    { text: 'カンバン・ステーション・AI・音声', link: '/tenant/07-kds' }
+    { text: '注文表示・ステーション・音声操作', link: '/tenant/07-kds' }
   ]},
   { text: '8. 会計・POSレジ', collapsed: false, items: [
     { text: '決済・割引・個別会計・レジ開閉', link: '/tenant/08-cashier' }
@@ -94,31 +98,28 @@ var tenantSidebar = [
   { text: '20. Googleレビュー連携', collapsed: false, items: [
     { text: '満足度評価・レビュー誘導', link: '/tenant/20-google-review' }
   ]},
-  { text: '21. Stripe決済の全設定', collapsed: false, items: [
-    { text: 'Billing・Connect・カードリーダー', link: '/tenant/21-stripe-full' }
+  { text: '21. 決済設定', collapsed: false, items: [
+    { text: '月額契約・カード決済・カードリーダー', link: '/tenant/21-stripe-full' }
   ]},
-  { text: '22. スマレジ連携の全設定', collapsed: false, items: [
-    { text: 'OAuth接続・店舗/商品マッピング', link: '/tenant/22-smaregi-full' }
+  { text: '22. スマレジ連携', collapsed: false, items: [
+    { text: '店舗・商品・売上連携', link: '/tenant/22-smaregi-full' }
   ]},
   { text: '23. KDSデバイス端末ガイド', collapsed: false, items: [
     { text: 'タブレット・マイク・ハンディ', link: '/tenant/23-kds-devices' }
   ]},
-  { text: '24. 予約管理 (L-9)', collapsed: false, items: [
-    { text: 'ガント台帳・AI予約・予約金', link: '/tenant/24-reservations' }
+  { text: '24. 予約管理', collapsed: false, items: [
+    { text: '予約台帳・AI予約・予約金', link: '/tenant/24-reservations' }
   ]},
   { text: '25. テーブル開放認証', collapsed: false, items: [
-    { text: 'QR開放・ホワイトリスト・自動着席', link: '/tenant/25-table-auth' }
+    { text: 'QR開放・誤注文防止・予約連動', link: '/tenant/25-table-auth' }
   ]},
   { text: '26. プリンタ連携', collapsed: false, items: [
-    { text: 'Star・Epson・ブラウザ印刷', link: '/tenant/26-printer' }
-  ]},
-  { text: '99. エラーカタログ', collapsed: false, items: [
-    { text: 'エラー番号 (Exxxx) で AI に質問', link: '/tenant/99-error-catalog' }
+    { text: 'レシート・領収書・キッチン伝票', link: '/tenant/26-printer' }
   ]}
 ]
 
 var operationsSidebar = [
-  { text: '📖 超詳細マニュアル (現場向け)', collapsed: false, items: [
+  { text: '店舗運用手順書', collapsed: false, items: [
     { text: '全体目次', link: '/operations/00-table-of-contents' },
     { text: 'Part 0: はじめに (準備・ログイン)', link: '/operations/part0-getting-started' },
     { text: 'Part 1: 毎日の営業 (開店〜閉店)', link: '/operations/part1-daily-operations' },
@@ -134,6 +135,7 @@ var operationsSidebar = [
 
 var internalSidebar = [
   { text: '■ 運営編 (POSLA社内)', collapsed: false, items: [
+    { text: '0. POSLA全体リファレンス', link: '/internal/00-complete-reference' },
     { text: '1. POSLA管理画面', link: '/internal/01-posla-admin' },
     { text: '2. テナントオンボーディング', link: '/internal/02-onboarding' },
     { text: '3. 課金・サブスクリプション', link: '/internal/03-billing' },
@@ -152,8 +154,8 @@ var themeConfig
 if (MODE === 'tenant') {
   themeConfig = {
     nav: [
-      { text: '機能マニュアル', link: '/tenant/01-introduction' },
-      { text: '現場向け超詳細', link: '/operations/00-table-of-contents' }
+      { text: 'ご利用ガイド', link: '/tenant/01-introduction' },
+      { text: '店舗運用手順書', link: '/operations/00-table-of-contents' }
     ],
     sidebar: {
       '/tenant/': tenantSidebar,
@@ -164,9 +166,9 @@ if (MODE === 'tenant') {
   // internal: テナント機能詳細 + 運営編 + 現場向け超詳細 全部
   themeConfig = {
     nav: [
-      { text: 'テナント機能', link: '/tenant/01-introduction' },
-      { text: '現場向け超詳細', link: '/operations/00-table-of-contents' },
-      { text: '運営編', link: '/internal/01-posla-admin' }
+      { text: '顧客向けガイド', link: '/tenant/01-introduction' },
+      { text: '店舗運用手順書', link: '/operations/00-table-of-contents' },
+      { text: '社内リファレンス', link: '/internal/00-complete-reference' }
     ],
     sidebar: {
       '/tenant/': tenantSidebar,
@@ -215,6 +217,7 @@ export default defineConfig({
   base: conf.base,
   outDir: conf.outDir,
   srcExclude: conf.srcExclude,
+  rewrites: conf.rewrites,
   lang: 'ja-JP',
   cleanUrls: false,
   ignoreDeadLinks: true,

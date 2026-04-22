@@ -110,6 +110,29 @@ var KdsRenderer = (function () {
       var countEl = document.getElementById('count-' + s);
       if (countEl) countEl.textContent = groups[s].length;
     });
+
+    // Phase 3: stale 状態なら action ボタンを無効化 (read-only 表示)
+    _applyStaleReadonlyIfNeeded();
+  }
+
+  // Phase 3: OfflineStateBanner.isStale() が true の間、
+  // 調理開始 / 完成 / 提供済 / 取消 などの状態変更ボタンを disabled にする。
+  // 通信が復帰して次の render() が走れば disabled は消える (stale=false のため)。
+  function _applyStaleReadonlyIfNeeded() {
+    if (typeof OfflineStateBanner === 'undefined' || !OfflineStateBanner.isStale()) return;
+    var selectors = '.kds-card__action, .kds-card__cancel, .kds-item-action';
+    var staleTitle = '\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044';
+    Object.keys(_columns).forEach(function (status) {
+      if (!_columns[status]) return;
+      var btns = _columns[status].querySelectorAll(selectors);
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].disabled = true;
+        btns[i].title = staleTitle;
+        btns[i].setAttribute('aria-disabled', 'true');
+        btns[i].style.opacity = '0.5';
+        btns[i].style.cursor = 'not-allowed';
+      }
+    });
   }
 
   function renderCard(order, status) {
@@ -234,7 +257,26 @@ var KdsRenderer = (function () {
       + '</div></div>';
   }
 
+  // Phase 3 レビュー指摘 #1: 状態変更関数の冒頭で offline/stale を判定し、
+  // 楽観更新 + API 呼び出しを両方とも止める。DOM disabled だけでは voice-commander の
+  // 直接呼び出し経路で防げないため、関数側で必ずガードする。
+  function _guardOfflineOrStale(label) {
+    if (typeof OfflineStateBanner === 'undefined' || !OfflineStateBanner.isOfflineOrStale) {
+      return false;
+    }
+    if (!OfflineStateBanner.isOfflineOrStale()) return false;
+    try {
+      window.alert('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u307E\u305F\u306F\u53E4\u3044\u30C7\u30FC\u30BF\u8868\u793A\u4E2D\u3067\u3059\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002');
+    } catch (e) {}
+    return true;
+  }
+
   function handleAction(orderId, newStatus, storeId) {
+    // Phase 3: offline/stale ならローカル状態変更も API 呼び出しもせず、呼び出し側に
+    // reject で通知する (voice-commander 等の .then() が成功音を鳴らさないように)
+    if (_guardOfflineOrStale('handleAction')) {
+      return Promise.reject(new Error('offline_or_stale'));
+    }
     // 楽観的更新
     if (_orders[orderId]) {
       _orders[orderId].status = newStatus;
@@ -269,6 +311,11 @@ var KdsRenderer = (function () {
   }
 
   function handleItemAction(itemId, newStatus, storeId) {
+    // Phase 3: voice-commander からの直接呼び出しもここで止める。
+    // reject で通知して呼び出し側の .then() が成功と誤認しないようにする。
+    if (_guardOfflineOrStale('handleItemAction')) {
+      return Promise.reject(new Error('offline_or_stale'));
+    }
     // 楽観的更新: _orders 内の該当品目の status を変更
     var parentOrderId = null;
     Object.keys(_orders).forEach(function (orderId) {
@@ -349,6 +396,10 @@ var KdsRenderer = (function () {
 
   // 手動フェーズ発火
   function advancePhase(storeId, tableId) {
+    // Phase 3: offline/stale ならフェーズ進行させず reject。
+    if (_guardOfflineOrStale('advancePhase')) {
+      return Promise.reject(new Error('offline_or_stale'));
+    }
     return fetch('../../api/kds/advance-phase.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

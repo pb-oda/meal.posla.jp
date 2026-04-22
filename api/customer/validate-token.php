@@ -10,8 +10,13 @@
 
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
 
 require_method(['GET']);
+
+// H-03: session_token のブルートフォース防御 — 1IP あたり 60 回 / 5 分
+// ポーリング（通常 5〜10 秒間隔）を想定して緩めに設定。
+check_rate_limit('validate-token', 60, 300);
 
 $storeId = $_GET['store_id'] ?? null;
 $tableId = $_GET['table_id'] ?? null;

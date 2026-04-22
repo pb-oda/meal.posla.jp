@@ -49,9 +49,18 @@ try {
     $hasGatewayCols = true;
 } catch (PDOException $e) {}
 
+// Phase 4d-5a: void 系カラム検出
+$hasVoidCols = false;
+try {
+    $pdo->query('SELECT void_status FROM payments LIMIT 0');
+    $hasVoidCols = true;
+} catch (PDOException $e) {}
+
 $extraCols = '';
 if ($hasGatewayCols) $extraCols .= ', p.gateway_name, p.external_payment_id, p.gateway_status';
 if ($hasRefundCols) $extraCols .= ', p.refund_status, p.refund_amount, p.refunded_at';
+// Phase 4d-5a: void_status 系フィールドを動的追加 (voided 行も一覧に表示し、UI で「取消済み」バッジを出す)
+if ($hasVoidCols)   $extraCols .= ', p.void_status, p.voided_at, p.void_reason';
 
 $stmt = $pdo->prepare(
     'SELECT p.id, p.table_id, p.total_amount, p.payment_method,

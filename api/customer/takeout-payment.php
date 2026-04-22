@@ -9,8 +9,14 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/payment-gateway.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
 
 $method = require_method(['GET']);
+
+// H-03: 決済確認ポーリング濫用防御 — 1IP あたり 30 回 / 5 分
+// 正常完了は数回で終わるため brute-force 検出の基準として設定。
+check_rate_limit('takeout-payment', 30, 300);
+
 $pdo = get_db();
 
 $orderId = $_GET['order_id'] ?? null;
@@ -60,12 +66,25 @@ try {
                 }
             }
             if ($sessionId) {
-                $result = verify_stripe_checkout($platformConfig['secret_key'], $sessionId, $connectInfo['stripe_connect_account_id']);
+                // 2026-04-21: Connect Checkout session retrieve context の修正。
+                // takeout-orders.php は create_stripe_connect_checkout_session で
+                // destination charges パターン (payment_intent_data[transfer_data][destination])
+                // を使うため、session は **Platform account 側** に存在する (create 時に
+                // Stripe-Account header なし)。従って retrieve / verify も Platform context
+                // で叩く必要がある。第 3 引数 (Stripe-Account) を付けると "No such checkout.session"
+                // の 404 が返り、PAYMENT_NOT_CONFIRMED 402 で orders.status 遷移と payments 行
+                // INSERT が走らなかった。create 側と対称にして第 3 引数を省略する。
+                // なお checkout-confirm.php:70 の同パターンは今回スコープ外 (別論点)。
+                $result = verify_stripe_checkout($platformConfig['secret_key'], $sessionId);
                 if ($result['success']) {
                     $verified = true;
                     $gatewayName = 'stripe_connect';
                     $externalPaymentId = $result['payment_intent_id'] ?: $sessionId;
-                    $gatewayStatus = $result['payment_status'] ?: 'paid';
+                    // 4d-5c-bb-D: refund-payment.php:152 は gateway_status==='succeeded' を要求。
+                    // Stripe Checkout session の payment_status は 'paid' を返すため、
+                    // 'paid' のまま保存すると refund 時に INVALID_STATUS 400 で弾かれていた。
+                    // checkout-confirm.php:77 と同じく 'succeeded' にハードコード正規化する。
+                    $gatewayStatus = 'succeeded';
                     $connectUsed = true;
                     $verifyResult = $result;
                 } else {
@@ -99,7 +118,8 @@ if (!$connectUsed) {
         $verified = true;
         $gatewayName = 'stripe';
         $externalPaymentId = $result['payment_intent_id'] ?: $sessionId;
-        $gatewayStatus = $result['payment_status'] ?: 'paid';
+        // 4d-5c-bb-D: Connect 経路と同じく 'succeeded' に正規化 (refund-payment.php:152 ガード対応)
+        $gatewayStatus = 'succeeded';
         $verifyResult = $result;
     } else {
         json_error('PAYMENT_NOT_CONFIRMED', $result['error'] ?: '決済が確認できませんでした', 402);
@@ -147,14 +167,45 @@ if (!in_array($orderId, $mdOrderIdList, true)) {
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (注文ID)', 403);
 }
 
-// 決済成功 → orders.status を pending に更新（調理開始可能）
-$pdo->prepare("UPDATE orders SET status = 'pending', updated_at = NOW() WHERE id = ?")->execute([$orderId]);
+// 4d-5c-bb-F: 決済成功後の DB 永続化 (orders.status UPDATE + payments INSERT) を
+//   単一 transaction に閉じ込める。旧実装は INSERT 失敗を try/catch で握りつぶして
+//   `payment_confirmed:true` の success response を返していたため、payments 欠落の
+//   false positive success (売上漏れ / refund 不可 / receipt 不可) が発生していた。
+//   新実装は永続化失敗時に rollBack + json_error('PAYMENT_RECORD_FAILED', ..., 500)
+//   に切り替える。external_payment_id はログのみに記録し、customer-facing response
+//   には露出させない (運営のリカバリ手掛かりは php_errors.log を参照)。
+//
+// 決済 payload:
+//   payment_method は payments ENUM('cash','card','qr') の範囲で記録する必要がある。
+//   Stripe Checkout によるオンライン takeout 決済は本質的にカード決済なので、既に
+//   checkout-confirm.php:276 で採用されている `payment_method='card'` に揃える。
+//   gateway_name (stripe / stripe_connect) と external_payment_id で「オンライン由来」を
+//   識別できる (旧値 "online" は ENUM 外で 4d-5c-bb-A-post1 で 'card' に是正済)。
 
-// payments テーブルに記録
+// ゲートウェイ情報カラム存在チェック (TX 外の read-only チェック、失敗しても問題ない)
+$hasGwCols = false;
 try {
-    $paymentId = bin2hex(random_bytes(16));
+    $pdo->query('SELECT gateway_name FROM payments LIMIT 0');
+    $hasGwCols = true;
+} catch (PDOException $e) {}
+
+$paymentId = bin2hex(random_bytes(16));
+$pdo->beginTransaction();
+try {
+    // UPDATE orders: status='pending_payment' 条件を付けて冪等 + 並行遷移検知
+    $upd = $pdo->prepare(
+        "UPDATE orders SET status = 'pending', updated_at = NOW()
+         WHERE id = ? AND status = 'pending_payment'"
+    );
+    $upd->execute([$orderId]);
+    if ($upd->rowCount() !== 1) {
+        // 別リクエストで既に遷移済み (通常運用では L34 の早期 return 分岐で弾かれるので稀)
+        throw new RuntimeException('CONFLICT: orders.status transitioned concurrently');
+    }
+
+    // payments INSERT
     $cols = 'id, store_id, table_id, total_amount, payment_method, received_amount, change_amount, order_ids, created_at';
-    $vals = '?, ?, NULL, ?, "online", ?, 0, ?, NOW()';
+    $vals = '?, ?, NULL, ?, "card", ?, 0, ?, NOW()';
     $params = [
         $paymentId,
         $order['store_id'],
@@ -162,14 +213,6 @@ try {
         (int)$order['total_amount'],
         json_encode([$orderId]),
     ];
-
-    // ゲートウェイ情報カラム存在チェック
-    $hasGwCols = false;
-    try {
-        $pdo->query('SELECT gateway_name FROM payments LIMIT 0');
-        $hasGwCols = true;
-    } catch (PDOException $e) {}
-
     if ($hasGwCols) {
         $cols .= ', gateway_name, external_payment_id, gateway_status';
         $vals .= ', ?, ?, ?';
@@ -177,11 +220,29 @@ try {
         $params[] = $externalPaymentId;
         $params[] = $gatewayStatus;
     }
-
     $pdo->prepare('INSERT INTO payments (' . $cols . ') VALUES (' . $vals . ')')->execute($params);
-} catch (PDOException $e) {
-    // payments記録失敗は致命的ではない（注文ステータスは更新済み）
-    error_log('[P1-12][api/customer/takeout-payment.php:142] takeout_payment_record: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+
+    $pdo->commit();
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) {
+        try { $pdo->rollBack(); } catch (Throwable $e2) {}
+    }
+    // 運営リカバリ用の手掛かりはログのみに残す (external_payment_id / gateway_name / order_id)。
+    // customer-facing response には pi_id 等の Stripe 内部識別子を露出させない。
+    error_log(
+        '[4d-5c-bb-F][takeout-payment] persistence_failed '
+        . 'order=' . $orderId
+        . ' pi=' . $externalPaymentId
+        . ' gw=' . $gatewayName
+        . ' err=' . $e->getMessage(),
+        3,
+        '/home/odah/log/php_errors.log'
+    );
+    json_error(
+        'PAYMENT_RECORD_FAILED',
+        '決済は完了しましたが注文の記録に失敗しました。お手数ですが店舗へ直接お問い合わせください。',
+        500
+    );
 }
 
 json_response([

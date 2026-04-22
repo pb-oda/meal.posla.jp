@@ -1,37 +1,34 @@
 ---
 layout: home
-title: テナント向け取扱説明書
+title: POSLA ご利用ガイド
 hero:
-  name: POSLA 取扱説明書
-  text: テナント向け（店舗オーナー・マネージャー・スタッフ用）
-  tagline: 全機能の操作手順を網羅的に解説。初めての方は「現場向け超詳細マニュアル」も併読推奨
+  name: POSLA ご利用ガイド
+  text: POSLAをご利用いただく店舗様向けの操作マニュアル
+  tagline: 初期設定から日々の注文・会計・レポート確認まで、画面操作に沿って説明します。
   actions:
     - theme: brand
       text: はじめに読む →
       link: /tenant/01-introduction
     - theme: alt
-      text: 現場向け超詳細（小学生レベル）
-      link: /operations/00-table-of-contents
+      text: ログイン方法を見る
+      link: /tenant/02-login
 features:
-  - title: 現場向け超詳細マニュアル（Part 0-8）
-    details: Wi-Fi・ブラウザ・URL の入力方法から、開店〜閉店の 1 日の流れまで、ITが苦手な方向けに指の動き 1 つずつ解説
-    link: /operations/00-table-of-contents
+  - title: 初期設定とアカウント
+    details: ログイン、パスワード、ユーザー権限、店舗切替など、利用開始時に必要な操作を確認できます。
+    link: /tenant/02-login
   - title: メニュー管理
-    details: カテゴリ・テンプレート・オーバーライド・限定メニュー・オプション・CSV入出力・多言語
+    details: カテゴリ、商品、オプション、限定メニュー、CSV入出力、多言語表示の設定方法を確認できます。
     link: /tenant/04-menu
   - title: 注文・KDS・会計
-    details: セルフオーダー・ハンディPOS・KDS操作・音声コマンド・POSレジ・Stripe Terminal・領収書・返金
+    details: セルフオーダー、ハンディPOS、キッチン表示、POSレジ、決済、領収書、返金の流れを確認できます。
     link: /tenant/06-orders
-  - title: 予約管理（L-9）
-    details: 予約 LP・ガント台帳・自動着席・no-show・予約金・AI予約（自由文入力）・コース・顧客台帳
+  - title: 予約管理
+    details: 予約ページ、予約台帳、自動着席、無断キャンセル管理、予約金、コース予約の使い方を確認できます。
     link: /tenant/24-reservations
   - title: シフト管理・勤怠
-    details: テンプレート・カレンダー・希望提出・打刻・GPS・AI提案・人件費・労基法チェック
+    details: シフト作成、希望提出、出退勤打刻、GPS確認、人件費の確認など、スタッフ管理の操作を確認できます。
     link: /tenant/12-shift
   - title: レポート・AI
-    details: 売上・ABC分析・回転率・スタッフ評価・併売分析・AIアシスタント・AIヘルプデスク（右下 FAB）
+    details: 売上、ABC分析、回転率、スタッフ評価、併売分析、AIアシスタントの活用方法を確認できます。
     link: /tenant/13-reports
-  - title: エラーカタログ（章 99）
-    details: 全 API エラー（E1xxx〜E9xxx）の番号一覧と対処方法。`[E3024]` のような表示は AI ヘルプデスク FAB に貼り付けて即解決
-    link: /tenant/99-error-catalog
 ---

@@ -27,6 +27,22 @@ $range = get_business_day_range($pdo, $storeId, $from, $to);
 // ===== 目標調理時間 =====
 $targetCookSec = 900; // デフォルト15分（店舗別設定は未実装）
 
+// Phase 4d-5c-a (2026-04-21): 売上系集計でだけ「全 voided 注文」を除外する。
+//   調理時間 (cooking analysis) / table_sessions ベースの回転率は運用実績なので除外しない。
+//   migration-pwa4d5a 未適用環境は動的にフォールバック。
+$hasPaymentVoidColForReport = false;
+try { $pdo->query('SELECT void_status FROM payments LIMIT 0'); $hasPaymentVoidColForReport = true; }
+catch (PDOException $e) {}
+$voidExclude = $hasPaymentVoidColForReport
+  ? ' AND NOT (EXISTS (SELECT 1 FROM payments p_any
+                         WHERE p_any.store_id = o.store_id
+                           AND JSON_CONTAINS(p_any.order_ids, JSON_QUOTE(o.id)))
+              AND NOT EXISTS (SELECT 1 FROM payments p_act
+                               WHERE p_act.store_id = o.store_id
+                                 AND JSON_CONTAINS(p_act.order_ids, JSON_QUOTE(o.id))
+                                 AND (p_act.void_status IS NULL OR p_act.void_status <> \'voided\')))'
+  : '';
+
 // ===== 1. テーブル回転率 =====
 $stmt = $pdo->prepare(
     'SELECT ts.id AS session_id, ts.table_id, t.table_code, ts.guest_count,
@@ -112,14 +128,14 @@ foreach ($mealPeriods as &$mp) {
 }
 unset($mp);
 
-// 時間帯別売上を注文から取得
+// 時間帯別売上を注文から取得 (Phase 4d-5c-a: voided 全 payments の orders を除外)
 $stmt = $pdo->prepare(
-    'SELECT HOUR(created_at) AS h, COUNT(*) AS cnt,
-            COALESCE(SUM(total_amount), 0) AS rev
-     FROM orders
-     WHERE store_id = ? AND status = "paid"
-       AND created_at >= ? AND created_at < ?
-     GROUP BY HOUR(created_at)
+    'SELECT HOUR(o.created_at) AS h, COUNT(*) AS cnt,
+            COALESCE(SUM(o.total_amount), 0) AS rev
+     FROM orders o
+     WHERE o.store_id = ? AND o.status = "paid"
+       AND o.created_at >= ? AND o.created_at < ?' . $voidExclude . '
+     GROUP BY HOUR(o.created_at)
      ORDER BY h'
 );
 $stmt->execute([$storeId, $range['start'], $range['end']]);
@@ -299,12 +315,13 @@ foreach ($validSessions as $s) {
 $sessionSpend = [];
 if (count($validSessions) > 0) {
     // table_id + 時間範囲で注文をマッチ
+    // Phase 4d-5c-a: voided 全 payments の orders を客層支出分析から除外
     $stmt = $pdo->prepare(
         'SELECT o.table_id,
                 COALESCE(SUM(o.total_amount), 0) AS spend
          FROM orders o
          WHERE o.store_id = ? AND o.status = "paid"
-           AND o.created_at >= ? AND o.created_at < ?
+           AND o.created_at >= ? AND o.created_at < ?' . $voidExclude . '
          GROUP BY o.table_id'
     );
     $stmt->execute([$storeId, $range['start'], $range['end']]);
@@ -339,11 +356,11 @@ foreach ($guestBuckets as &$gb) {
 unset($gb);
 $guestGroups = array_values($guestBuckets);
 
-// 5b. 価格帯別注文分布（3段階）
+// 5b. 価格帯別注文分布（3段階）(Phase 4d-5c-a: voided 全 payments の orders を除外)
 $stmt = $pdo->prepare(
-    'SELECT total_amount FROM orders
-     WHERE store_id = ? AND status = "paid"
-       AND created_at >= ? AND created_at < ?'
+    'SELECT o.total_amount FROM orders o
+     WHERE o.store_id = ? AND o.status = "paid"
+       AND o.created_at >= ? AND o.created_at < ?' . $voidExclude
 );
 $stmt->execute([$storeId, $range['start'], $range['end']]);
 $paidOrders = $stmt->fetchAll();

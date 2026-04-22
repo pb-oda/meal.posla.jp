@@ -324,10 +324,25 @@ textarea.form-input {
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.2s;
+  white-space: nowrap;     /* スマホで縦書きにならないように */
+  flex-shrink: 0;          /* 圧縮されないように */
 }
 
 .btn-logout:hover {
   background: rgba(255,255,255,0.25);
+}
+
+/* dashboard.html ヘッダ内の btn-change-password / 取扱説明書リンク (admin-header 内) */
+.admin-header .btn-change-password {
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+.admin-header .btn-change-password:hover {
+  background: rgba(255,255,255,0.25);
+  color: #fff;
 }
 
 /* ヘッダーショートカットリンク */
@@ -389,6 +404,8 @@ textarea.form-input {
   text-decoration: none;
   font-size: 0.75rem;
   padding: 0.2rem 0.5rem;
+  white-space: nowrap;
+  flex-shrink: 0;
   border: 1px solid rgba(255,255,255,0.25);
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -1713,20 +1730,52 @@ body.role-staff .tab-nav__btn[data-role-min="staff"] { display: inline-flex; }
 
 @media (max-width: 480px) {
   .admin-header {
-    padding: 0 1rem;
+    padding: 0 0.5rem;
     height: 48px;
+    gap: 0.5rem;
+    /* 横スクロールせず 1 画面に収める */
+    justify-content: space-between;
+    overflow: hidden;
+  }
+
+  .admin-header__left {
+    gap: 0.5rem;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .admin-header__title {
-    font-size: 1rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .admin-header__user {
-    display: none;
+  /* ヘッダー右側: 必要最小限だけ表示 (タイトル + ログアウト) */
+  .admin-header__user { display: none; }
+  .admin-header__actions { gap: 0.25rem; flex-shrink: 0; }
+
+  /* 取扱説明書 / パスワード変更 は狭画面では非表示 (FAB ヘルプ + 設定タブから代替) */
+  .admin-header .btn-change-password { display: none; }
+
+  .admin-header .btn-logout {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
   }
 
-  .store-selector__label {
-    display: none;
+  /* 店舗セレクター: 名前は省略、切替リンクは非表示 */
+  .store-selector__label { display: none; }
+  .store-selector__change { display: none; }
+  .store-selector__name {
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    vertical-align: middle;
+    padding: 0.2rem 0.3rem;
+    font-size: 0.75rem;
   }
 
   .tab-nav {

@@ -38,6 +38,8 @@
       <a href="#" class="kds-header__link" id="kds-change-store" style="display:none">店舗切替</a>
       <a href="sold-out.html" class="kds-header__link">品切れ管理</a>
       <button id="btn-ai-kitchen" onclick="AiKitchen.toggle()">&#x1F9D1;&#x200D;&#x1F373; AIシェフ</button>
+      <span id="kds-wake-lock-status" class="kds-header__link" style="font-size:0.75rem;opacity:0.7;cursor:default;" title="画面が暗くならないようにする補助機能 (端末側設定の影響あり)"></span>
+      <span id="kds-push-status" class="kds-header__link" style="font-size:0.75rem;opacity:0.7;cursor:pointer;" title="この端末で通知を受け取る設定 (タップで許可)"></span>
       <span class="kds-header__user" id="kds-user-name">-</span>
       <button class="kds-header__logout" id="btn-kds-logout">ログアウト</button>
     </div>
@@ -88,10 +90,11 @@
   </div>
 
   <script src="../shared/js/utils.js?v=20260419-phaseB"></script>
+  <script src="../shared/js/revision-gate.js?v=20260420-rev2"></script>
   <script src="js/kds-auth.js?v=20260418gps"></script>
-  <script src="js/polling-data-source.js"></script>
-  <script src="js/kds-renderer.js?v=20260404e"></script>
-  <script src="js/voice-commander.js?v=20260407p14"></script>
+  <script src="js/polling-data-source.js?v=20260420-pwa3"></script>
+  <script src="js/kds-renderer.js?v=20260420-pwa3c"></script>
+  <script src="js/voice-commander.js?v=20260420-pwa3c"></script>
   <script src="js/ai-kitchen.js"></script>
   <script>
   (function () {
@@ -118,10 +121,34 @@
       });
     }
 
+    // Phase 1 (修正版): Wake Lock 取得を共通化。
+    //   3 経路で呼ぶ:
+    //     1. 起動オーバーレイの「KDSを開始」ボタン押下 (user gesture あり: 成功率高)
+    //     2. 複数店舗の店舗選択クリック (user gesture あり: 成功率高)
+    //     3. mt_kds_started 済でオーバーレイをスキップする経路 (user gesture なし: 失敗する可能性あり)
+    //   → 失敗時 (state='blocked') のリカバリは _setupWakeLockRecovery() でステータス要素クリックを使う
+    function _tryAcquireWakeLock() {
+      if (typeof WakeLockHelper !== 'undefined') {
+        WakeLockHelper.acquire();
+      }
+    }
+
+    // ステータス表示要素をクリック可能にして、Wake Lock が取得できなかったときに
+    // 現場スタッフが手動でリカバリできるようにする。
+    function _setupWakeLockRecovery() {
+      var statusEl = document.getElementById('kds-wake-lock-status');
+      if (!statusEl) return;
+      statusEl.style.cursor = 'pointer';
+      statusEl.title = '画面が暗くならないようにする補助機能。タップで再取得を試します。';
+      statusEl.addEventListener('click', _tryAcquireWakeLock);
+    }
+
     // ── 起動オーバーレイ（オーディオ解禁用・セッション初回のみ表示） ──
     function showStartupOverlay(storeName, callback) {
       // 同一セッション内の2回目以降（ページ遷移して戻った場合）はスキップ
       if (sessionStorage.getItem('mt_kds_started')) {
+        // 経路 3: ユーザー操作なしで自動取得を試す。失敗時はステータス要素クリックで復旧
+        _tryAcquireWakeLock();
         callback();
         return;
       }
@@ -131,6 +158,8 @@
       overlay.style.display = 'flex';
       document.getElementById('kds-startup-btn').addEventListener('click', function () {
         VoiceCommander.unlockAudio();
+        // 経路 1: 起動ボタン (user gesture あり)
+        _tryAcquireWakeLock();
         sessionStorage.setItem('mt_kds_started', '1');
         overlay.style.display = 'none';
         callback();
@@ -154,6 +183,8 @@
           // 初回: オーバーレイで選択を強制（クリックでオーディオも解禁）
           showStoreOverlay(ctx.stores, function (selectedId) {
             VoiceCommander.unlockAudio();
+            // 経路 2: 店舗選択クリック (user gesture あり)
+            _tryAcquireWakeLock();
             KdsAuth.setStore(selectedId);
             var s = ctx.stores.find(function (x) { return x.id === selectedId; });
             storeNameEl.textContent = s ? s.name : '-';
@@ -170,6 +201,8 @@
           e.preventDefault();
           showStoreOverlay(ctx.stores, function (selectedId) {
             VoiceCommander.unlockAudio();
+            // 経路 2: 店舗切替クリック (user gesture あり) — sentinel が release されている場合の再取得
+            _tryAcquireWakeLock();
             KdsAuth.setStore(selectedId);
             var s = ctx.stores.find(function (x) { return x.id === selectedId; });
             storeNameEl.textContent = s ? s.name : '-';
@@ -227,7 +260,9 @@
           // 品目単位のアクションボタン
           var itemBtn = e.target.closest('.kds-item-action');
           if (itemBtn) {
-            KdsRenderer.handleItemAction(itemBtn.dataset.itemId, itemBtn.dataset.itemStatus, KdsAuth.getStoreId());
+            // Phase 3: offline/stale 時に reject されるので unhandled rejection を避けるため握りつぶす
+            KdsRenderer.handleItemAction(itemBtn.dataset.itemId, itemBtn.dataset.itemStatus, KdsAuth.getStoreId())
+              .catch(function () { /* offline/stale or api error */ });
             return;
           }
           // 注文単位のアクションボタン
@@ -236,7 +271,8 @@
           if (btn.dataset.status === 'cancelled') {
             if (!confirm('この注文をキャンセルしますか？')) return;
           }
-          KdsRenderer.handleAction(btn.dataset.order, btn.dataset.status, KdsAuth.getStoreId());
+          KdsRenderer.handleAction(btn.dataset.order, btn.dataset.status, KdsAuth.getStoreId())
+            .catch(function () { /* offline/stale or api error */ });
         });
 
         // コースフェーズバー
@@ -256,6 +292,11 @@
                 btn.textContent = (json && json.error && json.error.message) || 'エラー';
               }
               setTimeout(function () { btn.disabled = false; }, 1000);
+            })
+            .catch(function () {
+              // Phase 3: offline/stale では reject。ボタンを戻して握りつぶす
+              btn.textContent = '\u901A\u4FE1\u4E0D\u5B89\u5B9A';
+              setTimeout(function () { btn.disabled = false; }, 1500);
             });
         });
       }
@@ -326,11 +367,115 @@
     });
   })();
   </script>
-  <script src="js/kds-alert.js?v=20260404"></script>
+  <script src="js/kds-alert.js?v=20260420-pwa3"></script>
   <script src="../js/theme-switcher.js"></script>
   <script>ThemeSwitcher.injectButton(document.querySelector('.kds-header__right'));</script>
   <script src="../js/offline-detector.js"></script>
+  <!-- Phase 3: オフライン時の表示耐性 (snapshot + 古いデータ表示バナー) -->
+  <script src="../shared/js/offline-snapshot.js?v=20260420-pwa3"></script>
+  <script src="../shared/js/offline-state-banner.js?v=20260420-pwa3"></script>
+  <script>
+    (function () {
+      'use strict';
+      if (typeof OfflineStateBanner === 'undefined') return;
+      OfflineStateBanner.init({
+        scope: 'kds',
+        onRetry: function () {
+          if (typeof PollingDataSource !== 'undefined' && PollingDataSource.resetStaleState) {
+            PollingDataSource.resetStaleState();
+          }
+        }
+      });
+    })();
+  </script>
   <script src="../js/session-monitor.js?v=20260419-fixurl"></script>
   <script src="pwa-register.js"></script>
+  <script src="../shared/js/standard-env-banner.js?v=20260420-env"></script>
+  <script>StandardEnvBanner.init('kds');</script>
+  <!-- Phase 1: Wake Lock + PWA 更新マネージャ -->
+  <script src="../shared/js/wake-lock-helper.js?v=20260420-pwa1b"></script>
+  <script>
+    (function () {
+      'use strict';
+      if (typeof WakeLockHelper === 'undefined') return;
+      var statusEl = document.getElementById('kds-wake-lock-status');
+      if (!statusEl) return;
+      WakeLockHelper.attachStatusElement(statusEl);
+      // Phase 1 (修正版): user gesture なしで Wake Lock 取得失敗するケースに備え、
+      // ステータス要素をクリック可能にして手動再取得できるようにする
+      statusEl.style.cursor = 'pointer';
+      statusEl.title = '画面が暗くならないようにする補助機能。タップで再取得を試します。';
+      statusEl.addEventListener('click', function () {
+        WakeLockHelper.acquire();
+      });
+    })();
+  </script>
+  <script src="../shared/js/pwa-update-manager.js?v=20260420-pwa1b"></script>
+  <script>PWAUpdateManager.init({ scope: 'kds', cachePrefix: 'posla-kds-' });</script>
+  <!-- Phase 2a: Web Push 購読 + バッジ管理 -->
+  <script src="../shared/js/push-subscription-manager.js?v=20260420-pwa2b"></script>
+  <script src="../shared/js/badge-manager.js?v=20260420-pwa2a"></script>
+  <script>
+    (function () {
+      'use strict';
+      // KDS の store_id は KdsAuth が解決するため、init は scope だけで開始し、
+      // KdsAuth から storeId を取得できるようになり次第 setStoreId で反映する。
+      // Phase 2b 修正: store_id 未紐付けでは push_send_to_store の WHERE に乗らないため必須化。
+      PushSubscriptionManager.init({ scope: 'kds' });
+
+      (function pollStoreId() {
+        var s = (typeof KdsAuth !== 'undefined' && KdsAuth.getStoreId) ? KdsAuth.getStoreId() : null;
+        if (s) {
+          PushSubscriptionManager.setStoreId(s);
+          return;
+        }
+        setTimeout(pollStoreId, 1000);
+      })();
+
+      // ヘッダの状態表示要素を attach (compact UI)
+      var statusEl = document.getElementById('kds-push-status');
+      // PWA インストール済のときだけ通知ステータスを表示する (PC ブラウザ等では非表示)
+      var isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+                      || (window.navigator && window.navigator.standalone === true);
+      if (statusEl && !isStandalone) {
+        statusEl.style.display = 'none';
+        statusEl = null;   // 以下の処理もスキップ
+      }
+      if (statusEl) {
+        // attachUI は別 div を append する設計なので、ここでは状態テキストを
+        // 直接 statusEl に書き込む簡易バージョンを使う
+        var labels = {
+          'unsupported': '通知: 未対応',
+          'no_vapid':    '通知: 未設定',
+          'denied':      '通知: ブロック中',
+          'default':     '通知: 未設定 (タップで許可)',
+          'granted':     '通知: 許可済み',
+          'subscribed':  '通知: 有効',
+          'error':       '通知: エラー'
+        };
+        function refresh() {
+          var s = PushSubscriptionManager.getState();
+          statusEl.textContent = labels[s] || labels['default'];
+        }
+        // ポーリングで状態を反映 (PushSubscriptionManager は内部で _setState を持つが
+        // 外部コールバック登録 API がない compact 用途なので 2 秒ごとに getState で十分)
+        refresh();
+        setInterval(refresh, 2000);
+        statusEl.addEventListener('click', function () {
+          PushSubscriptionManager.requestPermission();
+        });
+      }
+
+      // バッジ更新: KDS 呼び出しアラート件数 (KdsAlert の内部状態を読まず DOM から数える)
+      // 既存ポーリング (5 秒) が DOM を更新するので、5 秒ごとに DOM をスキャン
+      function updateBadge() {
+        if (typeof BadgeManager === 'undefined') return;
+        var items = document.querySelectorAll('.kds-call-item');
+        BadgeManager.set(items.length);
+      }
+      setInterval(updateBadge, 5000);
+      updateBadge();
+    })();
+  </script>
 </body>
 </html>

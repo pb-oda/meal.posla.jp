@@ -120,6 +120,7 @@
     <button class="tab-nav__btn" data-tab="tenants">テナント管理</button>
     <button class="tab-nav__btn" data-tab="create-tenant">テナント作成</button>
     <button class="tab-nav__btn" data-tab="api-settings">API設定</button>
+    <button class="tab-nav__btn" data-tab="pwa-push">PWA/Push</button>
   </nav>
 
   <!-- メインコンテンツ -->
@@ -247,6 +248,29 @@
       </div>
     </div>
 
+    <!-- PWA/Push (情報表示のみ / 読み取り専用) -->
+    <div class="posla-tab-panel" id="posla-panel-pwa-push">
+      <div class="panel-header"><h2 class="panel-header__title">PWA / Web Push</h2></div>
+      <div class="card" style="max-width:720px;">
+        <div class="card__body">
+          <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1.25rem;">
+            Web Push の設定状況を読み取り専用で表示します。鍵の生成・ローテーション・ダウンロードは
+            誤操作防止のため本画面からは行いません。CLI 手順は `docs/manual/internal/09-pwa.md` §9.14.8 を参照してください。
+          </p>
+          <div id="posla-push-status" style="font-size:0.875rem;line-height:1.7;"></div>
+          <hr style="margin:1.5rem 0;">
+          <h3 class="section-title" style="margin-bottom:0.75rem;">購読統計</h3>
+          <div id="posla-push-subs" style="font-size:0.875rem;line-height:1.7;"></div>
+          <hr style="margin:1.5rem 0;">
+          <h3 class="section-title" style="margin-bottom:0.75rem;">直近 24 時間 送信統計</h3>
+          <div id="posla-push-sendlog" style="font-size:0.875rem;line-height:1.7;"></div>
+          <div style="margin-top:1rem;">
+            <button class="btn" id="btn-refresh-push">再読込</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- テナント編集モーダル -->
@@ -303,7 +327,7 @@
 
   <script src="../shared/js/utils.js"></script>
   <script src="js/posla-api.js"></script>
-  <script src="js/posla-app.js?v=20260419secmask"></script>
+  <script src="js/posla-app.js?v=20260420-pwa2bext"></script>
 
   <!-- パスワード変更モーダル（P1-5） -->
   <div class="modal-overlay" id="password-change-overlay" style="display:none;opacity:1;visibility:visible;">

@@ -139,18 +139,104 @@
   <div id="toast" class="handy-toast"></div>
 
   <script src="../shared/js/utils.js?v=20260419-phaseB"></script>
-  <script src="js/handy-app.js?v=20260418l9c"></script>
+  <script src="../shared/js/revision-gate.js?v=20260420-rev2"></script>
+  <script src="js/handy-app.js?v=20260420-pwa3"></script>
   <script>
   (function () {
     'use strict';
     HandyApp.init();
   })();
   </script>
-  <script src="js/handy-alert.js?v=20260404f"></script>
+  <script src="js/handy-alert.js?v=20260420-pwa3"></script>
   <script src="../js/theme-switcher.js"></script>
   <script>ThemeSwitcher.injectButton(document.querySelector('.handy-header__right'));</script>
   <script src="../js/offline-detector.js"></script>
+  <!-- Phase 3: オフライン時の表示耐性 (snapshot + 古いデータ表示バナー) -->
+  <script src="../shared/js/offline-snapshot.js?v=20260420-pwa3"></script>
+  <script src="../shared/js/offline-state-banner.js?v=20260420-pwa3"></script>
+  <script>
+    (function () {
+      'use strict';
+      if (typeof OfflineStateBanner === 'undefined') return;
+      OfflineStateBanner.init({
+        scope: 'handy',
+        onRetry: function () {
+          // 軽量リトライ: HandyApp が保持する最新 _storeId で再 fetch
+          try { location.reload(); } catch (e) {}
+        }
+      });
+    })();
+  </script>
   <script src="../js/session-monitor.js?v=20260419-fixurl"></script>
   <script src="pwa-register.js"></script>
+  <script src="../shared/js/standard-env-banner.js?v=20260420-env"></script>
+  <script>StandardEnvBanner.init('handy');</script>
+  <!-- Phase 1: PWA 更新マネージャ -->
+  <script src="../shared/js/pwa-update-manager.js?v=20260420-pwa1"></script>
+  <script>PWAUpdateManager.init({ scope: 'handy', cachePrefix: 'posla-handy-' });</script>
+  <!-- Phase 2a: Web Push 購読 + バッジ管理 -->
+  <script src="../shared/js/push-subscription-manager.js?v=20260420-pwa2b"></script>
+  <script src="../shared/js/badge-manager.js?v=20260420-pwa2a"></script>
+  <script>
+    (function () {
+      'use strict';
+      PushSubscriptionManager.init({ scope: 'handy' });
+
+      // Phase 2b 修正: handy の store_id は HandyApp が localStorage 'mt_handy_store' に保存する。
+      //   未確定では push_send_to_store の WHERE に乗らないため必須化。
+      //   切替時 (店舗切替モーダル) のためにポーリングで再同期する。
+      (function syncStoreId() {
+        try {
+          var s = localStorage.getItem('mt_handy_store');
+          if (s) PushSubscriptionManager.setStoreId(s);
+        } catch (e) {}
+        setTimeout(syncStoreId, 5000);
+      })();
+
+      // PWA インストール済のときだけ通知設定 UI を出す (PC ブラウザ等では非表示)
+      var isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+                      || (window.navigator && window.navigator.standalone === true);
+      // ハンディはヘッダ右側に通知設定ボタンを追加 (DOM 要素がない場合は何もしない)
+      var headerRight = document.querySelector('.handy-header__right');
+      if (headerRight && isStandalone) {
+        var statusEl = document.createElement('span');
+        statusEl.id = 'handy-push-status';
+        statusEl.style.cssText = 'font-size:0.75rem;opacity:0.85;cursor:pointer;margin-right:8px;';
+        statusEl.title = 'この端末で通知を受け取る設定 (タップで許可)';
+        // ログアウトボタンの直前に挿入
+        var logoutBtn = headerRight.querySelector('.handy-header__logout');
+        if (logoutBtn) headerRight.insertBefore(statusEl, logoutBtn);
+        else headerRight.appendChild(statusEl);
+
+        var labels = {
+          'unsupported': '通知: 未対応',
+          'no_vapid':    '通知: 未設定',
+          'denied':      '通知: ブロック中',
+          'default':     '通知: 未設定',
+          'granted':     '通知: 許可済',
+          'subscribed':  '通知: 有効',
+          'error':       '通知: エラー'
+        };
+        function refresh() {
+          var s = PushSubscriptionManager.getState();
+          statusEl.textContent = labels[s] || labels['default'];
+        }
+        refresh();
+        setInterval(refresh, 2000);
+        statusEl.addEventListener('click', function () {
+          PushSubscriptionManager.requestPermission();
+        });
+      }
+
+      // バッジ更新: ハンディの呼び出しアラート件数 (DOM スキャン)
+      function updateBadge() {
+        if (typeof BadgeManager === 'undefined') return;
+        var items = document.querySelectorAll('.handy-call-item');
+        BadgeManager.set(items.length);
+      }
+      setInterval(updateBadge, 5000);
+      updateBadge();
+    })();
+  </script>
 </body>
 </html>

@@ -142,6 +142,8 @@ curl -s -b /tmp/posla.cookie http://localhost:8080/api/auth/me.php
 
 - このセットアップで作成される DB は Docker ボリューム `posla_db_data` 内の MySQL のみ
 - 本番 Sakura DB (`mysql80.odah.sakura.ne.jp`) には一切接続しない
-- `api/config/database.php` は環境変数 `POSLA_DB_HOST` 等を見るので、
-  Docker 環境では `db` (compose 内 DNS) を、本番では `.htaccess` の SetEnv を見る
+- `api/config/database.php` は本番では `POSLA_DB_HOST` 等を見て、
+  Docker local (`POSLA_ENV=local`) では `POSLA_LOCAL_DB_HOST` 等を優先する
+- これにより、`api/.htaccess` に本番用 `SetEnv POSLA_DB_*` が残っていても
+  Docker 環境では `db` (compose 内 DNS) を確実に参照する
 - `.gitignore` で `docker/db/data/` 等のローカルデータは除外済み

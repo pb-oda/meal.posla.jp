@@ -10,8 +10,13 @@
 
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
 
 require_method(['GET']);
+
+// H-03: payment_id のブルートフォース防御 — 1IP あたり 20 回 / 5 分
+// 30 分 TTL 窓内に UUID 予測で他人の領収書を覗く攻撃面を塞ぐ。
+check_rate_limit('receipt-view', 20, 300);
 
 $paymentId = $_GET['payment_id'] ?? null;
 $storeId   = $_GET['store_id'] ?? null;

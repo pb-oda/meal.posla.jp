@@ -25,6 +25,7 @@ if (php_sapi_name() !== 'cli') {
 }
 
 require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/push.php';
 $pdo = get_db();
 
 $now = date('Y-m-d H:i:s');
@@ -67,16 +68,33 @@ if (is_readable($logFile)) {
 }
 
 // -------- 2. Stripe Webhook 失敗検知 (subscription_events の最近の error_message) --------
+//   Phase 2b: tenant_id ごとに集計し、失敗が発生したテナントの manager/owner に
+//             important_error Web Push を送る (重複抑制は _pushImportantError 内で実施)。
 try {
     $stmt = $pdo->prepare(
-        "SELECT COUNT(*) FROM subscription_events WHERE created_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE) AND (error_message IS NOT NULL AND error_message <> '')"
+        "SELECT tenant_id, COUNT(*) AS cnt
+           FROM subscription_events
+          WHERE created_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+            AND (error_message IS NOT NULL AND error_message <> '')
+          GROUP BY tenant_id"
     );
     $stmt->execute();
-    $n = (int)$stmt->fetchColumn();
-    if ($n > 0) {
-        _logEvent($pdo, 'stripe_webhook_fail', 'warn', 'subscription_events', 'Stripe Webhook 失敗 (' . $n . ' 件) 直近5分', null);
-        _notifySlack($settings, '⚠️ POSLA: Stripe Webhook 失敗 ' . $n . ' 件 (直近5分)', '詳細は subscription_events テーブル参照');
-        $result['stripe_failed'] = $n;
+    $rows = $stmt->fetchAll();
+    $total = 0;
+    foreach ($rows as $r) $total += (int)$r['cnt'];
+    if ($total > 0) {
+        _logEvent($pdo, 'stripe_webhook_fail', 'warn', 'subscription_events', 'Stripe Webhook 失敗 (' . $total . ' 件) 直近5分', null);
+        _notifySlack($settings, '⚠️ POSLA: Stripe Webhook 失敗 ' . $total . ' 件 (直近5分)', '詳細は subscription_events テーブル参照');
+        foreach ($rows as $r) {
+            if (!empty($r['tenant_id'])) {
+                _pushImportantError(
+                    $pdo, $r['tenant_id'], 'stripe_webhook_fail',
+                    'Stripe Webhook 失敗',
+                    '直近 5 分に ' . (int)$r['cnt'] . ' 件失敗。subscription_events を確認してください'
+                );
+            }
+        }
+        $result['stripe_failed'] = $total;
         $result['slack_sent']++;
     }
 } catch (PDOException $e) { /* subscription_events 未存在は無視 */ }
@@ -194,6 +212,56 @@ function _notifySlack($settings, $title, $detail) {
     ]);
     @curl_exec($ch);
     curl_close($ch);
+}
+
+/**
+ * Phase 2b: 重要エラーを該当テナントの manager/owner に Web Push する。
+ *
+ * スパム防止:
+ *   - 同 tenant_id + 同 tag (= $type) で直近 5 分に 2xx 送信済みならスキップ
+ *   - push_send_log (migration-pwa2b-push-log.sql) を参照
+ *
+ * 呼び出し元:
+ *   - monitor-health.php Stripe Webhook 失敗検知 (tenant 別に集計したあと 1 件ずつ呼ぶ)
+ *   - 今後 reservation_notifications_log 失敗 / error_log 閾値超過も tenant_id を
+ *     引いた上で本関数を呼べば通知できる (将来拡張ポイント)
+ *
+ * 送信先:
+ *   - そのテナントの「代表店舗」(is_active=1 で最古の store) に紐付けた manager/owner
+ *   - owner-dashboard の store_id=NULL 購読も push_send_to_roles の OR 条件で拾う (§9.14.5)
+ *   - POSLA 運営 (posla_admins) は独自認証系のため対象外。Slack 通知は継続される
+ */
+function _pushImportantError($pdo, $tenantId, $type, $title, $detail) {
+    try {
+        // 重複抑制: 直近 5 分に同 tenant+type で送信済みなら skip
+        $dupStmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM push_send_log
+              WHERE tenant_id = ?
+                AND type = 'important_error'
+                AND tag = ?
+                AND status_code >= 200 AND status_code < 300
+                AND sent_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)"
+        );
+        $dupStmt->execute([$tenantId, $type]);
+        if ((int)$dupStmt->fetchColumn() > 0) return;
+
+        // 代表店舗を取得 (push_send_to_roles の店舗絞り込みに使う)
+        $storeStmt = $pdo->prepare(
+            "SELECT id FROM stores WHERE tenant_id = ? AND is_active = 1 ORDER BY created_at ASC LIMIT 1"
+        );
+        $storeStmt->execute([$tenantId]);
+        $storeId = $storeStmt->fetchColumn();
+        if (!$storeId) return;
+
+        push_send_to_roles($pdo, $storeId, ['manager', 'owner'], 'important_error', [
+            'title' => '重要エラー: ' . $title,
+            'body'  => mb_substr((string)$detail, 0, 140),
+            'url'   => '/public/admin/dashboard.html',
+            'tag'   => $type,
+        ]);
+    } catch (\Throwable $e) {
+        error_log('[I-1][push] important_error_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    }
 }
 
 function _sendOpsMail($to, $subject, $body) {

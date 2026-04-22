@@ -22,24 +22,48 @@ $to = $_GET['to'] ?? date('Y-m-d');
 
 $range = get_business_day_range($pdo, $storeId, $from, $to);
 
-// 基本集計
+// Phase 4d-5c-a (2026-04-21): 注文に紐づく全 payments が voided な orders を売上集計から除外する。
+//   payments に「有効 (active)」が 1 件もなければ集計から外す。
+//   有効判定: void_status IS NULL OR void_status <> 'voided' (migration 未適用環境を含む)。
+//   payments を一切持たない orders は除外しない (緊急会計外の通常運用を壊さないため)。
+//   分割会計の「一部 voided」は active が 1 件残れば集計に残る (会計上は全額計上を維持)。
+//
+// migration-pwa4d5a 未適用環境では payments.void_status カラムが無いので動的にフォールバックする。
+$hasPaymentVoidColForReport = false;
+try { $pdo->query('SELECT void_status FROM payments LIMIT 0'); $hasPaymentVoidColForReport = true; }
+catch (PDOException $e) {}
+
+// EXISTS payments(有効) が 1 件もなく、かつ payments(全件) は存在する → 全 voided として除外
+//   (= "EXISTS any payments AND NOT EXISTS active payments" を AND で否定)
+//   migration 未適用時は active 判定が効かないので除外句を入れない
+$voidExclude = $hasPaymentVoidColForReport
+  ? ' AND NOT (EXISTS (SELECT 1 FROM payments p_any
+                         WHERE p_any.store_id = o.store_id
+                           AND JSON_CONTAINS(p_any.order_ids, JSON_QUOTE(o.id)))
+              AND NOT EXISTS (SELECT 1 FROM payments p_act
+                               WHERE p_act.store_id = o.store_id
+                                 AND JSON_CONTAINS(p_act.order_ids, JSON_QUOTE(o.id))
+                                 AND (p_act.void_status IS NULL OR p_act.void_status <> \'voided\')))'
+  : '';
+
+// 基本集計 (orders に o エイリアス追加 + voided 除外条件)
 $stmt = $pdo->prepare(
     'SELECT COUNT(*) AS order_count,
-            COALESCE(SUM(total_amount), 0) AS total_revenue,
-            COALESCE(AVG(total_amount), 0) AS avg_order_value
-     FROM orders
-     WHERE store_id = ? AND status = ? AND created_at >= ? AND created_at < ?'
+            COALESCE(SUM(o.total_amount), 0) AS total_revenue,
+            COALESCE(AVG(o.total_amount), 0) AS avg_order_value
+     FROM orders o
+     WHERE o.store_id = ? AND o.status = ? AND o.created_at >= ? AND o.created_at < ?' . $voidExclude
 );
 $stmt->execute([$storeId, 'paid', $range['start'], $range['end']]);
 $summary = $stmt->fetch();
 
-// 全注文取得（提供時間分析用）
+// 全注文取得（提供時間分析用、ただし voided 注文は itemRanking / hourly / tableSales / serviceTime からも外す）
 $stmt = $pdo->prepare(
     'SELECT o.total_amount, o.items, o.created_at, o.prepared_at, o.ready_at, o.served_at, o.paid_at,
             HOUR(o.created_at) AS hour, o.table_id, t.table_code
      FROM orders o
      LEFT JOIN tables t ON t.id = o.table_id
-     WHERE o.store_id = ? AND o.status = ? AND o.created_at >= ? AND o.created_at < ?
+     WHERE o.store_id = ? AND o.status = ? AND o.created_at >= ? AND o.created_at < ?' . $voidExclude . '
      ORDER BY o.created_at'
 );
 $stmt->execute([$storeId, 'paid', $range['start'], $range['end']]);

@@ -17,6 +17,10 @@ require_once __DIR__ . '/../lib/stripe-connect.php';
 require_once __DIR__ . '/../lib/audit-log.php';
 
 require_method(['POST']);
+
+// H-04: CSRF 対策 — 返金経路に Origin / Referer 検証を追加（opt-in）
+verify_origin();
+
 $user = require_role('manager');
 
 $data = json_decode(file_get_contents('php://input'), true);
@@ -85,6 +89,15 @@ try {
     json_error('MIGRATION_REQUIRED', '返金機能のマイグレーションが未適用です', 500);
 }
 
+// Phase 4d-5c-ba hotfix: void_status カラム検出 (migration-pwa4d5a 適用済みか)
+//   voided 済みの payments に対する返金は 409 ALREADY_VOIDED で弾く。
+//   migration 未適用環境ではガードを動的にオフ (従来挙動維持)。
+$hasVoidColForRefund = false;
+try {
+    $pdo->query('SELECT void_status FROM payments LIMIT 0');
+    $hasVoidColForRefund = true;
+} catch (PDOException $e) {}
+
 // ── S3 #10: 返金 race-condition 対策 ──
 // (1) BEGIN → SELECT FOR UPDATE で payment 行をロック
 // (2) 状態を厳密に再確認 (TOCTOU 対策)
@@ -93,11 +106,23 @@ try {
 // (5) 成功後に再 BEGIN → refund_status='full' で確定 UPDATE
 // 'pending' 状態は migration-s3-refund-pending.sql で payments.refund_status ENUM に追加
 
+// 4d-5c-bb-D D-fix3: claim 前 preflight を徹底する。
+//   旧実装は claim (refund_status='none'→'pending') の後に gateway 経路判定 + config 取得を
+//   やっており、config 不足 (GATEWAY_NOT_CONFIGURED / CONNECT_NOT_CONFIGURED /
+//   PLATFORM_KEY_MISSING) で early json_error した場合に revert が走らず
+//   refund_status='pending' が DB に残るバグがあった。
+//   再設計: SELECT FOR UPDATE → 属性バリデーション → **経路判定 + config 取得 (preflight)** →
+//   claim → COMMIT。Stripe API 呼び出しは TX 外。失敗時は revert → json_error に統一。
+$tenantId = $user['tenant_id'];
+$refundPlan = null;  // preflight 結果。['type' => 'connect_terminal'|'destination'|'direct', ...]
+
 $pdo->beginTransaction();
 try {
+    // Phase 4d-5c-ba hotfix: void_status を動的 SELECT (migration 有無で COALESCE)
+    $voidSelectFrag = $hasVoidColForRefund ? ', void_status' : ", 'active' AS void_status";
     $stmt = $pdo->prepare(
         'SELECT id, total_amount, payment_method, gateway_name, external_payment_id,
-                gateway_status, refund_status, refund_amount, store_id
+                gateway_status, refund_status, refund_amount, store_id' . $voidSelectFrag . '
          FROM payments
          WHERE id = ? AND store_id = ?
          FOR UPDATE'
@@ -108,6 +133,15 @@ try {
     if (!$payment) {
         $pdo->rollBack();
         json_error('NOT_FOUND', '指定された決済が見つかりません', 404);
+    }
+
+    // Phase 4d-5c-ba hotfix: 論理取消済みの payments は返金不可
+    //   void と refund は排他の会計処理なので、void 済みに対する refund は 409 で弾く。
+    //   cash_log.cash_out で既に相殺済み (cash 限定だが、将来 gateway 対応時に備えて先にガード化)。
+    $vs = isset($payment['void_status']) ? (string)$payment['void_status'] : 'active';
+    if ($vs === 'voided') {
+        $pdo->rollBack();
+        json_error('ALREADY_VOIDED', 'この決済は既に論理取消されています。返金はできません。', 409);
     }
 
     // 現金は返金不可（手渡しで対応）
@@ -134,7 +168,67 @@ try {
         json_error('INVALID_STATUS', '決済が完了していないため返金できません', 400);
     }
 
+    // ── 4d-5c-bb-D preflight: 経路判定 + config 取得 (claim 前) ──
+    //   3 分岐:
+    //     (1) stripe_connect_terminal → Pattern B: create_stripe_connect_refund (Connect direct charges)
+    //     (2) stripe_connect          → Pattern C: create_stripe_destination_refund (destination charges)
+    //     (3) その他 (stripe / stripe_terminal / 旧値) → Pattern A: create_stripe_refund (tenant Direct key)
+    //   いずれも config 不足があればここで rollBack + json_error。claim に立てない。
+    $gwName = (string)$payment['gateway_name'];
+    if ($gwName === 'stripe_connect_terminal') {
+        $connectInfo = get_tenant_connect_info($pdo, $tenantId);
+        if (!$connectInfo || empty($connectInfo['stripe_connect_account_id'])) {
+            $pdo->rollBack();
+            json_error('CONNECT_NOT_CONFIGURED', 'Stripe Connect が設定されていません', 500);
+        }
+        $platformKey = null;
+        try {
+            $sk = $pdo->prepare("SELECT setting_value FROM posla_settings WHERE setting_key = 'stripe_secret_key'");
+            $sk->execute();
+            $row = $sk->fetch();
+            $platformKey = $row ? $row['setting_value'] : null;
+        } catch (PDOException $e) {}
+        if (!$platformKey) {
+            $pdo->rollBack();
+            json_error('PLATFORM_KEY_MISSING', 'プラットフォームの Stripe キーが設定されていません', 500);
+        }
+        $refundPlan = [
+            'type'                => 'connect_terminal',
+            'platform_key'        => $platformKey,
+            'connect_account_id'  => $connectInfo['stripe_connect_account_id'],
+        ];
+    } elseif ($gwName === 'stripe_connect') {
+        // destination charges (Connect Checkout session from create_stripe_connect_checkout_session)
+        $platformKey = null;
+        try {
+            $sk = $pdo->prepare("SELECT setting_value FROM posla_settings WHERE setting_key = 'stripe_secret_key'");
+            $sk->execute();
+            $row = $sk->fetch();
+            $platformKey = $row ? $row['setting_value'] : null;
+        } catch (PDOException $e) {}
+        if (!$platformKey) {
+            $pdo->rollBack();
+            json_error('PLATFORM_KEY_MISSING', 'プラットフォームの Stripe キーが設定されていません', 500);
+        }
+        $refundPlan = [
+            'type'         => 'destination',
+            'platform_key' => $platformKey,
+        ];
+    } else {
+        // Pattern A: Direct (tenants.stripe_secret_key)
+        $gwConfig = get_payment_gateway_config($pdo, $tenantId);
+        if (!$gwConfig || $gwConfig['gateway'] !== 'stripe' || !$gwConfig['token']) {
+            $pdo->rollBack();
+            json_error('GATEWAY_NOT_CONFIGURED', 'Stripe が設定されていません', 500);
+        }
+        $refundPlan = [
+            'type'  => 'direct',
+            'token' => $gwConfig['token'],
+        ];
+    }
+
     // 'pending' に先取り UPDATE (affected_rows=1 でなければ並列処理が先行)
+    //   ここまで来たら preflight 済み。失敗時に revert を経由させる統一構造にする。
     $claimStmt = $pdo->prepare(
         "UPDATE payments
          SET refund_status = 'pending', refunded_by = ?, refunded_at = NOW()
@@ -156,48 +250,33 @@ try {
     json_error('DB_ERROR', '返金処理の前段で失敗しました', 500);
 }
 
-$tenantId = $user['tenant_id'];
 $totalAmount = (int)$payment['total_amount'];
 
-// Stripe API 呼び出し（Connect vs Direct を判定）
+// ── Stripe API 呼び出し (TX 外) ──
+//   4d-5c-bb-D: claim 後はこの 1 箇所でのみ refund を試行し、json_error は revert を必ず経由させる。
 $refundResult = null;
-
-if ($payment['gateway_name'] === 'stripe_connect_terminal') {
-    // Pattern B: Connect
-    $connectInfo = get_tenant_connect_info($pdo, $tenantId);
-    if (!$connectInfo || empty($connectInfo['stripe_connect_account_id'])) {
-        json_error('CONNECT_NOT_CONFIGURED', 'Stripe Connect が設定されていません', 500);
-    }
-    // POSLA プラットフォームキーを posla_settings から取得
-    $platformKey = null;
-    try {
-        $sk = $pdo->prepare("SELECT setting_value FROM posla_settings WHERE setting_key = 'stripe_secret_key'");
-        $sk->execute();
-        $row = $sk->fetch();
-        $platformKey = $row ? $row['setting_value'] : null;
-    } catch (PDOException $e) {}
-
-    if (!$platformKey) {
-        json_error('PLATFORM_KEY_MISSING', 'プラットフォームの Stripe キーが設定されていません', 500);
-    }
-
+if ($refundPlan['type'] === 'connect_terminal') {
+    // Pattern B: Connect direct charges (Terminal)
     $refundResult = create_stripe_connect_refund(
-        $platformKey,
-        $connectInfo['stripe_connect_account_id'],
+        $refundPlan['platform_key'],
+        $refundPlan['connect_account_id'],
         $payment['external_payment_id'],
         $totalAmount,
         $reason,
         true // プラットフォーム手数料も返金
     );
+} elseif ($refundPlan['type'] === 'destination') {
+    // Pattern C: destination charges (Checkout online/takeout)
+    $refundResult = create_stripe_destination_refund(
+        $refundPlan['platform_key'],
+        $payment['external_payment_id'],
+        $totalAmount,
+        $reason
+    );
 } else {
     // Pattern A: Direct
-    $gwConfig = get_payment_gateway_config($pdo, $tenantId);
-    if (!$gwConfig || $gwConfig['gateway'] !== 'stripe' || !$gwConfig['token']) {
-        json_error('GATEWAY_NOT_CONFIGURED', 'Stripe が設定されていません', 500);
-    }
-
     $refundResult = create_stripe_refund(
-        $gwConfig['token'],
+        $refundPlan['token'],
         $payment['external_payment_id'],
         $totalAmount,
         $reason
@@ -205,7 +284,8 @@ if ($payment['gateway_name'] === 'stripe_connect_terminal') {
 }
 
 if (!$refundResult['success']) {
-    // S3 #10: Stripe Refund 失敗時は 'pending' を 'none' に戻す (リトライ可能化)
+    // S3 #10 / 4d-5c-bb-D D-fix3: Stripe Refund 失敗時は 'pending' を 'none' に戻す (リトライ可能化)。
+    //   preflight 済みで claim を立てているため、ここが claim 後の唯一の失敗 exit。必ず revert する。
     try {
         $pdo->prepare(
             "UPDATE payments

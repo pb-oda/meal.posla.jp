@@ -346,16 +346,48 @@ var HandyApp = (function () {
     return apiFetch('/customer/menu.php?store_id=' + _storeId)
       .then(function (json) {
         if (json.ok) {
-          _categories = json.data.categories || [];
-          // アイテムマップ構築
-          _menuItemMap = {};
-          _categories.forEach(function (cat) {
-            (cat.items || []).forEach(function (item) {
-              _menuItemMap[item.menuItemId] = item;
-            });
-          });
+          _applyMenuData(json.data);
+          // Phase 3: 正常取得を snapshot に退避
+          if (typeof OfflineSnapshot !== 'undefined' && _storeId) {
+            OfflineSnapshot.save('handy', _storeId, 'menu', json.data);
+          }
+          if (typeof OfflineStateBanner !== 'undefined') {
+            OfflineStateBanner.setLastSuccessAt(Date.now());
+            OfflineStateBanner.markFresh();
+          }
         }
+      })
+      .catch(function (err) {
+        // Phase 3: メニュー未ロードの初回失敗時のみ snapshot 復元
+        if (_categories && _categories.length > 0) {
+          // 既存表示あり: バナーのみ、表示は壊さない
+          if (typeof OfflineStateBanner !== 'undefined') OfflineStateBanner.markStale();
+          throw err;
+        }
+        if (typeof OfflineSnapshot !== 'undefined' && _storeId) {
+          var snap = OfflineSnapshot.load('handy', _storeId, 'menu');
+          if (snap && snap.data) {
+            _applyMenuData(snap.data);
+            if (typeof OfflineStateBanner !== 'undefined') {
+              OfflineStateBanner.setLastSuccessAt(snap.savedAt);
+              OfflineStateBanner.markStale();
+            }
+            return; // fulfil: 画面は古いデータで初期化された
+          }
+        }
+        throw err;
       });
+  }
+
+  // Phase 3: loadMenu / snapshot 復元両方から呼ぶメニューデータ適用関数
+  function _applyMenuData(data) {
+    _categories = (data && data.categories) || [];
+    _menuItemMap = {};
+    _categories.forEach(function (cat) {
+      (cat.items || []).forEach(function (item) {
+        _menuItemMap[item.menuItemId] = item;
+      });
+    });
   }
 
   function checkMenuVersion() {
@@ -396,11 +428,37 @@ var HandyApp = (function () {
     return apiFetch('/store/tables.php?store_id=' + _storeId)
       .then(function (json) {
         if (json.ok) {
-          _tables = (json.data.tables || []).filter(function (t) {
-            return parseInt(t.is_active, 10) === 1;
-          });
+          _applyTablesData(json.data);
+          if (typeof OfflineSnapshot !== 'undefined' && _storeId) {
+            OfflineSnapshot.save('handy', _storeId, 'tables', json.data);
+          }
         }
+      })
+      .catch(function (err) {
+        // Phase 3: 初回失敗のみ snapshot 復元
+        if (_tables && _tables.length > 0) {
+          if (typeof OfflineStateBanner !== 'undefined') OfflineStateBanner.markStale();
+          throw err;
+        }
+        if (typeof OfflineSnapshot !== 'undefined' && _storeId) {
+          var snap = OfflineSnapshot.load('handy', _storeId, 'tables');
+          if (snap && snap.data) {
+            _applyTablesData(snap.data);
+            if (typeof OfflineStateBanner !== 'undefined') {
+              OfflineStateBanner.setLastSuccessAt(snap.savedAt);
+              OfflineStateBanner.markStale();
+            }
+            return;
+          }
+        }
+        throw err;
       });
+  }
+
+  function _applyTablesData(data) {
+    _tables = ((data && data.tables) || []).filter(function (t) {
+      return parseInt(t.is_active, 10) === 1;
+    });
   }
 
   // ==== Tab management ====
@@ -717,9 +775,30 @@ var HandyApp = (function () {
     els.cartDetail.style.display = _cartOpen ? 'block' : 'none';
   }
 
+  // Phase 3: 状態変更系 API (POST/PATCH/DELETE) の共通ガード。
+  // offline または stale (古いデータ表示中) で true を返す。
+  // 呼び出し側は `if (_guardOfflineOrStale()) return;` で中断する。
+  function _isOfflineOrStale() {
+    if (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isOfflineOrStale) {
+      return OfflineStateBanner.isOfflineOrStale();
+    }
+    if (typeof OfflineDetector !== 'undefined' && OfflineDetector.isOnline) {
+      return !OfflineDetector.isOnline();
+    }
+    return false;
+  }
+  function _guardOfflineOrStale() {
+    if (!_isOfflineOrStale()) return false;
+    toast('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u307E\u305F\u306F\u53E4\u3044\u30C7\u30FC\u30BF\u8868\u793A\u4E2D\u3067\u3059\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002', 'error');
+    return true;
+  }
+
   // ==== Order submission ====
   function submitOrder() {
     if (_cart.length === 0) { toast('カートが空です', 'error'); return; }
+
+    // Phase 3: offline または stale 中の注文送信は絶対に実行しない (キューもしない)
+    if (_guardOfflineOrStale()) return;
 
     var items = _cart.map(function (c) {
       var entry = { id: c.id, name: c.name, price: c.price, qty: c.qty };
@@ -857,7 +936,7 @@ var HandyApp = (function () {
       }).join('、');
       if (itemsSummary.length > 80) itemsSummary = itemsSummary.substring(0, 80) + '…';
 
-      var canEdit = !['paid', 'cancelled'].includes(o.status);
+      var canEdit = (['paid', 'cancelled'].indexOf(o.status) === -1);
       var statusClass = 'status--' + o.status;
 
       var memoLine = '';
@@ -888,7 +967,7 @@ var HandyApp = (function () {
     var order = _historyOrders.find(function (o) { return o.id === orderId; });
     if (!order) { toast('注文が見つかりません', 'error'); return; }
 
-    if (['paid', 'cancelled'].includes(order.status)) {
+    if (['paid', 'cancelled'].indexOf(order.status) !== -1) {
       toast('この注文は修正できません', 'error');
       return;
     }
@@ -1293,6 +1372,7 @@ var HandyApp = (function () {
   }
 
   function seatReservationFromHandy(reservationId) {
+    if (_guardOfflineOrStale()) return;
     if (!confirm('この予約客を即着席させますか?')) return;
     apiPost('/store/reservation-seat.php', { reservation_id: reservationId, store_id: _storeId })
       .then(function (j) {
@@ -1303,6 +1383,7 @@ var HandyApp = (function () {
   }
 
   function markReservationNoShow(reservationId) {
+    if (_guardOfflineOrStale()) return;
     if (!confirm('この予約を no-show として記録しますか?')) return;
     apiPost('/store/reservation-no-show.php', { reservation_id: reservationId, store_id: _storeId })
       .then(function (j) {
@@ -1320,6 +1401,7 @@ var HandyApp = (function () {
   // スタッフが空席を「開放」 → next_session_token を発行 (5分有効、ワンタイム)
   // 客が QR を読むと自動的にセッション作成、トークンは即消費される
   function openTableForCustomer(tableId, tableCode) {
+    if (_guardOfflineOrStale()) return;
     if (!confirm('テーブル ' + tableCode + ' を客向けに開放します。\n5分以内に客が QR を読み込むと自動着席します。\nよろしいですか?')) return;
     apiPost('/store/table-open.php', { store_id: _storeId, table_id: tableId, expires_minutes: 5 })
       .then(function (j) {
@@ -1390,6 +1472,7 @@ var HandyApp = (function () {
     els.optAdd = newAdd;
 
     els.optAdd.addEventListener('click', function () {
+      if (_guardOfflineOrStale()) return;
       var guestCount = parseInt(document.getElementById('seat-guest-count').value, 10) || 1;
       var planId = document.getElementById('seat-plan').value || null;
       var courseId = document.getElementById('seat-course').value || null;
@@ -1473,6 +1556,7 @@ var HandyApp = (function () {
     els.optAdd = newAdd;
 
     els.optAdd.addEventListener('click', function () {
+      if (_guardOfflineOrStale()) return;
       var ta = document.getElementById('memo-text');
       var memo = ta ? ta.value.trim() : '';
 
@@ -1502,6 +1586,7 @@ var HandyApp = (function () {
 
   // ==== Cancel session (着席キャンセル) ====
   function cancelSession(sessionId, tableCode) {
+    if (_guardOfflineOrStale()) return;
     if (!confirm(tableCode + ' の着席をキャンセルしますか？')) return;
     apiFetch('/store/table-sessions.php?id=' + encodeURIComponent(sessionId) + '&store_id=' + encodeURIComponent(_storeId), {
       method: 'DELETE'
@@ -1596,6 +1681,7 @@ var HandyApp = (function () {
     els.optBody.innerHTML = html;
 
     document.getElementById('sub-qr-add-btn').addEventListener('click', function () {
+      if (_guardOfflineOrStale()) return;
       this.disabled = true;
       this.textContent = '発行中...';
       apiPost('/store/sub-sessions.php', {

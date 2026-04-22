@@ -31,7 +31,7 @@ POSLA運営（プラスビリーフ）がテナントからの問い合わせや
 | 2 | 発生時刻（分単位） | 問い合わせ本文 / スクショ | 「今」でも可、必ず控える |
 | 3 | エラーコード（`[Exxxx]`） | スクリーンショット | あればカタログ確認、なければ症状から推定 |
 | 4 | 症状の再現性（毎回/たまに） | 聞き取り | 「たまに」なら時間帯ログを取る |
-| 5 | ブラウザ・端末 | 聞き取り | iOS Safari は既知不具合多数、Chrome 推奨 |
+| 5 | ブラウザ・端末 | 聞き取り | KDS/レジ/ハンディは Android Chrome が標準環境。iOS Safari は業務端末としては非推奨 (音声操作・通知音・PWAインストールに制約) |
 | 6 | サーバー応答 | `curl https://eat.posla.jp/api/monitor/ping.php` | 落ちてれば全体障害 |
 | 7 | 直近 1 時間の error_log 状況 | 6.11 のクエリ実行 | 多発なら共通障害 |
 | 8 | 該当テナントの `is_active` | `SELECT is_active, subscription_status FROM tenants WHERE slug=?` | 0 なら停止中 |
@@ -677,6 +677,123 @@ cron 設定例（FreeBSD crontab）:
 ```
 
 実行ログは `/home/odah/www/eat-posla/logs/monitor-health.log` に追記。
+
+### 6.9-b.6 新規エラーコード追加手順 (R1 ガード機構付き)
+
+新しい API でエラーを返す際の手順。`scripts/generate_error_catalog.py` に **採番固定 + 未登録検出 + サイレント採番変更検出** のガードが入っているため、運用ミスを防げます。
+
+**手順:**
+
+1. PHP で `json_error('NEW_CODE', '...', 4xx)` を呼ぶようにコードを書く
+2. `scripts/output/error-audit.tsv` に該当行を追記
+   ```
+   NEW_CODE	400	api/path/to/file.php	行番号	メッセージ
+   ```
+3. `python3 scripts/generate_error_catalog.py` を実行
+4. ガードが exit 1 で止まる → 表示される推奨アクション (A/B/C) に従う
+   - **(A) 既存 E 番号体系のシフトを許容する場合 (新規プロジェクト・リリース前のみ)**: `CATEGORIES` の該当カテゴリ集合に追加。本番に流通している E 番号がある場合は選ばない
+   - **(B) 既存 E 番号を保持する場合 (本番運用中・推奨)**: `PINNED_NUMBERS` に明示登録（カテゴリ内の次の空き番号を割当）
+   - **(C) 一時的にスキップする場合**: `EXCLUDE` にコード名を追加
+5. `python3 scripts/generate_error_catalog.py` を再実行 → exit 0 で完了
+6. `php scripts/build-helpdesk-prompt.php` で AI ヘルプデスク KB 再生成
+7. `cd docs/manual && npm run build:tenant && npm run build:internal` でドキュメントビルド
+8. `api/lib/error-codes.php` / `docs/manual/{tenant,internal}/99-error-catalog.md` / `scripts/output/helpdesk-prompt-*.txt` をデプロイ
+
+**ガード機構の役割:**
+
+| ガード | 検出する内容 | 目的 |
+|---|---|---|
+| `assert_no_unrecognized_codes()` | TSV にあるが CATEGORIES / PINNED_NUMBERS / 既存 PHP レジストリのいずれにも無いコード | 新コードの採番ルートが未定義なまま自動採番されるのを防ぐ。番号シフト事故の予防 |
+| `assert_no_silent_renumbering()` | 既存 PHP レジストリの code → errorNo と新生成結果を比較し、PINNED 以外で番号が変化したコード | CATEGORIES から既存コードを誤って削除した場合などに発火。本番流通中の E 番号がサイレントに変わるのを防ぐ |
+
+**なぜ既存 errorNo を不用意に変えてはいけないか:**
+
+- AI ヘルプデスク（`scripts/output/helpdesk-prompt-tenant.txt`）が E 番号で参照される
+- 顧客サポートで「`E2017` が出ました」と問い合わせを受けた記録が残っている
+- 顧客側のスクリーンショットや業務メモに E 番号が書かれていることがある
+- 本番運用中に E 番号がシフトすると、過去の記録と齟齬が出てサポート品質が落ちる
+
+**`PINNED_NUMBERS` の役割:**
+
+`scripts/generate_error_catalog.py` の `PINNED_NUMBERS` 辞書に `('カテゴリID', 'カテゴリラベル', 番号)` を登録すると、その番号で固定割当されます。CATEGORIES への追加でアルファベット順以降の番号がシフトする問題を回避できます。
+
+例 (R1 で追加した `INVALID_REASON`):
+```python
+PINNED_NUMBERS = {
+    'INVALID_REASON': ('E2', '入力検証', 2074),  # E2073 (VALIDATION) の次空き
+}
+```
+
+**tenant 詳細ブロックの自動保持:**
+
+generator は `docs/manual/tenant/99-error-catalog.md` の `### Exxxx` 詳細ブロックを再生成時に自動保持します（`_extract_existing_detail_blocks()` で再生成前に抽出 → 新カタログにマージ）。新規 errorNo は basic な詳細ブロックを auto-generate し、`enrich_error_catalog.py` で「対処方法」行が追記されます。
+
+### 6.9-b.7 既存 E1xxx 番号重複の扱い (既知課題)
+
+`api/lib/error-codes.php` の E1xxx には複数のコードが同じ番号を共有する箇所があります（例: `ACTIVATE_FAILED` と `ALREADY_PAID` が両方とも `E1001`）。
+
+**原因:**
+- `CATEGORIES` に E1 のラベルが 2 つ存在 (`システム / インフラ` と `(未分類)` フォールバック)
+- 両方とも `cat_num=1000` から再採番するため同じ番号になる
+
+**現時点の方針 (互換性優先):**
+- 本番に流通済みの E 番号を変えると顧客サポート記録と齟齬が出るため、**現時点では維持**
+- 表示 (Markdown / AI ヘルプデスク) は「該当コード | A&lt;br&gt;B」と複数併記されるためユーザー側の混乱は実害なし
+- `get_error_code_by_no()` は逆引き map の後勝ちで一方しか返せない（例: `E1001` → `ALREADY_PAID` のみ）が、現状運用での使用箇所は限定的
+- 根本解消は別タスクで設計検討予定
+
+**何をすると問題が起きるか:**
+- `categorize()` のフォールバック先カテゴリラベルを変更 → 番号シフトが大量発生
+- E1 集合の中身を並び替え → 番号シフト
+
+`assert_no_silent_renumbering()` がこれを検出して exit 1 します。
+
+---
+
+## 6.9-c RevisionGate (軽量リビジョン確認) 関連のトラブル
+
+詳しい設計は `internal/05-operations.md` §5.14b を参照。
+
+### 6.9-c.1 「KDS で orders.php がほぼ呼ばれていない」と問い合わせ / 内部調査
+
+**正常な挙動です。** RevisionGate により、注文・品目に変更が無い間は重い `kds/orders.php` をスキップし、軽量な `revisions.php` だけが叩かれます。
+
+確認手順:
+1. ブラウザ DevTools → Network → `revisions.php` が 3 秒間隔で叩かれているか
+2. 30 秒に 1 回は強制的に `orders.php` が叩かれるか (MAX_GAP_MS = 30000)
+3. 注文 / 品目状態を変更したら次の 3 秒以内に `orders.php` が叩かれるか
+
+5 分以上 `orders.php` がゼロなら逆に異常 (RevisionGate が常に false / クライアント側のキャッシュ異常 / `_lastFullFetchAt` の時刻ずれを疑う)。
+
+### 6.9-c.2 「revisions.php が遅い」「KDS の反応が悪くなった」
+
+`revisions.php` は MAX クエリ × 1〜2 件で完結する想定 (10ms 以内)。応答が遅い場合:
+
+| 症状 | 確認 | 対処 |
+|---|---|---|
+| 50ms 以上常時かかる | `EXPLAIN` で `idx_order_updated` / `idx_oi_store_status` / `idx_store_status` が効いているか | インデックス再構築 (`ANALYZE TABLE`) |
+| 5xx が頻発 | `error_log` で `revisions.php` の例外確認 | DB 接続エラー / テーブル未作成のグレースフル分岐確認 |
+| KDS が「読み込み中…」のまま | フロントの `RevisionGate.shouldFetch()` が Promise pending | `_pending` バッチが解決されていない可能性。ブラウザ再読込 |
+
+### 6.9-c.3 「コース料理が自動進行しない」
+
+コース自動発火 (`check_course_auto_fire`) は `kds/orders.php` 内で実行されます。RevisionGate でスキップされる時間帯でも、**MAX_GAP_MS = 30 秒** で必ず full fetch されるため、auto_fire_min が分単位なら問題なく進行します。
+
+進行しない場合の確認:
+1. KDS 画面が開かれているか (画面が閉じていれば fetch 自体が走らない)
+2. `polling-data-source.js` の `_lastFullFetchAt` が更新されているか (DevTools コンソール)
+3. `course_phases.auto_fire_min` の設定値 (NULL なら手動発火待ち)
+4. `table_sessions.phase_fired_at` の値 (発火時刻が未来なら未到達)
+
+### 6.9-c.4 「呼び出しアラートの elapsed_seconds が止まっている」
+
+通常はアラート表示中、KDS / ハンディの呼び出しポーラー (`kds-alert.js` / `handy-alert.js`) はゲート bypass で 5 秒ごとに full fetch します (`_lastAlertIds.length > 0` 判定)。止まる場合:
+
+- ブラウザタブが非アクティブで `setInterval` がスロットルされている可能性 → タブをアクティブにする
+- `_lastAlertIds` がクリアされて空配列になっていないか (DevTools)
+- `RevisionGate.invalidate('call_alerts', storeId)` が ack 後に呼ばれているか (関連バグなら原因)
+
+
 
 ---
 

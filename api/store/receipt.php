@@ -232,6 +232,21 @@ if ($method === 'POST') {
     $storeId = $payment['store_id'];
     require_store_access($storeId);
 
+    // Phase 4d-5c-ba hotfix: 論理取消済み / 返金済み の payments は新規領収書発行を拒否
+    //   - voided: 売上として無効化されているので領収書発行不可 → 409 VOIDED_PAYMENT
+    //   - refunded: 返金済み (full / pending) も新規発行不可 → 409 REFUNDED_PAYMENT
+    //   GET による再印刷 (detail=1) は既発行レシート参照なので影響させない。
+    //   migration-pwa4d5a 未適用環境 (void_status カラムなし) では voided チェックをスキップして従来挙動を維持。
+    if (array_key_exists('void_status', $payment) && (string)$payment['void_status'] === 'voided') {
+        json_error('VOIDED_PAYMENT', 'この決済は既に論理取消されています。領収書を発行できません。', 409);
+    }
+    if (array_key_exists('refund_status', $payment)) {
+        $rs = (string)($payment['refund_status'] === null ? 'none' : $payment['refund_status']);
+        if ($rs !== 'none' && $rs !== '') {
+            json_error('REFUNDED_PAYMENT', 'この決済は返金処理中または返金済みです。領収書を発行できません。', 409);
+        }
+    }
+
     // ── 2. 明細取得 (paid_items から) ──
     $paidItems = json_decode($payment['paid_items'], true);
     if (empty($paidItems)) {
@@ -325,8 +340,9 @@ if ($method === 'POST') {
         $pdo->commit();
     } catch (\Exception $e) {
         $pdo->rollBack();
+        // H-14: browser 応答から内部メッセージを排除、詳細は error_log にのみ残す（既存）
         error_log('[L-5 receipt] ' . $e->getMessage());
-        json_error('GENERATE_FAILED', '領収書の作成に失敗しました: ' . $e->getMessage(), 500);
+        json_error('GENERATE_FAILED', '領収書の作成に失敗しました', 500);
     }
 
     // ── 6. 印刷用データをレスポンスに含める ──

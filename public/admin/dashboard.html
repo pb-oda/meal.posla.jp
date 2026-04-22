@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3f51b5">
   <title>管理ダッシュボード</title>
-  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/admin.css?v=20260419-headerbtn">
   <link rel="stylesheet" href="css/reservation-board.css?v=20260418">
   <style>
     /* L-3 Phase 3: ヘルプスタッフ表示 */
@@ -53,7 +53,7 @@
         <a class="header-shortcut header-shortcut--customer" id="link-customer-menu" href="#" target="_blank" title="顧客メニュー（選択中店舗）">注文画面</a>
       </div>
       <span class="admin-header__user" id="header-user-name">-</span>
-      <a class="btn-change-password" href="/public/docs-tenant/" target="_blank" rel="noopener" title="取扱説明書を開く" style="text-decoration:none;">📖 取扱説明書</a>
+      <a class="btn-change-password" href="/public/docs-tenant/" target="_blank" rel="noopener" title="取扱説明書を開く" style="text-decoration:none;" data-role-min="manager">📖 取扱説明書</a>
       <button class="btn-change-password" id="btn-change-password" type="button" title="パスワード変更">パスワード変更</button>
       <button class="btn-logout" id="btn-logout">ログアウト</button>
     </div>
@@ -98,7 +98,9 @@
       <button class="sub-tab-nav__btn" data-tab="orders" data-group="report" data-role-min="manager">注文履歴</button>
       <button class="sub-tab-nav__btn" data-tab="turnover" data-group="report" data-role-min="manager">回転率・客層</button>
       <button class="sub-tab-nav__btn" data-tab="staff-report" data-group="report" data-role-min="manager">スタッフ評価</button>
+      <button class="sub-tab-nav__btn" data-tab="rating-report" data-group="report" data-role-min="manager">満足度分析</button>
       <button class="sub-tab-nav__btn" data-tab="basket" data-group="report" data-role-min="manager">併売分析</button>
+      <button class="sub-tab-nav__btn" data-tab="emergency-ledger" data-group="report" data-role-min="manager" data-requires-store>緊急会計台帳</button>
       <!-- 店舗設定 -->
       <button class="sub-tab-nav__btn" data-tab="settings" data-group="config" data-role-min="manager">店舗設定</button>
       <button class="sub-tab-nav__btn" data-tab="kds-stations" data-group="config" data-role-min="manager">KDSステーション</button>
@@ -232,11 +234,20 @@
       <div id="staff-report-container"></div>
     </div>
 
+    <!-- R1: 満足度・低評価分析 -->
+    <div class="tab-panel" id="panel-rating-report">
+      <div class="panel-header"><h2 class="panel-header__title">満足度・低評価分析</h2></div>
+      <div id="rating-report-container"></div>
+    </div>
+
     <!-- 併売分析（バスケット分析） -->
     <div class="tab-panel" id="panel-basket">
       <div class="panel-header"><h2 class="panel-header__title">併売分析（バスケット分析）</h2></div>
       <div id="basket-analysis-container"></div>
     </div>
+
+    <!-- PWA Phase 4b-2: 緊急会計台帳 (manager/owner 読み取り専用) -->
+    <div class="tab-panel" id="panel-emergency-ledger"></div>
 
     <!-- 食べ放題プラン -->
     <div class="tab-panel" id="panel-time-plans">
@@ -355,9 +366,15 @@
       <div id="shift-view-calendar" class="shift-view"></div>
     </div>
     <div class="tab-panel" id="panel-shift-my">
+      <div class="staff-back-bar" data-role-min="staff" data-role-max="staff" style="padding:0.5rem 1rem; background:#fafafa; border-bottom:1px solid #e0e0e0;">
+        <button type="button" class="btn btn-back-to-staff-home" style="background:transparent; border:1px solid #ccc; color:#333; padding:0.4rem 0.8rem; border-radius:6px; cursor:pointer; font-size:0.9rem;">← スタッフ画面に戻る</button>
+      </div>
       <div id="shift-view-my-shift" class="shift-view"></div>
     </div>
     <div class="tab-panel" id="panel-shift-availability">
+      <div class="staff-back-bar" data-role-min="staff" data-role-max="staff" style="padding:0.5rem 1rem; background:#fafafa; border-bottom:1px solid #e0e0e0;">
+        <button type="button" class="btn btn-back-to-staff-home" style="background:transparent; border:1px solid #ccc; color:#333; padding:0.4rem 0.8rem; border-radius:6px; cursor:pointer; font-size:0.9rem;">← スタッフ画面に戻る</button>
+      </div>
       <div id="shift-view-availability" class="shift-view"></div>
     </div>
     <div class="tab-panel" id="panel-shift-attendance">
@@ -433,7 +450,7 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="../shared/js/utils.js?v=20260419-phaseB"></script>
   <script src="../shared/js/printer-service.js?v=20260418u2"></script>
-  <script src="js/admin-api.js?v=20260408p1a"></script>
+  <script src="js/admin-api.js?v=20260421-pwa4d-5c-ba"></script>
   <script src="js/store-selector.js"></script>
   <script src="js/category-editor.js"></script>
   <script src="js/menu-override-editor.js?v=20260408p130"></script>
@@ -442,11 +459,13 @@
   <script src="js/table-editor.js?v=20260418"></script>
   <script src="js/floor-map.js?v=20260408p1be"></script>
   <script src="js/sales-report.js"></script>
-  <script src="js/register-report.js"></script>
+  <script src="js/register-report.js?v=20260421-pwa4d-3"></script>
   <script src="js/order-history.js"></script>
   <script src="js/turnover-report.js"></script>
   <script src="js/staff-report.js"></script>
+  <script src="js/rating-report.js?v=20260420-r1b"></script>
   <script src="js/basket-analysis.js"></script>
+  <script src="js/emergency-payment-ledger.js?v=20260421-pwa4d-5b"></script>
   <script src="js/time-limit-plan-editor.js"></script>
   <script src="js/course-editor.js"></script>
   <script src="js/inventory-manager.js"></script>
@@ -455,7 +474,7 @@
   <script src="js/kds-station-editor.js"></script>
   <script src="js/user-editor.js?v=20260419-cp1"></script>
   <script src="js/device-editor.js?v=20260418"></script>
-  <script src="js/audit-log-viewer.js?v=20260419-cb1c"></script>
+  <script src="js/audit-log-viewer.js?v=20260421-cashier-pin-display"></script>
   <script src="js/error-stats-viewer.js?v=20260419-cb1"></script>
   <script src="../shared/js/posla-helpdesk-fab.js?v=20260419-cb1c"></script>
   <script src="js/receipt-settings.js?v=20260405c"></script>
@@ -516,6 +535,25 @@
           var panel = document.getElementById('panel-reservation-board');
           if (panel && panel.style.display !== 'none') tryInit();
         });
+      }
+    }, 1500);
+
+    // 修正 (2026-04-20): リロード後に _restoreLastTab() が予約管理タブを復元した場合、
+    // click イベント未発火のため tryInit() が走らず、パネルが空白のまま残るバグの対策。
+    // StoreSelector.init() と _restoreLastTab() の完了を待ってから、
+    // 予約管理パネルが表示状態 (display !== 'none') なら自動的に tryInit() を呼ぶ。
+    // 特にキャッシュリセット直後は posla_last_tab=reservation-board が残っており再現しやすい。
+    setTimeout(function () {
+      var panel = document.getElementById('panel-reservation-board');
+      if (!panel) return;
+      // display:none チェック (タブ非アクティブ時は触らない)
+      if (panel.style.display === 'none') return;
+      // offsetParent === null は祖先要素が display:none 等で実際に非表示
+      if (panel.offsetParent === null) return;
+      // コンテナが空 (まだ初期化されていない) ときだけ呼ぶ
+      var container = document.getElementById('reservation-board-container');
+      if (container && container.childNodes.length === 0) {
+        tryInit();
       }
     }, 1500);
   })();
@@ -600,6 +638,16 @@
       // サブタブのロール制御
       document.querySelectorAll('.sub-tab-nav__btn[data-role-min]').forEach(function (btn) {
         if (!checkRole(btn)) btn.style.display = 'none';
+      });
+
+      // ヘッダ内のロール制御 (取扱説明書リンク等)
+      document.querySelectorAll('.admin-header [data-role-min]').forEach(function (el) {
+        if (!checkRole(el)) el.style.display = 'none';
+      });
+
+      // パネル内 (.staff-back-bar 等) のロール制御
+      document.querySelectorAll('.tab-panel [data-role-min]').forEach(function (el) {
+        if (!checkRole(el)) el.style.display = 'none';
       });
 
       // L-16: プラン機能制限（CSSクラスでopenGroupのdisplayリセットに勝つ）
@@ -799,6 +847,9 @@
       OrderHistory.init(document.getElementById('order-history-container'));
       TurnoverReport.init(document.getElementById('turnover-report-container'));
       StaffReport.init(document.getElementById('staff-report-container'));
+      if (typeof RatingReport !== 'undefined') {
+        RatingReport.init(document.getElementById('rating-report-container'));
+      }
       BasketAnalysis.init(document.getElementById('basket-analysis-container'));
       TimeLimitPlanEditor.init(
         document.getElementById('time-plan-list'),
@@ -911,10 +962,51 @@
         });
       }
 
+      // 「← スタッフ画面に戻る」ボタン (staff のみ panel-shift-my / panel-shift-availability に表示)
+      document.querySelectorAll('.btn-back-to-staff-home').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          // サブタブの active 解除
+          var subNav = document.getElementById('sub-tab-nav');
+          if (subNav) {
+            subNav.classList.remove('open');
+            subNav.querySelectorAll('.sub-tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
+          }
+          // タブ親 (シフト管理グループ) の active 解除
+          var tabNav = document.getElementById('tab-nav');
+          if (tabNav) tabNav.querySelectorAll('.tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
+          _activeGroup = '';
+          // 全パネル非表示
+          document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+          // staff-home 表示
+          var home = document.getElementById('panel-staff-home');
+          if (home) { home.style.display = ''; home.classList.add('active'); }
+          // staff のリロード時復元用タブ情報をクリア (次回リロードでスタッフ画面に戻る)
+          try { localStorage.removeItem('posla_last_tab'); localStorage.removeItem('posla_last_group'); } catch (e) {}
+          window.scrollTo(0, 0);
+        });
+      });
+
       // デフォルトタブを表示（オーバーレイ待ちの場合はスキップ）
       if (_role === 'staff') {
-        document.getElementById('panel-staff-home').style.display = '';
-        document.getElementById('panel-staff-home').classList.add('active');
+        // staff: 直前タブが shift-my / shift-availability ならそれを復元、なければスタッフ画面
+        var savedTab = '';
+        try { savedTab = localStorage.getItem('posla_last_tab') || ''; } catch (e) {}
+        if (savedTab === 'shift-my' || savedTab === 'shift-availability') {
+          openGroup('shift');
+          var subNav = document.getElementById('sub-tab-nav');
+          var subBtn = subNav && subNav.querySelector('.sub-tab-nav__btn[data-tab="' + savedTab + '"]');
+          if (subBtn && subBtn.style.display !== 'none') {
+            subNav.querySelectorAll('.sub-tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
+            subBtn.classList.add('active');
+            activateTab(savedTab);
+          } else {
+            document.getElementById('panel-staff-home').style.display = '';
+            document.getElementById('panel-staff-home').classList.add('active');
+          }
+        } else {
+          document.getElementById('panel-staff-home').style.display = '';
+          document.getElementById('panel-staff-home').classList.add('active');
+        }
       } else if (!_waitingForOverlay) {
         // CB1c: 前回開いていたタブを localStorage から復元 (なければメニュー管理)
         _restoreLastTab() || openGroup('menu');
@@ -1118,7 +1210,13 @@
         case 'orders': OrderHistory.load(); break;
         case 'turnover': TurnoverReport.load(); break;
         case 'staff-report': StaffReport.load(); break;
+        case 'rating-report':
+          if (typeof RatingReport !== 'undefined') RatingReport.load();
+          break;
         case 'basket': BasketAnalysis.load(); break;
+        case 'emergency-ledger':
+          if (typeof EmergencyPaymentLedger !== 'undefined') EmergencyPaymentLedger.load();
+          break;
         case 'time-plans': TimeLimitPlanEditor.load(); break;
         case 'courses': CourseEditor.load(); break;
         case 'inventory': InventoryManager.load(); break;
@@ -1643,5 +1741,55 @@
   })();
   </script>
   <script src="pwa-register.js"></script>
+  <script src="../shared/js/install-prompt-banner.js?v=20260420-install"></script>
+  <script>InstallPromptBanner.init('admin');</script>
+  <!-- Phase 1: PWA 更新マネージャ -->
+  <script src="../shared/js/pwa-update-manager.js?v=20260420-pwa1"></script>
+  <script>PWAUpdateManager.init({ scope: 'admin', cachePrefix: 'posla-admin-' });</script>
+  <!-- Phase 2a: Web Push 購読マネージャ + バッジ管理 -->
+  <div id="posla-push-settings" style="position:fixed;bottom:50px;right:8px;z-index:2147482998;display:none;"></div>
+  <button type="button" id="posla-push-settings-toggle" title="この端末の通知設定" aria-label="通知設定"
+    style="position:fixed;bottom:8px;right:160px;z-index:2147482999;background:rgba(0,0,0,0.55);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:14px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans',sans-serif;opacity:0.7;">🔔 通知設定</button>
+  <script src="../shared/js/push-subscription-manager.js?v=20260420-pwa2b"></script>
+  <script src="../shared/js/badge-manager.js?v=20260420-pwa2a"></script>
+  <script>
+    (function () {
+      'use strict';
+      PushSubscriptionManager.init({ scope: 'admin' });
+
+      // Phase 2b 修正: dashboard.html (manager/staff) は店舗紐付け必須。
+      //   getCurrentStoreId() (StoreSelector / AdminApi) が確定するのを待ってから setStoreId。
+      //   店舗切替時もポーリングで再同期する (内部で値変化時のみ POST するので安全)。
+      (function syncStoreId() {
+        try {
+          var s = (typeof getCurrentStoreId === 'function') ? getCurrentStoreId() : null;
+          if (s) PushSubscriptionManager.setStoreId(s);
+        } catch (e) {}
+        setTimeout(syncStoreId, 5000);
+      })();
+
+      var panel = document.getElementById('posla-push-settings');
+      var toggle = document.getElementById('posla-push-settings-toggle');
+
+      // PWA インストール済のときだけ通知設定 UI を表示する。
+      //   PC ブラウザ / モバイルブラウザ (PWA 未インストール) では通知が業務上機能しないため非表示。
+      //   インストール後に再アクセスすれば自動的に表示される (HTML 自体は出力済)。
+      var isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+                      || (window.navigator && window.navigator.standalone === true);
+      if (!isStandalone) {
+        toggle.style.display = 'none';
+        return;
+      }
+
+      var attached = false;
+      toggle.addEventListener('click', function () {
+        if (!attached) {
+          PushSubscriptionManager.attachUI(panel, { compact: false });
+          attached = true;
+        }
+        panel.style.display = (panel.style.display === 'none') ? '' : 'none';
+      });
+    })();
+  </script>
 </body>
 </html>

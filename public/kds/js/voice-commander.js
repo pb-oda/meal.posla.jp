@@ -391,6 +391,14 @@ var VoiceCommander = (function () {
   }
 
   function _executeStaffCall() {
+    // Phase 3 レビュー指摘 #2: offline/stale では POST を叩かない
+    if (_voiceIsOfflineOrStale()) {
+      _beepError();
+      _showStatus('通信が不安定です。通信復帰後に操作してください', 3000);
+      _returnToStandby();
+      return;
+    }
+
     var storeId = KdsAuth.getStoreId();
     if (!storeId) {
       _showStatus('店舗情報が取得できません', 3000);
@@ -1330,13 +1338,46 @@ var VoiceCommander = (function () {
     }
   }
 
+  // Phase 3: voice-commander の状態変更経路も offline/stale で止めるための共通ヘルパ
+  function _voiceIsOfflineOrStale() {
+    if (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isOfflineOrStale) {
+      return OfflineStateBanner.isOfflineOrStale();
+    }
+    if (typeof OfflineDetector !== 'undefined' && OfflineDetector.isOnline) {
+      return !OfflineDetector.isOnline();
+    }
+    return false;
+  }
+
+  // Phase 3: handleAction / handleItemAction / 既存 fetch catch の undefined 解決でも
+  // 音声操作が「成功」と誤認しないよう、json.ok === true だけを成功扱いに絞る。
+  function _isResultSuccess(json) {
+    return !!(json && json.ok === true);
+  }
+
   // ── ステータス更新実行 ──
   function _executeStatusUpdate(orderId, newStatus, orderLabel, statusLabel) {
+    // Phase 3 レビュー指摘 #1: offline/stale で実際に更新されない経路を「成功」と誤発話しない
+    if (_voiceIsOfflineOrStale()) {
+      _beepError();
+      _showStatus('通信が不安定です。通信復帰後に操作してください', 3000);
+      _returnToStandby();
+      return;
+    }
+
     var storeId = KdsAuth.getStoreId();
     _showStatus(orderLabel + ' → ' + statusLabel + ' 実行中...', 0);
 
     KdsRenderer.handleAction(orderId, newStatus, storeId)
-      .then(function () {
+      .then(function (json) {
+        // reject された場合はここに来ない。resolve された場合も json.ok 必須。
+        // 既存の fetch catch が undefined resolve するケースもここで失敗判定する。
+        if (!_isResultSuccess(json)) {
+          _beepError();
+          _showStatus('更新に失敗しました', 3000);
+          _returnToStandby();
+          return;
+        }
         _beepSuccess();
         _showStatus('✓ ' + orderLabel + ' → ' + statusLabel, 2000);
         _returnToStandby();
@@ -1350,11 +1391,25 @@ var VoiceCommander = (function () {
 
   // ── 品目単位ステータス更新実行 ──
   function _executeItemStatusUpdate(itemId, newStatus, itemName, statusLabel) {
+    // Phase 3: 同上
+    if (_voiceIsOfflineOrStale()) {
+      _beepError();
+      _showStatus('通信が不安定です。通信復帰後に操作してください', 3000);
+      _returnToStandby();
+      return;
+    }
+
     var storeId = KdsAuth.getStoreId();
     _showStatus(itemName + ' → ' + statusLabel + ' 実行中...', 0);
 
     KdsRenderer.handleItemAction(itemId, newStatus, storeId)
-      .then(function () {
+      .then(function (json) {
+        if (!_isResultSuccess(json)) {
+          _beepError();
+          _showStatus('更新に失敗しました', 3000);
+          _returnToStandby();
+          return;
+        }
         _beepSuccess();
         _showStatus('✓ ' + itemName + ' → ' + statusLabel, 2000);
         _returnToStandby();
@@ -1368,6 +1423,14 @@ var VoiceCommander = (function () {
 
   // ── 品切れトグル実行 ──
   function _executeSoldOutToggle(menuItemId, source, isSoldOut, menuName) {
+    // Phase 3 レビュー指摘 #2: offline/stale では PATCH を叩かない
+    if (_voiceIsOfflineOrStale()) {
+      _beepError();
+      _showStatus('通信が不安定です。通信復帰後に操作してください', 3000);
+      _returnToStandby();
+      return;
+    }
+
     var storeId = KdsAuth.getStoreId();
     var label = isSoldOut ? '品切れ' : '販売再開';
     _showStatus(menuName + ' → ' + label + ' 実行中...', 0);

@@ -9,7 +9,7 @@ import os
 import re
 import sys
 
-ROOT = "/Users/odahiroki/Desktop/matsunoya-mt"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 API_DIR = os.path.join(ROOT, "api")
 OUT_TSV = os.path.join(ROOT, "scripts/output/error-audit.tsv")
 

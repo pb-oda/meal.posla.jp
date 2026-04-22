@@ -18,6 +18,10 @@ var HandyAlert = (function () {
   var _banner = null;
   var _lastAlertIds = [];
   var _audioCtx = null;
+  // Phase 3: オフライン時の表示耐性
+  var _hasRendered = false;
+  var SNAPSHOT_SCOPE = 'handy';
+  var SNAPSHOT_CHANNEL = 'call_alerts';
   var _initRetries = 0;
 
   // ── 初期化 ──
@@ -171,6 +175,26 @@ var HandyAlert = (function () {
     var storeId = _getStoreId();
     if (!storeId) return;
 
+    // 表示中アラートがある間はゲート bypass:
+    //   - 各アラートの elapsed_seconds (例「5秒前」「1分前」) はサーバー算出のため、
+    //     skip すると表示が固まる
+    //   - アラートが空の steady state では引き続き revision で skip 可能
+    if (_lastAlertIds.length > 0) {
+      _doPoll(storeId);
+      return;
+    }
+
+    // Phase 1 軽量化: revision で変化が無ければ skip
+    if (typeof RevisionGate !== 'undefined') {
+      RevisionGate.shouldFetch('call_alerts', storeId).then(function (should) {
+        if (should) _doPoll(storeId);
+      });
+    } else {
+      _doPoll(storeId);
+    }
+  }
+
+  function _doPoll(storeId) {
     var url = API_URL + '?store_id=' + encodeURIComponent(storeId);
     fetch(url, { credentials: 'same-origin' })
       .then(function (r) {
@@ -182,13 +206,27 @@ var HandyAlert = (function () {
       .then(function (json) {
         if (!json.ok) return;
         var alerts = (json.data && json.data.alerts) || [];
-        _renderAlerts(alerts);
+        _renderAlerts(alerts, false);
+        _hasRendered = true;
+        // Phase 3: snapshot 保存
+        if (typeof OfflineSnapshot !== 'undefined') {
+          OfflineSnapshot.save(SNAPSHOT_SCOPE, storeId, SNAPSHOT_CHANNEL, alerts);
+        }
       })
-      .catch(function () { /* サイレント失敗 */ });
+      .catch(function () {
+        // Phase 3: 初回失敗時のみ snapshot 復元 + stale ヘッダ
+        if (_hasRendered) return;
+        if (typeof OfflineSnapshot === 'undefined') return;
+        var snap = OfflineSnapshot.load(SNAPSHOT_SCOPE, storeId, SNAPSHOT_CHANNEL);
+        if (snap && snap.data) {
+          _renderAlerts(snap.data, true);
+          _hasRendered = true;
+        }
+      });
   }
 
   // ── 描画 ──
-  function _renderAlerts(alerts) {
+  function _renderAlerts(alerts, isStale) {
     if (!_banner) return;
 
     if (alerts.length === 0) {
@@ -262,13 +300,24 @@ var HandyAlert = (function () {
       }
 
       var ackLabel = alertType === 'product_ready' ? '配膳完了' : '対応済み'; // kitchen_call も「対応済み」
+      // Phase 3: stale 時はボタンを出さず read-only
+      var ackBtn = isStale
+        ? ''
+        : '<button class="handy-call-ack" data-alert-id="' + _escapeHtml(a.id) + '">' + ackLabel + '</button>';
       html += '<div class="' + itemClass + '">'
         + '<span class="handy-call-icon">' + icon + '</span>'
         + '<span class="handy-call-text">' + text
         + '<span class="handy-call-elapsed">' + elapsedText + '</span>'
         + '</span>'
-        + '<button class="handy-call-ack" data-alert-id="' + _escapeHtml(a.id) + '">' + ackLabel + '</button>'
+        + ackBtn
         + '</div>';
+    }
+    // Phase 3: stale ヘッダ (古い呼び出し情報である旨)
+    if (isStale) {
+      var staleHeader = '<div class="handy-call-item" style="opacity:0.85;font-style:italic;">'
+        + '\u26A0\uFE0F \u53E4\u3044\u547C\u3073\u51FA\u3057\u60C5\u5831\u3067\u3059\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u6700\u65B0\u8868\u793A\u306B\u66F4\u65B0\u3055\u308C\u307E\u3059\u3002'
+        + '</div>';
+      html = staleHeader + html;
     }
     _banner.innerHTML = html;
     _banner.classList.add('handy-call-show');
@@ -276,14 +325,37 @@ var HandyAlert = (function () {
 
   // ── 対応済み ──
   function _acknowledgeAlert(alertId) {
+    // Phase 3: offline または stale 中の PATCH は絶対に送らない (キューしない)
+    var isOfflineOrStale =
+      (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isOfflineOrStale && OfflineStateBanner.isOfflineOrStale())
+      || (typeof OfflineDetector !== 'undefined' && OfflineDetector.isOnline && !OfflineDetector.isOnline());
+    if (isOfflineOrStale) {
+      var btn = _banner && _banner.querySelector('.handy-call-ack[data-alert-id="' + alertId + '"]');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = btn.dataset.origLabel || '\u5BFE\u5FDC\u6E08\u307F';
+      }
+      try { window.alert('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u307E\u305F\u306F\u53E4\u3044\u30C7\u30FC\u30BF\u8868\u793A\u4E2D\u3067\u3059\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u304A\u9858\u3044\u3057\u307E\u3059\u3002'); } catch (e) {}
+      return;
+    }
     fetch(API_URL, {
       method: 'PATCH',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ alert_id: alertId, status: 'acknowledged' })
     })
-    .then(function () { _poll(); })
-    .catch(function () { _poll(); });
+    .then(function () {
+      if (typeof RevisionGate !== 'undefined') {
+        RevisionGate.invalidate('call_alerts', _getStoreId());
+      }
+      _poll();
+    })
+    .catch(function () {
+      if (typeof RevisionGate !== 'undefined') {
+        RevisionGate.invalidate('call_alerts', _getStoreId());
+      }
+      _poll();
+    });
   }
 
   // ── ビープ音 ──

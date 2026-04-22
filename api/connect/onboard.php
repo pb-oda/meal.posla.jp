@@ -35,11 +35,19 @@ if (!$tenant) {
 
 $accountId = $tenant['stripe_connect_account_id'];
 
+// H-10: Connect callback 用 state token（CSRF 対策）
+// require_role('owner') で既に session はアクティブ。random 32 桁を発行し、
+// tenant_id と紐付けて $_SESSION に保存、callback.php で照合する。
+// state は one-time use で、callback 側で hash_equals 照合後にクリアされる。
+$stateToken = bin2hex(random_bytes(16));
+$_SESSION['connect_state_' . $tenantId] = $stateToken;
+
 // URL構築
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $host = $_SERVER['HTTP_HOST'];
 $refreshUrl = $protocol . '://' . $host . '/public/admin/owner-dashboard.html?connect=refresh';
-$returnUrl = $protocol . '://' . $host . '/api/connect/callback.php?tenant_id=' . urlencode($tenantId);
+$returnUrl = $protocol . '://' . $host . '/api/connect/callback.php?tenant_id=' . urlencode($tenantId)
+    . '&state=' . urlencode($stateToken);
 
 if ($accountId) {
     // 既にアカウントあり → ステータス確認

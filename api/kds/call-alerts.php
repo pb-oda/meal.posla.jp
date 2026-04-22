@@ -12,6 +12,7 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/push.php';
 
 $method = require_method(['GET', 'PATCH', 'POST']);
 $user = require_auth();
@@ -183,6 +184,20 @@ if ($method === 'POST') {
         'INSERT INTO call_alerts (id, store_id, table_id, table_code, reason, type, status, created_at)
          VALUES (?, ?, "KITCHEN", "キッチン", ?, "kitchen_call", "pending", NOW())'
     )->execute([$alertId, $storeId, $reason]);
+
+    // PWA Phase 2b: ハンディ・KDS・レジへ Web Push 通知 (送信失敗は無視: fail-open)
+    try {
+        // tag に alert_id を含めることで、同じユーザーが短時間に別の呼び出しを受けても
+        // レート制限 (60 秒) に抑制されないようにする (Phase 2b レビュー指摘 #3)
+        push_send_to_store($pdo, $storeId, 'call_alert', [
+            'title' => 'キッチンから呼び出し',
+            'body'  => $reason,
+            'url'   => '/public/handy/index.html',
+            'tag'   => 'kitchen_call_' . $alertId,
+        ]);
+    } catch (\Throwable $e) {
+        // 業務処理を止めない
+    }
 
     json_response(['alert_id' => $alertId]);
 }

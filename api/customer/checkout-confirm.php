@@ -14,8 +14,12 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/payment-gateway.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
 
 require_method(['POST']);
+
+// H-03: checkout 二重確認濫用 / session_id ブルート防御 — 1IP あたり 20 回 / 5 分
+check_rate_limit('customer-checkout-confirm', 20, 300);
 
 $data = get_json_body();
 $storeId        = $data['store_id'] ?? null;
@@ -67,7 +71,18 @@ try {
         && !empty($connectInfo['stripe_connect_account_id'])) {
         $platformConfig = get_platform_stripe_config($pdo);
         if (!empty($platformConfig['secret_key'])) {
-            $result = verify_stripe_checkout($platformConfig['secret_key'], $stripeSessionId, $connectInfo['stripe_connect_account_id']);
+            // 2026-04-21 (Phase 4d-5c-bb-G): Connect Checkout session retrieve の context 不一致修正。
+            //   checkout-session.php:139 は create_stripe_connect_checkout_session を使い、
+            //   destination charges パターン (payment_intent_data[transfer_data][destination]) で
+            //   session を作成するため、session は **Platform account 側** に存在する。
+            //   従って verify/retrieve も Platform context (Stripe-Account header なし) で
+            //   行う必要がある。旧コードは Connect account ID を第 3 引数で渡して
+            //   Stripe-Account header 付き retrieve をしており、Stripe 側で 404
+            //   "No such checkout.session" になっていた。
+            //   これは takeout-payment.php の 4d-5c-bb-D 修正と完全同型の bug。
+            //   本番に既存 stripe_connect 13 件あるが、それらは過去コード時代 (2026-04-14 まで)
+            //   の産物で、2026-04-21 test mode で本 bug を実証済み。
+            $result = verify_stripe_checkout($platformConfig['secret_key'], $stripeSessionId);
             if ($result['success']) {
                 $pStatus = $result['payment_status'] ?? '';
                 if ($pStatus === 'paid') {

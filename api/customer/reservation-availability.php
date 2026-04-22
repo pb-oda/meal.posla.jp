@@ -12,8 +12,13 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/reservation-availability.php';
 require_once __DIR__ . '/../lib/reservation-deposit.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
 
 require_method(['GET']);
+
+// H-03: カレンダー全期間大量スキャン DoS 防御 — 1IP あたり 30 回 / 5 分
+check_rate_limit('customer-reservation-availability', 30, 300);
+
 $pdo = get_db();
 
 $storeId = isset($_GET['store_id']) ? trim($_GET['store_id']) : '';

@@ -16,7 +16,7 @@
 | `E8000`〜`E8999` | シフト・勤怠 |
 | `E9000`〜`E9999` | 顧客・予約・テイクアウト・AI・外部連携 |
 
-## 全エラー一覧 (239 件)
+## 全エラー一覧 (249 件)
 
 
 ### E3xxx — 認証・認可
@@ -32,14 +32,16 @@
 | `E3007` | `DUPLICATE_EMAIL` | 409 | このメールアドレスは既に登録されています | 2 | api/owner/users.php, api/store/staff-management.php |
 | `E3008` | `DUPLICATE_USERNAME` | 409 | このユーザー名は既に使用されています | 4 | api/owner/users.php, api/store/staff-management.php |
 | `E3009` | `EMAIL_TAKEN` | 409 | このメールアドレスは既に登録されています | 1 | api/signup/register.php |
-| `E3010` | `FORBIDDEN` | 403 | 本人確認に失敗しました | 36 | api/customer/reservation-cancel.php, api/customer/reservation-deposit-checkout.php, api/customer/reservation-detail.php …他15 |
+| `E3010` | `FORBIDDEN` | 403 | 本人確認に失敗しました | 46 | api/customer/reservation-cancel.php, api/customer/reservation-deposit-checkout.php, api/customer/reservation-detail.php …他25 |
+| `E3040` | `FORBIDDEN_FIELD` | 400 | カード番号等の機密情報は受け付けません。外部端末で決済してください | 1 | api/store/emergency-payments.php |
 | `E3011` | `FORBIDDEN_HQ_MENU` | 403 | 本部メニューは owner ロールでのみ編集できます | 3 | api/owner/menu-templates.php |
+| `E3041` | `FORBIDDEN_SCOPE` | 403 | scope=owner は owner ロールのみ指定可能です | 1 | api/push/subscribe.php |
 | `E3012` | `GPS_REQUIRED` | 400 | 位置情報の取得が必要です。ブラウザの位置情報を許可してください | 2 | api/store/shift/attendance.php |
 | `E3013` | `INVALID_CREDENTIALS` | 401 | メールアドレスまたはパスワードが正しくありません | 2 | api/auth/login.php, api/posla/login.php |
 | `E3014` | `INVALID_CURRENT_PASSWORD` | 401 | 現在のパスワードが正しくありません | 2 | api/auth/change-password.php, api/posla/change-password.php |
 | `E3015` | `INVALID_PIN` | 400 | 担当 PIN は 4〜8 桁の数字で入力してください | 5 | api/customer/table-session.php, api/kds/cash-log.php, api/store/process-payment.php …他2 |
 | `E3016` | `INVALID_ROLE` | 400 | role_hint は kitchen / hall のいずれかです | 6 | api/owner/users.php, api/store/shift/assignments.php, api/store/shift/help-requests.php …他1 |
-| `E3017` | `INVALID_SESSION` | 403 | セッションが無効です | 14 | api/customer/checkout-confirm.php, api/customer/checkout-session.php, api/customer/get-bill.php …他4 |
+| `E3017` | `INVALID_SESSION` | 403 | セッションが無効です | 15 | api/customer/checkout-confirm.php, api/customer/checkout-session.php, api/customer/get-bill.php …他4 |
 | `E3018` | `INVALID_SIGNATURE` | 400 | Webhook署名の検証に失敗しました | 1 | api/subscription/webhook.php |
 | `E3019` | `INVALID_STAFF` | 400 | required_staff は 1〜20 で指定してください | 2 | api/store/shift/templates.php |
 | `E3020` | `INVALID_TOKEN` | 404 | 無効なトークンです | 2 | api/auth/device-register.php, api/signup/activate.php |
@@ -71,7 +73,7 @@
 | `E1002` | `CART_LOG_FAILED` | 503 | カートログ記録に失敗しました | 1 | api/customer/cart-event.php |
 | `E1003` | `CHECKOUT_FAILED` | 503 | $checkout['error'] ?: '不明' | 2 | api/customer/checkout-session.php, api/customer/reservation-deposit-checkout.php |
 | `E1004` | `CREATE_FAILED` | 500 | ユーザー作成に失敗しました | 2 | api/owner/users.php, api/store/staff-management.php |
-| `E1005` | `DB_ERROR` | 500 | 処理に失敗しました。時間を置いて再試行してください。 | 17 | api/customer/reservation-create.php, api/customer/satisfaction-rating.php, api/customer/takeout-orders.php …他11 |
+| `E1005` | `DB_ERROR` | 500 | emergency_payments テーブル未作成の可能性 (migration-pwa4-emergency-payments.sql) | 33 | api/customer/reservation-create.php, api/customer/satisfaction-rating.php, api/customer/takeout-orders.php …他22 |
 | `E1006` | `DELETE_FAILED` | 500 | 削除に失敗しました | 6 | api/owner/ingredients.php, api/owner/menu-templates.php, api/owner/option-groups.php …他3 |
 | `E1007` | `DEVICE_CREATION_FAILED` | 500 | デバイスアカウントの作成に失敗しました | 1 | api/auth/device-register.php |
 | `E1008` | `EMPTY_BODY` | 400 | リクエストボディが空です | 2 | api/lib/response.php, api/subscription/webhook.php |
@@ -103,11 +105,11 @@
 | `E4001` | `ADMIN_NOT_FOUND` | 404 | 管理者が見つかりません | 1 | api/posla/change-password.php |
 | `E4002` | `COURSE_NOT_FOUND` | 404 | コースが見つかりません | 3 | api/customer/menu.php, api/customer/reservation-create.php, api/store/table-sessions.php |
 | `E4003` | `CUSTOMER_NOT_FOUND` | 404 | 顧客が見つかりません | 1 | api/store/reservation-customers.php |
-| `E4004` | `ITEM_NOT_FOUND` | 404 | 品目が見つかりません | 1 | api/kds/update-item-status.php |
-| `E4005` | `NOT_FOUND` | 404 | メニューが見つかりません | 68 | api/connect/disconnect.php, api/customer/menu.php, api/customer/reservation-cancel.php …他37 |
+| `E4004` | `ITEM_NOT_FOUND` | 404 | 品目が見つかりません | 2 | api/customer/satisfaction-rating.php, api/kds/update-item-status.php |
+| `E4005` | `NOT_FOUND` | 404 | メニューが見つかりません | 77 | api/connect/disconnect.php, api/customer/menu.php, api/customer/reservation-cancel.php …他44 |
 | `E4006` | `NO_COURSE_SESSION` | 404 | アクティブなコースセッションが見つかりません | 1 | api/kds/advance-phase.php |
 | `E4007` | `NO_UNPAID_ORDERS` | 404 | 未払いの注文がありません | 3 | api/customer/checkout-confirm.php, api/customer/checkout-session.php, api/customer/get-bill.php |
-| `E4008` | `ORDER_NOT_FOUND` | 404 | 注文が見つかりません | 2 | api/kds/update-status.php, api/smaregi/sync-order.php |
+| `E4008` | `ORDER_NOT_FOUND` | 404 | 注文が見つかりません | 3 | api/customer/satisfaction-rating.php, api/kds/update-status.php, api/smaregi/sync-order.php |
 | `E4009` | `PAYMENT_NOT_FOUND` | 404 | 支払い情報が見つかりません | 4 | api/customer/receipt-view.php, api/store/receipt.php |
 | `E4010` | `PLAN_NOT_FOUND` | 404 | プランが見つかりません | 1 | api/store/table-sessions.php |
 | `E4011` | `RECEIPT_NOT_FOUND` | 404 | 領収書が見つかりません | 1 | api/store/receipt.php |
@@ -197,6 +199,7 @@
 |------|--------|------|-----------|---------|------------|
 | `E6001` | `ALREADY_REFUNDED` | 400 | この決済は既に返金処理中または返金済みです | 2 | api/store/refund-payment.php |
 | `E6002` | `ALREADY_SUBSCRIBED` | 400 | 既にサブスクリプションがあります。Customer Portal から変更してください | 1 | api/subscription/checkout.php |
+| `E6027` | `ALREADY_VOIDED` | 409 | この決済は既に論理取消されています。返金はできません。 | 1 | api/store/refund-payment.php |
 | `E6003` | `CASH_REFUND` | 400 | 現金決済はシステム返金できません。手動で返金してください。 | 1 | api/store/refund-payment.php |
 | `E6004` | `CONNECT_NOT_CONFIGURED` | 500 | Stripe Connect が設定されていません | 1 | api/store/refund-payment.php |
 | `E6005` | `DEPOSIT_CHECKOUT_FAILED` | 503 | '予約金決済の準備に失敗しました: ' . ($checkout['error'] ?: 'unknown') | 1 | api/customer/reservation-create.php |
@@ -212,13 +215,16 @@
 | `E6015` | `PAYMENT_NOT_AVAILABLE` | 503 | 決済処理に失敗しました。お手数ですが店舗にお問い合わせください | 3 | api/customer/takeout-orders.php |
 | `E6016` | `PAYMENT_NOT_CONFIGURED` | 503 | オンライン決済が設定されていません | 1 | api/customer/checkout-session.php |
 | `E6017` | `PAYMENT_NOT_CONFIRMED` | 402 | $result['error'] ?: '決済が確認できませんでした' | 8 | api/customer/checkout-confirm.php, api/customer/takeout-payment.php, api/signup/activate.php |
+| `E6028` | `PAYMENT_RECORD_FAILED` | 500 | 決済は完了しましたが注文の記録に失敗しました。お手数ですが店舗へ直接お問い合わせください。 | 1 | api/customer/takeout-payment.php |
 | `E6018` | `PLAN_REQUIRED` | 403 | シフト管理はProプラン以上で利用できます | 10 | api/owner/shift/unified-view.php, api/store/shift/ai-suggest-data.php, api/store/shift/apply-ai-suggestions.php …他7 |
-| `E6019` | `PLATFORM_KEY_MISSING` | 500 | プラットフォームの Stripe キーが設定されていません | 1 | api/store/refund-payment.php |
+| `E6019` | `PLATFORM_KEY_MISSING` | 500 | プラットフォームの Stripe キーが設定されていません | 2 | api/store/refund-payment.php |
 | `E6020` | `PRICE_NOT_CONFIGURED` | 503 | 料金プラン設定が未完了です | 2 | api/signup/register.php, api/subscription/checkout.php |
 | `E6021` | `RECEIPT_EXPIRED` | 403 | 領収書の表示期限が切れています。スタッフにお声がけください | 1 | api/customer/receipt-view.php |
+| `E6026` | `REFUNDED_PAYMENT` | 409 | この決済は返金処理中または返金済みです。領収書を発行できません。 | 1 | api/store/receipt.php |
 | `E6022` | `REFUND_FAILED` | 502 | '返金に失敗しました: ' . ($refundResult['error'] ?? '不明なエラー') | 1 | api/store/refund-payment.php |
 | `E6023` | `STRIPE_ERROR` | 502 | $createResult['error'] | 10 | api/connect/onboard.php, api/connect/terminal-token.php, api/signup/register.php …他4 |
 | `E6024` | `STRIPE_NOT_CONFIGURED` | 503 | プラットフォームのStripe APIキーが設定されていません | 8 | api/connect/onboard.php, api/connect/terminal-token.php, api/signup/activate.php …他5 |
+| `E6025` | `VOIDED_PAYMENT` | 409 | この決済は既に論理取消されています。領収書を発行できません。 | 1 | api/store/receipt.php |
 
 ### E2xxx — 入力検証
 
@@ -245,11 +251,14 @@
 | `E2019` | `INVALID_PERIOD` | 400 | period は weekly / monthly のいずれかです | 2 | api/owner/shift/unified-view.php, api/store/shift/summary.php |
 | `E2020` | `INVALID_PHONE` | 400 | 電話番号が不正です | 3 | api/customer/reservation-create.php, api/customer/takeout-orders.php, api/signup/register.php |
 | `E2021` | `INVALID_RATING` | 400 | 評価は1〜5の整数で指定してください | 1 | api/customer/satisfaction-rating.php |
+| `E2074` | `INVALID_REASON` | 400 | 理由コードが正しくありません | 1 | api/customer/satisfaction-rating.php |
 | `E2022` | `INVALID_REG_NUMBER` | 400 | 登録番号は T + 13桁の数字で入力してください（例: T1234567890123） | 1 | api/store/receipt-settings.php |
+| `E2075` | `INVALID_SCOPE` | 400 | scope の指定が正しくありません | 1 | api/push/subscribe.php |
 | `E2023` | `INVALID_SHAPE` | 400 | 無効なshapeです（' . implode('/', $allowedShapes) . '） | 1 | api/store/tables.php |
 | `E2024` | `INVALID_SLUG` | 400 | スラッグは英小文字・数字・ハイフンのみ使用可能です | 3 | api/owner/stores.php, api/posla/tenants.php |
 | `E2025` | `INVALID_SOURCE` | 400 | source は "template" または "local" です | 1 | api/kds/sold-out.php |
 | `E2026` | `INVALID_STORE` | 400 | 送信先店舗が見つかりません | 1 | api/store/shift/help-requests.php |
+| `E2077` | `INVALID_TARGET` | 400 | target は self / store のいずれかです | 1 | api/push/test.php |
 | `E2027` | `INVALID_TIME` | 400 | 時刻は HH:MM 形式で指定してください | 10 | api/store/reservation-settings.php, api/store/shift/assignments.php, api/store/shift/availabilities.php …他2 |
 | `E2028` | `INVALID_TIME_RANGE` | 400 | 終了時刻は開始時刻より後にしてください | 6 | api/store/shift/assignments.php, api/store/shift/availabilities.php, api/store/shift/help-requests.php …他1 |
 | `E2029` | `INVALID_TRANSITION` | 400 | $current . ' から ' . $newStatus . ' への遷移はできません' | 1 | api/store/takeout-management.php |
@@ -261,7 +270,7 @@
 | `E2035` | `MISSING_ADDRESS` | 400 | 住所は必須です | 1 | api/store/places-proxy.php |
 | `E2036` | `MISSING_ALERT_ID` | 400 | alert_id は必須です | 2 | api/customer/call-staff.php, api/kds/call-alerts.php |
 | `E2037` | `MISSING_EMAIL` | 400 | メールアドレスは必須です | 1 | api/posla/setup.php |
-| `E2038` | `MISSING_FIELDS` | 400 | store_id, table_id, session_token は必須です | 44 | api/auth/change-password.php, api/auth/login.php, api/customer/call-staff.php …他30 |
+| `E2038` | `MISSING_FIELDS` | 400 | store_id, table_id, session_token は必須です | 46 | api/auth/change-password.php, api/auth/login.php, api/customer/call-staff.php …他32 |
 | `E2039` | `MISSING_ID` | 400 | idが必要です | 39 | api/customer/reservation-detail.php, api/owner/categories.php, api/owner/ingredients.php …他21 |
 | `E2040` | `MISSING_MESSAGE` | 400 | メッセージを入力してください | 1 | api/customer/ai-waiter.php |
 | `E2041` | `MISSING_NAME` | 400 | テナント名は必須です | 6 | api/customer/takeout-orders.php, api/posla/setup.php, api/posla/tenants.php …他2 |
@@ -278,7 +287,7 @@
 | `E2052` | `MISSING_SESSION` | 400 | session_idが必要です | 1 | api/customer/takeout-payment.php |
 | `E2053` | `MISSING_SLUG` | 400 | slugは必須です | 1 | api/posla/tenants.php |
 | `E2054` | `MISSING_STATUS` | 400 | statusが必要です | 1 | api/store/takeout-management.php |
-| `E2055` | `MISSING_STORE` | 400 | store_id は必須です | 42 | api/customer/ai-waiter.php, api/customer/menu.php, api/customer/reservation-availability.php …他32 |
+| `E2055` | `MISSING_STORE` | 400 | store_id は必須です | 43 | api/customer/ai-waiter.php, api/customer/menu.php, api/customer/reservation-availability.php …他33 |
 | `E2056` | `MISSING_TOKEN` | 400 | signup_token が必要です | 1 | api/signup/activate.php |
 | `E2057` | `MISSING_TO_STORE` | 400 | 送信先店舗を指定してください | 1 | api/store/shift/help-requests.php |
 | `E2058` | `MISSING_USER` | 400 | user_id を指定してください | 1 | api/store/shift/assignments.php |
@@ -291,18 +300,19 @@
 | `E2065` | `OUT_OF_RANGE` | 400 | 店舗から' . round($dist) . 'm離れています（許容: ' . $gpsSetting['gps_radius_meters'] . 'm） | 2 | api/store/shift/attendance.php |
 | `E2066` | `PAST_DATE` | 400 | 過去日は予約できません | 2 | api/customer/reservation-availability.php, api/store/shift/help-requests.php |
 | `E2067` | `PHONE_REQUIRED` | 400 | 電話番号を入力してください | 1 | api/customer/reservation-create.php |
+| `E2076` | `STORE_REQUIRED` | 400 | store_id は必須です (scope=owner のみ NULL 許容) | 1 | api/push/subscribe.php |
 | `E2068` | `TEXT_TOO_LONG` | 400 | 入力が長すぎます | 1 | api/customer/reservation-ai-parse.php |
 | `E2069` | `TOO_EARLY` | 400 | 予約時刻 30 分前から利用できます | 1 | api/customer/reservation-precheckin.php |
 | `E2070` | `TOO_FAR` | 400 | 受付期間を超えています | 2 | api/customer/reservation-availability.php, api/customer/reservation-create.php |
 | `E2071` | `TOO_MANY` | 400 | 一度に提出できるのは最大31日分です | 1 | api/store/shift/availabilities.php |
 | `E2072` | `TOO_MANY_ITEMS` | 400 | 品数が上限（' . $maxItems . '品）を超えています | 1 | api/customer/takeout-orders.php |
-| `E2073` | `VALIDATION` | 400 | store_id は必須です | 41 | api/auth/device-register.php, api/kds/advance-phase.php, api/kds/close-table.php …他13 |
+| `E2073` | `VALIDATION` | 400 | store_id が必要です | 75 | api/auth/device-register.php, api/kds/advance-phase.php, api/kds/close-table.php …他22 |
 
 ### E7xxx — メニュー・在庫
 
 | 番号 | コード | HTTP | メッセージ | 発生件数 | 主な発生箇所 |
 |------|--------|------|-----------|---------|------------|
-| `E7001` | `CONFLICT` | 409 | この注文は既に他の操作で確定されました。画面を更新してご確認ください。 | 3 | api/customer/checkout-confirm.php, api/store/handy-order.php, api/store/process-payment.php |
+| `E7001` | `CONFLICT` | 409 | 取消機能の migration が未適用です (migration-pwa4d5a-payment-void.sql) | 52 | api/customer/checkout-confirm.php, api/store/emergency-payment-external-method.php, api/store/emergency-payment-manual-transfer.php …他7 |
 | `E7002` | `DUPLICATE` | 409 | この原材料は既にレシピに登録されています | 1 | api/owner/recipes.php |
 | `E7003` | `DUPLICATE_CODE` | 409 | このテーブルコードは既に使用されています | 1 | api/store/tables.php |
 | `E7004` | `DUPLICATE_SLUG` | 409 | このスラッグは既に使用されています | 3 | api/owner/stores.php, api/posla/tenants.php |

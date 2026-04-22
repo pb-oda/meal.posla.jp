@@ -2,7 +2,7 @@
   "name": "POSLA Staff (管理)",
   "short_name": "POSLA管理",
   "description": "POSLA 飲食店スタッフ管理画面",
-  "start_url": "/public/admin/dashboard.html",
+  "start_url": "/public/admin/index.html",
   "scope": "/public/admin/",
   "display": "standalone",
   "orientation": "any",

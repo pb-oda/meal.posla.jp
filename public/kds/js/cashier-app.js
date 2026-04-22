@@ -170,7 +170,13 @@
     _pollTimer = setInterval(_fetchOrders, 5000);
   }
 
-  function _fetchOrders() {
+  /**
+   * @param opts { failClosed?: boolean }
+   *   failClosed=true の場合、通信失敗時は snapshot 復元をせず catch で reject する。
+   *   会計前リフレッシュなど「古いデータで続行してはいけない」経路で使う (Phase 3 レビュー指摘 #2)。
+   */
+  function _fetchOrders(opts) {
+    var failClosed = !!(opts && opts.failClosed);
     var orderUrl = '../../api/kds/orders.php?store_id=' + encodeURIComponent(_storeId) + '&view=accounting';
     var sessionUrl = '../../api/store/table-sessions.php?store_id=' + encodeURIComponent(_storeId);
 
@@ -220,8 +226,40 @@
             _refreshSelectedItems();
           }
         }
+        // Phase 3: snapshot 保存 + stale 解除
+        if (typeof OfflineSnapshot !== 'undefined' && _storeId) {
+          OfflineSnapshot.save('cashier', _storeId, 'orders-sessions', {
+            orders: Object.keys(_orders).map(function (k) { return _orders[k]; }),
+            sessions: _sessions
+          });
+        }
+        if (typeof OfflineStateBanner !== 'undefined') {
+          OfflineStateBanner.setLastSuccessAt(Date.now());
+          OfflineStateBanner.markFresh();
+        }
       }).catch(function (err) {
         console.error('Cashier polling error:', err);
+        if (typeof OfflineStateBanner !== 'undefined') OfflineStateBanner.markStale();
+        // Phase 3: 既存表示があれば残す (stale バナーのみ)。
+        // 初回失敗 (画面に何も出ていない状態) のみ snapshot 復元。
+        // ただし failClosed=true の場合 (会計前リフレッシュ等) はエラーを再送出して呼び出し側で中断させる。
+        if (Object.keys(_orders).length === 0 && typeof OfflineSnapshot !== 'undefined' && _storeId) {
+          var snap = OfflineSnapshot.load('cashier', _storeId, 'orders-sessions');
+          if (snap && snap.data) {
+            _orders = {};
+            (snap.data.orders || []).forEach(function (o) { _orders[o.id] = o; });
+            _sessions = snap.data.sessions || {};
+            _buildTableGroups();
+            _renderTableList();
+            if (typeof OfflineStateBanner !== 'undefined') {
+              OfflineStateBanner.setLastSuccessAt(snap.savedAt);
+            }
+          }
+        }
+        if (failClosed) {
+          // 会計前リフレッシュ等「古いデータで続行してはいけない」呼び出し経路
+          throw (err instanceof Error) ? err : new Error('fetch_failed');
+        }
       });
   }
 
@@ -1119,6 +1157,11 @@
       _showToast('支払い情報がありません', 'error');
       return;
     }
+    // Phase 3: オフライン中の領収書発行は API 呼び出しなので絶対にしない
+    if (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isOfflineOrStale && OfflineStateBanner.isOfflineOrStale()) {
+      _showToast('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u306F\u9818\u53CE\u66F8\u767A\u884C\u3067\u304D\u307E\u305B\u3093\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002', 'error');
+      return;
+    }
     var addressee = prompt('宛名を入力してください（空欄の場合「上様」）');
     if (addressee === null) return;
     if (!addressee) addressee = '上様';
@@ -1239,12 +1282,18 @@
   function _submitPayment() {
     if (_isSubmitting) return;
 
+    // Phase 3: offline または stale 状態なら会計を絶対に実行しない (キューもしない)
+    if (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isOfflineOrStale && OfflineStateBanner.isOfflineOrStale()) {
+      _showToast('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u307E\u305F\u306F\u53E4\u3044\u30C7\u30FC\u30BF\u8868\u793A\u4E2D\u3067\u3059\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002', 'error');
+      return;
+    }
+
     // CP1b: 会計前に _orders を強制リフレッシュして、KDS の提供済み更新とのレースを防ぐ
-    _fetchOrders().then(function () {
+    // Phase 3 レビュー指摘 #2: 失敗時は古いデータで続行せず、toast で中断する (fail-closed)
+    _fetchOrders({ failClosed: true }).then(function () {
       _submitPaymentAfterRefresh();
     }).catch(function () {
-      // 通信失敗時はフォールバックで既存状態のまま進める
-      _submitPaymentAfterRefresh();
+      _showToast('\u6700\u65B0\u306E\u6CE8\u6587\u72B6\u614B\u3092\u53D6\u5F97\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u4F1A\u8A08\u3057\u3066\u304F\u3060\u3055\u3044\u3002', 'error');
     });
   }
 
@@ -1577,10 +1626,20 @@
     // 返金集計
     var refundCount = 0;
     var refundTotal = 0;
+    // Phase 4d-5c-ba: void 集計 (補正1)
+    //   summary.total は payments-journal.php 側で voided も含めて合算しているため、
+    //   UI サマリーでは voidedTotal をローカル集計して netTotal から控除する。
+    //   refund と void は排他なので二重控除にはならない。
+    var voidedCount = 0;
+    var voidedTotal = 0;
     payments.forEach(function (p) {
       if (p.refund_status && p.refund_status !== 'none') {
         refundCount++;
         refundTotal += parseInt(p.refund_amount || p.total_amount, 10) || 0;
+      }
+      if (p.void_status === 'voided') {
+        voidedCount++;
+        voidedTotal += parseInt(p.total_amount, 10) || 0;
       }
     });
 
@@ -1589,10 +1648,13 @@
     // サマリー
     html += '<div class="ca-journal__summary">';
     html += '<div class="ca-journal__stat"><div class="ca-journal__stat-label">取引件数</div><div class="ca-journal__stat-value">' + summary.count + '</div></div>';
-    var netTotal = summary.total - refundTotal;
+    var netTotal = summary.total - refundTotal - voidedTotal;
     html += '<div class="ca-journal__stat"><div class="ca-journal__stat-label">合計金額</div><div class="ca-journal__stat-value">' + Utils.formatYen(netTotal) + '</div></div>';
     if (refundCount > 0) {
       html += '<div class="ca-journal__stat ca-journal__stat--refund"><div class="ca-journal__stat-label">返金</div><div class="ca-journal__stat-value">' + refundCount + '件 / -' + Utils.formatYen(refundTotal) + '</div></div>';
+    }
+    if (voidedCount > 0) {
+      html += '<div class="ca-journal__stat ca-journal__stat--voided"><div class="ca-journal__stat-label">取消済</div><div class="ca-journal__stat-value">' + voidedCount + '件 / -' + Utils.formatYen(voidedTotal) + '</div></div>';
     }
     html += '</div>';
 
@@ -1619,18 +1681,43 @@
       var refundStatus = p.refund_status || 'none';
       var isRefunded = refundStatus !== 'none';
       var gatewayName = p.gateway_name || '';
-      var canRefund = gatewayName && !isRefunded && method !== 'cash';
+      // Phase 4d-5c-ba: voided 判定
+      var isVoided = (p.void_status === 'voided');
+      var canRefund = gatewayName && !isRefunded && !isVoided && method !== 'cash';
+      // Phase 4d-5c-bb-A / 4d-5c-bb-C: 会計取消ボタンは以下をすべて満たす行にのみ表示する
+      //   - 返金されていない
+      //   - まだ取消していない
+      //   - gateway_name が空 / null        (gateway 通過していない = cash / 手動 card / 手動 qr)
+      //   - is_partial != 1                (分割会計でない)
+      // payment_method は cash / card / qr (ENUM 全値) を許可。gateway 経由は API 側で
+      // NOT_VOIDABLE_GATEWAY 409 に弾く。
+      // API 側でさらに order_ids>0 / order_type ∈ ('dine_in','handy','takeout') / status='paid'
+      // をチェックして 409 を返すので、UI のボタンは以上に絞り込んで出す。
+      // 4d-5c-bb-C: POS cashier 経由で会計された takeout (status='paid' cash) は取消可能。
+      // online 決済 takeout (status='served' 等) は API 側の status ガードで弾かれる。
+      var canVoid = !isRefunded && !isVoided && !gatewayName && !isPartial;
 
-      html += '<div class="ca-journal__item' + (isRefunded ? ' ca-journal__item--refunded' : '') + '">';
+      var rowClass = 'ca-journal__item';
+      if (isRefunded) rowClass += ' ca-journal__item--refunded';
+      if (isVoided)   rowClass += ' ca-journal__item--voided';
+
+      html += '<div class="' + rowClass + '">';
       html += '<span class="ca-journal__item-time">' + Utils.escapeHtml(timeStr) + '</span>';
       html += '<span class="ca-journal__item-table">' + Utils.escapeHtml(tableCode) + (isPartial ? ' *' : '') + '</span>';
       html += '<span class="ca-journal__item-method ca-journal__item-method--' + method + '">' + (_PAY_LABELS[method] || method) + '</span>';
       html += '<span class="ca-journal__item-staff">' + Utils.escapeHtml(staffName) + '</span>';
       html += '<span class="ca-journal__item-amount">' + Utils.formatYen(amount) + '</span>';
-      if (isRefunded) {
+      if (isVoided) {
+        html += '<span class="ca-journal__void-badge">✗ 取消済</span>';
+      } else if (isRefunded) {
         html += '<span class="ca-journal__refund-badge">返金済</span>';
-      } else if (canRefund) {
-        html += '<button class="ca-journal__refund-btn" data-payment-id="' + Utils.escapeHtml(p.id) + '" data-amount="' + amount + '">返金</button>';
+      } else {
+        if (canRefund) {
+          html += '<button class="ca-journal__refund-btn" data-payment-id="' + Utils.escapeHtml(p.id) + '" data-amount="' + amount + '">返金</button>';
+        }
+        if (canVoid) {
+          html += '<button class="ca-journal__void-btn" data-payment-id="' + Utils.escapeHtml(p.id) + '" data-amount="' + amount + '">会計取消</button>';
+        }
       }
       html += '</div>';
     });
@@ -1647,12 +1734,93 @@
         _confirmRefund(pid, amt);
       });
     }
+
+    // Phase 4d-5c-ba: 会計取消ボタンイベントバインド
+    var voidBtns = body.querySelectorAll('.ca-journal__void-btn');
+    for (var vi = 0; vi < voidBtns.length; vi++) {
+      voidBtns[vi].addEventListener('click', function () {
+        var pid = this.getAttribute('data-payment-id');
+        var amt = parseInt(this.getAttribute('data-amount'), 10) || 0;
+        _confirmNormalVoid(pid, amt);
+      });
+    }
+  }
+
+  // Phase 4d-5c-ba: 通常会計取消 (論理取消) — 返金とは別経路
+  //   会計記録のみ無効化。orders.status / 卓状態 / レシートは維持
+  //   cash の場合は cash_log.cash_out で相殺
+  //   詳細条件は API 側 (payment-void.php) で判定し、失敗時は alert で理由表示
+  var _voidingPayment = false;
+  function _confirmNormalVoid(paymentId, amount) {
+    if (_voidingPayment) return;
+    if (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isOfflineOrStale && OfflineStateBanner.isOfflineOrStale()) {
+      _showToast('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u306F\u4F1A\u8A08\u53D6\u6D88\u3057\u304D\u307E\u305B\u3093\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002', 'error');
+      return;
+    }
+    var msg = 'この取引 (' + Utils.formatYen(amount) + ') を会計取消しますか？\n\n' +
+              '・売上集計から除外されます\n' +
+              '・レジ現金は cash_out で相殺されます (現金の場合のみ)\n' +
+              '・注文ステータス / 卓状態 / レシートは維持されます\n' +
+              '・返金は別操作です (現金以外の返金は「返金」ボタンから)\n\n' +
+              'この操作は取り消せません。';
+    if (!confirm(msg)) return;
+    var reason = prompt('取消理由を入力してください (必須、1-255 文字)');
+    if (reason === null) return; // cancel
+    reason = String(reason || '').replace(/^\s+|\s+$/g, '');
+    if (reason === '') {
+      alert('取消理由の入力は必須です。');
+      return;
+    }
+    _executeNormalVoid(paymentId, amount, reason);
+  }
+
+  function _executeNormalVoid(paymentId, amount, reason) {
+    _voidingPayment = true;
+    fetch('../../api/store/payment-void.php', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        store_id:   _storeId,
+        payment_id: paymentId,
+        reason:     reason
+      })
+    })
+    .then(function (r) {
+      return r.text().then(function (t) {
+        try { return JSON.parse(t); } catch (e) { return { ok: false, error: { message: t.substring(0, 120) } }; }
+      });
+    })
+    .then(function (json) {
+      if (json.ok) {
+        _playSound('success');
+        if (json.data && json.data.idempotent) {
+          alert('この取引はすでに取消済みです。');
+        } else {
+          alert('会計取消が完了しました (' + Utils.formatYen(amount) + ')');
+        }
+        _openJournal();
+      } else {
+        alert('会計取消に失敗しました: ' + Utils.formatError(json));
+      }
+    })
+    .catch(function (err) {
+      alert('通信エラーが発生しました: ' + Utils.formatError(err));
+    })
+    .finally(function () {
+      _voidingPayment = false;
+    });
   }
 
   // C-R1: 返金確認 + 実行（CP1b: 担当スタッフ PIN 必須）
   var _refunding = false;
   function _confirmRefund(paymentId, amount) {
     if (_refunding) return;
+    // Phase 3: オフライン中の返金は絶対に実行しない
+    if (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isOfflineOrStale && OfflineStateBanner.isOfflineOrStale()) {
+      _showToast('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u306F\u8FD4\u91D1\u3067\u304D\u307E\u305B\u3093\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002', 'error');
+      return;
+    }
     if (!confirm('この取引 (' + Utils.formatYen(amount) + ') を返金しますか？\nこの操作は取り消せません。')) return;
 
     // 担当スタッフ PIN を要求
@@ -1859,6 +2027,14 @@
   function _postCashLog(type, amount, note, pin, callback) {
     // 後方互換: 旧シグネチャ (type, amount, note, callback) を許容
     if (typeof pin === 'function') { callback = pin; pin = null; }
+    // Phase 3: オフライン中の金銭ログ書き込みは絶対に実行しない
+    if (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isOfflineOrStale && OfflineStateBanner.isOfflineOrStale()) {
+      _showToast('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u306F\u30EC\u30B8\u64CD\u4F5C\u3067\u304D\u307E\u305B\u3093\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002', 'error');
+      if (typeof callback === 'function') {
+        try { callback({ ok: false, error: { message: 'offline' } }); } catch (e) {}
+      }
+      return;
+    }
     fetch('../../api/kds/cash-log.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2426,6 +2602,11 @@
    * 4. process-payment.php で記録（payment_method=terminal + PI ID）
    */
   function _processTerminalPayment(body, calc) {
+    // Phase 3: オフライン中の Stripe Terminal 決済は絶対に実行しない
+    if (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isOfflineOrStale && OfflineStateBanner.isOfflineOrStale()) {
+      _showToast('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u306F\u30AB\u30FC\u30C9\u6C7A\u6E08\u3067\u304D\u307E\u305B\u3093\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002', 'error');
+      return;
+    }
     // オーバーレイ表示
     var gwOverlay = document.createElement('div');
     gwOverlay.id = 'ca-gw-overlay';
@@ -2555,6 +2736,104 @@
     _startPolling();
     _renderRegister();
   }
+
+  /**
+   * Phase 4: 緊急レジモード用の read-only な現在コンテキスト snapshot を返す。
+   * 既存内部状態への直接参照は返さず、必要最小限の値をコピーして返す。
+   *
+   * 戻り値:
+   *   { storeId, storeName, userName, userRole,
+   *     tableId?, tableCode?, isMerged, mergedGroupKeys?,
+   *     orderIds[], items[{orderId,itemId,name,qty,price,taxRate,status}],
+   *     subtotal, tax, totalAmount, paymentMethod,
+   *     hasTableContext: bool }
+   *
+   * Phase 4 レビュー指摘 #2 対応:
+   *   テーブル選択・品目がない場合でも storeId/storeName/userName だけは必ず返す (store-level context)。
+   *   これにより緊急レジ UI の「手入力モード」が storeId を取得できて会計記録を残せる。
+   *   store-level のみの場合は hasTableContext=false で、UI 側が判定できる。
+   *   storeId すら未確定の場合のみ null を返す (初期化未完了)。
+   */
+  CashierApp.getEmergencyContext = function () {
+    try {
+      if (!_storeId) return null;   // 店舗未確定のみ null
+
+      var isMergedSubmit = _mergeMode && _mergedGroupKeys.length >= 2;
+      var group = isMergedSubmit ? null : _findGroup(_selectedTableId);
+      var hasTableContext = !!(isMergedSubmit || group || (_items && _items.length > 0));
+
+      var itemsSnap = [];
+      var hasPartialSelection = false; // Fix 5 (2026-04-20): 個別会計状態警告用
+      for (var i = 0; i < _items.length; i++) {
+        var it = _items[i];
+        var isPayable = !!(it && !it.paymentId && it.status !== 'cancelled');
+        if (!_checkedItems[i]) {
+          // 未チェックかつ「会計対象になり得る品目」が残っていれば partial 状態
+          if (isPayable) hasPartialSelection = true;
+          continue;
+        }
+        if (!isPayable) continue; // 既会計・取消済みは除外
+        itemsSnap.push({
+          orderId: it.orderId || null,
+          itemId:  it.itemId  || null,
+          name:    it.name    || '',
+          qty:     it.qty     || 0,
+          price:   it.price   || 0,
+          taxRate: (typeof it.taxRate === 'number') ? it.taxRate : null,
+          status:  it.status  || null
+        });
+      }
+
+      // orderIds を抽出 (重複除去)
+      var orderIdMap = {};
+      for (var j = 0; j < itemsSnap.length; j++) {
+        if (itemsSnap[j].orderId) orderIdMap[itemsSnap[j].orderId] = true;
+      }
+      var orderIds = [];
+      for (var k in orderIdMap) {
+        if (Object.prototype.hasOwnProperty.call(orderIdMap, k)) orderIds.push(k);
+      }
+
+      var calc = {};
+      try { calc = _calcTotal() || {}; } catch (ee) { calc = {}; }
+      var subtotal = (calc.subtotal10 || 0) + (calc.subtotal8 || 0);
+      var tax      = (calc.tax10 || 0)      + (calc.tax8 || 0);
+      var total    = calc.finalTotal || 0;
+
+      return {
+        storeId:   _storeId,
+        storeName: _storeName || '',
+        userName:  _userName  || '',
+        userRole:  _userRole  || '',
+        tableId:   group ? group.tableId   : null,
+        tableCode: group ? group.tableCode : '',
+        isMerged:  isMergedSubmit,
+        mergedGroupKeys: isMergedSubmit ? _mergedGroupKeys.slice() : null,
+        orderIds:  orderIds,
+        items:     itemsSnap,
+        subtotal:  subtotal,
+        tax:       tax,
+        totalAmount: total,
+        paymentMethod: _paymentMethod,
+        hasTableContext: hasTableContext,
+        hasPartialSelection: hasPartialSelection
+      };
+    } catch (e) {
+      // 致命的エラー時も storeId は最低限返す (緊急レジの記録を諦めないため)
+      if (_storeId) {
+        return {
+          storeId: _storeId, storeName: _storeName || '',
+          userName: _userName || '', userRole: _userRole || '',
+          tableId: null, tableCode: '', isMerged: false, mergedGroupKeys: null,
+          orderIds: [], items: [],
+          subtotal: 0, tax: 0, totalAmount: 0,
+          paymentMethod: 'cash',
+          hasTableContext: false
+        };
+      }
+      return null;
+    }
+  };
 
   window.CashierApp = CashierApp;
 })();

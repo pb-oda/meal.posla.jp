@@ -26,17 +26,18 @@
       scope: '/public/kds/',
       updateViaCache: 'none'
     }).then(function (reg) {
-      // 更新ありで waiting に入ったら即時適用 (skipWaiting と組み合わせ)
-      if (reg && reg.waiting) {
-        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-      }
+      // PWA Phase 1 (修正版): waiting への自動 SKIP_WAITING 送信を撤廃。
+      //   PWAUpdateManager の「更新する」ボタンで明示発火する運用に統一。
       reg && reg.addEventListener && reg.addEventListener('updatefound', function () {
         var sw = reg.installing;
         if (sw) {
           sw.addEventListener('statechange', function () {
             if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-              // 新版インストール完了 → 業務中の不整合を避けるため次回ロード時に反映
-              // (skipWaiting は activate 時に発火するので、ここでは何もしない)
+              // 新版インストール完了 → 業務中の不整合を避けるため次回ロード時に反映。
+              // skipWaiting は PWAUpdateManager (public/shared/js/pwa-update-manager.js) が
+              // 同じ waiting worker を検知して画面下部に更新バナーを表示し、
+              // ユーザーが「更新する」を押したときに waiting worker へ postMessage で送る。
+              // ここ (pwa-register.js) では何もしない。
             }
           });
         }

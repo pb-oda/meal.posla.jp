@@ -11,6 +11,7 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
+require_once __DIR__ . '/../lib/push.php';
 
 $method = require_method(['GET', 'POST']);
 
@@ -90,5 +91,19 @@ $stmt = $pdo->prepare(
      VALUES (?, ?, ?, ?, ?, ?, NOW())'
 );
 $stmt->execute([$alertId, $storeId, $tableId, $tableCode, $reason, 'pending']);
+
+// PWA Phase 2b: ハンディ・KDS・レジへ Web Push 通知 (送信失敗は無視: fail-open)
+//   顧客→スタッフ呼び出しは業務上の最重要通知。push_send_to_store で当該店舗の
+//   全 enabled 購読 (handy / kds / cashier / pos-register) に届ける。
+try {
+    push_send_to_store($pdo, $storeId, 'call_staff', [
+        'title' => 'お客様呼び出し: テーブル ' . $tableCode,
+        'body'  => $reason,
+        'url'   => '/public/handy/index.html',
+        'tag'   => 'call_staff_' . $tableCode,
+    ]);
+} catch (\Throwable $e) {
+    // 業務処理を止めない (顧客側のレスポンスを必ず返す)
+}
 
 json_response(['alert_id' => $alertId], 201);

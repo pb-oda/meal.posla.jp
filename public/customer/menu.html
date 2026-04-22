@@ -317,6 +317,34 @@
     </div>
   </div>
 
+  <!-- R1: 低評価理由モーダル (rating <= 2 のときのみ表示) -->
+  <div class="rating-overlay" id="rating-reason-overlay">
+    <div class="rating-modal" style="max-width:380px;text-align:left;">
+      <div class="rating-modal__header" style="text-align:center;">
+        <span style="display:block;font-size:1rem;color:#fff;font-weight:600;" id="rating-reason-title">差し支えなければ、気になった点をお聞かせください</span>
+        <span class="rating-modal__sub" style="display:block;font-size:0.8rem;color:#aaa;margin-top:6px;" id="rating-reason-sub">お店の改善に活用させていただきます（任意）</span>
+      </div>
+      <div id="rating-reason-options" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:14px 0;"></div>
+      <textarea id="rating-reason-text" maxlength="255" placeholder="具体的な内容があればご記入ください"
+        style="width:100%;min-height:60px;padding:8px 10px;background:#0f1024;border:1px solid #333;border-radius:8px;color:#fff;font-size:0.9rem;box-sizing:border-box;font-family:inherit;resize:vertical;"></textarea>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;">
+        <button class="rating-skip" id="rating-reason-skip" style="color:#888;">理由を送らずに閉じる</button>
+        <button id="rating-reason-send" style="background:#ff6b35;color:#fff;border:none;border-radius:20px;padding:8px 22px;font-size:0.9rem;cursor:pointer;font-weight:600;">送信</button>
+      </div>
+    </div>
+  </div>
+  <style>
+    .rating-reason-chip {
+      background:#0f1024;color:#ddd;border:1px solid #444;
+      border-radius:14px;padding:5px 10px;font-size:0.78rem;cursor:pointer;
+      transition:all 0.15s;
+    }
+    .rating-reason-chip:hover { border-color:#ff6b35; }
+    .rating-reason-chip.is-selected {
+      background:rgba(255,107,53,0.15);border-color:#ff6b35;color:#ff8a5c;
+    }
+  </style>
+
   <!-- 送信完了 -->
   <div class="order-toast" id="order-toast">注文を送信しました！</div>
 
@@ -2061,8 +2089,16 @@
         var btn = e.currentTarget;
         var rating = parseInt(btn.getAttribute('data-rating'), 10);
         clearTimeout(autoClose);
+        // 評価モーダルを非表示にする (queue 進行はここでは行わない)
+        document.getElementById('rating-overlay').classList.remove('open');
         submitRating(entry, rating);
-        closeRating();
+        // R1: rating <= 2 のときは理由モーダルが開くので queue 進行は
+        //     理由モーダル完了後 (sendBtn / skipBtn / 自動閉じ) で行う。
+        //     rating >= 3 はその場で送信完了するので即時 queue 再開する。
+        if (rating > 2) {
+          _ratingBusy = false;
+          setTimeout(processRatingQueue, 1000);
+        }
       }
       for (var i = 0; i < faces.length; i++) {
         faces[i].onclick = handleFaceClick;
@@ -2079,8 +2115,39 @@
       setTimeout(processRatingQueue, 1000);
     }
 
+    // R1: 理由モーダル完了後に評価キューを進める共通関数
+    function _releaseAfterReason() {
+      _ratingBusy = false;
+      setTimeout(processRatingQueue, 1000);
+    }
+
+    // R1: 低評価 (1〜2) の場合に表示する理由選択肢
+    var RATING_REASON_OPTIONS = [
+      { code: 'slow_service', label: '提供が遅かった' },
+      { code: 'taste',        label: '味が好みではなかった' },
+      { code: 'temperature',  label: '温度が気になった' },
+      { code: 'portion',      label: '量が気になった' },
+      { code: 'wrong_item',   label: '注文内容と違った' },
+      { code: 'staff',        label: '接客が気になった' },
+      { code: 'cleanliness',  label: '清潔感が気になった' },
+      { code: 'price',        label: '価格が気になった' },
+      { code: 'other',        label: 'その他' }
+    ];
+
     function submitRating(entry, rating) {
       OrderTracker.markRated(entry.item.item_id);
+
+      // R1: rating <= 2 → まず理由モーダルを表示し、選択後に送信 / スキップでも rating だけ送る
+      if (rating <= 2) {
+        showReasonModal(entry, rating);
+        return;
+      }
+
+      // rating >= 3 はそのまま送信（後方互換）
+      sendRatingPayload(entry, rating, null, null);
+    }
+
+    function sendRatingPayload(entry, rating, reasonCode, reasonText) {
       var body = {
         store_id: storeId,
         table_id: tableId,
@@ -2091,6 +2158,9 @@
         item_name: entry.item.name,
         rating: rating
       };
+      if (reasonCode) body.reason_code = reasonCode;
+      if (reasonText) body.reason_text = reasonText;
+
       fetch(BASE_API + '/customer/satisfaction-rating.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2108,7 +2178,88 @@
           }
         }
       })
-      .catch(function () { /* silent */ });
+      .catch(function () { /* silent — 既存の注文状況表示に影響させない */ });
+    }
+
+    // R1: 低評価理由モーダル
+    function showReasonModal(entry, rating) {
+      var overlay = document.getElementById('rating-reason-overlay');
+      var optionsBox = document.getElementById('rating-reason-options');
+      var textarea = document.getElementById('rating-reason-text');
+      var sendBtn = document.getElementById('rating-reason-send');
+      var skipBtn = document.getElementById('rating-reason-skip');
+      if (!overlay || !optionsBox) {
+        // モーダルが見つからない場合は理由なしで送信（既存動作維持）+ キュー進行
+        sendRatingPayload(entry, rating, null, null);
+        _releaseAfterReason();
+        return;
+      }
+
+      var selected = null;
+
+      // チップ描画 (固定文言のみ・ユーザー入力なし)
+      var html = '';
+      for (var i = 0; i < RATING_REASON_OPTIONS.length; i++) {
+        var opt = RATING_REASON_OPTIONS[i];
+        html += '<button type="button" class="rating-reason-chip" data-code="'
+          + Utils.escapeHtml(opt.code) + '">'
+          + Utils.escapeHtml(opt.label) + '</button>';
+      }
+      optionsBox.innerHTML = html;
+      textarea.value = '';
+
+      var chips = optionsBox.querySelectorAll('.rating-reason-chip');
+      function handleChipClick(ev) {
+        var btn = ev.currentTarget;
+        var code = btn.getAttribute('data-code');
+        if (selected === code) {
+          selected = null;
+          btn.classList.remove('is-selected');
+          return;
+        }
+        selected = code;
+        for (var j = 0; j < chips.length; j++) {
+          chips[j].classList.remove('is-selected');
+        }
+        btn.classList.add('is-selected');
+      }
+      for (var k = 0; k < chips.length; k++) {
+        chips[k].onclick = handleChipClick;
+      }
+
+      // 送信
+      sendBtn.onclick = function () {
+        var txt = (textarea.value || '').trim();
+        sendRatingPayload(entry, rating, selected, txt || null);
+        closeReasonModal();
+        _releaseAfterReason();
+      };
+      // スキップ (理由なしで rating だけ送る)
+      skipBtn.onclick = function () {
+        sendRatingPayload(entry, rating, null, null);
+        closeReasonModal();
+        _releaseAfterReason();
+      };
+
+      // 30 秒で自動クローズ (お客様が無視した場合は rating だけ送る)
+      var autoClose = setTimeout(function () {
+        sendRatingPayload(entry, rating, null, null);
+        closeReasonModal();
+        _releaseAfterReason();
+      }, 30000);
+
+      overlay._autoCloseTimer = autoClose;
+      overlay.classList.add('open');
+    }
+
+    function closeReasonModal() {
+      var overlay = document.getElementById('rating-reason-overlay');
+      if (!overlay) return;
+      if (overlay._autoCloseTimer) {
+        clearTimeout(overlay._autoCloseTimer);
+        overlay._autoCloseTimer = null;
+      }
+      overlay.classList.remove('open');
     }
 
     function showRatingToast(msg) {

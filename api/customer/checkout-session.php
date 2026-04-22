@@ -11,8 +11,12 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/payment-gateway.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
 
 require_method(['POST']);
+
+// H-03: Checkout Session 大量作成 DoS 防御 — 1IP あたり 10 回 / 5 分
+check_rate_limit('checkout-session', 10, 300);
 
 $data = get_json_body();
 $storeId      = $data['store_id'] ?? null;

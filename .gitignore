@@ -12,6 +12,9 @@ sshkey.txt
 
 # DB credentials
 api/config/database.php
+# api/.htaccess: SetEnv で本番 DB credentials を保持するため repo に含めない。
+# テンプレートは api/.htaccess.example を参照（H-01 解消、2026-04-22）
+api/.htaccess
 
 # User uploads
 uploads/

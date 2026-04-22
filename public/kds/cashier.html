@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0f1923">
   <title>POSレジ - Cashier</title>
-  <link rel="stylesheet" href="css/cashier.css?v=20260405">
+  <link rel="stylesheet" href="css/cashier.css?v=20260421-pwa4d-5c-bb-C">
   <script src="https://js.stripe.com/terminal/v1/"></script>
   <!-- PWA -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -82,17 +82,43 @@
 
   <script src="../shared/js/utils.js?v=20260419-phaseB"></script>
   <script src="js/kds-auth.js?v=20260418gps"></script>
-  <script src="js/cashier-app.js?v=20260419-s2"></script>
+  <!-- Phase 3 レビュー指摘 #4: offline-detector を state-banner より前にロードして online 復帰自動リトライを有効化 -->
+  <script src="../js/offline-detector.js"></script>
+  <!-- Phase 3: オフライン時の表示耐性 helpers (cashier-app.js の前にロードする) -->
+  <script src="../shared/js/offline-snapshot.js?v=20260420-pwa3"></script>
+  <script src="../shared/js/offline-state-banner.js?v=20260420-pwa3b"></script>
+  <script src="js/cashier-app.js?v=20260421-pwa4d-5c-bb-C"></script>
+  <!-- Phase 4: 緊急レジモード (IndexedDB 台帳 + 同期 API) -->
+  <script src="js/emergency-register-store.js?v=20260420-pwa4"></script>
+  <script src="js/emergency-register.js?v=20260421-pwa4d-2-hotfix1"></script>
   <script>
   (function () {
     'use strict';
     CashierApp.init();
+    if (typeof OfflineStateBanner !== 'undefined') {
+      OfflineStateBanner.init({
+        scope: 'cashier',
+        onRetry: function () { try { location.reload(); } catch (e) {} }
+      });
+    }
+    if (typeof EmergencyRegister !== 'undefined') {
+      EmergencyRegister.init({
+        getContext: function () {
+          try { return CashierApp.getEmergencyContext ? CashierApp.getEmergencyContext() : null; }
+          catch (e) { return null; }
+        }
+      });
+    }
   })();
   </script>
   <script src="../js/theme-switcher.js"></script>
   <script>ThemeSwitcher.injectButton(document.querySelector('.ca-header__right'));</script>
-  <script src="../js/offline-detector.js"></script>
   <script src="../js/session-monitor.js?v=20260419-fixurl"></script>
   <script src="pwa-register.js"></script>
+  <script src="../shared/js/standard-env-banner.js?v=20260420-env"></script>
+  <script>StandardEnvBanner.init('cashier');</script>
+  <!-- Phase 1: PWA 更新マネージャ (cashier も KDS スコープ /public/kds/ 配下なので prefix は posla-kds-) -->
+  <script src="../shared/js/pwa-update-manager.js?v=20260420-pwa1"></script>
+  <script>PWAUpdateManager.init({ scope: 'cashier', cachePrefix: 'posla-kds-' });</script>
 </body>
 </html>

@@ -307,3 +307,44 @@ function get_plan_features($pdo, $tenantId) {
         'hq_menu_broadcast'     => $hqBroadcast,
     ];
 }
+
+/**
+ * H-04: Origin / Referer 検証ヘルパー（CSRF 対策）
+ *
+ * Origin ヘッダー（fetch / XHR）または Referer ヘッダー（form 送信 / 一部 GET）
+ * が自ドメインから来ているか検証する。
+ *
+ * 動作:
+ *   - Origin があれば: host を allowlist と照合、不一致は 403 FORBIDDEN_ORIGIN
+ *   - Origin なし + Referer があれば: 同様に host を照合
+ *   - 両方なし: 通過（curl / サーバー間連携 / 一部プロキシ経由を許容）
+ *
+ * 用途: state-changing 系 POST / PATCH / DELETE で opt-in 呼び出し。
+ * 全 endpoint 自動適用は customer 経路の互換性確認後に別スライスで判断。
+ */
+function verify_origin(): void
+{
+    $allowedHosts = ['eat.posla.jp', 'meal.posla.jp'];
+
+    $origin  = $_SERVER['HTTP_ORIGIN']  ?? '';
+    $referer = $_SERVER['HTTP_REFERER'] ?? '';
+
+    if ($origin !== '') {
+        $host = parse_url($origin, PHP_URL_HOST);
+        if (!in_array($host, $allowedHosts, true)) {
+            json_error('FORBIDDEN_ORIGIN', 'リクエスト元が許可されていません', 403);
+        }
+        return;
+    }
+
+    if ($referer !== '') {
+        $host = parse_url($referer, PHP_URL_HOST);
+        if (!in_array($host, $allowedHosts, true)) {
+            json_error('FORBIDDEN_ORIGIN', 'リクエスト元が許可されていません', 403);
+        }
+        return;
+    }
+
+    // Origin / Referer 両方なし — curl / 外部連携として通過
+    // 必要なら呼び出し元で追加のトークン検証を行う
+}

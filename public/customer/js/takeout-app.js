@@ -632,9 +632,19 @@
           goToSection(5);
         })
         .catch(function () {
-          // 確認失敗でも完了画面を表示（注文自体は作成済み）
-          renderApp();
-          goToSection(5);
+          // 4d-5c-bb-F: 決済確認 API が失敗した場合は完了画面へ遷移させない。
+          //   従来は「注文自体は作成済み」を理由に section 5 (完了画面) に遷移していたが、
+          //   PAYMENT_NOT_CONFIRMED / STRIPE_MISMATCH / PAYMENT_RECORD_FAILED など
+          //   すべてのエラーで "ご注文を受け付けました" が表示される false positive に
+          //   なっていた。失敗は失敗として明示し、cancel とは別の表示にする。
+          var shortId = _orderId ? _orderId.substring(0, 8).toUpperCase() : '---';
+          app.innerHTML = '<div style="text-align:center;padding:3rem;">'
+            + '<div style="font-size:1.3rem;color:#d32f2f;margin-bottom:1rem;">決済確認に失敗しました</div>'
+            + '<p style="color:#666;margin-bottom:1.5rem;">決済は Stripe 側で完了している可能性があります。'
+            + 'お手数ですが、下記の注文番号を添えて店舗まで直接お問い合わせください。</p>'
+            + '<div style="font-size:1.4rem;color:#2196F3;font-weight:bold;margin-bottom:2rem;">注文番号: ' + escapeHtml(shortId) + '</div>'
+            + '<a href="takeout.html?store_id=' + encodeURIComponent(_storeId) + '" class="to-btn to-btn--secondary" style="text-decoration:none;display:inline-block;">新しい注文を作成</a>'
+            + '</div>';
         });
     } else if (status === 'cancel') {
       app.innerHTML = '<div style="text-align:center;padding:3rem;">'

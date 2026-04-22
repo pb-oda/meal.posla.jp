@@ -166,9 +166,24 @@ var AuditLogViewer = (function () {
       var entityLabel = ENTITY_LABELS[log.entity_type] || log.entity_type;
       var detail = formatDetail(log);
 
+      // 2026-04-21 hotfix: PIN 検証で特定された担当スタッフ (cashier_user_name) があれば
+      //   ログイン端末名と並記して「kds-test (担当: test1)」のように表示する。
+      //   レジ系操作では大半が device アカウントログインなので、誰が PIN 入れたかを見える化する。
+      var staffCell = Utils.escapeHtml(log.username || '-');
+      var pinName = null;
+      if (log.new_value) {
+        try {
+          var nv = (typeof log.new_value === 'string') ? JSON.parse(log.new_value) : log.new_value;
+          if (nv && nv.cashier_user_name) pinName = String(nv.cashier_user_name);
+        } catch (e) { /* JSON 不正は無視 */ }
+      }
+      if (pinName && pinName !== (log.username || '')) {
+        staffCell += ' <span style="color:#1565c0;font-size:0.78rem;">(担当: ' + Utils.escapeHtml(pinName) + ')</span>';
+      }
+
       html += '<tr style="border-bottom:1px solid #eee;">'
         + '<td style="padding:0.4rem 0.5rem;white-space:nowrap;">' + Utils.escapeHtml(time) + '</td>'
-        + '<td style="padding:0.4rem 0.5rem;">' + Utils.escapeHtml(log.username || '-') + '</td>'
+        + '<td style="padding:0.4rem 0.5rem;">' + staffCell + '</td>'
         + '<td style="padding:0.4rem 0.5rem;">' + Utils.escapeHtml(actionLabel) + '</td>'
         + '<td style="padding:0.4rem 0.5rem;">' + Utils.escapeHtml(entityLabel)
         + (log.entity_id ? ' <span style="color:#888;font-size:0.75rem;">' + Utils.escapeHtml(log.entity_id.slice(0, 8)) + '</span>' : '')

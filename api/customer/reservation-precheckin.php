@@ -10,8 +10,13 @@
 
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
 
 require_method(['GET']);
+
+// H-03: 事前チェックイン濫用 / 予約 ID 推測防御 — 1IP あたり 30 回 / 5 分
+check_rate_limit('customer-reservation-precheckin', 30, 300);
+
 $pdo = get_db();
 
 $id = isset($_GET['id']) ? trim($_GET['id']) : '';

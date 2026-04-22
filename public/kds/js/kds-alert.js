@@ -17,6 +17,11 @@ var KdsAlert = (function () {
   var _banner = null;
   var _lastAlertIds = []; // 前回表示中のアラートID（音の重複防止）
   var _audioCtx = null;
+  // Phase 3: オフライン時の表示耐性
+  var _hasRendered = false;
+  var _staleHeader = null;
+  var SNAPSHOT_SCOPE = 'kds';
+  var SNAPSHOT_CHANNEL = 'call_alerts';
 
   // ── 初期化 ──
   function init() {
@@ -94,6 +99,26 @@ var KdsAlert = (function () {
     var storeId = _getStoreId();
     if (!storeId) return;
 
+    // 表示中アラートがある間はゲート bypass:
+    //   - 各アラートの elapsed_seconds (例「5秒前」「1分前」) はサーバー算出のため、
+    //     skip すると表示が固まる
+    //   - アラートが空の steady state では引き続き revision で skip 可能
+    if (_lastAlertIds.length > 0) {
+      _doPoll(storeId);
+      return;
+    }
+
+    // Phase 1 軽量化: revision で変化が無ければ skip
+    if (typeof RevisionGate !== 'undefined') {
+      RevisionGate.shouldFetch('call_alerts', storeId).then(function (should) {
+        if (should) _doPoll(storeId);
+      });
+    } else {
+      _doPoll(storeId);
+    }
+  }
+
+  function _doPoll(storeId) {
     var url = API_URL + '?store_id=' + encodeURIComponent(storeId);
     fetch(url, { credentials: 'same-origin' })
       .then(function (r) {
@@ -105,13 +130,27 @@ var KdsAlert = (function () {
       .then(function (json) {
         if (!json.ok) return;
         var alerts = (json.data && json.data.alerts) || [];
-        _renderAlerts(alerts);
+        _renderAlerts(alerts, false);
+        _hasRendered = true;
+        // Phase 3: snapshot 保存 (call_alerts は小さいので常時保存 OK)
+        if (typeof OfflineSnapshot !== 'undefined') {
+          OfflineSnapshot.save(SNAPSHOT_SCOPE, storeId, SNAPSHOT_CHANNEL, alerts);
+        }
       })
-      .catch(function () { /* サイレント失敗 */ });
+      .catch(function () {
+        // Phase 3: 初回失敗時のみ snapshot から復元 + stale ヘッダを付けて描画
+        if (_hasRendered) return;
+        if (typeof OfflineSnapshot === 'undefined') return;
+        var snap = OfflineSnapshot.load(SNAPSHOT_SCOPE, storeId, SNAPSHOT_CHANNEL);
+        if (snap && snap.data) {
+          _renderAlerts(snap.data, true);
+          _hasRendered = true;
+        }
+      });
   }
 
   // ── 描画 ──
-  function _renderAlerts(alerts) {
+  function _renderAlerts(alerts, isStale) {
     if (!_banner) return;
 
     // O-5: KDS画面では product_ready を除外（調理側に「できました」通知は不要）
@@ -145,6 +184,12 @@ var KdsAlert = (function () {
     _lastAlertIds = currentIds;
 
     var html = '';
+    // Phase 3: stale 表示時は先頭にヘッダを追加し、対応済みボタンは出さない (read-only)
+    if (isStale) {
+      html += '<div class="kds-call-item" style="opacity:0.85;font-style:italic;">'
+        + '\u26A0\uFE0F \u53E4\u3044\u547C\u3073\u51FA\u3057\u60C5\u5831\u3067\u3059\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u6700\u65B0\u8868\u793A\u306B\u66F4\u65B0\u3055\u308C\u307E\u3059\u3002'
+        + '</div>';
+    }
     for (var j = 0; j < alerts.length; j++) {
       var a = alerts[j];
       var elapsed = a.elapsed_seconds || 0;
@@ -152,6 +197,9 @@ var KdsAlert = (function () {
         ? elapsed + '秒前'
         : Math.floor(elapsed / 60) + '分前';
 
+      var ackBtn = isStale
+        ? ''  // stale 時は対応済みボタン非表示 (オフライン中はキューしない)
+        : '<button class="kds-call-ack" data-alert-id="' + _escapeHtml(a.id) + '">対応済み</button>';
       html += '<div class="kds-call-item">'
         + '<span class="kds-call-icon">&#x1F514;</span>'
         + '<span class="kds-call-text">'
@@ -159,7 +207,7 @@ var KdsAlert = (function () {
         + ' からの呼び出し：「' + _escapeHtml(a.reason) + '」'
         + '<span class="kds-call-elapsed">' + elapsedText + '</span>'
         + '</span>'
-        + '<button class="kds-call-ack" data-alert-id="' + _escapeHtml(a.id) + '">対応済み</button>'
+        + ackBtn
         + '</div>';
     }
     _banner.innerHTML = html;
@@ -168,6 +216,19 @@ var KdsAlert = (function () {
 
   // ── 対応済み ──
   function _acknowledgeAlert(alertId) {
+    // Phase 3: offline または stale 中の PATCH は絶対に送らない (キューしない)
+    var isOfflineOrStale =
+      (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isOfflineOrStale && OfflineStateBanner.isOfflineOrStale())
+      || (typeof OfflineDetector !== 'undefined' && OfflineDetector.isOnline && !OfflineDetector.isOnline());
+    if (isOfflineOrStale) {
+      var btn = _banner && _banner.querySelector('.kds-call-ack[data-alert-id="' + alertId + '"]');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '\u5BFE\u5FDC\u6E08\u307F';
+      }
+      try { window.alert('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u307E\u305F\u306F\u53E4\u3044\u30C7\u30FC\u30BF\u8868\u793A\u4E2D\u3067\u3059\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u304A\u9858\u3044\u3057\u307E\u3059\u3002'); } catch (e) {}
+      return;
+    }
     fetch(API_URL, {
       method: 'PATCH',
       credentials: 'same-origin',
@@ -180,10 +241,16 @@ var KdsAlert = (function () {
       });
     })
     .then(function () {
-      // 即座に再ポーリングして表示を更新
+      // PATCH 直後は revision キャッシュを無効化して即時反映を保証
+      if (typeof RevisionGate !== 'undefined') {
+        RevisionGate.invalidate('call_alerts', _getStoreId());
+      }
       _poll();
     })
     .catch(function () {
+      if (typeof RevisionGate !== 'undefined') {
+        RevisionGate.invalidate('call_alerts', _getStoreId());
+      }
       _poll();
     });
   }

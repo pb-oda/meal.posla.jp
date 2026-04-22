@@ -59,6 +59,11 @@ services:
       POSLA_DB_NAME: odah_eat-posla
       POSLA_DB_USER: odah_eat-posla
       POSLA_DB_PASS: odah_eat-posla
+      # api/.htaccess の本番 SetEnv を Docker local で迂回する専用キー
+      POSLA_LOCAL_DB_HOST: db
+      POSLA_LOCAL_DB_NAME: odah_eat-posla
+      POSLA_LOCAL_DB_USER: odah_eat-posla
+      POSLA_LOCAL_DB_PASS: odah_eat-posla
       POSLA_ENV: local
       TZ: Asia/Tokyo
     ports:

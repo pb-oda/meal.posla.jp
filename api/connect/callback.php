@@ -10,14 +10,31 @@
 
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/stripe-connect.php';
 
 $tenantId = $_GET['tenant_id'] ?? '';
+$state    = $_GET['state'] ?? '';
 if (!$tenantId) {
     http_response_code(400);
     echo 'tenant_id が必要です';
     exit;
 }
+
+// H-10: state parameter 検証（CSRF 対策）
+// onboard.php で発行した token と session 値を hash_equals で照合。
+// 不一致なら owner-dashboard に state_error としてリダイレクト。
+// 外部の悪意ある site からの `<img src=.../callback.php?tenant_id=X>` CSRF を遮断する。
+start_auth_session();
+$expectedState = $_SESSION['connect_state_' . $tenantId] ?? null;
+if (!$state || !$expectedState || !hash_equals((string)$expectedState, (string)$state)) {
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'];
+    header('Location: ' . $protocol . '://' . $host . '/public/admin/owner-dashboard.html?tab=payment&connect=state_error');
+    exit;
+}
+// one-time use: 検証成功後に session から削除
+unset($_SESSION['connect_state_' . $tenantId]);
 
 $pdo = get_db();
 

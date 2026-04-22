@@ -27,7 +27,9 @@ try {
     $stmt->execute([$storeId]);
     $tables = $stmt->fetchAll();
 } catch (PDOException $e) {
-    json_error('DB_ERROR', 'テーブル取得に失敗しました: ' . $e->getMessage(), 500);
+    // H-14: browser 応答から PDO 内部メッセージを排除、詳細は error_log にのみ残す
+    error_log('[H-14][api/store/tables-status.php] db_error: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    json_error('DB_ERROR', 'テーブル取得に失敗しました', 500);
 }
 
 // アクティブなセッション（table_sessions が存在する場合のみ）

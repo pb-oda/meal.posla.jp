@@ -1,5 +1,7 @@
 /**
- * POSLA Handy Service Worker — v1
+ * POSLA Handy Service Worker
+ *
+ * バージョンは下方の VERSION 変数を真実とする (このコメントには書かない)
  *
  * scope: /public/handy/
  *
@@ -10,27 +12,98 @@
  *  - URL に token / session / checkout / reservation / store_id / table_id を含む場合 passthrough
  *  - HTML: network-first + 失敗時に既存キャッシュ
  *  - 静的アセット (css/js/img/font): stale-while-revalidate
- *  - skipWaiting + clients.claim を使う理由:
- *    新版デプロイ時、開いている管理画面が古い JS を持ち続けるとデータ齟齬が起きる。
- *    install 直後に skipWaiting() で waiting → activating に進め、
- *    activate 時に clients.claim() で既存タブを即座に新 SW の制御下に置く。
- *    つまり**既存タブも次のリクエストから新 SW が応答**する (再読込待ち不要)。
- *    API は常に passthrough なので、既存タブ上で実行中の業務処理が壊れる
- *    リスクはほぼゼロ。静的アセットだけ徐々に新版に差し替わる挙動になる。
+ *  - 更新方式 (PWA Phase 1 / 2026-04-20 修正版):
+ *    install 内では skipWaiting しない。新版 SW は waiting 状態に留まる。
+ *    PWAUpdateManager (public/shared/js/pwa-update-manager.js) が waiting を検知し、
+ *    画面下部に更新バナーを表示。ユーザーが「更新する」を押したときに
+ *    postMessage({type: 'SKIP_WAITING'}) → 下記 message ハンドラで skipWaiting 発火。
+ *    activate ハンドラ内の clients.claim() は維持しているため、skipWaiting 後は
+ *    既存タブも新 SW 制御下に入り、次の reload で新版が適用される。
+ *    旧運用 (install 直後に skipWaiting) は業務操作中の予期せぬ JS 切替リスクがあったため撤廃。
+ *    初回 install (controller なし) は仕様により自動的に activate されるため新規ユーザーは影響なし。
  *  - ES5 互換 (CLAUDE.md): const/let/arrow/async 不使用。var + .then() のみ
  */
 (function () {
   'use strict';
 
   var SCOPE_NAME    = 'posla-handy';
-  var VERSION       = 'v1';
+  var VERSION       = 'v5';
   var STATIC_CACHE  = SCOPE_NAME + '-static-' + VERSION;
   var SCOPE_PREFIX  = SCOPE_NAME + '-';
 
   // ---- install ----
   self.addEventListener('install', function (event) {
     // 事前キャッシュは行わない (徐々に stale-while-revalidate で温まる)
-    self.skipWaiting();
+    //
+    // PWA Phase 1 (修正版): 自動 skipWaiting を撤廃。
+    //   skipWaiting は postMessage('SKIP_WAITING') を待つ
+    //   → PWAUpdateManager の「更新する」ボタンで明示発火
+    //   初回 install (controller なし) は仕様により自動的に activate されるため新規ユーザーは影響なし
+  });
+
+  // ---- message: PWAUpdateManager からの SKIP_WAITING / GET_VERSION 受信 (Phase 1) ----
+  self.addEventListener('message', function (event) {
+    if (!event.data) return;
+    if (event.data.type === 'SKIP_WAITING') {
+      self.skipWaiting();
+    } else if (event.data.type === 'GET_VERSION') {
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ version: VERSION, scope: SCOPE_NAME });
+      }
+    }
+  });
+
+  // ---- push (PWA Phase 2a): サーバーから通知を受信 ----
+  self.addEventListener('push', function (event) {
+    var payload = {};
+    try {
+      if (event.data) payload = event.data.json();
+    } catch (e) {
+      try { payload = { body: event.data ? event.data.text() : '' }; }
+      catch (e2) { payload = {}; }
+    }
+    var title = (payload && payload.title) ? String(payload.title) : 'POSLA 通知';
+    var options = {
+      body: (payload && payload.body) ? String(payload.body) : '',
+      icon: (payload && payload.icon) ? String(payload.icon) : '/public/handy/icons/icon-192.png',
+      badge: (payload && payload.badge) ? String(payload.badge) : '/public/handy/icons/icon-192.png',
+      tag: (payload && payload.tag) ? String(payload.tag) : 'posla-handy',
+      data: { url: (payload && payload.url) ? String(payload.url) : '/public/handy/index.html' },
+      requireInteraction: false
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+  });
+
+  // ---- notificationclick: 同一origin かつ /public/handy/ 配下のみ許可 ----
+  self.addEventListener('notificationclick', function (event) {
+    event.notification.close();
+    var rawUrl = (event.notification.data && event.notification.data.url) || '/public/handy/index.html';
+    var targetUrl = '/public/handy/index.html';
+    try {
+      var u = new URL(rawUrl, self.location.origin);
+      if (u.origin === self.location.origin
+          && u.pathname.indexOf('/public/handy/') === 0
+          && u.pathname.indexOf('/public/customer/') === -1) {
+        targetUrl = u.pathname + u.search + u.hash;
+      }
+    } catch (e) {}
+    event.waitUntil(
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
+        for (var i = 0; i < clientList.length; i++) {
+          var c = clientList[i];
+          try {
+            var cu = new URL(c.url);
+            if (cu.pathname.indexOf('/public/handy/') === 0) {
+              return c.focus().then(function (focused) {
+                if (focused && focused.navigate) focused.navigate(targetUrl);
+                return focused;
+              });
+            }
+          } catch (e) {}
+        }
+        if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+      })
+    );
   });
 
   // ---- activate: 旧 cache 削除 ----

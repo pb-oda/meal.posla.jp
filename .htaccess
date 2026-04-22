@@ -1,0 +1,30 @@
+# HTTPS 応答に HSTS header を付与する。
+# max-age=31536000 (1年)、サブドメインも HTTPS 強制。
+# preload は今回は付けない（preload list 登録は恒久対策側で判断）。
+# mod_headers 前提（Sakura Apache 標準搭載）。
+# (H-11 High fix, 2026-04-21)
+
+<IfModule mod_headers.c>
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# PHP エラー表示の本番設定を明示する。
+# display_errors を Off にしてエラー詳細（DB column 名 / path / stack）の
+# ブラウザ露出を阻止。log_errors は On にして php_errors.log には引き続き記録。
+# 本番 Sakura のデフォルトがすでに Off であっても、明示化で予防的に固定する。
+# (H-14 High fix, 2026-04-22)
+<IfModule mod_php.c>
+    php_flag  display_errors      Off
+    php_flag  log_errors           On
+    php_flag  display_startup_errors Off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag  display_errors      Off
+    php_flag  log_errors           On
+    php_flag  display_startup_errors Off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag  display_errors      Off
+    php_flag  log_errors           On
+    php_flag  display_startup_errors Off
+</IfModule>

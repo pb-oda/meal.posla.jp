@@ -242,7 +242,85 @@ var CrossStoreReport = (function () {
       html += '</tbody></table></div></div></div>';
     }
 
+    // R1: 全店舗 満足度サマリー (cross-store-report.php に ratingSummary が来た場合のみ表示)
+    var rs = data.ratingSummary;
+    if (rs && rs.available) {
+      html += '<div class="report-section">'
+        + '<h3 class="report-section__title">満足度サマリー (全店舗合算)</h3>'
+        + '<p style="color:#666;font-size:0.85rem;margin:0 0 8px;">低評価は品目・時間帯・店舗運営の改善にご活用ください。スタッフ個人の評価ではありません。</p>'
+        + '<div class="card"><div class="card__body">';
+
+      if ((rs.totalRatings || 0) === 0) {
+        html += '<p style="color:#999;">この期間の評価データはありません。</p>';
+      } else {
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px;">'
+          + _crsKpi('全店舗 評価件数', rs.totalRatings + ' 件')
+          + _crsKpi('全店舗 平均評価', rs.avgRating + ' / 5')
+          + _crsKpi('全店舗 低評価件数', rs.lowCount + ' 件', rs.lowCount > 0 ? '#d9534f' : '')
+          + _crsKpi('全店舗 低評価率', rs.lowRate + '%', rs.lowRate >= 10 ? '#d9534f' : '')
+          + '</div>';
+
+        // 店舗別
+        if (rs.storeBreakdown && rs.storeBreakdown.length > 0) {
+          html += '<h4 style="margin:12px 0 6px;font-size:0.95rem;">店舗別 平均評価・低評価率</h4>'
+            + '<div class="data-table-wrap"><table class="data-table">'
+            + '<thead><tr><th>店舗</th><th class="text-right">評価件数</th><th class="text-right">平均</th><th class="text-right">低評価</th><th class="text-right">低評価率</th></tr></thead><tbody>';
+          rs.storeBreakdown.forEach(function (b) {
+            html += '<tr>'
+              + '<td>' + Utils.escapeHtml(b.storeName) + '</td>'
+              + '<td class="text-right">' + b.total + '</td>'
+              + '<td class="text-right">' + (b.total > 0 ? b.avg : '-') + '</td>'
+              + '<td class="text-right" style="color:' + (b.lowCount > 0 ? '#d9534f' : '#333') + ';font-weight:600;">' + b.lowCount + '</td>'
+              + '<td class="text-right" style="color:' + (b.lowRate >= 10 ? '#d9534f' : '#333') + ';">' + (b.total > 0 ? b.lowRate + '%' : '-') + '</td>'
+              + '</tr>';
+          });
+          html += '</tbody></table></div>';
+        }
+
+        // 低評価品目ランキング
+        if (rs.itemRanking && rs.itemRanking.length > 0) {
+          html += '<h4 style="margin:14px 0 6px;font-size:0.95rem;">低評価が多い品目 (全店舗合算)</h4>'
+            + '<div class="data-table-wrap"><table class="data-table">'
+            + '<thead><tr><th>#</th><th>品目</th><th class="text-right">低評価数</th><th class="text-right">平均評価</th></tr></thead><tbody>';
+          rs.itemRanking.forEach(function (it, i) {
+            html += '<tr>'
+              + '<td>' + (i + 1) + '</td>'
+              + '<td>' + Utils.escapeHtml(it.name || '不明') + '</td>'
+              + '<td class="text-right" style="color:#d9534f;font-weight:600;">' + it.lowCount + '</td>'
+              + '<td class="text-right">' + it.avg + '</td>'
+              + '</tr>';
+          });
+          html += '</tbody></table></div>';
+        }
+
+        // 低評価理由ランキング
+        if (rs.reasonRanking && rs.reasonRanking.length > 0) {
+          html += '<h4 style="margin:14px 0 6px;font-size:0.95rem;">低評価の理由 (全店舗合算)</h4>'
+            + '<div class="data-table-wrap"><table class="data-table">'
+            + '<thead><tr><th>理由</th><th class="text-right">件数</th><th class="text-right">割合</th></tr></thead><tbody>';
+          rs.reasonRanking.forEach(function (r) {
+            html += '<tr>'
+              + '<td>' + Utils.escapeHtml(r.label) + '</td>'
+              + '<td class="text-right">' + r.count + '</td>'
+              + '<td class="text-right" style="color:#666;">' + r.ratio + '%</td>'
+              + '</tr>';
+          });
+          html += '</tbody></table></div>';
+        }
+      }
+
+      html += '</div></div></div>';
+    }
+
     el.innerHTML = html;
+  }
+
+  function _crsKpi(title, value, color) {
+    var col = color || '#222';
+    return '<div style="background:#fff;border:1px solid #eee;border-radius:6px;padding:10px 12px;">'
+      + '<div style="font-size:0.75rem;color:#666;">' + Utils.escapeHtml(title) + '</div>'
+      + '<div style="font-size:1.3rem;font-weight:700;color:' + col + ';">' + Utils.escapeHtml(String(value)) + '</div>'
+      + '</div>';
   }
 
   function formatSec(sec) {

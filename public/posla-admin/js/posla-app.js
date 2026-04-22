@@ -87,6 +87,9 @@
     var clearApiBtn = document.getElementById('btn-clear-api');
     if (clearApiBtn) clearApiBtn.addEventListener('click', clearApiSettings);
 
+    var refreshPushBtn = document.getElementById('btn-refresh-push');
+    if (refreshPushBtn) refreshPushBtn.addEventListener('click', loadPushStatus);
+
     // 初期タブ
     activateTab('overview');
   }
@@ -121,6 +124,88 @@
     if (tabId === 'overview') loadDashboard();
     if (tabId === 'tenants') loadTenants();
     if (tabId === 'api-settings') loadApiStatus();
+    if (tabId === 'pwa-push') loadPushStatus();
+  }
+
+  // ── PWA/Push タブ: 情報表示 (読み取り専用) ──
+  function loadPushStatus() {
+    var statusEl = document.getElementById('posla-push-status');
+    var subsEl = document.getElementById('posla-push-subs');
+    var logEl = document.getElementById('posla-push-sendlog');
+    if (!statusEl || !subsEl || !logEl) return;
+
+    statusEl.textContent = '読み込み中...';
+    subsEl.textContent = '';
+    logEl.textContent = '';
+
+    fetch('/api/posla/push-vapid.php', { credentials: 'same-origin' })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var json;
+        try { json = JSON.parse(t); } catch (e) {
+          statusEl.textContent = '取得失敗 (JSON パースエラー)';
+          return;
+        }
+        if (!json || !json.ok || !json.data) {
+          statusEl.textContent = '取得失敗: ' + ((json && json.error && json.error.message) || 'unknown');
+          return;
+        }
+        renderPushStatus(json.data, statusEl, subsEl, logEl);
+      })
+      .catch(function () {
+        statusEl.textContent = '取得失敗 (ネットワークエラー)';
+      });
+  }
+
+  function renderPushStatus(data, statusEl, subsEl, logEl) {
+    var v = data.vapid || {};
+    var availableMark = v.available
+      ? '<span style="color:#2e7d32;font-weight:600;">✓ 設定済み</span>'
+      : '<span style="color:#c62828;font-weight:600;">✗ 未設定</span>';
+    var pubSnippet = v.public_key
+      ? (v.public_key.substring(0, 16) + '...' + v.public_key.substring(v.public_key.length - 8))
+      : '(未設定)';
+    statusEl.innerHTML =
+        '<div>VAPID 状態: ' + availableMark + '</div>' +
+        '<div>公開鍵: <code style="font-size:0.8rem;">' + escapeHtml(pubSnippet) + '</code> (' + v.public_key_length + ' 文字)</div>' +
+        '<div>秘密鍵: ' + (v.private_pem_set ? ('設定済み (' + v.private_pem_length + ' 文字)') : '<span style="color:#c62828;">未設定</span>') + '</div>';
+
+    var s = data.subscriptions || { total: 0, enabled: 0, tenants_with_subs: 0, by_role: {} };
+    var byRoleText = '';
+    var roles = ['owner', 'manager', 'staff', 'device'];
+    for (var i = 0; i < roles.length; i++) {
+      var cnt = s.by_role && s.by_role[roles[i]] ? s.by_role[roles[i]] : 0;
+      byRoleText += roles[i] + ': ' + cnt + ' / ';
+    }
+    byRoleText = byRoleText.replace(/ \/ $/, '');
+    subsEl.innerHTML =
+        '<div>全購読数: ' + s.total + '</div>' +
+        '<div>有効購読: ' + s.enabled + '</div>' +
+        '<div>有効購読がいる tenant 数: ' + s.tenants_with_subs + '</div>' +
+        '<div>role 別 (有効): ' + escapeHtml(byRoleText) + '</div>';
+
+    var r = data.recent_24h || { total: 0, sent_ok: 0, gone_disabled: 0, transient: 0, other_error: 0, by_type: {} };
+    var byTypeLines = [];
+    if (r.by_type) {
+      for (var k in r.by_type) {
+        if (Object.prototype.hasOwnProperty.call(r.by_type, k)) {
+          byTypeLines.push('<div style="margin-left:1rem;">' + escapeHtml(k) + ': ' + r.by_type[k] + '</div>');
+        }
+      }
+    }
+    logEl.innerHTML =
+        '<div>総送信: ' + r.total + '</div>' +
+        '<div>成功 (2xx): <span style="color:#2e7d32;">' + r.sent_ok + '</span></div>' +
+        '<div>失効 (410/404, 自動無効化): ' + r.gone_disabled + '</div>' +
+        '<div>一時失敗 (429/5xx): ' + r.transient + '</div>' +
+        '<div>その他エラー (401/403/413): ' + r.other_error + '</div>' +
+        '<div style="margin-top:0.75rem;font-weight:600;">type 別:</div>' +
+        (byTypeLines.length ? byTypeLines.join('') : '<div style="margin-left:1rem;color:var(--text-secondary);">送信なし</div>');
+  }
+
+  function escapeHtml(s) {
+    s = String(s == null ? '' : s);
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   // ── ダッシュボード ──

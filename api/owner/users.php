@@ -92,6 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 // ----- POST -----
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // H-04: CSRF 対策 — user 作成操作に Origin / Referer 検証を追加
+    verify_origin();
+
     $data = get_json_body();
     $username = trim($data['username'] ?? '');
     $email = trim($data['email'] ?? '');
@@ -174,6 +177,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ----- PATCH -----
 if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
+    // H-04: CSRF 対策 — user 更新操作に Origin / Referer 検証を追加
+    verify_origin();
+
     $id = $_GET['id'] ?? null;
     if (!$id) json_error('MISSING_ID', 'idが必要です', 400);
 
@@ -300,6 +306,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
 
 // ----- DELETE -----
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    // H-04: CSRF 対策 — Origin / Referer が自ドメインかを検証
+    // 既存 require_role('manager') / テナント境界 / 自己削除防止はそのまま、
+    // 追加で state-changing 操作に CSRF 保護層を重ねる。
+    verify_origin();
+
     $id = $_GET['id'] ?? null;
     if (!$id) json_error('MISSING_ID', 'idが必要です', 400);
     if ($id === $user['user_id']) json_error('CANNOT_DELETE_SELF', '自分自身は削除できません', 400);

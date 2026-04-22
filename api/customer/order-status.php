@@ -9,8 +9,12 @@
 
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
 
 require_method(['GET']);
+
+// H-03: ステータス ポーリング DoS 防御 — 1IP あたり 60 回 / 5 分（5 秒ポーリング想定）
+check_rate_limit('customer-order-status', 60, 300);
 
 $storeId      = $_GET['store_id']      ?? null;
 $tableId      = $_GET['table_id']      ?? null;

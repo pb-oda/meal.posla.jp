@@ -10,8 +10,12 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/menu-resolver.php';
+require_once __DIR__ . '/../lib/rate-limiter.php';
 
 require_method(['GET']);
+
+// H-03: DB 過負荷 DoS 防御 — 1IP あたり 60 回 / 5 分（メニュー閲覧頻度高）
+check_rate_limit('customer-menu', 60, 300);
 
 $storeId = $_GET['store_id'] ?? null;
 if (!$storeId) json_error('MISSING_STORE', 'store_idが必要です', 400);
