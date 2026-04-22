@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#ff6f00">
   <title>セルフオーダー</title>
-  <link rel="stylesheet" href="css/customer.css?v=20260422-batch-e1">
+  <link rel="stylesheet" href="css/customer.css?v=20260422-batch-e2">
   <style>
     .plan-banner { background:linear-gradient(135deg,#ff6f00,#ff8f00); color:#fff; padding:0.5rem 1rem; text-align:center; font-size:0.875rem; }
     .plan-banner__name { font-weight:700; }
@@ -1372,9 +1372,12 @@
       var itemId = item.menuItemId;
       var name = _getLocalizedName(item);
       var desc = _getLocalizedDesc(item);
-      var img = item.imageUrl
-        ? '<img class="menu-item__image" src="../../' + Utils.escapeHtml(item.imageUrl) + '" alt="" loading="lazy">'
-        : '';
+      // Batch-E-2: 画像エリアは常に wrap 出力。画像なしは placeholder (穴あき解消)
+      var img = '<div class="menu-item__image-wrap">'
+        + (item.imageUrl
+            ? '<img class="menu-item__image" src="../../' + Utils.escapeHtml(item.imageUrl) + '" alt="" loading="lazy">'
+            : '<span class="menu-item__image-placeholder" aria-hidden="true">🍽️</span>')
+        + '</div>';
       var qtyHtml = '';
       if (!isPreview) {
         var cartQty = CartManager.getItemQty(itemId);
@@ -1455,6 +1458,64 @@
       });
 
       container.innerHTML = html;
+      // Batch-E-2: カテゴリ追跡 (スクロール位置 → active ハイライト)
+      setupCategoryTracking();
+    }
+
+    // Batch-E-2: IntersectionObserver でカテゴリナビの active を追跡
+    //   スクロール中に現在表示中のセクションに応じて .category-nav__btn--active を付与
+    //   また active になったボタンを横スクロール中央に寄せる
+    //   非対応ブラウザ (IE11 等) はスキップ、既存の click/scrollIntoView フローは不変
+    var _categoryObserver = null;
+    function setupCategoryTracking() {
+      if (typeof IntersectionObserver === 'undefined') return;
+      // 既存 observer があれば解除してから再構築 (再描画時の多重観察防止)
+      if (_categoryObserver) {
+        try { _categoryObserver.disconnect(); } catch (e) {}
+        _categoryObserver = null;
+      }
+      var sections = document.querySelectorAll('.menu-section');
+      if (!sections.length) return;
+
+      // rootMargin: 上部はヘッダー + state-bar + category-nav 分を差し引き
+      // 下部は 60% でトップ寄りの section を active に
+      _categoryObserver = new IntersectionObserver(function (entries) {
+        // 最上部に到達した entry を優先して active 化
+        var bestEntry = null;
+        var bestTop = Infinity;
+        for (var i = 0; i < entries.length; i++) {
+          var e = entries[i];
+          if (!e.isIntersecting) continue;
+          var top = e.boundingClientRect.top;
+          if (top < bestTop) { bestTop = top; bestEntry = e; }
+        }
+        if (!bestEntry) return;
+        var sectionId = bestEntry.target.id; // 'cat-<id>' or 'cat-recommendations'
+        var catId = sectionId.indexOf('cat-') === 0 ? sectionId.substring(4) : sectionId;
+
+        var btns = document.querySelectorAll('.category-nav__btn');
+        var activeBtn = null;
+        for (var b = 0; b < btns.length; b++) {
+          var isActive = btns[b].getAttribute('data-cat') === catId;
+          btns[b].classList.toggle('category-nav__btn--active', isActive);
+          if (isActive) activeBtn = btns[b];
+        }
+
+        // active ボタンを category-nav の横スクロール中央に寄せる (スムーズ)
+        if (activeBtn && activeBtn.scrollIntoView) {
+          try {
+            activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          } catch (e) { /* block/inline オプション非対応ブラウザ */ }
+        }
+      }, {
+        root: null,
+        rootMargin: '-120px 0px -60% 0px',
+        threshold: 0
+      });
+
+      for (var i = 0; i < sections.length; i++) {
+        _categoryObserver.observe(sections[i]);
+      }
     }
 
     // ============================================================

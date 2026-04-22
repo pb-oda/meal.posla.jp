@@ -703,3 +703,140 @@ body.lang-en .menu-item__add-btn::after { content: ''; }
   }
 }
 
+/* ============================================================
+ * Batch-E-2 (2026-04-22): 商品カード強化 + カテゴリ追跡
+ *
+ * 他社参考 (公式、抽象化):
+ *  - Square QR Code Ordering: https://squareup.com/us/en/online-ordering/qr-code-ordering
+ *    → 「画像 → 商品名 → 価格 → 追加」の 4 要素で完結。追加ボタンは
+ *      タップしやすい大きさ (44px 以上)、画像は常に一定比率で表示
+ *  - Toast Ordering Screens: https://support.toasttab.com/en/article/New-POS-Experience-Ordering-Screens
+ *    → カテゴリナビの「現在位置追跡」: スクロール位置に応じて active を
+ *      ハイライト、active は中央寄せ
+ *  模倣しない: ブランドカラー、POS 専用タイル、決済 UI 独自導線
+ *
+ * 既存 class (.menu-item / .menu-item__add-btn / .category-nav__btn) と
+ * 追加ボタンの click handler / hasOptions フロー / CartManager API は
+ * 一切不変。
+ * ============================================================ */
+
+/* 画像エリアの wrap: 常に 4:3 比率、画像なし時はプレースホルダ */
+.menu-item__image-wrap {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: var(--cm-surface-0);
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.menu-item__image-wrap .menu-item__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.menu-item__image-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c7c7c7;
+  font-size: 2.5rem;
+  line-height: 1;
+  user-select: none;
+  background: linear-gradient(135deg, #f5f5f5 0%, #eeeeee 100%);
+}
+
+/* 追加ボタン: Fitts 則を満たす 44px min-height + より大きなタップ感触 */
+.menu-item__add-btn {
+  min-height: 44px;
+  padding: 0.5625rem 1rem;
+  font-size: 0.9rem;
+  border-radius: 10px;
+  transition: background 0.12s, transform 0.08s, box-shadow 0.12s;
+  box-shadow: 0 1px 3px rgba(255, 111, 0, 0.24);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menu-item__add-btn:hover {
+  background: var(--orange-dark);
+  box-shadow: 0 2px 6px rgba(255, 111, 0, 0.32);
+}
+
+.menu-item__add-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(255, 111, 0, 0.3);
+}
+
+.menu-item__add-btn:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+
+/* 数量コントロール: 32 → 40px で押しやすく */
+.qty-btn {
+  width: 40px;
+  height: 40px;
+  font-size: 1.25rem;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s, transform 0.08s;
+}
+
+.qty-btn:hover {
+  background: var(--orange-light);
+}
+
+.qty-btn:active {
+  transform: scale(0.94);
+}
+
+.qty-btn:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+
+/* カテゴリナビの active 追跡 (IntersectionObserver 連動)
+   既存の :active (押下瞬間) は維持、新 --active は現在スクロール位置の表現 */
+.category-nav__btn--active {
+  color: var(--orange-dark);
+  border-bottom-color: var(--orange);
+  font-weight: 700;
+}
+
+/* カテゴリナビ自体を少し圧縮 + 横スクロール時の spacing 整理 */
+.category-nav {
+  padding: 0 var(--cm-space-2);
+  scroll-behavior: smooth;
+}
+
+.category-nav__btn {
+  font-weight: 700;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.category-nav__btn:hover {
+  color: var(--orange);
+}
+
+/* 商品カード本体: hover 時の軽いリフト (desktop) + 既存 shadow に積む */
+.menu-item {
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+
+@media (hover: hover) {
+  .menu-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+  }
+}
+
+/* 商品 name 行内のバッジ行との整合: badge と名前の垂直位置揃え */
+.menu-item__name {
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+
