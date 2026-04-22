@@ -209,14 +209,19 @@ if (!function_exists('build_reservation_template')) {
 
 if (!function_exists('_l9_send_reservation_line')) {
     /**
-     * L-17 Phase 2B-1: confirm 時に LINE 並行送信を試みる内部ヘルパ。
+     * L-17 Phase 2B-1 / 2C: 予約通知の LINE 並行送信を試みる内部ヘルパ。
+     *
+     * 対応 type:
+     *   - confirm      (Phase 2B-1, flag: notify_reservation_created)
+     *   - reminder_24h (Phase 2C,   flag: notify_reservation_reminder_day)
      *
      * 以下の全てを満たす場合のみ push を実行する:
-     *   1. tenant_line_settings が適用済で is_enabled=1
-     *   2. tenant_line_settings.channel_access_token が空でない
-     *   3. tenant_line_settings.notify_reservation_created=1 (L-17 Phase 1 設定)
-     *   4. reservation.customer_id がセットされている
-     *   5. reservation_customer_line_links に link_status='linked' な行がある
+     *   1. type が対応範囲 (confirm / reminder_24h) にある
+     *   2. tenant_line_settings が適用済で is_enabled=1
+     *   3. tenant_line_settings.channel_access_token が空でない
+     *   4. type 対応 notify_* flag が 1
+     *   5. reservation.customer_id がセットされている
+     *   6. reservation_customer_line_links に link_status='linked' な行がある
      *
      * 送信結果に関わらず reservation_notifications_log に channel='line' で
      * 1 行残す。送信失敗で exception は投げない (caller は email 結果を優先)。
@@ -224,9 +229,17 @@ if (!function_exists('_l9_send_reservation_line')) {
      * @return array ['attempted'=>bool, 'success'=>bool, 'error'=>?string]
      */
     function _l9_send_reservation_line($pdo, $reservation, $type, $store, $tpl) {
-        if ($type !== 'confirm') {
+        // type → tenant_line_settings の flag カラム名 マップ
+        // (Phase 2C で reminder_24h を追加。2h / cancel / takeout 等は未サポート)
+        $typeFlagMap = array(
+            'confirm'      => 'notify_reservation_created',
+            'reminder_24h' => 'notify_reservation_reminder_day',
+        );
+        if (!isset($typeFlagMap[$type])) {
             return array('attempted' => false, 'success' => false, 'error' => 'LINE_TYPE_NOT_SUPPORTED');
         }
+        $flagColumn = $typeFlagMap[$type];
+
         if (!function_exists('line_link_get_by_customer') || !function_exists('line_push_message')) {
             // ヘルパ未同梱 (phase 2A-1 未適用等) の環境では何もせず quiet skip
             return array('attempted' => false, 'success' => false, 'error' => 'LINE_HELPERS_MISSING');
@@ -242,7 +255,8 @@ if (!function_exists('_l9_send_reservation_line')) {
         // tenant_line_settings を参照 (テーブル未作成なら silent skip)
         try {
             $stmt = $pdo->prepare(
-                'SELECT channel_access_token, is_enabled, notify_reservation_created
+                'SELECT channel_access_token, is_enabled,
+                        notify_reservation_created, notify_reservation_reminder_day
                    FROM tenant_line_settings
                   WHERE tenant_id = ?'
             );
@@ -257,7 +271,7 @@ if (!function_exists('_l9_send_reservation_line')) {
         if ((int)$settings['is_enabled'] !== 1) {
             return array('attempted' => false, 'success' => false, 'error' => 'LINE_NOT_ENABLED');
         }
-        if ((int)$settings['notify_reservation_created'] !== 1) {
+        if ((int)($settings[$flagColumn] ?? 0) !== 1) {
             return array('attempted' => false, 'success' => false, 'error' => 'NOTIFY_FLAG_OFF');
         }
         if (empty($settings['channel_access_token'])) {
@@ -318,13 +332,14 @@ if (!function_exists('send_reservation_notification')) {
         $tpl = build_reservation_template($type, $reservation, $store, $lang, $extra);
         if (!$tpl) return array('success' => false, 'error' => 'UNKNOWN_TEMPLATE');
 
-        // L-17 Phase 2B-1: confirm 時のみ LINE 並行送信を試みる (失敗しても続行)
-        if ($type === 'confirm') {
+        // L-17 Phase 2B-1 / 2C: confirm / reminder_24h 時に LINE 並行送信を試みる
+        // (送信失敗しても続行、email 側の返り値を壊さない)
+        if ($type === 'confirm' || $type === 'reminder_24h') {
             try {
                 _l9_send_reservation_line($pdo, $reservation, $type, $store, $tpl);
             } catch (Exception $e) {
                 // LINE 側で想定外例外が出ても email/caller を落とさない
-                error_log('[L-17 2B-1 line_send] ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+                error_log('[L-17 line_send] ' . $type . ': ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
             }
         }
 
