@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#ff6f00">
   <title>セルフオーダー</title>
-  <link rel="stylesheet" href="css/customer.css?v=20260422-batch-e2c">
+  <link rel="stylesheet" href="css/customer.css?v=20260422-batch-e2d">
   <style>
     .plan-banner { background:linear-gradient(135deg,#ff6f00,#ff8f00); color:#fff; padding:0.5rem 1rem; text-align:center; font-size:0.875rem; }
     .plan-banner__name { font-weight:700; }
@@ -563,6 +563,9 @@
       // カートバー
       el = document.getElementById('btn-view-cart');
       if (el) el.textContent = _t('view_cart', '注文を確認');
+      // L-8: セルフレジ お会計ボタン (言語切替時に text が古いままだったバグ修正)
+      el = document.getElementById('btn-checkout');
+      if (el) el.textContent = _t('btn_checkout', 'お会計');
       // カートモーダル
       el = document.querySelector('#cart-overlay .cart-modal__header h2');
       if (el) el.textContent = _t('order_details', '注文内容');
