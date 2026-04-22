@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="POSLA - 飲食店の業務をぜんぶ、ひとつに。予約から注文・会計・分析まで一気通貫。">
   <title>POSLA - 飲食店の業務をぜんぶ、ひとつに</title>
-  <link rel="stylesheet" href="css/lp.css?v=20260418">
+  <link rel="stylesheet" href="css/lp.css?v=20260422-batch-f">
 </head>
 <body>
 
@@ -26,7 +26,11 @@
     <h1 class="lp-hero__title">飲食店の業務を、<br>ぜんぶひとつに。</h1>
     <p class="lp-hero__sub">予約 → 注文 → 提供 → 会計 → 分析まで一気通貫。<br>タブレット1台で営業のすべてがまわる POS システムです。</p>
     <a href="#signup" class="lp-btn lp-btn--hero">30日間無料で試す →</a>
-    <p class="lp-hero__note">※クレジットカード登録必須。30日以内の解約で請求なし。</p>
+    <ul class="lp-hero__trust">
+      <li class="lp-trust-chip">カード登録あり・請求は 31 日目から</li>
+      <li class="lp-trust-chip">期間内の解約で請求なし</li>
+      <li class="lp-trust-chip">お申込みから 5 分で利用開始</li>
+    </ul>
   </div>
 </section>
 
@@ -34,7 +38,7 @@
   <div class="lp-container">
     <h2 class="lp-section__title">業務をまるごとカバー</h2>
     <div class="lp-features">
-      <div class="lp-feature"><span class="lp-feature__icon">📅</span><h3>予約管理</h3><p>ガント台帳・自動テーブル割当・予約金・顧客台帳。トレタ/TableCheck 超えの使い勝手。</p></div>
+      <div class="lp-feature"><span class="lp-feature__icon">📅</span><h3>予約管理</h3><p>ガント台帳・自動テーブル割当・予約金・顧客台帳まで 1 画面で完結。</p></div>
       <div class="lp-feature"><span class="lp-feature__icon">📱</span><h3>セルフオーダー</h3><p>QRコードでお客さまのスマホから注文。多言語 (英中韓) 対応。</p></div>
       <div class="lp-feature"><span class="lp-feature__icon">🍳</span><h3>AI キッチン</h3><p>音声コマンド対応の KDS。注文状況を一目で把握。</p></div>
       <div class="lp-feature"><span class="lp-feature__icon">💳</span><h3>レジ・決済</h3><p>Stripe Terminal (カード)・QR決済・現金すべて対応。</p></div>
@@ -67,6 +71,11 @@
         <div class="lp-price__desc">チェーン本部向け</div>
       </div>
     </div>
+    <div class="lp-pricing__example">
+      <span class="lp-pricing__example-label">例</span>
+      3 店舗運営なら <strong>¥54,000 / 月</strong>（1 店舗目 ¥20,000 + 追加 2 店舗 × ¥17,000）。
+      5 店舗なら <strong>¥88,000 / 月</strong>。本部配信アドオンは 1 店舗あたり +¥3,000。
+    </div>
     <p class="lp-pricing__trial">📅 <strong>30日間無料トライアル</strong>(カード登録必須・期間内解約で請求なし)</p>
   </div>
 </section>
@@ -76,62 +85,78 @@
     <h2 class="lp-section__title">30日間無料ではじめる</h2>
     <p class="lp-section__sub">お申込みから 5 分で利用開始できます。</p>
     <form id="lp-signup-form" class="lp-form">
-      <div class="lp-form__row">
-        <label>企業名 (屋号) <span class="lp-required">*</span></label>
-        <input type="text" name="tenant_name" required maxlength="100" placeholder="例: 株式会社○○ / 松の屋">
-      </div>
-      <div class="lp-form__row">
-        <label>1 店舗目の店舗名 <span class="lp-required">*</span></label>
-        <input type="text" name="store_name" required maxlength="100" placeholder="例: 渋谷店 / 本店">
-      </div>
-      <div class="lp-form__row">
-        <label>代表者名 <span class="lp-required">*</span></label>
-        <input type="text" name="owner_name" required maxlength="60" placeholder="例: 田中 太郎">
-      </div>
-      <div class="lp-form__row lp-form__row--split">
-        <div>
-          <label>電話番号 <span class="lp-required">*</span></label>
-          <input type="tel" name="phone" required maxlength="20" placeholder="090-1234-5678">
+      <div class="lp-form-group">
+        <h3 class="lp-form-group__title">事業者情報</h3>
+        <div class="lp-form__row">
+          <label>企業名 (屋号) <span class="lp-required">*</span></label>
+          <input type="text" name="tenant_name" required maxlength="100" placeholder="例: 株式会社○○ / 松の屋">
         </div>
-        <div>
-          <label>メールアドレス <span class="lp-required">*</span></label>
-          <input type="email" name="email" required maxlength="190" placeholder="taro@example.com">
+        <div class="lp-form__row">
+          <label>代表者名 <span class="lp-required">*</span></label>
+          <input type="text" name="owner_name" required maxlength="60" placeholder="例: 田中 太郎">
         </div>
-      </div>
-      <div class="lp-form__row lp-form__row--split">
-        <div>
-          <label>ログインユーザー名 <span class="lp-required">*</span></label>
-          <input type="text" name="username" required maxlength="40" pattern="[A-Za-z0-9_\-]{3,}" placeholder="半角英数 3文字以上">
-        </div>
-        <div>
-          <label>パスワード <span class="lp-required">*</span></label>
-          <input type="password" name="password" required minlength="8" placeholder="8文字以上 / 英字+数字">
+        <div class="lp-form__row lp-form__row--split">
+          <div>
+            <label>電話番号 <span class="lp-required">*</span></label>
+            <input type="tel" name="phone" required maxlength="20" placeholder="090-1234-5678">
+          </div>
+          <div>
+            <label>メールアドレス <span class="lp-required">*</span></label>
+            <input type="email" name="email" required maxlength="190" placeholder="taro@example.com">
+          </div>
         </div>
       </div>
-      <div class="lp-form__row">
-        <label>店舗住所 (任意)</label>
-        <input type="text" name="address" maxlength="200" placeholder="東京都渋谷区...">
-      </div>
-      <div class="lp-form__row lp-form__row--split">
-        <div>
-          <label>店舗数</label>
-          <input type="number" name="store_count" min="1" max="999" value="1">
-        </div>
-        <div>
-          <label class="lp-checkbox">
-            <input type="checkbox" name="hq_broadcast" value="1">
-            本部一括メニュー配信アドオン (+¥3,000/店舗)
-          </label>
+
+      <div class="lp-form-group">
+        <h3 class="lp-form-group__title">ログイン情報</h3>
+        <div class="lp-form__row lp-form__row--split">
+          <div>
+            <label>ログインユーザー名 <span class="lp-required">*</span></label>
+            <input type="text" name="username" required maxlength="40" pattern="[A-Za-z0-9_\-]{3,}" placeholder="半角英数 3文字以上">
+          </div>
+          <div>
+            <label>パスワード <span class="lp-required">*</span></label>
+            <input type="password" name="password" required minlength="8" placeholder="8文字以上 / 英字+数字">
+          </div>
         </div>
       </div>
+
+      <div class="lp-form-group">
+        <h3 class="lp-form-group__title">店舗情報</h3>
+        <div class="lp-form__row">
+          <label>1 店舗目の店舗名 <span class="lp-required">*</span></label>
+          <input type="text" name="store_name" required maxlength="100" placeholder="例: 渋谷店 / 本店">
+        </div>
+        <div class="lp-form__row">
+          <label>店舗住所 (任意)</label>
+          <input type="text" name="address" maxlength="200" placeholder="東京都渋谷区...">
+        </div>
+        <div class="lp-form__row lp-form__row--split">
+          <div>
+            <label>店舗数</label>
+            <input type="number" name="store_count" min="1" max="999" value="1">
+          </div>
+          <div>
+            <label class="lp-checkbox">
+              <input type="checkbox" name="hq_broadcast" value="1">
+              本部一括メニュー配信アドオン (+¥3,000/店舗)
+            </label>
+          </div>
+        </div>
+      </div>
+
       <div class="lp-form__row">
         <label class="lp-checkbox">
           <input type="checkbox" id="lp-terms" required>
-          <a href="#" target="_blank">利用規約</a>・<a href="#" target="_blank">プライバシーポリシー</a>に同意します
+          <a href="/terms/" target="_blank" rel="noopener noreferrer">利用規約</a>・<a href="/privacy/" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>に同意します
         </label>
       </div>
       <button type="submit" class="lp-btn lp-btn--primary" id="lp-submit">お申込み → Stripe 決済画面へ</button>
-      <p class="lp-form__note">送信後、Stripe の決済画面に遷移します。カード登録完了で30日無料トライアルが開始されます。</p>
+      <ul class="lp-form__trust">
+        <li>🔒 決済処理は Stripe が実施。カード番号は POSLA サーバーに保存されません。</li>
+        <li>📅 30 日間は無料。期間内の解約で請求は発生しません。</li>
+        <li>✉️ 送信完了後、ログイン情報を登録メール宛に送付します。</li>
+      </ul>
       <div id="lp-error" class="lp-error" hidden></div>
     </form>
   </div>

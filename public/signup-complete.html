@@ -4,66 +4,91 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>お申込み完了 - POSLA</title>
-  <link rel="stylesheet" href="css/lp.css?v=20260418">
+  <link rel="stylesheet" href="css/lp.css?v=20260422-batch-f">
 </head>
 <body>
 
 <header class="lp-header">
   <div class="lp-container lp-header__inner">
-    <div class="lp-logo"><a href="index.html" style="color:#ff6f00;text-decoration:none;">POSLA</a></div>
+    <div class="lp-logo"><a href="index.html">POSLA</a></div>
   </div>
 </header>
 
-<section class="lp-section lp-section--signup" style="min-height:60vh;">
-  <div class="lp-container lp-container--narrow" style="text-align:center;">
-    <div id="sc-status" style="font-size:1.1rem;color:#666;margin:24px 0;">アカウントを有効化しています…</div>
-    <div id="sc-content" style="display:none;">
-      <div style="font-size:5rem;color:#2e7d32;margin-bottom:16px;">✓</div>
-      <h1 style="font-size:1.8rem;margin:0 0 12px;">お申込みありがとうございます</h1>
-      <p style="color:#666;margin-bottom:24px;">決済が正常に完了しました。<br>ご登録いただいたメールアドレスにログイン情報をお送りしています。</p>
-      <div style="background:#fff3e0;border:2px solid #ff9800;border-radius:12px;padding:20px;margin-bottom:24px;">
-        <div style="font-size:1.1rem;font-weight:700;color:#e65100;margin-bottom:8px;">📅 30日間無料トライアル開始</div>
-        <div style="color:#666;font-size:0.9rem;">期間内のキャンセルで請求は発生しません。</div>
+<section class="lp-section lp-section--signup sc-section">
+  <div class="lp-container lp-container--narrow sc-wrap">
+    <div id="sc-status" class="sc-loading">アカウントを有効化しています…</div>
+    <div id="sc-content" class="sc-content" hidden>
+      <div class="sc-check">✓</div>
+      <h1 class="sc-title">お申込みありがとうございます</h1>
+      <p class="sc-lead">決済が正常に完了しました。<br>ご登録のメールアドレスにログイン情報をお送りしています。</p>
+
+      <div class="sc-trial">
+        <div class="sc-trial__title">📅 30日間無料トライアル開始</div>
+        <div class="sc-trial__sub">期間内のキャンセルで請求は発生しません。31 日目から通常月額が自動開始します。</div>
       </div>
-      <a href="admin/index.html" class="lp-btn lp-btn--primary" style="max-width:400px;">ログイン画面へ →</a>
-      <p style="color:#888;font-size:0.85rem;margin-top:24px;">メールが届かない場合は info@posla.jp までご連絡ください。</p>
+
+      <div class="sc-steps-wrap">
+        <h3 class="sc-steps__title">次の 3 ステップ</h3>
+        <ol class="sc-steps">
+          <li>
+            <strong>ログイン</strong>
+            <small>届いたメールのユーザー名とパスワードで管理画面に入ります。</small>
+          </li>
+          <li>
+            <strong>メニューを登録</strong>
+            <small>カテゴリ → 商品 → 価格の順。最初は代表メニュー 5 品からで十分です。</small>
+          </li>
+          <li>
+            <strong>テーブル QR を印刷して貼り付け</strong>
+            <small>店舗設定からテーブルを登録すると QR が生成されます。印刷して各席に設置すれば、セルフオーダーがすぐ始まります。</small>
+          </li>
+        </ol>
+      </div>
+
+      <a href="admin/index.html" class="lp-btn lp-btn--primary sc-cta">ログイン画面へ →</a>
+      <p class="sc-footer-note">メールが届かない場合は info@posla.jp までご連絡ください。</p>
     </div>
   </div>
 </section>
 
 <script>
 (function () {
+  'use strict';
   var qs = new URLSearchParams(location.search);
   var token = qs.get('t');
   var statusEl = document.getElementById('sc-status');
   var contentEl = document.getElementById('sc-content');
-  function show() { statusEl.style.display = 'none'; contentEl.style.display = 'block'; }
+
+  function show() {
+    statusEl.hidden = true;
+    contentEl.hidden = false;
+  }
+
   function showFailure(msg) {
-    statusEl.style.color = '#c62828';
     // S3-#18: 通信失敗時は成功表示にせず、リトライ + サポート連絡導線を出す
+    statusEl.classList.add('sc-loading--failure');
     statusEl.innerHTML = '';
     var p = document.createElement('p');
-    p.style.margin = '0 0 16px';
     p.textContent = msg;
     statusEl.appendChild(p);
+    var actions = document.createElement('div');
+    actions.className = 'sc-failure-actions';
     var retry = document.createElement('button');
     retry.type = 'button';
     retry.className = 'lp-btn lp-btn--primary';
-    retry.style.maxWidth = '240px';
-    retry.style.margin = '0 8px 8px';
     retry.textContent = 'もう一度試す';
     retry.onclick = function () { location.reload(); };
-    statusEl.appendChild(retry);
+    actions.appendChild(retry);
     var support = document.createElement('a');
     support.href = 'mailto:info@posla.jp';
     support.className = 'lp-btn lp-btn--secondary';
-    support.style.maxWidth = '240px';
-    support.style.margin = '0 8px 8px';
-    support.style.display = 'inline-block';
     support.textContent = 'サポートに連絡';
-    statusEl.appendChild(support);
+    actions.appendChild(support);
+    statusEl.appendChild(actions);
   }
+
   if (!token) { show(); return; }
+
   // S3-#18: POSLA 規約に従い res.text() → JSON.parse() パターンに統一
   fetch('/api/signup/activate.php', {
     method: 'POST',
