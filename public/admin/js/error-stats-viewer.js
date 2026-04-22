@@ -84,21 +84,21 @@ var ErrorStatsViewer = (function () {
   }
 
   function renderShell() {
-    var html = '<div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">'
-      + '<label style="font-size:0.85rem;">期間: '
-      + '<select id="error-stats-hours" style="padding:0.3rem;">'
+    var html = '<div class="error-stats-toolbar">'
+      + '<label class="error-stats-toolbar__label">期間: '
+      + '<select id="error-stats-hours" class="error-stats-toolbar__select">'
       +   '<option value="1">直近 1 時間</option>'
       +   '<option value="6">直近 6 時間</option>'
       +   '<option value="24" selected>直近 24 時間</option>'
       +   '<option value="168">直近 7 日間</option>'
       + '</select></label>'
       + '<button id="error-stats-refresh" class="btn btn--small">再読込</button>'
-      + '<span id="error-stats-meta" style="font-size:0.8rem;color:#666;margin-left:auto;"></span>'
+      + '<span id="error-stats-meta" class="error-stats-toolbar__meta"></span>'
       + '</div>'
-      + '<div id="error-stats-summary" style="margin-bottom:1.5rem;"></div>'
-      + '<h3 style="font-size:1rem;margin:0 0 0.5rem;">頻発エラー トップ10</h3>'
+      + '<div id="error-stats-summary" class="error-stats-summary"></div>'
+      + '<h3 class="error-stats-title">頻発エラー トップ10</h3>'
       + '<div id="error-stats-table"></div>'
-      + '<p style="font-size:0.75rem;color:#999;margin-top:1rem;">'
+      + '<p class="error-stats-footer">'
       + '※ エラー番号 (Exxxx) をクリックすると、別タブで「エラーカタログ」が開きます。AI アシスタントに「<code>E2017 とは？</code>」と質問することもできます。'
       + '</p>';
     _container.innerHTML = html;
@@ -111,7 +111,7 @@ var ErrorStatsViewer = (function () {
 
   function fetchStats() {
     if (!_storeId) {
-      _container.querySelector('#error-stats-summary').innerHTML = '<p style="color:#999;">店舗が選択されていません。</p>';
+      _container.querySelector('#error-stats-summary').innerHTML = '<p class="error-stats-state-note">店舗が選択されていません。</p>';
       return;
     }
     var url = '../../api/store/error-stats.php?store_id=' + encodeURIComponent(_storeId) + '&hours=' + _hours;
@@ -124,13 +124,13 @@ var ErrorStatsViewer = (function () {
       }); })
       .then(function (json) {
         if (!json.ok) {
-          _container.querySelector('#error-stats-summary').innerHTML = '<p style="color:#d9534f;">読み込みエラー: ' + Utils.escapeHtml((json.error && json.error.message) || 'unknown') + '</p>';
+          _container.querySelector('#error-stats-summary').innerHTML = '<p class="error-stats-state-error">読み込みエラー: ' + Utils.escapeHtml((json.error && json.error.message) || 'unknown') + '</p>';
           return;
         }
         renderResults(json.data);
       })
       .catch(function (err) {
-        _container.querySelector('#error-stats-summary').innerHTML = '<p style="color:#d9534f;">通信エラー: ' + Utils.escapeHtml(err.message || '') + '</p>';
+        _container.querySelector('#error-stats-summary').innerHTML = '<p class="error-stats-state-error">通信エラー: ' + Utils.escapeHtml(err.message || '') + '</p>';
       });
   }
 
@@ -139,28 +139,28 @@ var ErrorStatsViewer = (function () {
     if (meta) meta.textContent = '更新: ' + new Date().toLocaleTimeString('ja-JP');
 
     if (data.unmigrated) {
-      _container.querySelector('#error-stats-summary').innerHTML = '<p style="color:#999;">エラーログテーブルが未作成です。POSLA運営にお問い合わせください。</p>';
+      _container.querySelector('#error-stats-summary').innerHTML = '<p class="error-stats-state-note">エラーログテーブルが未作成です。POSLA運営にお問い合わせください。</p>';
       _container.querySelector('#error-stats-table').innerHTML = '';
       return;
     }
 
-    var summaryHtml = '';
-    summaryHtml += '<div style="display:flex;gap:1rem;flex-wrap:wrap;">';
-    summaryHtml += '<div style="flex:0 0 auto;background:#f8f9fa;padding:0.75rem 1rem;border-radius:6px;">'
-      + '<div style="font-size:0.75rem;color:#666;">総エラー件数</div>'
-      + '<div style="font-size:1.5rem;font-weight:bold;color:' + (data.total > 0 ? '#d9534f' : '#28a745') + ';">' + data.total + '</div>'
+    var totalCls = 'error-stats-card__value ' + (data.total > 0 ? 'error-stats-card__value--danger' : 'error-stats-card__value--ok');
+    var summaryHtml = '<div class="error-stats-summary__row">';
+    summaryHtml += '<div class="error-stats-card error-stats-card--total">'
+      + '<div class="error-stats-card__label">総エラー件数</div>'
+      + '<div class="' + totalCls + '">' + data.total + '</div>'
       + '</div>';
 
     // カテゴリ別
     var catKeys = Object.keys(data.by_category || {}).sort();
     if (catKeys.length > 0) {
-      summaryHtml += '<div style="flex:1 1 auto;background:#f8f9fa;padding:0.75rem 1rem;border-radius:6px;min-width:280px;">'
-        + '<div style="font-size:0.75rem;color:#666;margin-bottom:0.4rem;">カテゴリ別</div>';
+      summaryHtml += '<div class="error-stats-card error-stats-card--list">'
+        + '<div class="error-stats-card__label">カテゴリ別</div>';
       for (var i = 0; i < catKeys.length; i++) {
         var k = catKeys[i];
         var label = CATEGORY_LABELS[k] || k;
-        summaryHtml += '<span style="display:inline-block;margin:0.15rem 0.5rem 0.15rem 0;padding:0.1rem 0.4rem;border:1px solid #ddd;border-radius:3px;font-size:0.8rem;">'
-          + '<code style="color:#666;">' + Utils.escapeHtml(k) + 'xxx</code> '
+        summaryHtml += '<span class="error-stats-chip">'
+          + '<code class="error-stats-chip__code">' + Utils.escapeHtml(k) + 'xxx</code> '
           + Utils.escapeHtml(label) + ': <strong>' + data.by_category[k] + '</strong>'
           + '</span>';
       }
@@ -170,13 +170,14 @@ var ErrorStatsViewer = (function () {
     // HTTP ステータス別
     var statusKeys = Object.keys(data.by_status || {}).sort();
     if (statusKeys.length > 0) {
-      summaryHtml += '<div style="flex:1 1 auto;background:#f8f9fa;padding:0.75rem 1rem;border-radius:6px;min-width:280px;">'
-        + '<div style="font-size:0.75rem;color:#666;margin-bottom:0.4rem;">HTTP ステータス別</div>';
+      summaryHtml += '<div class="error-stats-card error-stats-card--list">'
+        + '<div class="error-stats-card__label">HTTP ステータス別</div>';
       for (var j = 0; j < statusKeys.length; j++) {
         var s = statusKeys[j];
-        var color = (parseInt(s, 10) >= 500) ? '#d9534f' : (parseInt(s, 10) >= 400 ? '#f0ad4e' : '#666');
-        summaryHtml += '<span style="display:inline-block;margin:0.15rem 0.5rem 0.15rem 0;padding:0.1rem 0.4rem;border:1px solid #ddd;border-radius:3px;font-size:0.8rem;">'
-          + '<strong style="color:' + color + ';">' + Utils.escapeHtml(s) + '</strong>: ' + data.by_status[s]
+        var sNum = parseInt(s, 10);
+        var statusMod = (sNum >= 500) ? '5xx' : (sNum >= 400 ? '4xx' : 'other');
+        summaryHtml += '<span class="error-stats-chip">'
+          + '<strong class="error-stats-chip__status error-stats-chip__status--' + statusMod + '">' + Utils.escapeHtml(s) + '</strong>: ' + data.by_status[s]
           + '</span>';
       }
       summaryHtml += '</div>';
@@ -188,34 +189,35 @@ var ErrorStatsViewer = (function () {
     // テーブル
     var top = data.top || [];
     if (top.length === 0) {
-      _container.querySelector('#error-stats-table').innerHTML = '<p style="color:#999;padding:1rem;background:#f8f9fa;border-radius:6px;">この期間にエラーは発生していません。</p>';
+      _container.querySelector('#error-stats-table').innerHTML = '<p class="error-stats-empty">この期間にエラーは発生していません。</p>';
       return;
     }
 
-    var tableHtml = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;">'
-      + '<thead><tr style="background:#f0f0f0;text-align:left;">'
-      + '<th style="padding:0.4rem 0.5rem;width:80px;">番号</th>'
-      + '<th style="padding:0.4rem 0.5rem;width:120px;">コード</th>'
-      + '<th style="padding:0.4rem 0.5rem;width:60px;text-align:center;">HTTP</th>'
-      + '<th style="padding:0.4rem 0.5rem;">メッセージ</th>'
-      + '<th style="padding:0.4rem 0.5rem;width:80px;text-align:right;">件数</th>'
-      + '<th style="padding:0.4rem 0.5rem;width:130px;">最終発生</th>'
+    var tableHtml = '<table class="error-stats-table">'
+      + '<thead><tr>'
+      + '<th class="th--no">番号</th>'
+      + '<th class="th--code">コード</th>'
+      + '<th class="th--http">HTTP</th>'
+      + '<th>メッセージ</th>'
+      + '<th class="th--count">件数</th>'
+      + '<th class="th--time">最終発生</th>'
       + '</tr></thead><tbody>';
 
     var catalogBase = '../docs-tenant/tenant/99-error-catalog.html';
     for (var k = 0; k < top.length; k++) {
       var t = top[k];
-      var statusColor = (t.http_status >= 500) ? '#d9534f' : (t.http_status >= 400 ? '#f0ad4e' : '#666');
+      var httpMod = (t.http_status >= 500) ? '5xx' : (t.http_status >= 400 ? '4xx' : 'other');
       var noLink = t.errorNo
-        ? '<a href="' + catalogBase + '#' + encodeURIComponent(String(t.errorNo).toLowerCase()) + '" target="_blank" style="font-family:monospace;font-weight:bold;">' + Utils.escapeHtml(t.errorNo) + '</a>'
-        : '<span style="color:#999;">未採番</span>';
-      tableHtml += '<tr style="border-bottom:1px solid #eee;">'
-        + '<td style="padding:0.4rem 0.5rem;">' + noLink + '</td>'
-        + '<td style="padding:0.4rem 0.5rem;font-family:monospace;font-size:0.8rem;">' + Utils.escapeHtml(t.code) + '</td>'
-        + '<td style="padding:0.4rem 0.5rem;text-align:center;color:' + statusColor + ';font-weight:bold;">' + t.http_status + '</td>'
-        + '<td style="padding:0.4rem 0.5rem;color:#555;">' + Utils.escapeHtml(_humanize(t.message || '')) + '</td>'
-        + '<td style="padding:0.4rem 0.5rem;text-align:right;font-weight:bold;color:' + (t.count >= 10 ? '#d9534f' : '#333') + ';">' + t.count + '</td>'
-        + '<td style="padding:0.4rem 0.5rem;font-size:0.75rem;color:#888;">' + Utils.escapeHtml((t.last_seen || '').replace('T', ' ').substring(0, 16)) + '</td>'
+        ? '<a href="' + catalogBase + '#' + encodeURIComponent(String(t.errorNo).toLowerCase()) + '" target="_blank" class="error-stats-table__no-link">' + Utils.escapeHtml(t.errorNo) + '</a>'
+        : '<span class="error-stats-table__no--unset">未採番</span>';
+      var countCls = 'error-stats-table__count-cell' + (t.count >= 10 ? ' error-stats-table__count-cell--hot' : '');
+      tableHtml += '<tr>'
+        + '<td>' + noLink + '</td>'
+        + '<td class="error-stats-table__code-cell">' + Utils.escapeHtml(t.code) + '</td>'
+        + '<td class="error-stats-table__http error-stats-table__http--' + httpMod + '">' + t.http_status + '</td>'
+        + '<td class="error-stats-table__msg-cell">' + Utils.escapeHtml(_humanize(t.message || '')) + '</td>'
+        + '<td class="' + countCls + '">' + t.count + '</td>'
+        + '<td class="error-stats-table__time-cell">' + Utils.escapeHtml((t.last_seen || '').replace('T', ' ').substring(0, 16)) + '</td>'
         + '</tr>';
     }
     tableHtml += '</tbody></table>';

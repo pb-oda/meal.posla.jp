@@ -67,15 +67,15 @@ var AuditLogViewer = (function () {
 
   function renderShell() {
     var today = new Date().toISOString().slice(0, 10);
-    var html = '<div class="audit-filters" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;align-items:flex-end;">'
-      + '<label style="font-size:0.85rem;">期間: <input type="date" id="audit-from" style="padding:0.3rem;" value="' + today + '"></label>'
-      + '<label style="font-size:0.85rem;">〜 <input type="date" id="audit-to" style="padding:0.3rem;" value="' + today + '"></label>'
-      + '<label style="font-size:0.85rem;">操作: <select id="audit-action" style="padding:0.3rem;"><option value="">すべて</option></select></label>'
-      + '<label style="font-size:0.85rem;">スタッフ: <select id="audit-user" style="padding:0.3rem;"><option value="">すべて</option></select></label>'
-      + '<button class="btn btn-sm btn-primary" id="audit-search" style="padding:0.3rem 0.75rem;">検索</button>'
+    var html = '<div class="audit-filters">'
+      + '<label class="audit-filters__label">期間: <input type="date" id="audit-from" class="audit-filters__input" value="' + today + '"></label>'
+      + '<label class="audit-filters__label">〜 <input type="date" id="audit-to" class="audit-filters__input" value="' + today + '"></label>'
+      + '<label class="audit-filters__label">操作: <select id="audit-action" class="audit-filters__select"><option value="">すべて</option></select></label>'
+      + '<label class="audit-filters__label">スタッフ: <select id="audit-user" class="audit-filters__select"><option value="">すべて</option></select></label>'
+      + '<button class="btn btn-sm btn-primary audit-filters__button" id="audit-search">検索</button>'
       + '</div>'
       + '<div id="audit-table-wrap"></div>'
-      + '<div id="audit-pager" style="display:flex;gap:0.5rem;justify-content:center;margin-top:0.75rem;"></div>';
+      + '<div id="audit-pager" class="audit-pager"></div>';
     _container.innerHTML = html;
 
     // 操作種別ドロップダウン
@@ -111,7 +111,7 @@ var AuditLogViewer = (function () {
     if (usrEl && usrEl.value)   params += '&user_id=' + encodeURIComponent(usrEl.value);
 
     var wrap = _container.querySelector('#audit-table-wrap');
-    wrap.innerHTML = '<p style="text-align:center;color:#888;padding:1rem;">読み込み中...</p>';
+    wrap.innerHTML = '<p class="audit-state-loading">読み込み中...</p>';
 
     fetch('../../api/store/audit-log.php?' + params, { credentials: 'same-origin' })
       .then(function (r) { return r.text(); })
@@ -125,7 +125,7 @@ var AuditLogViewer = (function () {
         renderPager();
       })
       .catch(function (err) {
-        wrap.innerHTML = '<p style="color:red;padding:1rem;">エラー: ' + Utils.escapeHtml(err.message) + '</p>';
+        wrap.innerHTML = '<p class="audit-state-error">エラー: ' + Utils.escapeHtml(err.message) + '</p>';
       });
   }
 
@@ -146,17 +146,17 @@ var AuditLogViewer = (function () {
   function renderTable(logs) {
     var wrap = _container.querySelector('#audit-table-wrap');
     if (logs.length === 0) {
-      wrap.innerHTML = '<p style="text-align:center;color:#888;padding:2rem;">該当するログはありません</p>';
+      wrap.innerHTML = '<p class="audit-state-empty audit-state-empty--large">該当するログはありません</p>';
       return;
     }
 
-    var html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;">'
-      + '<thead><tr style="background:#f5f5f5;border-bottom:2px solid #ddd;">'
-      + '<th style="padding:0.5rem;text-align:left;">日時</th>'
-      + '<th style="padding:0.5rem;text-align:left;">スタッフ</th>'
-      + '<th style="padding:0.5rem;text-align:left;">操作</th>'
-      + '<th style="padding:0.5rem;text-align:left;">対象</th>'
-      + '<th style="padding:0.5rem;text-align:left;">詳細</th>'
+    var html = '<table class="audit-table">'
+      + '<thead><tr>'
+      + '<th>日時</th>'
+      + '<th>スタッフ</th>'
+      + '<th>操作</th>'
+      + '<th>対象</th>'
+      + '<th>詳細</th>'
       + '</tr></thead><tbody>';
 
     for (var i = 0; i < logs.length; i++) {
@@ -178,17 +178,17 @@ var AuditLogViewer = (function () {
         } catch (e) { /* JSON 不正は無視 */ }
       }
       if (pinName && pinName !== (log.username || '')) {
-        staffCell += ' <span style="color:#1565c0;font-size:0.78rem;">(担当: ' + Utils.escapeHtml(pinName) + ')</span>';
+        staffCell += ' <span class="audit-table__pin-name">(担当: ' + Utils.escapeHtml(pinName) + ')</span>';
       }
 
-      html += '<tr style="border-bottom:1px solid #eee;">'
-        + '<td style="padding:0.4rem 0.5rem;white-space:nowrap;">' + Utils.escapeHtml(time) + '</td>'
-        + '<td style="padding:0.4rem 0.5rem;">' + staffCell + '</td>'
-        + '<td style="padding:0.4rem 0.5rem;">' + Utils.escapeHtml(actionLabel) + '</td>'
-        + '<td style="padding:0.4rem 0.5rem;">' + Utils.escapeHtml(entityLabel)
-        + (log.entity_id ? ' <span style="color:#888;font-size:0.75rem;">' + Utils.escapeHtml(log.entity_id.slice(0, 8)) + '</span>' : '')
+      html += '<tr>'
+        + '<td class="audit-table__time">' + Utils.escapeHtml(time) + '</td>'
+        + '<td>' + staffCell + '</td>'
+        + '<td>' + Utils.escapeHtml(actionLabel) + '</td>'
+        + '<td>' + Utils.escapeHtml(entityLabel)
+        + (log.entity_id ? ' <span class="audit-table__entity-id">' + Utils.escapeHtml(log.entity_id.slice(0, 8)) + '</span>' : '')
         + '</td>'
-        + '<td style="padding:0.4rem 0.5rem;font-size:0.8rem;">' + detail + '</td>'
+        + '<td class="audit-table__detail">' + detail + '</td>'
         + '</tr>';
     }
 
@@ -294,7 +294,9 @@ var AuditLogViewer = (function () {
     if (SKIP_KEYS[key]) return null;
     if (BOOL_KEYS[key]) {
       var b = (value === 1 || value === true || value === '1' || value === 'true');
-      return b ? '<span style="color:#28a745;">✓</span>' : '<span style="color:#888;">×</span>';
+      return b
+        ? '<span class="audit-kv-chip__bool--true">✓</span>'
+        : '<span class="audit-kv-chip__bool--false">×</span>';
     }
     if (YEN_KEYS[key]) {
       var n = parseInt(value, 10);
@@ -305,7 +307,7 @@ var AuditLogViewer = (function () {
     }
     if (ID_KEYS[key]) {
       var s = String(value);
-      return '<span style="color:#888;font-family:monospace;font-size:0.75rem;" title="' + Utils.escapeHtml(s) + '">' + Utils.escapeHtml(s.slice(0, 8)) + '…</span>';
+      return '<span class="audit-kv-chip__id" title="' + Utils.escapeHtml(s) + '">' + Utils.escapeHtml(s.slice(0, 8)) + '…</span>';
     }
     return Utils.escapeHtml(String(value));
   }
@@ -313,8 +315,8 @@ var AuditLogViewer = (function () {
   function _renderKV(key, value) {
     var formatted = _formatValue(key, value);
     if (formatted === null) return '';
-    return '<span style="display:inline-block;margin:0.1rem 0.5rem 0.1rem 0;padding:0.05rem 0.4rem;background:#f0f3f5;border-radius:3px;font-size:0.8rem;line-height:1.6;">'
-      + '<span style="color:#666;">' + Utils.escapeHtml(_labelFor(key)) + ':</span> '
+    return '<span class="audit-kv-chip">'
+      + '<span class="audit-kv-chip__label">' + Utils.escapeHtml(_labelFor(key)) + ':</span> '
       + '<strong>' + formatted + '</strong>'
       + '</span>';
   }
@@ -323,9 +325,9 @@ var AuditLogViewer = (function () {
     var of = _formatValue(key, oldVal);
     var nf = _formatValue(key, newVal);
     if (of === null || nf === null) return '';
-    return '<span style="display:inline-block;margin:0.1rem 0.5rem 0.1rem 0;padding:0.05rem 0.4rem;background:#fff3cd;border-radius:3px;font-size:0.8rem;line-height:1.6;">'
-      + '<span style="color:#666;">' + Utils.escapeHtml(_labelFor(key)) + ':</span> '
-      + '<span style="color:#888;text-decoration:line-through;">' + of + '</span> → '
+    return '<span class="audit-kv-chip audit-kv-chip--diff">'
+      + '<span class="audit-kv-chip__label">' + Utils.escapeHtml(_labelFor(key)) + ':</span> '
+      + '<span class="audit-kv-chip__old">' + of + '</span> → '
       + '<strong>' + nf + '</strong>'
       + '</span>';
   }
@@ -353,7 +355,7 @@ var AuditLogViewer = (function () {
           parts.push(_renderDiff(k, ov, nv));
         }
       }
-      if (parts.length === 0) parts.push('<span style="color:#888;">変更なし</span>');
+      if (parts.length === 0) parts.push('<span class="audit-kv-chip__no-change">変更なし</span>');
     } else {
       var src = newVal || oldVal;
       var sKeys = Object.keys(src);
@@ -364,7 +366,7 @@ var AuditLogViewer = (function () {
 
     var result = parts.join('');
     if (log.reason && (!newVal || !newVal.reason)) {
-      result += '<span style="display:inline-block;margin:0.1rem 0;padding:0.05rem 0.4rem;font-size:0.75rem;color:#666;">理由: ' + Utils.escapeHtml(log.reason) + '</span>';
+      result += '<span class="audit-reason">理由: ' + Utils.escapeHtml(log.reason) + '</span>';
     }
     return result || '-';
   }
@@ -379,7 +381,7 @@ var AuditLogViewer = (function () {
     if (_currentPage > 0) {
       html += '<button class="btn btn-sm btn-outline" data-audit-page="' + (_currentPage - 1) + '">← 前</button>';
     }
-    html += '<span style="padding:0.3rem 0.5rem;font-size:0.85rem;">'
+    html += '<span class="audit-pager__status">'
       + (_currentPage + 1) + ' / ' + totalPages + ' (' + _total + '件)</span>';
     if (_currentPage < totalPages - 1) {
       html += '<button class="btn btn-sm btn-outline" data-audit-page="' + (_currentPage + 1) + '">次 →</button>';

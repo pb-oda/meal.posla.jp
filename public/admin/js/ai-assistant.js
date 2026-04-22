@@ -149,190 +149,167 @@ var AiAssistant = (function () {
     }
   }
 
-  // ── 結果カード用スタイル（CSS文字列）──
-  var _resultCardStyle = ''
-    + 'border-radius:12px;'
-    + 'padding:1.25rem 1.5rem;'
-    + 'font-size:0.9rem;'
-    + 'line-height:1.8;'
-    + 'color:#333;'
-    + 'min-height:120px;'
-    + 'overflow-wrap:break-word;'
-    + 'word-break:break-word;';
-
-  var _snsCardStyle = _resultCardStyle
-    + 'background:linear-gradient(135deg,#fce4ec 0%,#f3e5f5 50%,#e8eaf6 100%);'
-    + 'border:1px solid #e1bee7;';
-
-  var _analysisCardStyle = _resultCardStyle
-    + 'background:linear-gradient(135deg,#e0f2f1 0%,#e8f5e9 50%,#f1f8e9 100%);'
-    + 'border:1px solid #a5d6a7;';
-
-  var _compCardStyle = _resultCardStyle
-    + 'background:linear-gradient(135deg,#e3f2fd 0%,#e8eaf6 50%,#ede7f6 100%);'
-    + 'border:1px solid #90caf9;';
-
-  var _demandCardStyle = _resultCardStyle
-    + 'background:linear-gradient(135deg,#fff3e0 0%,#ffe0b2 50%,#ffecb3 100%);'
-    + 'border:1px solid #ffcc80;';
-
-  var _loadingStyle = _resultCardStyle
-    + 'background:#f5f5f5;'
-    + 'border:1px solid #e0e0e0;'
-    + 'color:#999;'
-    + 'display:flex;align-items:center;justify-content:center;gap:0.5rem;';
+  // ── 結果カード用クラス名（Batch-A2: 旧 cssText 文字列から class 名に移行）──
+  var _snsCardClass      = 'ai-result-card ai-result-card--sns';
+  var _analysisCardClass = 'ai-result-card ai-result-card--analysis';
+  var _compCardClass     = 'ai-result-card ai-result-card--comp';
+  var _demandCardClass   = 'ai-result-card ai-result-card--demand';
+  var _loadingCardClass  = 'ai-result-card ai-result-card--loading';
 
   // ── UI描画 ──
+  // Batch-A2 (2026-04-22): inline style を admin.css 側の class に移行。
+  // ただし #ai-status-msg / #ai-result-wrap / #ai-*-wrap / #ai-copy-msg /
+  // #ai-comp-address-warn は style.display の動的トグルに依存するため、
+  // 初期 display:none のみ inline で残す (toggle ロジックを壊さない)。
   function _render() {
     _container.innerHTML = ''
-      + '<div style="max-width:720px;margin:0 auto;padding:1.5rem;">'
+      + '<div class="ai-shell">'
 
       // (CB1c: AI ヘルプデスクは右下フローティングボタンに移行したため、ここからは削除)
 
       // ── SNS投稿文生成 ──
 
-      // SNSセクションヘッダー
-      + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;">'
-      +   '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#e91e63,#9c27b0);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;flex-shrink:0;">&#x270D;</div>'
+      + '<div class="ai-tool-header">'
+      +   '<div class="ai-tool-header__icon ai-tool-header__icon--sns">&#x270D;</div>'
       +   '<div>'
-      +     '<h3 style="margin:0;font-size:1.1rem;color:#333;">SNS投稿文生成</h3>'
-      +     '<p style="margin:0;font-size:0.75rem;color:#999;">AIが魅力的な投稿文を自動生成します</p>'
+      +     '<h3 class="ai-tool-header__title">SNS投稿文生成</h3>'
+      +     '<p class="ai-tool-header__subtitle">AIが魅力的な投稿文を自動生成します</p>'
       +   '</div>'
       + '</div>'
 
-      + '<div id="ai-status-msg" style="display:none;padding:0.75rem 1rem;margin-bottom:1rem;border-radius:8px;font-size:0.85rem;"></div>'
+      + '<div id="ai-status-msg" class="ai-status-msg" style="display:none;"></div>'
 
       // フォーム
-      + '<div style="background:#fff;border-radius:12px;padding:1.25rem;box-shadow:0 1px 4px rgba(0,0,0,0.06);margin-bottom:1.25rem;">'
-      +   '<div style="margin-bottom:1rem;">'
-      +     '<label style="display:block;font-weight:600;margin-bottom:0.35rem;font-size:0.8rem;color:#555;letter-spacing:0.02em;">店舗名</label>'
-      +     '<input type="text" id="ai-input-store" style="width:100%;padding:0.6rem 0.8rem;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;box-sizing:border-box;transition:border-color 0.2s;" placeholder="例：松の屋 渋谷店">'
+      + '<div class="ai-form-card">'
+      +   '<div class="ai-field">'
+      +     '<label class="ai-field__label">店舗名</label>'
+      +     '<input type="text" id="ai-input-store" class="ai-field__input" placeholder="例：松の屋 渋谷店">'
       +   '</div>'
-      +   '<div style="margin-bottom:1rem;">'
-      +     '<label style="display:block;font-weight:600;margin-bottom:0.35rem;font-size:0.8rem;color:#555;letter-spacing:0.02em;">今日のおすすめメニュー</label>'
-      +     '<input type="text" id="ai-input-menu" style="width:100%;padding:0.6rem 0.8rem;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;box-sizing:border-box;transition:border-color 0.2s;" placeholder="例：特製焼き魚定食、季節の天ぷら盛り合わせ">'
+      +   '<div class="ai-field">'
+      +     '<label class="ai-field__label">今日のおすすめメニュー</label>'
+      +     '<input type="text" id="ai-input-menu" class="ai-field__input" placeholder="例：特製焼き魚定食、季節の天ぷら盛り合わせ">'
       +   '</div>'
-      +   '<div style="margin-bottom:0;">'
-      +     '<label style="display:block;font-weight:600;margin-bottom:0.35rem;font-size:0.8rem;color:#555;letter-spacing:0.02em;">アピールポイント <span style="font-weight:normal;color:#aaa;">（任意）</span></label>'
-      +     '<input type="text" id="ai-input-appeal" style="width:100%;padding:0.6rem 0.8rem;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;box-sizing:border-box;transition:border-color 0.2s;" placeholder="例：本日限定！数量限定でご提供">'
+      +   '<div class="ai-field">'
+      +     '<label class="ai-field__label">アピールポイント <span class="ai-field__label-opt">（任意）</span></label>'
+      +     '<input type="text" id="ai-input-appeal" class="ai-field__input" placeholder="例：本日限定！数量限定でご提供">'
       +   '</div>'
       + '</div>'
 
-      + '<div style="display:flex;gap:0.75rem;margin-bottom:1.5rem;">'
-      +   '<button id="ai-btn-insta" class="btn" style="flex:1;padding:0.7rem;font-size:0.9rem;font-weight:700;border-radius:10px;background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;border:none;cursor:pointer;transition:opacity 0.2s;" disabled>Instagram</button>'
-      +   '<button id="ai-btn-x" class="btn" style="flex:1;padding:0.7rem;font-size:0.9rem;font-weight:700;border-radius:10px;background:#000;color:#fff;border:none;cursor:pointer;transition:opacity 0.2s;" disabled>X (Twitter)</button>'
+      + '<div class="ai-action-row">'
+      +   '<button id="ai-btn-insta" class="btn ai-sns-btn ai-sns-btn--insta" disabled>Instagram</button>'
+      +   '<button id="ai-btn-x" class="btn ai-sns-btn ai-sns-btn--x" disabled>X (Twitter)</button>'
       + '</div>'
 
       // SNS結果エリア
       + '<div id="ai-result-wrap" style="display:none;">'
-      +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.625rem;">'
-      +     '<span style="font-weight:700;font-size:0.85rem;color:#555;">生成結果</span>'
-      +     '<span style="display:flex;align-items:center;gap:0.5rem;">'
-      +       '<span id="ai-copy-msg" style="display:none;color:#43a047;font-size:0.8rem;font-weight:600;">Copied!</span>'
-      +       '<button id="ai-btn-copy" class="btn" style="font-size:0.8rem;padding:0.35rem 0.9rem;border-radius:8px;background:#f5f5f5;border:1px solid #ddd;color:#555;cursor:pointer;">&#x1F4CB; コピー</button>'
+      +   '<div class="ai-result-header">'
+      +     '<span class="ai-result-header__label">生成結果</span>'
+      +     '<span class="ai-result-header__tools">'
+      +       '<span id="ai-copy-msg" class="ai-result-copy-msg" style="display:none;">Copied!</span>'
+      +       '<button id="ai-btn-copy" class="btn ai-result-copy-btn">&#x1F4CB; コピー</button>'
       +     '</span>'
       +   '</div>'
-      +   '<div id="ai-result-area" style="' + _snsCardStyle + '"></div>'
+      +   '<div id="ai-result-area" class="ai-result-card ai-result-card--sns"></div>'
       + '</div>'
 
       // ── 売上・注文トレンド分析 ──
-      + '<hr style="margin:2.5rem 0;border:none;border-top:1px solid #eee;">'
+      + '<hr class="ai-divider">'
 
-      + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;">'
-      +   '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#43a047,#66bb6a);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;flex-shrink:0;">&#x1F4CA;</div>'
+      + '<div class="ai-tool-header">'
+      +   '<div class="ai-tool-header__icon ai-tool-header__icon--analysis">&#x1F4CA;</div>'
       +   '<div>'
-      +     '<h3 style="margin:0;font-size:1.1rem;color:#333;">売上・注文トレンド分析</h3>'
-      +     '<p style="margin:0;font-size:0.75rem;color:#999;">売上データをAIが分析してインサイトを提供</p>'
+      +     '<h3 class="ai-tool-header__title">売上・注文トレンド分析</h3>'
+      +     '<p class="ai-tool-header__subtitle">売上データをAIが分析してインサイトを提供</p>'
       +   '</div>'
       + '</div>'
 
-      + '<div id="ai-analyze-store-wrap" style="display:none;margin-bottom:1rem;">'
-      +   '<label style="display:block;font-weight:600;margin-bottom:0.5rem;font-size:0.8rem;color:#555;">店舗</label>'
-      +   '<select id="ai-analyze-store" class="form-input" style="width:100%;padding:0.6rem 0.8rem;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;"></select>'
+      + '<div id="ai-analyze-store-wrap" class="ai-field" style="display:none;">'
+      +   '<label class="ai-field__label">店舗</label>'
+      +   '<select id="ai-analyze-store" class="form-input ai-field__input"></select>'
       + '</div>'
 
-      + '<div style="margin-bottom:1rem;">'
-      +   '<label style="display:block;font-weight:600;margin-bottom:0.5rem;font-size:0.8rem;color:#555;">期間</label>'
-      +   '<div id="ai-period-btns" style="display:flex;gap:0.5rem;">'
-      +     '<button class="btn ai-period-btn" data-period="today" style="padding:0.45rem 1.1rem;font-size:0.85rem;border-radius:8px;">今日</button>'
-      +     '<button class="btn btn-primary ai-period-btn" data-period="week" style="padding:0.45rem 1.1rem;font-size:0.85rem;border-radius:8px;">今週</button>'
-      +     '<button class="btn ai-period-btn" data-period="month" style="padding:0.45rem 1.1rem;font-size:0.85rem;border-radius:8px;">今月</button>'
+      + '<div class="ai-field">'
+      +   '<label class="ai-field__label">期間</label>'
+      +   '<div id="ai-period-btns" class="ai-segment-row">'
+      +     '<button class="btn ai-period-btn ai-segment-btn" data-period="today">今日</button>'
+      +     '<button class="btn btn-primary ai-period-btn ai-segment-btn" data-period="week">今週</button>'
+      +     '<button class="btn ai-period-btn ai-segment-btn" data-period="month">今月</button>'
       +   '</div>'
       + '</div>'
 
-      + '<div style="margin-bottom:1.5rem;">'
-      +   '<button id="ai-btn-analyze" class="btn btn-primary" style="padding:0.7rem 2rem;font-size:0.9rem;font-weight:700;border-radius:10px;" disabled>AIに分析させる</button>'
+      + '<div class="ai-action-row">'
+      +   '<button id="ai-btn-analyze" class="btn btn-primary ai-primary-btn" disabled>AIに分析させる</button>'
       + '</div>'
 
       + '<div id="ai-analysis-wrap" style="display:none;">'
-      +   '<div style="margin-bottom:0.625rem;font-weight:700;font-size:0.85rem;color:#555;">分析結果</div>'
-      +   '<div id="ai-analysis-area" style="' + _analysisCardStyle + '"></div>'
+      +   '<div class="ai-result-label">分析結果</div>'
+      +   '<div id="ai-analysis-area" class="ai-result-card ai-result-card--analysis"></div>'
       + '</div>'
 
       // ── 周辺競合調査 ──
-      + '<hr style="margin:2.5rem 0;border:none;border-top:1px solid #eee;">'
+      + '<hr class="ai-divider">'
 
-      + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;">'
-      +   '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#1565c0,#42a5f5);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;flex-shrink:0;">&#x1F50D;</div>'
+      + '<div class="ai-tool-header">'
+      +   '<div class="ai-tool-header__icon ai-tool-header__icon--comp">&#x1F50D;</div>'
       +   '<div>'
-      +     '<h3 style="margin:0;font-size:1.1rem;color:#333;">周辺競合調査</h3>'
-      +     '<p style="margin:0;font-size:0.75rem;color:#999;">Google Places + AIで競合店を分析</p>'
+      +     '<h3 class="ai-tool-header__title">周辺競合調査</h3>'
+      +     '<p class="ai-tool-header__subtitle">Google Places + AIで競合店を分析</p>'
       +   '</div>'
       + '</div>'
 
-      + '<div id="ai-comp-store-wrap" style="display:none;margin-bottom:1rem;">'
-      +   '<label style="display:block;font-weight:600;margin-bottom:0.5rem;font-size:0.8rem;color:#555;">店舗</label>'
-      +   '<select id="ai-comp-store" class="form-input" style="width:100%;padding:0.6rem 0.8rem;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;"></select>'
+      + '<div id="ai-comp-store-wrap" class="ai-field" style="display:none;">'
+      +   '<label class="ai-field__label">店舗</label>'
+      +   '<select id="ai-comp-store" class="form-input ai-field__input"></select>'
       + '</div>'
-      + '<p style="margin:0 0 1rem;font-size:0.8rem;color:#aaa;">店舗の住所は店舗設定から自動取得します。</p>'
+      + '<p class="ai-help-text">店舗の住所は店舗設定から自動取得します。</p>'
 
       // P1-23: 住所未登録時の案内バナー（_updateCompAddressWarn() で表示制御）
-      + '<div id="ai-comp-address-warn" style="display:none;margin:0 0 1rem;padding:0.75rem 1rem;background:#fff3e0;border:1px solid #ffcc80;border-radius:8px;font-size:0.85rem;color:#e65100;">'
+      + '<div id="ai-comp-address-warn" class="ai-address-warn" style="display:none;">'
       +   '&#x26A0;&#xFE0F; 店舗住所が未登録です。競合調査には住所情報が必要です。'
-      +   '<a href="#" id="ai-comp-go-settings" style="display:inline-block;margin-left:0.5rem;color:#1565c0;text-decoration:underline;font-weight:600;">店舗設定へ</a>'
+      +   '<a href="#" id="ai-comp-go-settings" class="ai-address-warn__link">店舗設定へ</a>'
       + '</div>'
 
-      + '<div style="margin-bottom:1rem;">'
-      +   '<label style="display:block;font-weight:600;margin-bottom:0.5rem;font-size:0.8rem;color:#555;">調査半径</label>'
-      +   '<div id="ai-radius-btns" style="display:flex;gap:0.5rem;">'
-      +     '<button class="btn ai-radius-btn" data-radius="500" style="padding:0.45rem 1.1rem;font-size:0.85rem;border-radius:8px;">500m</button>'
-      +     '<button class="btn btn-primary ai-radius-btn" data-radius="1000" style="padding:0.45rem 1.1rem;font-size:0.85rem;border-radius:8px;">1km</button>'
-      +     '<button class="btn ai-radius-btn" data-radius="2000" style="padding:0.45rem 1.1rem;font-size:0.85rem;border-radius:8px;">2km</button>'
+      + '<div class="ai-field">'
+      +   '<label class="ai-field__label">調査半径</label>'
+      +   '<div id="ai-radius-btns" class="ai-segment-row">'
+      +     '<button class="btn ai-radius-btn ai-segment-btn" data-radius="500">500m</button>'
+      +     '<button class="btn btn-primary ai-radius-btn ai-segment-btn" data-radius="1000">1km</button>'
+      +     '<button class="btn ai-radius-btn ai-segment-btn" data-radius="2000">2km</button>'
       +   '</div>'
       + '</div>'
 
-      + '<div style="margin-bottom:1.5rem;">'
-      +   '<button id="ai-btn-competition" class="btn btn-primary" style="padding:0.7rem 2rem;font-size:0.9rem;font-weight:700;border-radius:10px;" disabled>周辺の競合店を調査する</button>'
+      + '<div class="ai-action-row">'
+      +   '<button id="ai-btn-competition" class="btn btn-primary ai-primary-btn" disabled>周辺の競合店を調査する</button>'
       + '</div>'
 
       + '<div id="ai-comp-wrap" style="display:none;">'
-      +   '<div style="margin-bottom:0.625rem;font-weight:700;font-size:0.85rem;color:#555;">調査結果</div>'
-      +   '<div id="ai-comp-area" style="' + _compCardStyle + '"></div>'
+      +   '<div class="ai-result-label">調査結果</div>'
+      +   '<div id="ai-comp-area" class="ai-result-card ai-result-card--comp"></div>'
       + '</div>'
 
       // ── 需要予測・発注提案 ──
-      + '<hr style="margin:2.5rem 0;border:none;border-top:1px solid #eee;">'
+      + '<hr class="ai-divider">'
 
-      + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;">'
-      +   '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#e65100,#ff9800);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;flex-shrink:0;">&#x1F4E6;</div>'
+      + '<div class="ai-tool-header">'
+      +   '<div class="ai-tool-header__icon ai-tool-header__icon--demand">&#x1F4E6;</div>'
       +   '<div>'
-      +     '<h3 style="margin:0;font-size:1.1rem;color:#333;">需要予測・発注提案</h3>'
-      +     '<p style="margin:0;font-size:0.75rem;color:#999;">過去の売上データとレシピ情報からAIが需要を予測</p>'
+      +     '<h3 class="ai-tool-header__title">需要予測・発注提案</h3>'
+      +     '<p class="ai-tool-header__subtitle">過去の売上データとレシピ情報からAIが需要を予測</p>'
       +   '</div>'
       + '</div>'
 
-      + '<div id="ai-demand-store-wrap" style="display:none;margin-bottom:1rem;">'
-      +   '<label style="display:block;font-weight:600;margin-bottom:0.5rem;font-size:0.8rem;color:#555;">店舗</label>'
-      +   '<select id="ai-demand-store" class="form-input" style="width:100%;padding:0.6rem 0.8rem;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;"></select>'
+      + '<div id="ai-demand-store-wrap" class="ai-field" style="display:none;">'
+      +   '<label class="ai-field__label">店舗</label>'
+      +   '<select id="ai-demand-store" class="form-input ai-field__input"></select>'
       + '</div>'
 
-      + '<div style="margin-bottom:1.5rem;">'
-      +   '<button id="ai-btn-demand" class="btn btn-primary" style="padding:0.7rem 2rem;font-size:0.9rem;font-weight:700;border-radius:10px;" disabled>需要予測を実行</button>'
+      + '<div class="ai-action-row">'
+      +   '<button id="ai-btn-demand" class="btn btn-primary ai-primary-btn" disabled>需要予測を実行</button>'
       + '</div>'
 
       + '<div id="ai-demand-wrap" style="display:none;">'
-      +   '<div style="margin-bottom:0.625rem;font-weight:700;font-size:0.85rem;color:#555;">予測結果</div>'
-      +   '<div id="ai-demand-area" style="' + _demandCardStyle + '"></div>'
+      +   '<div class="ai-result-label">予測結果</div>'
+      +   '<div id="ai-demand-area" class="ai-result-card ai-result-card--demand"></div>'
       + '</div>'
 
       + '</div>';
@@ -701,25 +678,18 @@ var AiAssistant = (function () {
     return escaped;
   }
 
-  // ローディング表示
+  // ローディング表示 (Batch-A2: class 駆動、keyframes は admin.css 側で定義)
   function _showLoading(el, msg) {
-    el.style.cssText = _loadingStyle;
-    el.innerHTML = '<div style="text-align:center;">'
-      + '<div style="display:inline-block;width:20px;height:20px;border:2px solid #ccc;border-top-color:#666;border-radius:50%;animation:ai-spin 0.8s linear infinite;"></div>'
-      + '<div style="margin-top:0.5rem;font-size:0.85rem;">' + Utils.escapeHtml(msg) + '</div>'
+    el.className = _loadingCardClass;
+    el.innerHTML = '<div class="ai-spinner-wrap">'
+      + '<div class="ai-spinner"></div>'
+      + '<div class="ai-spinner-label">' + Utils.escapeHtml(msg) + '</div>'
       + '</div>';
-    // spinner animation（一度だけ追加）
-    if (!document.getElementById('ai-spin-style')) {
-      var style = document.createElement('style');
-      style.id = 'ai-spin-style';
-      style.textContent = '@keyframes ai-spin { to { transform: rotate(360deg); } }';
-      document.head.appendChild(style);
-    }
   }
 
   // 結果表示
-  function _showResult(el, text, type, cardStyle) {
-    el.style.cssText = cardStyle;
+  function _showResult(el, text, type, cardClass) {
+    el.className = cardClass;
     el.innerHTML = _formatResponse(text, type);
   }
 
@@ -772,13 +742,13 @@ var AiAssistant = (function () {
       var cleaned = _cleanResponse(text);
       _rawResults.sns = cleaned;
       // SNSはそのままテキスト表示（改行保持、フォーマットなし）
-      _resultArea.style.cssText = _snsCardStyle + 'white-space:pre-wrap;font-size:0.95rem;';
+      _resultArea.className = _snsCardClass + ' ai-result-card--sns-raw';
       _resultArea.innerHTML = Utils.escapeHtml(cleaned);
       _setButtonsEnabled(true);
     }, function (err) {
       _rawResults.sns = '';
-      _resultArea.style.cssText = _snsCardStyle;
-      _resultArea.innerHTML = '<div style="color:#c62828;">エラー: ' + Utils.escapeHtml(err) + '</div>';
+      _resultArea.className = _snsCardClass;
+      _resultArea.innerHTML = '<div class="ai-state-error">エラー: ' + Utils.escapeHtml(err) + '</div>';
       _setButtonsEnabled(true);
     });
   }
@@ -823,8 +793,8 @@ var AiAssistant = (function () {
       .then(function (json) {
         if (!json.ok || !json.data) {
           _rawResults.analysis = '';
-          _analysisArea.style.cssText = _analysisCardStyle;
-          _analysisArea.innerHTML = '<div style="color:#c62828;">売上データの取得に失敗しました</div>';
+          _analysisArea.className = _analysisCardClass;
+          _analysisArea.innerHTML = '<div class="ai-state-error">売上データの取得に失敗しました</div>';
           _setButtonsEnabled(true);
           return;
         }
@@ -834,8 +804,8 @@ var AiAssistant = (function () {
         // データ空チェック
         if (!data.summary || data.summary.orderCount === 0) {
           _rawResults.analysis = '';
-          _analysisArea.style.cssText = _analysisCardStyle;
-          _analysisArea.innerHTML = '<div style="color:#888;">対象期間のデータがありません</div>';
+          _analysisArea.className = _analysisCardClass;
+          _analysisArea.innerHTML = '<div class="ai-state-empty">対象期間のデータがありません</div>';
           _setButtonsEnabled(true);
           return;
         }
@@ -844,8 +814,8 @@ var AiAssistant = (function () {
       })
       .catch(function () {
         _rawResults.analysis = '';
-        _analysisArea.style.cssText = _analysisCardStyle;
-        _analysisArea.innerHTML = '<div style="color:#c62828;">売上データの取得に失敗しました</div>';
+        _analysisArea.className = _analysisCardClass;
+        _analysisArea.innerHTML = '<div class="ai-state-error">売上データの取得に失敗しました</div>';
         _setButtonsEnabled(true);
       });
   }
@@ -875,12 +845,12 @@ var AiAssistant = (function () {
     _callGemini(prompt, function (text) {
       var cleaned = _cleanResponse(text);
       _rawResults.analysis = cleaned;
-      _showResult(_analysisArea, cleaned, 'analysis', _analysisCardStyle);
+      _showResult(_analysisArea, cleaned, 'analysis', _analysisCardClass);
       _setButtonsEnabled(true);
     }, function (err) {
       _rawResults.analysis = '';
-      _analysisArea.style.cssText = _analysisCardStyle;
-      _analysisArea.innerHTML = '<div style="color:#c62828;">エラー: ' + Utils.escapeHtml(err) + '</div>';
+      _analysisArea.className = _analysisCardClass;
+      _analysisArea.innerHTML = '<div class="ai-state-error">エラー: ' + Utils.escapeHtml(err) + '</div>';
       _setButtonsEnabled(true);
     });
   }
@@ -943,8 +913,8 @@ var AiAssistant = (function () {
       })
       .catch(function (err) {
         _rawResults.comp = '';
-        _compArea.style.cssText = _compCardStyle;
-        _compArea.innerHTML = '<div style="color:#c62828;">エラー: ' + Utils.escapeHtml(err.message) + '</div>';
+        _compArea.className = _compCardClass;
+        _compArea.innerHTML = '<div class="ai-state-error">エラー: ' + Utils.escapeHtml(err.message) + '</div>';
         _setButtonsEnabled(true);
       });
   }
@@ -980,8 +950,8 @@ var AiAssistant = (function () {
   function _analyzeCompetitors(places) {
     if (!places.length) {
       _rawResults.comp = '';
-      _compArea.style.cssText = _compCardStyle;
-      _compArea.innerHTML = '<div style="color:#888;">周辺（半径' + _radiusLabel() + '）に飲食店が見つかりませんでした。半径を広げて再度お試しください。</div>';
+      _compArea.className = _compCardClass;
+      _compArea.innerHTML = '<div class="ai-state-empty">周辺（半径' + _radiusLabel() + '）に飲食店が見つかりませんでした。半径を広げて再度お試しください。</div>';
       _setButtonsEnabled(true);
       return;
     }
@@ -1027,12 +997,12 @@ var AiAssistant = (function () {
     _callGemini(prompt, function (text) {
       var cleaned = _cleanResponse(text);
       _rawResults.comp = cleaned;
-      _showResult(_compArea, cleaned, 'comp', _compCardStyle);
+      _showResult(_compArea, cleaned, 'comp', _compCardClass);
       _setButtonsEnabled(true);
     }, function (err) {
       _rawResults.comp = '';
-      _compArea.style.cssText = _compCardStyle;
-      _compArea.innerHTML = '<div style="color:#c62828;">エラー: ' + Utils.escapeHtml(err) + '</div>';
+      _compArea.className = _compCardClass;
+      _compArea.innerHTML = '<div class="ai-state-error">エラー: ' + Utils.escapeHtml(err) + '</div>';
       _setButtonsEnabled(true);
     });
   }
@@ -1095,7 +1065,7 @@ var AiAssistant = (function () {
     btn.textContent = '調査中…';
     ansEl.textContent = '';
     wrap.style.display = 'block';
-    ansEl.innerHTML = '<span style="color:#999;">マニュアル 28 章を検索中…</span>';
+    ansEl.innerHTML = '<span class="ai-state-empty">マニュアル 28 章を検索中…</span>';
 
     fetch('../../api/store/ai-generate.php', {
       method: 'POST',
@@ -1279,8 +1249,8 @@ var AiAssistant = (function () {
       .then(function (json) {
         if (!json.ok || !json.data) {
           _rawResults.demand = '';
-          _demandArea.style.cssText = _demandCardStyle;
-          _demandArea.innerHTML = '<div style="color:#c62828;">データの取得に失敗しました</div>';
+          _demandArea.className = _demandCardClass;
+          _demandArea.innerHTML = '<div class="ai-state-error">データの取得に失敗しました</div>';
           _setButtonsEnabled(true);
           return;
         }
@@ -1289,8 +1259,8 @@ var AiAssistant = (function () {
 
         if (!data.dailySales || data.dailySales.length === 0) {
           _rawResults.demand = '';
-          _demandArea.style.cssText = _demandCardStyle;
-          _demandArea.innerHTML = '<div style="color:#888;">売上データが不足しています。7日以上の運用データが溜まると精度が向上します。</div>';
+          _demandArea.className = _demandCardClass;
+          _demandArea.innerHTML = '<div class="ai-state-empty">売上データが不足しています。7日以上の運用データが溜まると精度が向上します。</div>';
           _setButtonsEnabled(true);
           return;
         }
@@ -1299,8 +1269,8 @@ var AiAssistant = (function () {
       })
       .catch(function () {
         _rawResults.demand = '';
-        _demandArea.style.cssText = _demandCardStyle;
-        _demandArea.innerHTML = '<div style="color:#c62828;">データの取得に失敗しました</div>';
+        _demandArea.className = _demandCardClass;
+        _demandArea.innerHTML = '<div class="ai-state-error">データの取得に失敗しました</div>';
         _setButtonsEnabled(true);
       });
   }
@@ -1416,13 +1386,13 @@ var AiAssistant = (function () {
       var text = (json.data && json.data.text) || '';
       var cleaned = _cleanResponse(text);
       _rawResults.demand = cleaned;
-      _showResult(_demandArea, cleaned, 'analysis', _demandCardStyle);
+      _showResult(_demandArea, cleaned, 'analysis', _demandCardClass);
       _setButtonsEnabled(true);
     })
     .catch(function (err) {
       _rawResults.demand = '';
-      _demandArea.style.cssText = _demandCardStyle;
-      _demandArea.innerHTML = '<div style="color:#c62828;">エラー: ' + Utils.escapeHtml(err.message) + '</div>';
+      _demandArea.className = _demandCardClass;
+      _demandArea.innerHTML = '<div class="ai-state-error">エラー: ' + Utils.escapeHtml(err.message) + '</div>';
       _setButtonsEnabled(true);
     });
   }
