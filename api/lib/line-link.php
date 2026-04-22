@@ -81,6 +81,15 @@ function line_link_get_by_customer($pdo, $tenantId, $reservationCustomerId)
  * $profile: ['display_name' => ..., 'picture_url' => ...] (任意)
  *
  * 戻り値: link 行全体 (最新状態)
+ *
+ * Invariant (2026-04-22 review fix): 1 顧客 1 active link
+ *   同じ reservation_customer_id に対して、同時に linked な行は最大 1 つ。
+ *   DB UNIQUE は (tenant_id, line_user_id) のみで、同一 customer を別の
+ *   line_user_id でリンクする誤操作 / 再リンクは DB では防げないため、ここで
+ *   先に「同 customer_id で自分以外の linked 行」を unlink してから続行する。
+ *   履歴は link_status='unlinked' として残る。race 時のフォールバックとして
+ *   notifier 側は ORDER BY linked_at DESC LIMIT 1 で最新のみ採用する。
+ *   より強い保証が必要なら、将来 generated column + UNIQUE で DB 側に昇格可能。
  */
 function line_link_upsert($pdo, $tenantId, $storeId, $reservationCustomerId, $lineUserId, $profile = [])
 {
@@ -89,6 +98,18 @@ function line_link_upsert($pdo, $tenantId, $storeId, $reservationCustomerId, $li
     }
     $display = isset($profile['display_name']) ? (string)$profile['display_name'] : null;
     $picture = isset($profile['picture_url']) ? (string)$profile['picture_url'] : null;
+
+    // invariant: 同 customer_id の別 line_user_id な linked 行を先に落とす
+    $stmt = $pdo->prepare(
+        'UPDATE reservation_customer_line_links
+            SET link_status = \'unlinked\',
+                unlinked_at = CURRENT_TIMESTAMP
+          WHERE tenant_id = ?
+            AND reservation_customer_id = ?
+            AND link_status = \'linked\'
+            AND line_user_id <> ?'
+    );
+    $stmt->execute([$tenantId, $reservationCustomerId, $lineUserId]);
 
     // 既存行の有無で insert / update を切り替える (ON DUPLICATE KEY UPDATE も
     // 使えるが、link_status / linked_at の "再リンク時復活" を明示したいので
