@@ -733,12 +733,12 @@
         _renderSettings: function(container, settings) {
             var self = this;
 
-            // L-3b: スタッフ表示ツールのチェック状態
-            var visTools = settings.staff_visible_tools ? settings.staff_visible_tools.split(',') : [];
-            var allTools = !settings.staff_visible_tools; // NULL = 全表示
-            function isToolChecked(tool) {
-                return allTools || visTools.indexOf(tool) !== -1;
-            }
+            // UI-P1-1 (Batch-S1): スタッフ表示ツール設定 UI は削除。staff ロールは
+            // dashboard.html の data-role-max="manager" で handy/KDS/POSレジを
+            // 無条件非表示にしており、この設定は人のスタッフ UI に効かない。
+            // device ロール redirect 用の DB 値は保持するため、ここでは UI 描画
+            // と payload 送信を止めるだけ (settings.php PATCH は array_key_exists
+            // ベースなので、送らなければ DB 値は変わらない)。
 
             var parts = [];
             parts.push(
@@ -750,7 +750,7 @@
             );
             parts.push(self._renderSettingsCardBasic(settings));
             parts.push(self._renderSettingsCardGps(settings));
-            parts.push(self._renderSettingsCardTools(settings, isToolChecked));
+            // Tools カードは意図的に非表示
             parts.push(self._renderSettingsCardWage(settings));
             parts.push('</div>');
 
@@ -792,20 +792,15 @@
                 });
             }
 
-            // 保存ハンドラ: 全カードの保存ボタン（#set-save-basic/gps/tools/wage）+ 既存互換 #set-save
+            // 保存ハンドラ: 全カードの保存ボタン（#set-save-basic/gps/wage）+ 既存互換 #set-save
+            // UI-P1-1 (Batch-S1): staff_visible_tools は UI 削除に伴い payload からも
+            // 除外。settings.php PATCH は array_key_exists ベースで他フィールドだけ
+            // UPDATE し、staff_visible_tools の DB 値は不変 (device redirect に影響なし)。
             function handleSave() {
                 var latEl = document.getElementById('set-lat');
                 var lngEl = document.getElementById('set-lng');
                 var latVal = latEl ? latEl.value : '';
                 var lngVal = lngEl ? lngEl.value : '';
-
-                // スタッフ表示ツール CSV 生成
-                var toolChecks = [];
-                if (document.getElementById('set-tool-handy').checked) toolChecks.push('handy');
-                if (document.getElementById('set-tool-kds').checked) toolChecks.push('kds');
-                if (document.getElementById('set-tool-register').checked) toolChecks.push('register');
-                // 全チェックまたは全未チェックの場合は NULL（全表示）
-                var toolsValue = (toolChecks.length === 3 || toolChecks.length === 0) ? null : toolChecks.join(',');
 
                 // L-3 Phase 2: デフォルト時給
                 var hourlyRateVal = document.getElementById('set-hourly-rate').value;
@@ -822,7 +817,6 @@
                     store_lat: latVal !== '' ? parseFloat(latVal) : null,
                     store_lng: lngVal !== '' ? parseFloat(lngVal) : null,
                     gps_radius_meters: parseInt(document.getElementById('set-radius').value, 10),
-                    staff_visible_tools: toolsValue,
                     default_hourly_rate: hourlyRate
                 };
 
@@ -831,7 +825,7 @@
                     alert('設定を保存しました');
                 });
             }
-            var saveIds = ['set-save', 'set-save-basic', 'set-save-gps', 'set-save-tools', 'set-save-wage'];
+            var saveIds = ['set-save', 'set-save-basic', 'set-save-gps', 'set-save-wage'];
             for (var si = 0; si < saveIds.length; si++) {
                 var btn = document.getElementById(saveIds[si]);
                 if (btn) btn.addEventListener('click', handleSave);

@@ -10,6 +10,12 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
+// UI-P0-1: Stripe 実設定の有無を checkout-session.php と同じ判定で検査するため
+// stripe-connect.php の helper を使う。未配置環境ではフォールバック (tenant
+// stripe_secret_key のみで判定) する。
+if (file_exists(__DIR__ . '/../lib/stripe-connect.php')) {
+    require_once __DIR__ . '/../lib/stripe-connect.php';
+}
 
 require_method(['GET']);
 
@@ -72,9 +78,11 @@ try {
     $selfCheckoutEnabled = false;
 }
 
-// payment_gateway をテナントから取得
+// UI-P0-1: payment_gateway + Stripe 実設定 (Connect 完了 or tenant key) を
+// 併せて判定することで checkout-session.php が PAYMENT_NOT_CONFIGURED を
+// 返す状況と整合する (button が出るのに押すと失敗する不整合を防ぐ)。
 $stmt = $pdo->prepare(
-    'SELECT t.payment_gateway
+    'SELECT t.id AS tenant_id, t.payment_gateway, t.stripe_secret_key
      FROM stores s
      JOIN tenants t ON t.id = s.tenant_id
      WHERE s.id = ?'
@@ -82,7 +90,34 @@ $stmt = $pdo->prepare(
 $stmt->execute([$storeId]);
 $gwRow = $stmt->fetch();
 $paymentGateway = $gwRow ? ($gwRow['payment_gateway'] ?? 'none') : 'none';
-$paymentAvailable = $selfCheckoutEnabled && $paymentGateway !== 'none';
+$tenantId       = $gwRow ? ($gwRow['tenant_id'] ?? null) : null;
+$tenantStripeKey = $gwRow ? ($gwRow['stripe_secret_key'] ?? null) : null;
+
+$stripeReady = false;
+// (a) Stripe Connect 完了 + platform secret_key
+if ($tenantId && function_exists('get_tenant_connect_info') && function_exists('get_platform_stripe_config')) {
+    try {
+        $connectInfo = get_tenant_connect_info($pdo, $tenantId);
+        if ($connectInfo
+            && (int)($connectInfo['connect_onboarding_complete'] ?? 0) === 1
+            && !empty($connectInfo['stripe_connect_account_id'])) {
+            $platformConfig = get_platform_stripe_config($pdo);
+            if (!empty($platformConfig['secret_key'])) {
+                $stripeReady = true;
+            }
+        }
+    } catch (Exception $e) {
+        // helper 内エラーはフォールバック路線へ
+    }
+}
+// (b) tenants.stripe_secret_key 設定済み
+if (!$stripeReady && !empty($tenantStripeKey)) {
+    $stripeReady = true;
+}
+
+$paymentAvailable = $selfCheckoutEnabled
+                 && $paymentGateway !== 'none'
+                 && $stripeReady;
 
 // ── 税率計算 ──
 $subtotal10 = 0;

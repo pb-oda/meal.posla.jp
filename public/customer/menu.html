@@ -168,6 +168,43 @@
     .checkout-modal__method-badge--apple { color:#000; border-color:#000; }
     .checkout-modal__method-badge--google { color:#4285f4; border-color:#4285f4; }
     .checkout-modal__note { text-align:center; font-size:0.75rem; color:#999; margin:0 0 8px; }
+
+    /* UI-P0-3: 割り勘 calculator */
+    .checkout-split { background:#f5f7fa; border:1px solid #e0e0e0; border-radius:8px; padding:12px 14px; margin:12px 0; }
+    .checkout-split__title { font-size:0.85rem; font-weight:700; color:#333; margin-bottom:8px; }
+    .checkout-split__row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .checkout-split__label { flex:0 0 48px; font-size:0.85rem; color:#555; }
+    .checkout-split__controls { display:flex; align-items:center; gap:6px; }
+    .checkout-split__btn { width:32px; height:32px; border:1px solid #ccc; border-radius:50%; background:#fff; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#333; padding:0; }
+    .checkout-split__btn:active { background:#eee; }
+    .checkout-split__input { width:60px; text-align:center; padding:6px 8px; border:1px solid #ccc; border-radius:6px; font-size:1rem; font-family:inherit; }
+    .checkout-split__select { flex:1; padding:6px 10px; border:1px solid #ccc; border-radius:6px; font-size:0.9rem; background:#fff; color:#333; font-family:inherit; }
+    .checkout-split__result { margin-top:8px; padding:8px 10px; background:#fff; border-radius:6px; font-size:0.95rem; color:#333; text-align:center; }
+    .checkout-split__result strong { color:#2d7a4f; font-size:1.1rem; }
+    .checkout-split__diff { color:#888; font-size:0.8rem; }
+    .checkout-split__note { font-size:0.7rem; color:#888; margin:6px 0 0; line-height:1.5; }
+
+    /* UI-P0-2: 会計済み含む注文履歴 */
+    .checkout-history { margin:12px 0 8px; border-top:1px dashed #e0e0e0; padding-top:12px; }
+    .checkout-history__toggle { width:100%; background:none; border:none; padding:8px 4px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-size:0.85rem; font-weight:600; color:#555; font-family:inherit; }
+    .checkout-history__toggle:hover { color:#333; }
+    .checkout-history__caret { font-size:0.7rem; color:#999; transition:transform 0.15s; }
+    .checkout-history__toggle--open .checkout-history__caret { transform:rotate(180deg); }
+    .checkout-history__body { padding:4px 0 8px; }
+    .checkout-history__loading, .checkout-history__empty, .checkout-history__error { font-size:0.85rem; color:#888; padding:4px 0; margin:0; }
+    .checkout-history__error { color:#c62828; }
+    .checkout-history__list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+    .checkout-history__item { background:#fafafa; border-radius:6px; padding:8px 10px; font-size:0.85rem; }
+    .checkout-history__head { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+    .checkout-history__time { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:0.8rem; color:#888; }
+    .checkout-history__badge { display:inline-block; padding:1px 8px; border-radius:10px; font-size:0.7rem; color:#fff; font-weight:600; }
+    .checkout-history__badge.status-pending { background:#888; }
+    .checkout-history__badge.status-preparing { background:#1976d2; }
+    .checkout-history__badge.status-ready { background:#388e3c; }
+    .checkout-history__badge.status-served { background:#555; }
+    .checkout-history__badge.status-paid { background:#2d7a4f; }
+    .checkout-history__total { margin-left:auto; font-weight:700; color:#2d7a4f; }
+    .checkout-history__items { color:#666; font-size:0.8rem; line-height:1.5; }
     .checkout-done-modal { position:fixed; inset:0; z-index:2200; display:none; align-items:center; justify-content:center; }
     .checkout-done-modal.open { display:flex; }
     .checkout-done-modal__overlay { position:absolute; inset:0; background:rgba(0,0,0,0.7); }
@@ -2489,6 +2526,9 @@
       h += '<div class="checkout-summary__row checkout-summary__row--total"><span>' + _t('checkout_total', '合計') + '</span><span>&yen;' + (summary.total || 0).toLocaleString() + '</span></div>';
       h += '</div>';
 
+      // UI-P0-3: 割り勘 calculator widget (UI のみ。決済額は合計のまま不変)
+      h += renderSplitBillWidget(summary.total || 0);
+
       // 決済ボタン（data-original-text にラベルを保存。エラー時の復元用）
       var payBtnLabel = _t('checkout_pay_card', 'お支払いに進む') + ' \xa5' + (summary.total || 0).toLocaleString();
       h += '<button class="checkout-modal__pay-btn" id="btn-pay" data-original-text="' + Utils.escapeHtml(payBtnLabel) + '">'
@@ -2510,10 +2550,177 @@
 
       h += '<p class="checkout-modal__note">' + _t('checkout_stripe_note', 'Stripeの安全な決済画面でお支払いいただけます') + '</p>';
 
+      // UI-P0-2: 会計済み含む注文履歴 (expandable)
+      h += renderCheckoutHistorySection();
+
       body.innerHTML = h;
 
       // 決済ボタンイベント
       document.getElementById('btn-pay').addEventListener('click', startPayment);
+
+      // UI-P0-3: 割り勘 calculator 初期化 (decision POST は触らない)
+      bindSplitBillHandlers(summary.total || 0);
+
+      // UI-P0-2: 履歴 toggle bind (初回 open 時に order-history.php を fetch)
+      bindCheckoutHistoryToggle();
+    }
+
+    // ============================================================
+    // UI-P0-3: 割り勘 calculator (UI のみ、決済額は合計のまま)
+    // ============================================================
+    function renderSplitBillWidget(total) {
+      var html = '<div class="checkout-split">';
+      html += '<div class="checkout-split__title">' + _t('checkout_split_title', '割り勘 (計算のみ)') + '</div>';
+      html += '<div class="checkout-split__row">';
+      html += '<label class="checkout-split__label" for="checkout-split-n">' + _t('checkout_split_people', '人数') + '</label>';
+      html += '<div class="checkout-split__controls">';
+      html += '<button type="button" class="checkout-split__btn" data-split-delta="-1" aria-label="人数を減らす">−</button>';
+      html += '<input type="number" id="checkout-split-n" class="checkout-split__input" min="1" max="99" value="1" inputmode="numeric">';
+      html += '<button type="button" class="checkout-split__btn" data-split-delta="1" aria-label="人数を増やす">＋</button>';
+      html += '</div>';
+      html += '</div>';
+      html += '<div class="checkout-split__row">';
+      html += '<label class="checkout-split__label" for="checkout-split-mode">' + _t('checkout_split_mode', '端数') + '</label>';
+      html += '<select id="checkout-split-mode" class="checkout-split__select">';
+      html += '<option value="ceil">' + _t('checkout_split_mode_ceil', '均等に切り上げ') + '</option>';
+      html += '<option value="oneExtra">' + _t('checkout_split_mode_one', '1 人が端数を負担') + '</option>';
+      html += '</select>';
+      html += '</div>';
+      html += '<div class="checkout-split__result" id="checkout-split-result">1 人あたり <strong>&yen;' + (total || 0).toLocaleString() + '</strong></div>';
+      html += '<p class="checkout-split__note">' + _t('checkout_split_note', '※ 店頭/オンライン決済は合計金額でまとめて行います。現金で割る場合の目安にお使いください。') + '</p>';
+      html += '</div>';
+      return html;
+    }
+
+    function bindSplitBillHandlers(total) {
+      var input = document.getElementById('checkout-split-n');
+      var modeSel = document.getElementById('checkout-split-mode');
+      var result = document.getElementById('checkout-split-result');
+      if (!input || !modeSel || !result) return;
+
+      function update() {
+        var n = parseInt(input.value, 10);
+        if (!n || n < 1) n = 1;
+        if (n > 99) n = 99;
+        if (String(n) !== String(input.value)) input.value = n;
+        var mode = modeSel.value;
+        var html = '';
+        if (n <= 1) {
+          html = '1 人あたり <strong>&yen;' + total.toLocaleString() + '</strong>';
+        } else if (mode === 'oneExtra') {
+          var perFloor = Math.floor(total / n);
+          var remainder = total - perFloor * n;
+          html = '他 ' + (n - 1) + ' 人: <strong>&yen;' + perFloor.toLocaleString() + '</strong> / '
+               + '1 人 (端数): <strong>&yen;' + (perFloor + remainder).toLocaleString() + '</strong>';
+        } else {
+          var perCeil = Math.ceil(total / n);
+          html = '1 人あたり <strong>&yen;' + perCeil.toLocaleString() + '</strong>';
+          var totalIfCeil = perCeil * n;
+          if (totalIfCeil > total) {
+            html += ' <span class="checkout-split__diff">(集計 &yen;' + totalIfCeil.toLocaleString() + ' / +&yen;' + (totalIfCeil - total).toLocaleString() + ')</span>';
+          }
+        }
+        result.innerHTML = html;
+      }
+      input.addEventListener('input', update);
+      modeSel.addEventListener('change', update);
+      var deltas = document.querySelectorAll('[data-split-delta]');
+      for (var i = 0; i < deltas.length; i++) {
+        deltas[i].addEventListener('click', function (e) {
+          var d = parseInt(e.currentTarget.getAttribute('data-split-delta'), 10) || 0;
+          var cur = parseInt(input.value, 10) || 1;
+          input.value = Math.max(1, Math.min(99, cur + d));
+          update();
+        });
+      }
+      update();
+    }
+
+    // ============================================================
+    // UI-P0-2: checkout モーダル内の注文履歴 (会計済み含む、expandable)
+    // ============================================================
+    function renderCheckoutHistorySection() {
+      var html = '<div class="checkout-history">';
+      html += '<button type="button" class="checkout-history__toggle" id="checkout-history-toggle" aria-expanded="false">';
+      html += '<span class="checkout-history__toggle-label">' + _t('checkout_history_title', 'これまでの注文 (会計済み含む)') + '</span>';
+      html += '<span class="checkout-history__caret">▼</span>';
+      html += '</button>';
+      html += '<div class="checkout-history__body" id="checkout-history-body" hidden></div>';
+      html += '</div>';
+      return html;
+    }
+
+    function bindCheckoutHistoryToggle() {
+      var toggle = document.getElementById('checkout-history-toggle');
+      var body = document.getElementById('checkout-history-body');
+      if (!toggle || !body) return;
+      var loaded = false;
+      toggle.addEventListener('click', function () {
+        var isOpen = !body.hidden;
+        body.hidden = isOpen;
+        toggle.setAttribute('aria-expanded', (!isOpen).toString());
+        toggle.classList.toggle('checkout-history__toggle--open', !isOpen);
+        if (!isOpen && !loaded) {
+          loaded = true;
+          body.innerHTML = '<p class="checkout-history__loading">' + _t('checkout_history_loading', '読み込み中...') + '</p>';
+          fetchCheckoutHistory(body);
+        }
+      });
+    }
+
+    function fetchCheckoutHistory(body) {
+      var token = CartManager.getSessionToken();
+      fetch(BASE_API + '/customer/order-history.php?store_id=' + storeId
+        + '&table_id=' + tableId
+        + '&session_token=' + encodeURIComponent(token))
+        .then(function (r) { return r.text(); })
+        .then(function (text) {
+          var json;
+          try { json = JSON.parse(text); } catch (e) { throw new Error('解析に失敗しました'); }
+          if (!json || !json.ok) throw new Error((json.error && json.error.message) || '取得に失敗しました');
+          renderCheckoutHistoryList(body, json.data.orders || []);
+        })
+        .catch(function (err) {
+          body.innerHTML = '<p class="checkout-history__error">' + Utils.escapeHtml(err.message || '') + '</p>';
+        });
+    }
+
+    function renderCheckoutHistoryList(body, orders) {
+      if (!orders.length) {
+        body.innerHTML = '<p class="checkout-history__empty">' + _t('checkout_history_empty', '履歴はありません') + '</p>';
+        return;
+      }
+      var statusLabel = {
+        'pending':         { text: '受付', cls: 'status-pending' },
+        'pending_payment': { text: '決済待ち', cls: 'status-pending' },
+        'preparing':       { text: '調理中', cls: 'status-preparing' },
+        'ready':           { text: '提供待ち', cls: 'status-ready' },
+        'served':          { text: '提供済', cls: 'status-served' },
+        'paid':            { text: '会計済', cls: 'status-paid' }
+      };
+      var h = '<ul class="checkout-history__list">';
+      for (var i = 0; i < orders.length; i++) {
+        var o = orders[i];
+        var sb = statusLabel[o.status] || { text: o.status, cls: '' };
+        var itemsLabel = '';
+        var items = o.items || [];
+        var names = [];
+        for (var ii = 0; ii < items.length; ii++) {
+          names.push((items[ii].name || '?') + ' ×' + (items[ii].qty || 1));
+        }
+        itemsLabel = names.join(' / ');
+        var t = String(o.created_at || '').substring(11, 16);
+        h += '<li class="checkout-history__item">';
+        h += '<div class="checkout-history__head">';
+        h += '<span class="checkout-history__time">' + Utils.escapeHtml(t) + '</span>';
+        h += '<span class="checkout-history__badge ' + sb.cls + '">' + Utils.escapeHtml(sb.text) + '</span>';
+        h += '<span class="checkout-history__total">&yen;' + (o.total_amount || 0).toLocaleString() + '</span>';
+        h += '</div>';
+        h += '<div class="checkout-history__items">' + Utils.escapeHtml(itemsLabel) + '</div>';
+        h += '</li>';
+      }
+      h += '</ul>';
+      body.innerHTML = h;
     }
 
     /** Stripe決済開始 */
