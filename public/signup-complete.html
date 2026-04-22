@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>お申込み完了 - POSLA</title>
-  <link rel="stylesheet" href="css/lp.css?v=20260422-batch-f">
+  <link rel="stylesheet" href="css/lp.css?v=20260422-batch-f2">
 </head>
 <body>
 
@@ -87,7 +87,31 @@
     statusEl.appendChild(actions);
   }
 
-  if (!token) { show(); return; }
+  // Batch-F hotfix: token なしで直接開いた場合に成功表示を出さない。
+  // 決済・有効化を通っていない以上「お申込みありがとうございます」は
+  // 状態表現として偽陽性のため、未完了状態を明示する。
+  function showInvalidAccess() {
+    statusEl.classList.add('sc-loading--failure');
+    statusEl.innerHTML = '';
+    var p = document.createElement('p');
+    p.textContent = '申込みプロセスが完了していません。決済完了後にお送りしているリンクからアクセスしてください。';
+    statusEl.appendChild(p);
+    var actions = document.createElement('div');
+    actions.className = 'sc-failure-actions';
+    var home = document.createElement('a');
+    home.href = 'index.html';
+    home.className = 'lp-btn lp-btn--primary';
+    home.textContent = 'トップに戻る';
+    actions.appendChild(home);
+    var support = document.createElement('a');
+    support.href = 'mailto:info@posla.jp';
+    support.className = 'lp-btn lp-btn--secondary';
+    support.textContent = 'サポートに連絡';
+    actions.appendChild(support);
+    statusEl.appendChild(actions);
+  }
+
+  if (!token) { showInvalidAccess(); return; }
 
   // S3-#18: POSLA 規約に従い res.text() → JSON.parse() パターンに統一
   fetch('/api/signup/activate.php', {
