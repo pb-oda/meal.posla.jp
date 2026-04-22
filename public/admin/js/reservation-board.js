@@ -477,14 +477,14 @@
 
   function showSeatQrModal(r, data) {
     var url = data.qr_url;
-    var html = '<div class="rb-modal" id="rb-modal"><div class="rb-modal__content" style="max-width:420px;text-align:center;">';
+    var html = '<div class="rb-modal" id="rb-modal"><div class="rb-modal__content rb-modal__content--qr">';
     html += '<button class="rb-modal__close" data-close type="button">×</button>';
     html += '<h3>🪑 着席完了</h3>';
-    html += '<p style="color:#16a34a;font-weight:600;margin:8px 0;">' + escapeHtml(r.customer_name) + ' 様 / ' + r.party_size + '名</p>';
-    html += '<p style="color:#6b7280;font-size:0.85rem;margin-bottom:12px;">このQRコードをお客様のスマホで読み取るか、テーブルのQRコードから直接注文できます</p>';
+    html += '<p class="rb-qr__name">' + escapeHtml(r.customer_name) + ' 様 / ' + r.party_size + '名</p>';
+    html += '<p class="rb-qr__desc">このQRコードをお客様のスマホで読み取るか、テーブルのQRコードから直接注文できます</p>';
     html += '<div id="rb-seat-qr"></div>';
-    html += '<div style="word-break:break-all;font-size:0.75rem;color:#6b7280;padding:8px;background:#f9fafb;border-radius:6px;">' + escapeHtml(url) + '</div>';
-    html += '<div class="rb-modal__actions" style="justify-content:center;">';
+    html += '<div class="rb-qr__url-box">' + escapeHtml(url) + '</div>';
+    html += '<div class="rb-modal__actions rb-modal__actions--center">';
     html += '<button class="rb-btn-edit" id="rb-seat-copy" type="button">📋 URLコピー</button>';
     html += '<button class="rb-btn-resend" id="rb-seat-print" type="button">🖨 QR印刷</button>';
     html += '<button class="rb-btn-cancel" data-close type="button">閉じる</button>';
@@ -768,20 +768,20 @@
       html += '<h3>' + escapeHtml(c.customer_name) + '</h3>';
       html += '<div class="rb-modal__form-group"><label>来店履歴</label>';
       if (data.history.length) {
-        html += '<ul style="padding-left:20px;font-size:0.85rem;margin:0;">';
+        html += '<ul class="rb-history-list">';
         for (var i = 0; i < data.history.length; i++) {
           var h = data.history[i];
           html += '<li>' + escapeHtml(h.reserved_at) + ' / ' + h.party_size + '名 / ' + escapeHtml(statusJa(h.status)) + ' (' + escapeHtml(sourceLabel(h.source)) + ')</li>';
         }
         html += '</ul>';
-      } else { html += '<div class="rb-empty" style="padding:8px;">なし</div>'; }
+      } else { html += '<div class="rb-empty rb-empty--inline">なし</div>'; }
       html += '</div>';
       html += '<div class="rb-modal__form-group"><label>好み</label><textarea id="rb-cu-pref" rows="2">' + escapeHtml(c.preferences || '') + '</textarea></div>';
       html += '<div class="rb-modal__form-group"><label>アレルギー</label><textarea id="rb-cu-allergy" rows="2">' + escapeHtml(c.allergies || '') + '</textarea></div>';
       html += '<div class="rb-modal__form-group"><label>タグ</label><input type="text" id="rb-cu-tags" value="' + escapeHtml(c.tags || '') + '"></div>';
       html += '<div class="rb-modal__form-group"><label>内部メモ</label><textarea id="rb-cu-memo" rows="2">' + escapeHtml(c.internal_memo || '') + '</textarea></div>';
       html += '<div class="rb-modal__form-group"><label><input type="checkbox" id="rb-cu-vip" ' + (parseInt(c.is_vip, 10) ? 'checked' : '') + '> VIP</label></div>';
-      html += '<div class="rb-modal__form-group"><label><input type="checkbox" id="rb-cu-bl" ' + (parseInt(c.is_blacklisted, 10) ? 'checked' : '') + '> ブラックリスト (manager以上)</label><input type="text" id="rb-cu-bl-reason" placeholder="理由" value="' + escapeHtml(c.blacklist_reason || '') + '" style="margin-top:4px;"></div>';
+      html += '<div class="rb-modal__form-group"><label><input type="checkbox" id="rb-cu-bl" ' + (parseInt(c.is_blacklisted, 10) ? 'checked' : '') + '> ブラックリスト (manager以上)</label><input type="text" id="rb-cu-bl-reason" class="rb-bl-reason-input" placeholder="理由" value="' + escapeHtml(c.blacklist_reason || '') + '"></div>';
       html += '<div class="rb-modal__actions"><button class="rb-btn-cancel" data-close type="button">戻る</button><button class="rb-btn-edit" id="rb-cu-save" type="button">保存</button></div>';
       html += '</div></div>';
       document.getElementById('rb-modal-host').innerHTML = html;
@@ -831,7 +831,7 @@
       for (var i = 0; i < data.courses.length; i++) {
         var c = data.courses[i];
         html += '<div class="rb-customer-card" data-cid="' + escapeHtml(c.id) + '">';
-        html += '<div class="rb-customer-card__name">' + escapeHtml(c.name) + ' <span style="color:#6b7280;font-weight:500;">(' + c.duration_min + '分)</span></div>';
+        html += '<div class="rb-customer-card__name">' + escapeHtml(c.name) + ' <span class="rb-course-dur">(' + c.duration_min + '分)</span></div>';
         html += '<div class="rb-customer-card__meta">¥' + parseInt(c.price, 10).toLocaleString() + ' / ' + c.min_party_size + '〜' + c.max_party_size + '名</div>';
         if (c.description) html += '<div class="rb-customer-card__meta">' + escapeHtml(c.description) + '</div>';
         html += '<div class="rb-customer-card__tags"><span class="rb-tag">' + (parseInt(c.is_active, 10) ? '✅ 有効' : '⛔ 無効') + '</span></div>';
@@ -938,7 +938,7 @@
       html += '<div class="rb-modal__form-group"><label><input type="checkbox" name="ai_chat_enabled" ' + (parseInt(s.ai_chat_enabled, 10) ? 'checked' : '') + '> AIチャット予約 (Gemini)</label></div>';
       html += group('notification_email', '店舗側通知メール', s.notification_email || '', 'email');
       html += group('notes_to_customer', '客向け注意事項', s.notes_to_customer || '', 'textarea');
-      html += '<button class="rb-btn-edit" id="rb-set-save" type="button" style="margin-top:8px;">設定を保存</button>';
+      html += '<div class="rb-save-row"><button class="rb-btn-edit" id="rb-set-save" type="button">設定を保存</button></div>';
       html += '</form>';
       document.getElementById('rb-settings-area').innerHTML = html;
       document.getElementById('rb-set-save').addEventListener('click', saveSettings);
@@ -991,29 +991,29 @@
       var area = document.getElementById('rb-st-area');
       if (err) { area.innerHTML = '<div class="rb-empty">' + escapeHtml(err.message) + '</div>'; return; }
       var t = data.totals; var s = data.by_source;
-      var html = '<div class="rb-kpi" style="margin-bottom:16px;border:1px solid var(--rb-border);border-radius:var(--rb-radius);overflow:hidden;">';
+      var html = '<div class="rb-kpi rb-stats-kpi">';
       html += '<div class="rb-kpi__card"><div class="rb-kpi__label">予約総数</div><div class="rb-kpi__value">' + t.total + '</div></div>';
       html += '<div class="rb-kpi__card"><div class="rb-kpi__label">来店人数</div><div class="rb-kpi__value">' + t.total_party_size + '</div></div>';
       html += '<div class="rb-kpi__card"><div class="rb-kpi__label">no-show率</div><div class="rb-kpi__value">' + t.no_show_rate + '<span class="rb-kpi__value-unit">%</span></div></div>';
       html += '<div class="rb-kpi__card"><div class="rb-kpi__label">キャンセル率</div><div class="rb-kpi__value">' + t.cancel_rate + '<span class="rb-kpi__value-unit">%</span></div></div>';
       html += '</div>';
-      html += '<h4 style="margin:0 0 8px;font-size:13px;color:var(--rb-text-sub);text-transform:uppercase;letter-spacing:0.04em;">ソース別</h4>';
+      html += '<h4 class="rb-stats-h4">ソース別</h4>';
       html += '<table class="rb-stats-table">';
       html += '<tr><th>Web</th><th>電話</th><th>Walk-in</th><th>AI</th></tr>';
       html += '<tr><td>' + s.web + '</td><td>' + s.phone + '</td><td>' + s.walk_in + '</td><td>' + s.ai_chat + '</td></tr>';
       html += '</table>';
-      html += '<h4 style="margin:0 0 8px;font-size:13px;color:var(--rb-text-sub);text-transform:uppercase;letter-spacing:0.04em;">日別</h4>';
+      html += '<h4 class="rb-stats-h4">日別</h4>';
       html += '<table class="rb-stats-table">';
       html += '<tr><th>日付</th><th>件数</th><th>人数</th></tr>';
       for (var i = 0; i < data.by_day.length; i++) {
         html += '<tr><td>' + escapeHtml(data.by_day[i].d) + '</td><td>' + data.by_day[i].cnt + '</td><td>' + data.by_day[i].guests + '</td></tr>';
       }
       html += '</table>';
-      html += '<h4 style="margin:0 0 8px;font-size:13px;color:var(--rb-text-sub);text-transform:uppercase;letter-spacing:0.04em;">時間帯別</h4>';
+      html += '<h4 class="rb-stats-h4">時間帯別</h4>';
       html += '<table class="rb-stats-table">';
       for (var j = 0; j < data.by_hour.length; j++) {
         var bw = Math.min(100, data.by_hour[j].cnt * 10);
-        html += '<tr><td style="width:64px;">' + data.by_hour[j].h + ':00</td><td><div class="rb-bar" style="width:' + bw + '%;">' + data.by_hour[j].cnt + '</div></td></tr>';
+        html += '<tr><td class="rb-stats__hour-cell">' + data.by_hour[j].h + ':00</td><td><div class="rb-bar" style="width:' + bw + '%;">' + data.by_hour[j].cnt + '</div></td></tr>';
       }
       html += '</table>';
       area.innerHTML = html;

@@ -1173,3 +1173,109 @@
   .rb-kpi { grid-template-columns: 1fr 1fr; }
   .rb-customers__list { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+ * Batch-A: inline style 清掃の受け皿
+ *   reservation-board.js 内で使われていた inline style を
+ *   class ベースに移動するためのヘルパ定義
+ * ============================================================ */
+
+/* seat QR モーダル (中央寄せの特殊 modal) */
+.rb-modal__content--qr {
+  max-width: 420px;
+  text-align: center;
+}
+
+.rb-qr__name {
+  color: var(--rb-st-seated-bd);
+  font-weight: 600;
+  margin: 8px 0;
+}
+
+.rb-qr__desc {
+  color: var(--rb-text-mute);
+  font-size: 0.85rem;
+  margin: 0 0 12px;
+}
+
+.rb-qr__url-box {
+  word-break: break-all;
+  font-size: 0.75rem;
+  color: var(--rb-text-mute);
+  padding: 8px 10px;
+  background: var(--rb-surface-muted);
+  border-radius: var(--rb-radius-sm);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.rb-modal__actions--center {
+  justify-content: center;
+}
+
+/* 顧客 modal の来店履歴 */
+.rb-history-list {
+  padding-left: 20px;
+  font-size: 0.85rem;
+  margin: 0;
+  color: var(--rb-text-sub);
+  line-height: 1.7;
+}
+
+.rb-empty--inline {
+  padding: 8px;
+  text-align: left;
+  color: var(--rb-text-mute);
+  font-size: 0.85rem;
+}
+
+/* BL 理由入力欄の微調整 */
+.rb-bl-reason-input {
+  margin-top: 4px !important;
+}
+
+/* コースカードの所要時間サブテキスト */
+.rb-course-dur {
+  color: var(--rb-text-mute);
+  font-weight: 500;
+  font-size: 0.9em;
+}
+
+/* 予約設定 保存ボタンの領域 */
+.rb-save-row {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid var(--rb-border);
+}
+
+.rb-save-row .rb-btn-edit {
+  padding: 10px 20px;
+  font-size: 14px;
+}
+
+/* 予約レポート KPI (stats の上段) */
+.rb-stats-kpi {
+  margin-bottom: 16px;
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius);
+  overflow: hidden;
+}
+
+/* 予約レポート セクション見出し */
+.rb-stats-h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--rb-text-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+/* 時間帯別テーブルの時刻列 */
+.rb-stats__hour-cell {
+  width: 64px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+

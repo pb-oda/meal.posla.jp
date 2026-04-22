@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3f51b5">
   <title>管理ダッシュボード</title>
-  <link rel="stylesheet" href="css/admin.css?v=20260422-batch-ui-1p6">
-  <link rel="stylesheet" href="css/reservation-board.css?v=20260422-batch-ui-2b">
+  <link rel="stylesheet" href="css/admin.css?v=20260422-batch-a">
+  <link rel="stylesheet" href="css/reservation-board.css?v=20260422-batch-a">
   <style>
     /* L-3 Phase 3: ヘルプスタッフ表示 */
     .shift-help { background: #fff3e0 !important; border-left: 3px solid #e65100; }
@@ -164,24 +164,34 @@
 
     <!-- オプショングループ -->
     <div class="tab-panel" id="panel-option-groups">
-      <div class="panel-header">
-        <h2 class="panel-header__title">オプショングループ <span class="panel-header__count" id="og-count"></span></h2>
-        <button class="btn btn-primary" id="btn-add-option-group">+ グループ追加</button>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">オプショングループ <span class="panel-toolbar__count" id="og-count"></span></h2>
+          <p class="panel-toolbar__desc">トッピングやサイズ違いなど、メニュー品目に付けられる選択肢のセット。1 つ作っておくと複数品目で再利用できます。</p>
+        </div>
+        <div class="panel-toolbar__actions">
+          <button class="btn btn-primary" id="btn-add-option-group">+ グループ追加</button>
+        </div>
       </div>
-      <div id="option-group-list"></div>
+      <div class="panel-body">
+        <div id="option-group-list"></div>
+      </div>
     </div>
 
     <!-- 店舗メニュー -->
     <div class="tab-panel" id="panel-store-menu">
-      <div class="panel-header">
-        <h2 class="panel-header__title">メニュー管理</h2>
-        <div class="panel-header__actions">
-          <button class="btn btn-primary" id="btn-add-store-menu">+ メニュー追加</button>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">店舗メニュー</h2>
+          <p class="panel-toolbar__desc">店舗で実際に提供しているメニューの一覧と価格・売切れ設定。本部マスタと連動し、店舗独自の上書き（価格 / 非表示 / 売切れ）が可能です。多言語翻訳と CSV で一括管理もできます。</p>
+        </div>
+        <div class="panel-toolbar__actions">
           <button class="btn btn-sm btn-outline" id="btn-translate-menu" title="未翻訳の品目のみ英語・中国語・韓国語に翻訳（既存の翻訳は保持）">🌐 一括翻訳</button>
           <button class="btn btn-sm btn-outline" id="btn-retranslate-menu" title="既存の翻訳を全て上書きして再生成">🔄 強制再翻訳</button>
           <button class="btn btn-sm btn-outline" id="btn-override-csv-export">CSVエクスポート</button>
           <button class="btn btn-sm btn-outline" id="btn-override-csv-import">CSVインポート</button>
           <input type="file" accept=".csv" id="override-csv-file" style="display:none">
+          <button class="btn btn-primary" id="btn-add-store-menu">+ メニュー追加</button>
         </div>
       </div>
       <!-- N-1: 今日のおすすめ設定 -->
@@ -189,22 +199,28 @@
         <summary style="padding:10px 16px;cursor:pointer;font-weight:600;font-size:0.95rem;background:var(--bg-secondary,#f5f5f5);border-radius:8px">今日のおすすめ設定</summary>
         <div id="recommend-editor-container" style="padding:12px 16px"></div>
       </details>
-
-      <div id="override-list"></div>
+      <div class="panel-body">
+        <div id="override-list"></div>
+      </div>
     </div>
 
     <!-- 店舗限定メニュー -->
     <div class="tab-panel" id="panel-local-menu">
-      <div class="panel-header">
-        <h2 class="panel-header__title">店舗限定メニュー</h2>
-        <div class="panel-header__actions">
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">店舗限定メニュー</h2>
+          <p class="panel-toolbar__desc">本部マスタに紐づかない、この店舗だけの限定品。本部配信の影響を受けず、店舗の裁量で登録できます。季節商品や日替わりに便利。</p>
+        </div>
+        <div class="panel-toolbar__actions">
           <button class="btn btn-sm btn-outline" id="btn-local-csv-export">CSVエクスポート</button>
           <button class="btn btn-sm btn-outline" id="btn-local-csv-import">CSVインポート</button>
           <input type="file" accept=".csv" id="local-csv-import-file" style="display:none">
           <button class="btn btn-primary" id="btn-add-local">+ 限定メニュー追加</button>
         </div>
       </div>
-      <div id="local-list"></div>
+      <div class="panel-body">
+        <div id="local-list"></div>
+      </div>
     </div>
 
     <!-- テーブル管理 -->
@@ -225,54 +241,108 @@
 
     <!-- フロアマップ -->
     <div class="tab-panel" id="panel-floor-map">
-      <div class="panel-header">
-        <h2 class="panel-header__title">フロアマップ</h2>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">フロアマップ</h2>
+          <p class="panel-toolbar__desc">店内の座席レイアウトを図で管理。テーブル位置をドラッグで配置し、ホールスタッフの視覚的把握と予約台帳との連動に使います。</p>
+        </div>
       </div>
-      <div id="floor-map-container"></div>
+      <div class="panel-body panel-body--flush">
+        <div id="floor-map-container"></div>
+      </div>
     </div>
 
     <!-- 売上レポート -->
     <div class="tab-panel" id="panel-sales">
-      <div class="panel-header"><h2 class="panel-header__title">売上レポート</h2></div>
-      <div id="sales-report-container"></div>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">売上レポート</h2>
+          <p class="panel-toolbar__desc">日次 / 時間帯別の売上と客数。閉店後の振り返りと翌日の仕込み判断に使います。</p>
+        </div>
+      </div>
+      <div class="panel-body panel-body--flush">
+        <div id="sales-report-container"></div>
+      </div>
     </div>
 
     <!-- 全店舗横断レポート・ABC分析は owner-dashboard.html に移動済み -->
 
     <!-- レジ分析 -->
     <div class="tab-panel" id="panel-register">
-      <div class="panel-header"><h2 class="panel-header__title">レジ分析</h2></div>
-      <div id="register-report-container"></div>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">レジ分析</h2>
+          <p class="panel-toolbar__desc">レジ締め時の過不足、決済手段別の内訳、割引の適用状況。日次のレジ管理と不正検知に使います。</p>
+        </div>
+      </div>
+      <div class="panel-body panel-body--flush">
+        <div id="register-report-container"></div>
+      </div>
     </div>
 
     <!-- 注文履歴 -->
     <div class="tab-panel" id="panel-orders">
-      <div class="panel-header"><h2 class="panel-header__title">注文履歴</h2></div>
-      <div id="order-history-container"></div>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">注文履歴</h2>
+          <p class="panel-toolbar__desc">過去の注文データの検索。顧客対応時の「このとき何を頼みましたか？」の確認や、クレーム調査に使います。</p>
+        </div>
+      </div>
+      <div class="panel-body panel-body--flush">
+        <div id="order-history-container"></div>
+      </div>
     </div>
 
     <!-- 回転率・客層分析 -->
     <div class="tab-panel" id="panel-turnover">
-      <div class="panel-header"><h2 class="panel-header__title">回転率・調理時間・客層分析</h2></div>
-      <div id="turnover-report-container"></div>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">回転率・調理時間・客層分析</h2>
+          <p class="panel-toolbar__desc">テーブルの回転時間、オーダーから提供までの調理時間、客層（人数 / 時間帯）の分析。ピークの負荷設計と仕込みに使います。</p>
+        </div>
+      </div>
+      <div class="panel-body panel-body--flush">
+        <div id="turnover-report-container"></div>
+      </div>
     </div>
 
     <!-- スタッフ別評価・監査 -->
     <div class="tab-panel" id="panel-staff-report">
-      <div class="panel-header"><h2 class="panel-header__title">スタッフ別評価・監査</h2></div>
-      <div id="staff-report-container"></div>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">スタッフ別評価・監査</h2>
+          <p class="panel-toolbar__desc">スタッフごとの注文数、客単価、打刻精度などを集計。シフト調整や評価の参考資料に使います。</p>
+        </div>
+      </div>
+      <div class="panel-body panel-body--flush">
+        <div id="staff-report-container"></div>
+      </div>
     </div>
 
     <!-- R1: 満足度・低評価分析 -->
     <div class="tab-panel" id="panel-rating-report">
-      <div class="panel-header"><h2 class="panel-header__title">満足度・低評価分析</h2></div>
-      <div id="rating-report-container"></div>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">満足度・低評価分析</h2>
+          <p class="panel-toolbar__desc">お客さまの評価の時系列と、低評価のコメント抽出。サービス改善の優先順位付けに使います。</p>
+        </div>
+      </div>
+      <div class="panel-body panel-body--flush">
+        <div id="rating-report-container"></div>
+      </div>
     </div>
 
     <!-- 併売分析（バスケット分析） -->
     <div class="tab-panel" id="panel-basket">
-      <div class="panel-header"><h2 class="panel-header__title">併売分析（バスケット分析）</h2></div>
-      <div id="basket-analysis-container"></div>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">併売分析（バスケット分析）</h2>
+          <p class="panel-toolbar__desc">一緒に注文されやすい品目の組み合わせ。おすすめ提案やセット化の判断材料に使います。</p>
+        </div>
+      </div>
+      <div class="panel-body panel-body--flush">
+        <div id="basket-analysis-container"></div>
+      </div>
     </div>
 
     <!-- PWA Phase 4b-2: 緊急会計台帳 (manager/owner 読み取り専用) -->
@@ -280,9 +350,12 @@
 
     <!-- 食べ放題プラン -->
     <div class="tab-panel" id="panel-time-plans">
-      <div class="panel-header">
-        <h2 class="panel-header__title">食べ放題プラン <span class="panel-header__count" id="time-plan-count"></span></h2>
-        <div class="panel-header__actions">
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">食べ放題プラン <span class="panel-toolbar__count" id="time-plan-count"></span></h2>
+          <p class="panel-toolbar__desc">食べ放題（90 分 / 飲み放題 等）の条件と対象メニュー。お客さま側のプラン選択画面とセルフオーダーに連動します。</p>
+        </div>
+        <div class="panel-toolbar__actions">
           <button class="btn btn-sm btn-outline" id="btn-plan-csv-export">プランCSV</button>
           <button class="btn btn-sm btn-outline" id="btn-plan-csv-import">プランインポート</button>
           <input type="file" accept=".csv" id="plan-csv-file" style="display:none">
@@ -292,21 +365,28 @@
           <button class="btn btn-primary" id="btn-add-time-plan">+ プラン追加</button>
         </div>
       </div>
-      <div id="time-plan-list"></div>
+      <div class="panel-body">
+        <div id="time-plan-list"></div>
+      </div>
     </div>
 
     <!-- コース管理 -->
     <div class="tab-panel" id="panel-courses">
-      <div class="panel-header">
-        <h2 class="panel-header__title">コース料理 <span class="panel-header__count" id="course-count"></span></h2>
-        <div class="panel-header__actions">
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">コース料理 <span class="panel-toolbar__count" id="course-count"></span></h2>
+          <p class="panel-toolbar__desc">コース（前菜 → 主菜 → デザート の順で提供）の登録と所要時間。予約画面・予約台帳のコース選択で使われます。</p>
+        </div>
+        <div class="panel-toolbar__actions">
           <button class="btn btn-sm btn-outline" id="btn-course-csv-export">CSVエクスポート</button>
           <button class="btn btn-sm btn-outline" id="btn-course-csv-import">CSVインポート</button>
           <input type="file" accept=".csv" id="course-csv-file" style="display:none">
           <button class="btn btn-primary" id="btn-add-course">+ コース追加</button>
         </div>
       </div>
-      <div id="course-list"></div>
+      <div class="panel-body">
+        <div id="course-list"></div>
+      </div>
     </div>
 
     <!-- 在庫・レシピ管理 -->
@@ -327,69 +407,127 @@
 
     <!-- 店舗設定 -->
     <div class="tab-panel" id="panel-settings">
-      <div class="panel-header"><h2 class="panel-header__title">店舗設定</h2></div>
-      <div id="settings-container"></div>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">店舗設定</h2>
+          <p class="panel-toolbar__desc">営業時間、ブランディング、税率、通知先メールなど店舗の基本設定。変更は全体に影響するため、慎重に。</p>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div id="settings-container"></div>
+      </div>
     </div>
 
     <!-- KDSステーション -->
     <div class="tab-panel" id="panel-kds-stations">
-      <div class="panel-header">
-        <h2 class="panel-header__title">KDSステーション</h2>
-        <button class="btn btn-primary" id="btn-add-station">+ ステーション追加</button>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">KDSステーション</h2>
+          <p class="panel-toolbar__desc">キッチンディスプレイの割り振り（調理場別・メニュー別）。メニューカテゴリと KDS 端末を結び付けます。</p>
+        </div>
+        <div class="panel-toolbar__actions">
+          <button class="btn btn-primary" id="btn-add-station">+ ステーション追加</button>
+        </div>
       </div>
-      <div id="kds-station-list"></div>
+      <div class="panel-body">
+        <div id="kds-station-list"></div>
+      </div>
     </div>
 
     <!-- スタッフ管理（managerが自店舗スタッフを管理） -->
     <div class="tab-panel" id="panel-staff-mgmt">
-      <div class="panel-header">
-        <h2 class="panel-header__title">スタッフ管理</h2>
-        <button class="btn btn-primary" id="btn-add-staff">+ スタッフ追加</button>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">スタッフ管理</h2>
+          <p class="panel-toolbar__desc">人のスタッフアカウント（オーナー / マネージャー / スタッフ）の作成・編集。シフト・勤怠・人件費の対象になります。1 人 1 アカウントが原則です。</p>
+        </div>
+        <div class="panel-toolbar__actions">
+          <button class="btn btn-primary" id="btn-add-staff">+ スタッフ追加</button>
+        </div>
       </div>
-      <div id="staff-list"></div>
+      <div class="panel-body">
+        <div id="staff-list"></div>
+      </div>
 
       <!-- P1a: デバイスアカウント管理（KDS / レジ端末用） -->
-      <div class="panel-header" style="margin-top:24px;">
-        <h2 class="panel-header__title">デバイスアカウント（KDS / レジ端末）</h2>
-        <button class="btn btn-outline" id="btn-token-device" style="margin-right:8px">トークン発行</button>
-        <button class="btn btn-primary" id="btn-add-device">+ デバイス追加</button>
+      <div class="panel-toolbar" style="margin-top:var(--space-5);">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">デバイスアカウント（KDS / レジ端末）</h2>
+          <p class="panel-toolbar__desc">スタッフではなく端末専用のログインアカウント。1 端末 = 1 アカウントで、シフト・人件費・スタッフレポート・監査ログのスタッフ集計から除外されます。</p>
+        </div>
+        <div class="panel-toolbar__actions">
+          <button class="btn btn-outline" id="btn-token-device">トークン発行</button>
+          <button class="btn btn-primary" id="btn-add-device">+ デバイス追加</button>
+        </div>
       </div>
-      <p style="color:#666;font-size:0.85rem;margin:4px 0 12px;">スタッフではなく端末専用のログインアカウントです。シフト・人件費・レポートには含まれません。</p>
-      <div id="device-list"></div>
+      <div class="panel-body">
+        <div id="device-list"></div>
+      </div>
     </div>
 
     <!-- 監査ログ -->
     <div class="tab-panel" id="panel-audit-log">
-      <div class="panel-header"><h2 class="panel-header__title">監査ログ</h2></div>
-      <div class="card" id="audit-log-container"></div>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">監査ログ</h2>
+          <p class="panel-toolbar__desc">誰がいつどの操作をしたかの記録。トラブル調査や内部統制のために参照します。保持期間は 1 年。</p>
+        </div>
+      </div>
+      <div class="panel-body panel-body--flush">
+        <div id="audit-log-container"></div>
+      </div>
     </div>
 
     <!-- エラー監視 (Phase B / CB1) -->
     <div class="tab-panel" id="panel-error-stats">
-      <div class="panel-header"><h2 class="panel-header__title">エラー監視</h2></div>
-      <div class="card" id="error-stats-container"></div>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">エラー監視</h2>
+          <p class="panel-toolbar__desc">サーバー側で記録された API エラーの件数と発生源。障害の早期発見と改善優先度の判断に使います。</p>
+        </div>
+      </div>
+      <div class="panel-body panel-body--flush">
+        <div id="error-stats-container"></div>
+      </div>
     </div>
 
     <!-- テイクアウト管理 -->
     <div class="tab-panel" id="panel-takeout-orders">
-      <div class="panel-header">
-        <h2 class="panel-header__title">テイクアウト注文管理</h2>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">テイクアウト注文管理</h2>
+          <p class="panel-toolbar__desc">お客さま側から入ったテイクアウト注文の一覧と調理・準備状況。受取時刻順で流れを管理します。</p>
+        </div>
       </div>
-      <div id="takeout-orders-container"></div>
+      <div class="panel-body">
+        <div id="takeout-orders-container"></div>
+      </div>
     </div>
 
     <!-- AIアシスタント -->
     <div class="tab-panel" id="panel-ai-assistant">
-      <div class="panel-header">
-        <h2 class="panel-header__title">AIアシスタント</h2>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">AIアシスタント</h2>
+          <p class="panel-toolbar__desc">Gemini を使った業務アシスタント。SNS 投稿文案、メニュー分析、需要予測などを自然言語で依頼できます。</p>
+        </div>
       </div>
-      <div class="card" id="ai-assistant-container"></div>
+      <div class="panel-body">
+        <div id="ai-assistant-container"></div>
+      </div>
     </div>
 
     <!-- 領収書設定 -->
     <div class="tab-panel" id="panel-receipt-settings">
-      <div class="panel-header"><h2 class="panel-header__title">領収書・インボイス</h2></div>
-      <div id="receipt-settings-container"></div>
+      <div class="panel-toolbar">
+        <div class="panel-toolbar__title-group">
+          <h2 class="panel-toolbar__title">領収書・インボイス</h2>
+          <p class="panel-toolbar__desc">領収書や適格請求書の印字設定（登録番号、発行条件、但し書き）。インボイス制度対応のため、あらかじめ設定しておきます。</p>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div id="receipt-settings-container"></div>
+      </div>
     </div>
 
     <!-- シフト管理 -->
@@ -633,7 +771,7 @@
   <script src="../js/shift-calendar.js?v=20260408bF"></script>
   <script src="js/shift-help.js?v=20260408p1be"></script>
   <script src="../js/attendance-clock.js?v=20260422-staffhome"></script>
-  <script src="js/reservation-board.js?v=20260422-batch-ui-2b"></script>
+  <script src="js/reservation-board.js?v=20260422-batch-a"></script>
   <script>
   // L-9 予約管理 — タブ表示時に ReservationBoard を初期化
   (function () {
