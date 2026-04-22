@@ -30,6 +30,25 @@ function line_settings_table_exists($pdo)
     return $exists;
 }
 
+// L-17 Phase 2D: notify_reservation_reminder_2h カラムの存在をプローブ。
+// migration 未適用環境 (Phase 2D の ALTER が走ってない) でも line-settings
+// GET/PATCH が落ちないよう、INSERT/UPDATE の column list を動的に組み立てる
+// 判定に使う。
+function line_settings_has_reminder_2h_column($pdo)
+{
+    static $exists = null;
+    if ($exists !== null) {
+        return $exists;
+    }
+    try {
+        $pdo->query('SELECT notify_reservation_reminder_2h FROM tenant_line_settings LIMIT 0');
+        $exists = true;
+    } catch (PDOException $e) {
+        $exists = false;
+    }
+    return $exists;
+}
+
 function mask_secret_value($value)
 {
     if (!$value) {
@@ -61,9 +80,10 @@ function build_line_settings_payload($tenant, $row)
         'channel_secret_set'              => !empty($row['channel_secret']),
         'channel_secret_masked'           => mask_secret_value($row['channel_secret'] ?? null),
         'liff_id'                         => $row['liff_id'] ?? '',
-        'notify_reservation_created'      => (int)($row['notify_reservation_created'] ?? 0),
-        'notify_reservation_reminder_day' => (int)($row['notify_reservation_reminder_day'] ?? 0),
-        'notify_takeout_ready'            => (int)($row['notify_takeout_ready'] ?? 0),
+        'notify_reservation_created'       => (int)($row['notify_reservation_created'] ?? 0),
+        'notify_reservation_reminder_day'  => (int)($row['notify_reservation_reminder_day'] ?? 0),
+        'notify_reservation_reminder_2h'   => (int)($row['notify_reservation_reminder_2h'] ?? 0),
+        'notify_takeout_ready'             => (int)($row['notify_takeout_ready'] ?? 0),
         'last_webhook_at'                 => $row['last_webhook_at'] ?? null,
         'last_webhook_event_type'         => $row['last_webhook_event_type'] ?? null,
         'last_webhook_event_count'        => isset($row['last_webhook_event_count']) ? (int)$row['last_webhook_event_count'] : 0,
@@ -97,9 +117,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'channel_secret_set'              => false,
                 'channel_secret_masked'           => null,
                 'liff_id'                         => '',
-                'notify_reservation_created'      => 0,
-                'notify_reservation_reminder_day' => 0,
-                'notify_takeout_ready'            => 0,
+                'notify_reservation_created'       => 0,
+                'notify_reservation_reminder_day'  => 0,
+                'notify_reservation_reminder_2h'   => 0,
+                'notify_takeout_ready'             => 0,
                 'last_webhook_at'                 => null,
                 'last_webhook_event_type'         => null,
                 'last_webhook_event_count'        => 0,
@@ -127,13 +148,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $current = $stmt->fetch();
 
     $merged = [
-        'channel_access_token'        => $current['channel_access_token'] ?? null,
-        'channel_secret'              => $current['channel_secret'] ?? null,
-        'liff_id'                     => $current['liff_id'] ?? null,
-        'is_enabled'                  => isset($current['is_enabled']) ? (int)$current['is_enabled'] : 0,
-        'notify_reservation_created'  => isset($current['notify_reservation_created']) ? (int)$current['notify_reservation_created'] : 0,
+        'channel_access_token'            => $current['channel_access_token'] ?? null,
+        'channel_secret'                  => $current['channel_secret'] ?? null,
+        'liff_id'                         => $current['liff_id'] ?? null,
+        'is_enabled'                      => isset($current['is_enabled']) ? (int)$current['is_enabled'] : 0,
+        'notify_reservation_created'      => isset($current['notify_reservation_created']) ? (int)$current['notify_reservation_created'] : 0,
         'notify_reservation_reminder_day' => isset($current['notify_reservation_reminder_day']) ? (int)$current['notify_reservation_reminder_day'] : 0,
-        'notify_takeout_ready'        => isset($current['notify_takeout_ready']) ? (int)$current['notify_takeout_ready'] : 0,
+        'notify_reservation_reminder_2h'  => isset($current['notify_reservation_reminder_2h']) ? (int)$current['notify_reservation_reminder_2h'] : 0,
+        'notify_takeout_ready'            => isset($current['notify_takeout_ready']) ? (int)$current['notify_takeout_ready'] : 0,
     ];
 
     $hasChanges = false;
@@ -165,6 +187,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         $merged['notify_reservation_reminder_day'] = normalize_flag($data['notify_reservation_reminder_day']);
         $hasChanges = true;
     }
+    if (array_key_exists('notify_reservation_reminder_2h', $data)) {
+        $merged['notify_reservation_reminder_2h'] = normalize_flag($data['notify_reservation_reminder_2h']);
+        $hasChanges = true;
+    }
     if (array_key_exists('notify_takeout_ready', $data)) {
         $merged['notify_takeout_ready'] = normalize_flag($data['notify_takeout_ready']);
         $hasChanges = true;
@@ -180,28 +206,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         }
     }
 
-    $sql = 'INSERT INTO tenant_line_settings
-              (tenant_id, channel_access_token, channel_secret, liff_id, is_enabled,
-               notify_reservation_created, notify_reservation_reminder_day, notify_takeout_ready)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-              channel_access_token = VALUES(channel_access_token),
-              channel_secret = VALUES(channel_secret),
-              liff_id = VALUES(liff_id),
-              is_enabled = VALUES(is_enabled),
-              notify_reservation_created = VALUES(notify_reservation_created),
-              notify_reservation_reminder_day = VALUES(notify_reservation_reminder_day),
-              notify_takeout_ready = VALUES(notify_takeout_ready)';
-    $pdo->prepare($sql)->execute([
-        $user['tenant_id'],
-        $merged['channel_access_token'],
-        $merged['channel_secret'],
-        $merged['liff_id'],
-        $merged['is_enabled'],
-        $merged['notify_reservation_created'],
-        $merged['notify_reservation_reminder_day'],
-        $merged['notify_takeout_ready'],
-    ]);
+    // L-17 Phase 2D: notify_reservation_reminder_2h は migration 2D 適用時のみ
+    // column として存在する。未適用環境では INSERT/UPDATE の column list から
+    // silently 除外し、既存挙動を保つ。
+    $has2hCol = line_settings_has_reminder_2h_column($pdo);
+
+    $cols   = ['tenant_id', 'channel_access_token', 'channel_secret', 'liff_id', 'is_enabled',
+               'notify_reservation_created', 'notify_reservation_reminder_day', 'notify_takeout_ready'];
+    $values = [$user['tenant_id'], $merged['channel_access_token'], $merged['channel_secret'],
+               $merged['liff_id'], $merged['is_enabled'],
+               $merged['notify_reservation_created'], $merged['notify_reservation_reminder_day'],
+               $merged['notify_takeout_ready']];
+    if ($has2hCol) {
+        $cols[]   = 'notify_reservation_reminder_2h';
+        $values[] = $merged['notify_reservation_reminder_2h'];
+    }
+
+    $placeholders = implode(', ', array_fill(0, count($cols), '?'));
+    $updateCols = array_slice($cols, 1); // tenant_id は PK なので UPDATE 対象外
+    $updateParts = array_map(function ($c) { return $c . ' = VALUES(' . $c . ')'; }, $updateCols);
+
+    $sql = 'INSERT INTO tenant_line_settings (' . implode(', ', $cols) . ')'
+         . ' VALUES (' . $placeholders . ')'
+         . ' ON DUPLICATE KEY UPDATE ' . implode(', ', $updateParts);
+    $pdo->prepare($sql)->execute($values);
 
     $stmt = $pdo->prepare('SELECT * FROM tenant_line_settings WHERE tenant_id = ?');
     $stmt->execute([$user['tenant_id']]);

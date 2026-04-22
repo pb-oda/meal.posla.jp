@@ -230,10 +230,12 @@ if (!function_exists('_l9_send_reservation_line')) {
      */
     function _l9_send_reservation_line($pdo, $reservation, $type, $store, $tpl) {
         // type → tenant_line_settings の flag カラム名 マップ
-        // (Phase 2C で reminder_24h を追加。2h / cancel / takeout 等は未サポート)
+        // (Phase 2C: reminder_24h、Phase 2D: reminder_2h を追加。
+        //  cancel / no_show / deposit_* / takeout_ready は未サポート)
         $typeFlagMap = array(
             'confirm'      => 'notify_reservation_created',
             'reminder_24h' => 'notify_reservation_reminder_day',
+            'reminder_2h'  => 'notify_reservation_reminder_2h',
         );
         if (!isset($typeFlagMap[$type])) {
             return array('attempted' => false, 'success' => false, 'error' => 'LINE_TYPE_NOT_SUPPORTED');
@@ -253,12 +255,11 @@ if (!function_exists('_l9_send_reservation_line')) {
         }
 
         // tenant_line_settings を参照 (テーブル未作成なら silent skip)
+        // SELECT * でカラム未追加の Phase 2D 未適用環境でも fallback が効く
+        // (notify_reservation_reminder_2h が $row にない場合 isset で 0 扱い)
         try {
             $stmt = $pdo->prepare(
-                'SELECT channel_access_token, is_enabled,
-                        notify_reservation_created, notify_reservation_reminder_day
-                   FROM tenant_line_settings
-                  WHERE tenant_id = ?'
+                'SELECT * FROM tenant_line_settings WHERE tenant_id = ?'
             );
             $stmt->execute(array($tenantId));
             $settings = $stmt->fetch();
@@ -366,14 +367,15 @@ if (!function_exists('send_reservation_notification')) {
             'email'
         );
 
-        // L-17 Phase 2C (hotfix): reminder_24h は email 成功後にのみ LINE を送る。
-        // cron (reservation-reminders.php) は email 成功 ($r['success']) だけ
-        // reminder_24h_sent_at を更新するため、email 失敗時は cron が 2h 時間窓内で
-        // 再実行される。LINE を email 前に送っていると「LINE 成功 + email 失敗」
-        // の場合、次回 cron で LINE が重複 push されるリスクがある。email 成功を
-        // 待ってから LINE を送ることで、sent_at 更新と整合し重複が発生しない。
+        // L-17 Phase 2C (hotfix) / 2D: reminder_24h / reminder_2h は email 成功後に
+        // のみ LINE を送る。cron (reservation-reminders.php) は email 成功
+        // ($r['success']) だけ reminder_24h_sent_at / reminder_2h_sent_at を更新する
+        // ため、email 失敗時は cron が時間窓内で再実行される。LINE を email 前に
+        // 送っていると「LINE 成功 + email 失敗」の場合、次回 cron で LINE が重複
+        // push されるリスクがある。email 成功を待ってから LINE を送ることで、
+        // sent_at 更新と整合し重複が発生しない。
         // email 永続失敗時は LINE も送られないが、トレードオフとして許容。
-        if ($type === 'reminder_24h' && $r['success']) {
+        if (($type === 'reminder_24h' || $type === 'reminder_2h') && $r['success']) {
             try {
                 _l9_send_reservation_line($pdo, $reservation, $type, $store, $tpl);
             } catch (Exception $e) {

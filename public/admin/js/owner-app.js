@@ -1286,6 +1286,7 @@
       +   '<div style="display:grid;gap:0.55rem;margin-bottom:0.9rem;">'
       +     '<label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" id="line-notify-reservation-created"' + ((data.notify_reservation_created === 1 || data.notify_reservation_created === true) ? ' checked' : '') + '> 予約受付完了通知</label>'
       +     '<label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" id="line-notify-reservation-reminder-day"' + ((data.notify_reservation_reminder_day === 1 || data.notify_reservation_reminder_day === true) ? ' checked' : '') + '> 前日リマインド通知</label>'
+      +     '<label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" id="line-notify-reservation-reminder-2h"' + ((data.notify_reservation_reminder_2h === 1 || data.notify_reservation_reminder_2h === true) ? ' checked' : '') + '> 2時間前リマインド通知</label>'
       +     '<label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" id="line-notify-takeout-ready"' + ((data.notify_takeout_ready === 1 || data.notify_takeout_ready === true) ? ' checked' : '') + '> テイクアウト準備完了通知</label>'
       +   '</div>'
       +   '<div style="font-size:0.8rem;color:#888;margin-bottom:0.9rem;">通知 ON/OFF は先に保存できます。送信機能は後続フェーズで段階的に接続します。</div>'
@@ -1369,11 +1370,13 @@
         var enabled = document.getElementById('line-enabled-toggle');
         var notifyReservation = document.getElementById('line-notify-reservation-created');
         var notifyReminder = document.getElementById('line-notify-reservation-reminder-day');
+        var notifyReminder2h = document.getElementById('line-notify-reservation-reminder-2h');
         var notifyTakeout = document.getElementById('line-notify-takeout-ready');
         saveLineSettings({
           is_enabled: enabled && enabled.checked ? 1 : 0,
           notify_reservation_created: notifyReservation && notifyReservation.checked ? 1 : 0,
           notify_reservation_reminder_day: notifyReminder && notifyReminder.checked ? 1 : 0,
+          notify_reservation_reminder_2h: notifyReminder2h && notifyReminder2h.checked ? 1 : 0,
           notify_takeout_ready: notifyTakeout && notifyTakeout.checked ? 1 : 0
         });
       });
