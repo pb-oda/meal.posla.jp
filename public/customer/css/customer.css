@@ -13,7 +13,9 @@ body {
   background: #f5f5f5;
   color: #333;
   line-height: 1.5;
-  padding-bottom: 72px;
+  /* Batch-E-3 fix: action-bar (cart/checkout) + iOS safe-area の高さ分を確保
+     action-bar content ~56-70px + safe-area (iOS 34px) + buffer → 底メニュー非表示を防ぐ */
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
 }
 
 :root {
@@ -883,28 +885,26 @@ body.lang-en .menu-item__add-btn::after { content: ''; }
 }
 
 /* cart-bar: action-bar 内で flex child として挙動、固定 position は無効化
-   padding-bottom に safe-area を含め、iOS ホームバー領域まで orange 背景を伸ばす */
+   padding-bottom に safe-area を含め、iOS ホームバー領域まで orange 背景を伸ばす
+   (padding-top は既存の 0.75rem を維持、padding-bottom のみ上書き) */
 .action-bar > .cart-bar {
   position: static;
   z-index: auto;
   box-shadow: none;
   flex: 1 1 auto;
   min-width: 0;
-  padding-top: 0.75rem;
-  padding-bottom: calc(0.75rem + var(--cm-safe-bottom, 0px));
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
 }
 
-/* checkout-bar: 同様に safe-area を背景色で埋める */
+/* checkout-bar: 同様に safe-area を背景色で埋める
+   padding-top は既存の 10px、padding-bottom のみ上書き (緑の縦冗長を回避) */
 .action-bar > .checkout-bar {
   position: static;
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-top: 10px;
-  padding-bottom: calc(10px + var(--cm-safe-bottom, 0px));
-  padding-left: 14px;
-  padding-right: 14px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Batch-E-3: 旧 .cart-bar.checkout-active ルール (bottom:56px 2段積み) を無害化
