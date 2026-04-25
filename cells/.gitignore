@@ -1,0 +1,9 @@
+# Keep actual cell runtime state and secrets out of git.
+*
+!README.md
+!.gitignore
+!registry.example.tsv
+!example/
+!example/app.env.example
+!example/db.env.example
+!example/cell.env.example

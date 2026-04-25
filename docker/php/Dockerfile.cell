@@ -1,0 +1,69 @@
+# ============================================================
+# POSLA — PHP 8.2 + Apache cell artifact
+# ============================================================
+# This Dockerfile bakes POSLA app code into the image so each cell can run a
+# pinned build artifact. Runtime cell differences must come from env files and
+# cell-owned volumes, not from shared host code bind mounts.
+# ============================================================
+FROM php:8.2-apache
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libicu-dev \
+        libzip-dev \
+        libonig-dev \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        zip \
+        unzip \
+        git \
+        curl \
+        default-mysql-client \
+        ca-certificates \
+        tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV TZ=Asia/Tokyo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+RUN docker-php-ext-configure intl \
+    && docker-php-ext-install -j$(nproc) \
+        pdo_mysql \
+        mbstring \
+        intl \
+        zip \
+        bcmath \
+        opcache
+
+RUN a2enmod rewrite headers
+
+RUN { \
+        echo "display_errors = Off"; \
+        echo "display_startup_errors = Off"; \
+        echo "error_reporting = E_ALL"; \
+        echo "log_errors = On"; \
+        echo "error_log = /var/log/apache2/php_error.log"; \
+        echo "date.timezone = Asia/Tokyo"; \
+        echo "post_max_size = 32M"; \
+        echo "upload_max_filesize = 32M"; \
+        echo "memory_limit = 256M"; \
+        echo "default_charset = UTF-8"; \
+    } > /usr/local/etc/php/conf.d/zz-posla-cell.ini
+
+WORKDIR /var/www/html
+
+COPY api /var/www/html/api
+COPY public /var/www/html/public
+COPY scripts /var/www/html/scripts
+COPY sql /var/www/html/sql
+COPY privacy /var/www/html/privacy
+COPY terms /var/www/html/terms
+COPY docker/php/apache-vhost.conf /etc/apache2/sites-available/000-default.conf
+COPY docker/php/cron-loop.sh /usr/local/bin/posla-cron-loop.sh
+COPY docker/php/startup.sh /usr/local/bin/posla-startup.sh
+
+RUN chmod +x /usr/local/bin/posla-cron-loop.sh /usr/local/bin/posla-startup.sh \
+    && chown -R www-data:www-data /var/www/html
+
+EXPOSE 80
+
+CMD ["/usr/local/bin/posla-startup.sh"]

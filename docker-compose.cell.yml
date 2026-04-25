@@ -1,0 +1,63 @@
+# ============================================================
+# POSLA — Cell deployment template
+# ============================================================
+# This compose file is for cell-based deployments.
+# It is intentionally separate from docker-compose.yml so the current
+# pseudo-production stack keeps working unchanged.
+#
+# Usage:
+#   POSLA_CELL_ID=cell-a docker compose -f docker-compose.cell.yml config
+#   scripts/cell/cell.sh cell-a config
+#   scripts/cell/cell.sh cell-a build
+#   scripts/cell/cell.sh cell-a deploy
+# ============================================================
+
+services:
+  db:
+    image: mysql:5.7
+    platform: linux/amd64
+    container_name: posla_${POSLA_CELL_ID}_db
+    restart: unless-stopped
+    env_file:
+      - ./cells/${POSLA_CELL_ID}/db.env
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --sql-mode=NO_ENGINE_SUBSTITUTION
+      - --skip-name-resolve
+    ports:
+      - "${POSLA_CELL_DB_PORT:-3306}:3306"
+    volumes:
+      - cell_db_data:/var/lib/mysql
+      - ./docker/db/cell-init:/docker-entrypoint-initdb.d:ro
+      - ./sql:/sql_src:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  php:
+    image: ${POSLA_PHP_IMAGE:-posla_php_cell:dev}
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile.cell
+      platforms:
+        - linux/amd64
+    platform: linux/amd64
+    container_name: posla_${POSLA_CELL_ID}_php
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./cells/${POSLA_CELL_ID}/app.env
+    ports:
+      - "${POSLA_CELL_HTTP_PORT:-8081}:80"
+    volumes:
+      - ./cells/${POSLA_CELL_ID}/uploads:/var/www/html/uploads
+
+volumes:
+  cell_db_data:
+    name: posla_${POSLA_CELL_ID}_db_data

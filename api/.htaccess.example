@@ -1,27 +1,53 @@
-# api/.htaccess — DB 認証情報を Apache 環境変数で供給する
+# api/.htaccess — legacy non-container hosting 用テンプレート
 #
 # 本ファイルは **テンプレート**。実際の `api/.htaccess` は `.gitignore` で除外されており
 # repo に含めない。以下の手順でローカルまたは本番に配置する。
 #
 # ------------------------------------------------------------------
-# 新規 dev セットアップ:
-#   cp api/.htaccess.example api/.htaccess
-#   # 各 SetEnv 行を自分の環境値に書き換える
+# Docker / cell:
+#   POSLA_* runtime 設定は compose env_file で渡す。
+#   api/.htaccess に POSLA_DB_* や URL 値を置かない。
+#   Apache SetEnv は HTTP request 時に container env を上書きするため、
+#   cell ごとの DB / URL 分離を壊す。
 # ------------------------------------------------------------------
-# 本番デプロイ (Sakura):
-#   1. server 上の api/.htaccess に本番 credentials を設定（ssh から直接 edit 推奨）
-#   2. credentials は **このテンプレートには絶対に書かない**（repo に混入する）
-#   3. credentials の rotation / KMS 移行は別スライスで実施
+# Legacy non-container hosting:
+#   1. server 上の deployment-local api/.htaccess で必要な SetEnv を有効化する
+#   2. credentials は **このテンプレートには絶対に書かない**
+#   3. cron / CLI には同じ値を process env で渡す
 # ------------------------------------------------------------------
-#
-# 現行フォールバック: `api/config/database.php` の $envOr で環境変数が未設定時の
-# 既定値を返す（runtime 互換性のため）。env var が設定済みの環境ではフォールバック
-# は使われない。
 
-SetEnv POSLA_DB_HOST  __REPLACE_WITH_HOST__
-SetEnv POSLA_DB_NAME  __REPLACE_WITH_DBNAME__
-SetEnv POSLA_DB_USER  __REPLACE_WITH_USER__
-SetEnv POSLA_DB_PASS  __REPLACE_WITH_PASSWORD__
+# POSLA_DB_HOST: 接続先 MySQL ホスト名または IP
+# SetEnv POSLA_DB_HOST  <production-db-host>
+# POSLA_DB_NAME: 接続先データベース名
+# SetEnv POSLA_DB_NAME  __REPLACE_WITH_DBNAME__
+# POSLA_DB_USER: 接続に使う MySQL ユーザー名
+# SetEnv POSLA_DB_USER  __REPLACE_WITH_USER__
+# POSLA_DB_PASS: 接続に使う MySQL パスワード
+# SetEnv POSLA_DB_PASS  __REPLACE_WITH_PASSWORD__
+
+# POSLA_APP_BASE_URL: アプリの正規ベースURL
+# SetEnv POSLA_APP_BASE_URL  https://<production-domain>
+# POSLA_FROM_EMAIL: システム送信メールの From アドレス
+# SetEnv POSLA_FROM_EMAIL  noreply@<production-domain>
+# POSLA_SUPPORT_EMAIL: 利用者向けに表示する問い合わせ先メールアドレス
+# SetEnv POSLA_SUPPORT_EMAIL  info@<production-domain>
+
+# POSLA_ALLOWED_ORIGINS: API が許可する Origin 一覧（カンマ区切り可）
+# SetEnv POSLA_ALLOWED_ORIGINS  https://<production-domain>
+# POSLA_ALLOWED_HOSTS: CSRF 検証で許可する host 一覧（カンマ区切り可）
+# SetEnv POSLA_ALLOWED_HOSTS  <production-domain>
+
+# POSLA_CRON_SECRET: cron/外形監視の HTTP 実行時に送る共有シークレット
+# SetEnv POSLA_CRON_SECRET  __REPLACE_WITH_CRON_SECRET__
+
+# cron / CLI では .htaccess の SetEnv は見えない。
+# 予約通知や監視メールで同じ URL / 送信元を使う場合は process env 側にも同値を設定する:
+#   POSLA_APP_BASE_URL=https://<production-domain>
+#   POSLA_FROM_EMAIL=noreply@<production-domain>
+#   POSLA_SUPPORT_EMAIL=info@<production-domain>
+#   POSLA_ALLOWED_ORIGINS=https://<production-domain>
+#   POSLA_ALLOWED_HOSTS=<production-domain>
+#   POSLA_CRON_SECRET=__REPLACE_WITH_CRON_SECRET__
 
 # .htaccess / .htpasswd 等の dotfile への直接アクセス禁止
 <FilesMatch "^\.">

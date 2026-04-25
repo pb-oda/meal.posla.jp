@@ -15,7 +15,15 @@
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
-$result = ['ok' => true, 'time' => date('c'), 'db' => 'unknown', 'last_heartbeat' => null, 'cron_lag_sec' => null];
+require_once __DIR__ . '/../config/app.php';
+
+$result = array_merge([
+    'ok' => true,
+    'time' => date('c'),
+    'db' => 'unknown',
+    'last_heartbeat' => null,
+    'cron_lag_sec' => null,
+], app_deployment_metadata());
 
 try {
     require_once __DIR__ . '/../lib/db.php';

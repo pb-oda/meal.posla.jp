@@ -25,8 +25,10 @@ id_ecdsa
 *.pem
 sshkey.txt
 
-# DB 認証情報（環境変数で渡す）
+# DB 接続は環境変数で渡す。database.php 自体は env 参照コードなので
+# cell artifact には含める。
 api/config/database.php
+!api/config/database.php
 
 # Sakura 本番からのバックアップ群（巨大）
 _backup_*/
