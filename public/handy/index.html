@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#1a237e">
   <title>ハンディPOS</title>
-  <link rel="stylesheet" href="css/handy.css">
+  <link rel="stylesheet" href="css/handy.css?v=20260423-connect-handy3">
   <!-- PWA -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -84,7 +84,35 @@
       <button id="rsv-today" style="padding:4px 10px;border:1px solid #ccc;background:#fff;border-radius:4px;">今日</button>
       <span id="rsv-summary" style="margin-left:auto;font-size:0.85rem;color:#666;"></span>
     </div>
+    <div class="handy-rsv-toolbar">
+      <div class="handy-rsv-toolbar__copy">先に既存予約を確認し、時間と人数を入れると空席可否を即確認できます</div>
+    </div>
+    <div class="handy-rsv-check">
+      <div class="handy-rsv-check__row">
+        <input type="time" id="rsv-check-time" class="handy-rsv-create__input handy-rsv-create__input--time">
+        <input type="number" id="rsv-check-party" class="handy-rsv-create__input handy-rsv-create__input--party" min="1" max="20" step="1" value="2" placeholder="人数">
+        <button id="rsv-toggle-create" class="handy-rsv-toolbar__btn">電話予約を追加</button>
+      </div>
+      <div id="rsv-availability" class="handy-rsv-check__status">日付・時間・人数を指定すると空席状況を表示します</div>
+    </div>
     <div id="rsv-list" style="padding:12px;"></div>
+    <div id="rsv-create-panel" class="handy-rsv-create" style="display:none;">
+      <div class="handy-rsv-create__title">電話予約を追加</div>
+      <div class="handy-rsv-create__hint">日付は上のカレンダーに従います</div>
+      <div class="handy-rsv-create__row">
+        <input type="text" id="rsv-new-name" class="handy-rsv-create__input" placeholder="お客様名">
+        <input type="tel" id="rsv-new-phone" class="handy-rsv-create__input" placeholder="電話番号">
+      </div>
+      <div class="handy-rsv-create__row">
+        <input type="time" id="rsv-new-time" class="handy-rsv-create__input handy-rsv-create__input--time">
+        <input type="number" id="rsv-new-party" class="handy-rsv-create__input handy-rsv-create__input--party" min="1" max="20" step="1" value="2" placeholder="人数">
+        <select id="rsv-new-table" class="handy-rsv-create__input handy-rsv-create__input--table">
+          <option value="">テーブル未割当</option>
+        </select>
+      </div>
+      <textarea id="rsv-new-memo" class="handy-rsv-create__textarea" rows="2" maxlength="255" placeholder="メモ（任意）"></textarea>
+      <button id="rsv-create-btn" class="handy-rsv-create__btn">この日付で予約登録</button>
+    </div>
   </div>
 
   <!-- 注文履歴パネル -->
@@ -140,7 +168,7 @@
 
   <script src="../shared/js/utils.js?v=20260419-phaseB"></script>
   <script src="../shared/js/revision-gate.js?v=20260420-rev2"></script>
-  <script src="js/handy-app.js?v=20260422-start-plan"></script>
+  <script src="js/handy-app.js?v=20260423-connect-handy3"></script>
   <script>
   (function () {
     'use strict';

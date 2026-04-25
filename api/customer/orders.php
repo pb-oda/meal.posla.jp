@@ -28,6 +28,9 @@ $sessionToken = $data['session_token'] ?? null;
 $subSessionId = $data['sub_session_id'] ?? null;
 $memo = isset($data['memo']) ? mb_substr(trim($data['memo']), 0, 200) : null;
 if ($memo === '') $memo = null;
+// SELF-P1-4: 任意ゲスト名。表示整理専用、payment / split には使わない
+$guestAlias = isset($data['guest_alias']) ? mb_substr(trim((string)$data['guest_alias']), 0, 32) : null;
+if ($guestAlias === '') $guestAlias = null;
 
 if (!$storeId || !$tableId || empty($items)) {
     json_error('MISSING_FIELDS', 'store_id, table_id, items は必須です', 400);
@@ -95,7 +98,7 @@ try {
     }
 } catch (Exception $e) {
     // table_sessions 未作成時はスキップ
-    error_log('[P1-12][customer/orders.php:77] check_plan_session: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][customer/orders.php:77] check_plan_session: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // 店舗設定チェック
@@ -141,7 +144,7 @@ try {
     }
 } catch (PDOException $e) {
     // table_sessions 未作成時はスキップ
-    error_log('[P1-12][customer/orders.php:119] check_last_order_session: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][customer/orders.php:119] check_last_order_session: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // O-3: 店舗全体のラストオーダーチェック
@@ -160,7 +163,7 @@ try {
     }
 } catch (PDOException $e) {
     // カラム未存在時はスキップ（グレースフルデグラデーション）
-    error_log('[P1-12][customer/orders.php:137] check_last_order_store: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][customer/orders.php:137] check_last_order_store: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // 品切れ・改ざんチェックは validate_and_recompute_items() で実施済み (P0 #1+#2)
@@ -178,7 +181,25 @@ try {
         $hasSubSessionCol = true;
     } catch (PDOException $e) {}
 
-    if ($hasSubSessionCol) {
+    // SELF-P1-4: guest_alias カラム存在チェック (migration-self-p1-4-guest-alias.sql)
+    $hasGuestAliasCol = false;
+    try {
+        $pdo->query('SELECT guest_alias FROM orders LIMIT 0');
+        $hasGuestAliasCol = true;
+    } catch (PDOException $e) {}
+
+    if ($hasSubSessionCol && $hasGuestAliasCol) {
+        $stmt = $pdo->prepare(
+            'INSERT INTO orders (id, store_id, table_id, items, removed_items, total_amount, status, order_type, idempotency_key, session_token, sub_session_id, memo, guest_alias, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())'
+        );
+        $stmt->execute([
+            $orderId, $storeId, $tableId,
+            $itemsJson, $removedJson, $totalAmount,
+            'pending', 'dine_in',
+            $idempotencyKey, $sessionToken, $subSessionId, $memo ?: null, $guestAlias
+        ]);
+    } elseif ($hasSubSessionCol) {
         $stmt = $pdo->prepare(
             'INSERT INTO orders (id, store_id, table_id, items, removed_items, total_amount, status, order_type, idempotency_key, session_token, sub_session_id, memo, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())'
@@ -188,6 +209,17 @@ try {
             $itemsJson, $removedJson, $totalAmount,
             'pending', 'dine_in',
             $idempotencyKey, $sessionToken, $subSessionId, $memo ?: null
+        ]);
+    } elseif ($hasGuestAliasCol) {
+        $stmt = $pdo->prepare(
+            'INSERT INTO orders (id, store_id, table_id, items, removed_items, total_amount, status, order_type, idempotency_key, session_token, memo, guest_alias, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())'
+        );
+        $stmt->execute([
+            $orderId, $storeId, $tableId,
+            $itemsJson, $removedJson, $totalAmount,
+            'pending', 'dine_in',
+            $idempotencyKey, $sessionToken, $memo ?: null, $guestAlias
         ]);
     } else {
         $stmt = $pdo->prepare(

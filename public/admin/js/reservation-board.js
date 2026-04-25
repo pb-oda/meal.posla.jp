@@ -49,7 +49,7 @@
     return src || '';
   }
   function statusJa(st) {
-    return ({ confirmed: '確定', pending: '決済待ち', seated: '着席中', no_show: 'no-show', cancelled: 'キャンセル', completed: '完了' })[st] || st;
+    return ({ confirmed: '確定', pending: '決済待ち', seated: '着席中', no_show: 'no-show', cancelled: 'キャンセル', completed: '完了', waitlisted: '受付待ち' })[st] || st;
   }
 
   function apiGet(path, cb) {
@@ -123,7 +123,8 @@
   // ---------- Gantt ----------
   function loadGantt() {
     var body = document.getElementById('rb-tab-body');
-    body.innerHTML = '<div class="rb-stickyhead">' + renderTopBar() + '<div id="rb-kpi-area"></div><div id="rb-attention-area"></div></div><div class="rb-gantt-wrap"><div id="rb-gantt-area"><div class="rb-loading">読み込み中…</div></div></div>';
+    // RSV-P1-2: waitlist パネルは sticky head の直下、ガント wrap の上に配置
+    body.innerHTML = '<div class="rb-stickyhead">' + renderTopBar() + '<div id="rb-kpi-area"></div><div id="rb-attention-area"></div><div id="rb-waitlist-area"></div></div><div class="rb-gantt-wrap"><div id="rb-gantt-area"><div class="rb-loading">読み込み中…</div></div></div>';
     bindTopBar();
     apiGet('/reservations.php?store_id=' + encodeURIComponent(_storeId) + '&date=' + _state.date, function (err, data) {
       if (err) {
@@ -151,6 +152,8 @@
     html += '<button class="rb-density__btn' + (dens === 'loose' ? ' rb-density__btn--active' : '') + '" data-density="loose" type="button">ゆったり</button>';
     html += '</div>';
     html += '<div class="rb-topbar__actions">';
+    // RSV-P1-2: 受付待ち客の追加ボタン (ガントには乗せず waitlist パネルへ)
+    html += '<button class="rb-btn" id="rb-add-waitlist" type="button">+ 受付待ち</button>';
     html += '<button class="rb-btn" id="rb-add-walkin" type="button">+ Walk-in</button>';
     html += '<button class="rb-btn rb-btn--primary" id="rb-add-rsv" type="button">+ 新規予約</button>';
     html += '</div>';
@@ -163,8 +166,10 @@
     document.getElementById('rb-next-day').addEventListener('click', function () { var d = new Date(_state.date); d.setDate(d.getDate() + 1); _state.date = ymd(d); loadGantt(); });
     document.getElementById('rb-today').addEventListener('click', function () { _state.date = ymd(new Date()); loadGantt(); });
     document.getElementById('rb-date').addEventListener('change', function (e) { _state.date = e.target.value; loadGantt(); });
-    document.getElementById('rb-add-walkin').addEventListener('click', function () { openCreateModal(true); });
-    document.getElementById('rb-add-rsv').addEventListener('click', function () { openCreateModal(false); });
+    document.getElementById('rb-add-walkin').addEventListener('click', function () { openCreateModal('walkin'); });
+    document.getElementById('rb-add-rsv').addEventListener('click', function () { openCreateModal('reservation'); });
+    // RSV-P1-2: 受付待ち追加
+    document.getElementById('rb-add-waitlist').addEventListener('click', function () { openCreateModal('waitlist'); });
 
     var dBtns = document.querySelectorAll('.rb-density__btn');
     for (var i = 0; i < dBtns.length; i++) {
@@ -185,12 +190,14 @@
 
   /* KPI + attention の計算 (既存データから導出) */
   function computeAttention(reservations) {
-    var att = { unassigned: [], pending_overdue: [] };
+    // RSV-P1-1: customer_attention に VIP / blacklist / allergy / memo 持ち予約を集約
+    var att = { unassigned: [], pending_overdue: [], customer_attention: [] };
     if (!reservations) return att;
     var now = Date.now();
     for (var i = 0; i < reservations.length; i++) {
       var r = reservations[i];
-      if (r.status === 'cancelled' || r.status === 'no_show' || r.status === 'completed') continue;
+      // RSV-P1-2: waitlisted は waitlist パネル側で扱うため attention から除外
+      if (r.status === 'cancelled' || r.status === 'no_show' || r.status === 'completed' || r.status === 'waitlisted') continue;
       var tids = r.assigned_table_ids || [];
       if (!tids.length && (r.status === 'confirmed' || r.status === 'pending' || r.status === 'seated')) {
         att.unassigned.push(r);
@@ -200,8 +207,41 @@
         // 予約時刻まで 1 時間以内 or 過去なのに pending のまま
         if (rsvTs - now < 3600 * 1000) att.pending_overdue.push(r);
       }
+      // RSV-P1-1: 今日の注目客 (VIP / blacklist / allergy / memo のいずれか)
+      if (_hasCustomerAttention(r)) {
+        att.customer_attention.push(r);
+      }
     }
     return att;
+  }
+
+  // RSV-P1-1: 予約に注目客フラグがあるか (VIP / blacklist / allergy / memo)
+  function _hasCustomerAttention(r) {
+    if (!r) return false;
+    if (parseInt(r.customer_is_vip, 10) === 1) return true;
+    if (parseInt(r.customer_is_blacklisted, 10) === 1) return true;
+    if (r.customer_allergies && String(r.customer_allergies).trim() !== '') return true;
+    if (r.customer_internal_memo && String(r.customer_internal_memo).trim() !== '') return true;
+    return false;
+  }
+
+  // RSV-P1-1: 小バッジ HTML (ガント card / waitlist 用)
+  function _customerBadgesHtml(r) {
+    if (!r) return '';
+    var html = '';
+    if (parseInt(r.customer_is_blacklisted, 10) === 1) {
+      html += '<span title="ブラックリスト" style="display:inline-block;padding:0 3px;border-radius:3px;background:#c62828;color:#fff;font-size:0.65rem;font-weight:700;margin-left:3px">\u26A0</span>';
+    }
+    if (parseInt(r.customer_is_vip, 10) === 1) {
+      html += '<span title="VIP" style="display:inline-block;padding:0 3px;border-radius:3px;background:#ffb300;color:#fff;font-size:0.65rem;font-weight:700;margin-left:3px">\u2605</span>';
+    }
+    if (r.customer_allergies && String(r.customer_allergies).trim() !== '') {
+      html += '<span title="アレルギー" style="display:inline-block;padding:0 3px;border-radius:3px;background:#ff7043;color:#fff;font-size:0.65rem;font-weight:700;margin-left:3px">ALG</span>';
+    }
+    if (r.customer_internal_memo && String(r.customer_internal_memo).trim() !== '') {
+      html += '<span title="スタッフメモあり" style="display:inline-block;padding:0 3px;border-radius:3px;background:#1976d2;color:#fff;font-size:0.65rem;font-weight:700;margin-left:3px">MEMO</span>';
+    }
+    return html;
   }
 
   function renderKpi(sum, attention) {
@@ -251,12 +291,71 @@
     html += '<div class="rb-kpi__sub">本日分</div>';
     html += '</div>';
 
+    // RSV-P1-1: 今日の注目客 KPI (VIP + blacklist + allergy + memo)
+    var attTotal = sum.attention_total || 0;
+    var vipN = sum.vip || 0;
+    var blN  = sum.blacklist || 0;
+    var algN = sum.allergy || 0;
+    var memN = sum.memo || 0;
+    var custAttCls = (blN > 0) ? ' rb-kpi__card--critical' : (attTotal > 0 ? ' rb-kpi__card--attention' : '');
+    html += '<div class="rb-kpi__card' + custAttCls + '">';
+    html += '<div class="rb-kpi__label">';
+    if (attTotal > 0) html += '<span class="rb-kpi__dot"></span>';
+    html += '今日の注目客</div>';
+    html += '<div class="rb-kpi__value">' + attTotal + '<span class="rb-kpi__value-unit">組</span></div>';
+    html += '<div class="rb-kpi__sub">VIP ' + vipN + ' / BL ' + blN + ' / ALG ' + algN + ' / MEMO ' + memN + '</div>';
+    html += '</div>';
+
+    // RSV-P1-2: 受付待ち客 KPI
+    var waitlisted = sum.waitlisted || 0;
+    html += '<div class="rb-kpi__card' + (waitlisted > 0 ? ' rb-kpi__card--attention' : '') + '">';
+    html += '<div class="rb-kpi__label">受付待ち</div>';
+    html += '<div class="rb-kpi__value">' + waitlisted + '<span class="rb-kpi__value-unit">組</span></div>';
+    html += '<div class="rb-kpi__sub">' + (waitlisted > 0 ? '下の一覧で処理' : '0 組') + '</div>';
+    html += '</div>';
+
     html += '</div>';
     return html;
   }
 
+  // RSV-P1-2: 受付待ち客パネル (ガントとは別レーン)
+  function renderWaitlistPanel(reservations) {
+    var items = [];
+    for (var i = 0; i < reservations.length; i++) {
+      if (reservations[i].status === 'waitlisted') items.push(reservations[i]);
+    }
+    if (!items.length) return '';
+    // created_at 昇順 (古い順 = 待ち時間が長い順)
+    items.sort(function (a, b) {
+      var ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+      var tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return ta - tb;
+    });
+    var now = Date.now();
+    var html = '<div class="rb-waitlist" role="region" aria-label="受付待ち客">';
+    html += '<div class="rb-waitlist__head">🕒 受付待ち客 (' + items.length + ' 組)</div>';
+    html += '<ul class="rb-waitlist__list">';
+    for (var j = 0; j < items.length; j++) {
+      var w = items[j];
+      var createdTs = w.created_at ? new Date(w.created_at).getTime() : now;
+      var waitMin = Math.max(0, Math.round((now - createdTs) / 60000));
+      var waitLabel = waitMin >= 60 ? (Math.floor(waitMin / 60) + '時間' + (waitMin % 60) + '分') : (waitMin + '分');
+      // RSV-P1-1: waitlist 行にも顧客要約バッジを表示
+      html += '<li><button type="button" class="rb-waitlist__item" data-rsv-id="' + escapeHtml(w.id) + '">'
+        + '<span class="rb-waitlist__name">' + escapeHtml(w.customer_name) + _customerBadgesHtml(w) + '</span>'
+        + '<span class="rb-waitlist__party">' + w.party_size + '名</span>'
+        + '<span class="rb-waitlist__src">' + escapeHtml(sourceLabel(w.source)) + '</span>'
+        + '<span class="rb-waitlist__wait">待ち ' + waitLabel + '</span>'
+        + '</button></li>';
+    }
+    html += '</ul></div>';
+    return html;
+  }
+
   function renderAttentionPanel(attention) {
-    var total = attention.unassigned.length + attention.pending_overdue.length;
+    // RSV-P1-1: 注目客 (VIP/BL/allergy/memo) も attention panel に並べる
+    var custAtt = (attention && attention.customer_attention) || [];
+    var total = attention.unassigned.length + attention.pending_overdue.length + custAtt.length;
     if (total === 0) return '';
 
     var html = '<div class="rb-attention" role="alert">';
@@ -272,6 +371,20 @@
     for (var j = 0; j < attention.pending_overdue.length; j++) {
       var p = attention.pending_overdue[j];
       html += '<li><button type="button" class="rb-attention__item" data-rsv-id="' + escapeHtml(p.id) + '">⏰ 決済待ち: ' + escapeHtml(p.customer_name) + ' / ' + fmtTime(p.reserved_at) + '</button></li>';
+    }
+    // RSV-P1-1: 今日の注目客を attention panel に追加 (朝礼 / プリシフト用)
+    for (var k = 0; k < custAtt.length; k++) {
+      var c = custAtt[k];
+      var icon = '👤';
+      if (parseInt(c.customer_is_blacklisted, 10) === 1) icon = '⚠️';
+      else if (parseInt(c.customer_is_vip, 10) === 1) icon = '⭐';
+      else if (c.customer_allergies && String(c.customer_allergies).trim() !== '') icon = '🥜';
+      else if (c.customer_internal_memo && String(c.customer_internal_memo).trim() !== '') icon = '📝';
+      html += '<li><button type="button" class="rb-attention__item" data-rsv-id="' + escapeHtml(c.id) + '">'
+        + icon + ' 注目客: ' + escapeHtml(c.customer_name)
+        + ' / ' + fmtTime(c.reserved_at) + ' ' + c.party_size + '名'
+        + _customerBadgesHtml(c)
+        + '</button></li>';
     }
 
     html += '</ul></div></div>';
@@ -290,6 +403,16 @@
     var attBtns = document.querySelectorAll('.rb-attention__item');
     for (var ai = 0; ai < attBtns.length; ai++) {
       attBtns[ai].addEventListener('click', function (e) { openDetailModal(e.currentTarget.getAttribute('data-rsv-id')); });
+    }
+
+    // RSV-P1-2: waitlist パネル (ガントから独立)
+    var waitlistArea = document.getElementById('rb-waitlist-area');
+    if (waitlistArea) {
+      waitlistArea.innerHTML = renderWaitlistPanel(d.reservations || []);
+      var wBtns = waitlistArea.querySelectorAll('[data-rsv-id]');
+      for (var wi = 0; wi < wBtns.length; wi++) {
+        wBtns[wi].addEventListener('click', function (e) { openDetailModal(e.currentTarget.getAttribute('data-rsv-id')); });
+      }
     }
 
     // Gantt
@@ -342,7 +465,8 @@
       // Reservations on this table
       for (var r = 0; r < d.reservations.length; r++) {
         var rsv = d.reservations[r];
-        if (rsv.status === 'cancelled' || rsv.status === 'no_show') continue;
+        // RSV-P1-2: waitlisted はガント時間軸には載せず waitlist パネルで扱う
+        if (rsv.status === 'cancelled' || rsv.status === 'no_show' || rsv.status === 'waitlisted') continue;
         var tids = rsv.assigned_table_ids || [];
         if (tids.indexOf(tbl.id) === -1) continue;
         var rsvDate = new Date(rsv.reserved_at);
@@ -352,7 +476,8 @@
         if (width < 40) width = 40;
         var narrow = width < 120;
         var cls = 'rb-rsv rb-rsv--' + rsv.status + (narrow ? ' rb-rsv--narrow' : '');
-        if (rsv.tags && String(rsv.tags).indexOf('VIP') !== -1) cls += ' rb-rsv--vip';
+        // RSV-P1-1: VIP は reservation.tags と reservation_customers.is_vip の OR で判定
+        if ((rsv.tags && String(rsv.tags).indexOf('VIP') !== -1) || parseInt(rsv.customer_is_vip, 10) === 1) cls += ' rb-rsv--vip';
 
         var connLabel = '';
         if (tids.length > 1) {
@@ -368,11 +493,13 @@
 
         var memoBadge = rsv.memo ? ' 📝' : '';
 
+        // RSV-P1-1: 顧客要約バッジ (VIP / blacklist / allergy / memo)
+        var custBadges = _customerBadgesHtml(rsv);
         var inner = '<div class="rb-rsv__head">'
           + '<span class="rb-rsv__time">' + fmtTime(rsv.reserved_at) + '</span>'
           + '<span class="rb-rsv__party">' + rsv.party_size + '名</span>'
           + '</div>'
-          + '<div class="rb-rsv__name">' + escapeHtml(rsv.customer_name) + '</div>';
+          + '<div class="rb-rsv__name">' + escapeHtml(rsv.customer_name) + custBadges + '</div>';
         if (!narrow) {
           var srcLabel = sourceLabel(rsv.source);
           inner += '<div class="rb-rsv__meta">' + escapeHtml(srcLabel) + connLabel + memoBadge + '</div>';
@@ -426,6 +553,9 @@
       if (r.tags) html += '<div class="rb-modal__row"><span>タグ</span><span>' + escapeHtml(r.tags) + '</span></div>';
       if (r.deposit_required) html += '<div class="rb-modal__row"><span>予約金</span><span>¥' + r.deposit_amount.toLocaleString() + ' / ' + escapeHtml(r.deposit_status) + '</span></div>';
 
+      // RSV-P1-1: 顧客要約セクション (reservation_customers と紐付く場合のみ)
+      html += _renderCustomerSummary(r);
+
       html += '<div class="rb-modal__actions">';
       if (r.status === 'confirmed' || r.status === 'pending') {
         html += '<button class="rb-btn-seat" data-action="seat" type="button">🪑 着席</button>';
@@ -434,8 +564,14 @@
         html += '<button class="rb-btn-cancel" data-action="cancel" type="button">キャンセル</button>';
         if (r.customer_email) html += '<button class="rb-btn-resend" data-action="resend" type="button">📧 再送</button>';
       }
+      // RSV-P1-2: 受付待ちから着席 / 変更 / キャンセル
+      if (r.status === 'waitlisted') {
+        html += '<button class="rb-btn-seat" data-action="seat_waitlist" type="button">🪑 着席 (テーブル指定)</button>';
+        html += '<button class="rb-btn-edit" data-action="edit" type="button">✏️ 変更</button>';
+        html += '<button class="rb-btn-cancel" data-action="cancel" type="button">キャンセル</button>';
+      }
       if (r.status === 'seated' && r.table_session_id) {
-        var sessionUrl = '/public/customer/menu.html?store_id=' + encodeURIComponent(_storeId) + '&table_id=' + encodeURIComponent((r.assigned_table_ids || [])[0] || '');
+        var sessionUrl = '/customer/menu.html?store_id=' + encodeURIComponent(_storeId) + '&table_id=' + encodeURIComponent((r.assigned_table_ids || [])[0] || '');
         html += '<a class="rb-btn-edit" target="_blank" href="' + escapeHtml(sessionUrl) + '">📲 セッション</a>';
       }
       html += '</div>';
@@ -449,9 +585,83 @@
       for (var i = 0; i < actBtns.length; i++) {
         actBtns[i].addEventListener('click', function (e) { handleAction(e.currentTarget.getAttribute('data-action'), r); });
       }
+      // RSV-P1-1 + hotfix: 顧客台帳で編集 → openCustomerModal に遷移。
+      // 保存後は customer タブの DOM ではなく board を再読込する
+      // (customer タブの rb-cust-q / rb-cust-list が未 render の状態で fetchCustomers が走るのを防ぐ)
+      var custEditBtn = modal.querySelector('[data-rb-open-customer]');
+      if (custEditBtn) {
+        custEditBtn.addEventListener('click', function (e) {
+          var cid = e.currentTarget.getAttribute('data-rb-open-customer');
+          if (cid) {
+            closeModal();
+            openCustomerModal(cid, { onSaved: function () { loadGantt(); } });
+          }
+        });
+      }
       // ESC で閉じる
       _installEscClose();
     });
+  }
+
+  // RSV-P1-1: 顧客要約 HTML 生成 (予約詳細モーダル内のセクション)
+  // blacklist は最上位で強警告、VIP / allergy / memo は色分けして表示、
+  // preferences / customer_tags は末尾に補助情報として出す。
+  // 編集導線は「顧客台帳で編集 →」ボタンで既存 openCustomerModal に遷移。
+  function _renderCustomerSummary(r) {
+    if (!r || !r.customer_id) return '';
+    var isVip       = parseInt(r.customer_is_vip, 10) === 1;
+    var isBlack     = parseInt(r.customer_is_blacklisted, 10) === 1;
+    var allergies   = r.customer_allergies && String(r.customer_allergies).trim() !== '' ? String(r.customer_allergies).trim() : '';
+    var memoText    = r.customer_internal_memo && String(r.customer_internal_memo).trim() !== '' ? String(r.customer_internal_memo).trim() : '';
+    var prefs       = r.customer_preferences && String(r.customer_preferences).trim() !== '' ? String(r.customer_preferences).trim() : '';
+    var custTagsStr = r.customer_tags && String(r.customer_tags).trim() !== '' ? String(r.customer_tags).trim() : '';
+    var visitCount  = (r.customer_visit_count !== null && r.customer_visit_count !== undefined) ? parseInt(r.customer_visit_count, 10) : null;
+
+    // 何も無ければセクション自体を出さない (customer_id あっても空プロフィールの場合)
+    if (!isVip && !isBlack && !allergies && !memoText && !prefs && !custTagsStr && !visitCount) return '';
+
+    var html = '<div class="rb-customer-summary" style="margin:12px 0;padding:10px 12px;border:1px solid #dde6ef;border-radius:8px;background:#f7fafd;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">';
+    html += '<span style="font-size:0.85rem;font-weight:700;color:#37474f;">顧客要約</span>';
+    html += '<button type="button" class="rb-btn-edit" data-rb-open-customer="' + escapeHtml(r.customer_id) + '" style="font-size:0.75rem;padding:2px 8px">顧客台帳で編集 →</button>';
+    html += '</div>';
+
+    // blacklist は最上位で赤警告
+    if (isBlack) {
+      var reason = r.customer_blacklist_reason ? ' — ' + escapeHtml(String(r.customer_blacklist_reason)) : '';
+      html += '<div style="padding:6px 8px;margin-bottom:6px;background:#ffebee;border-left:4px solid #c62828;border-radius:4px;color:#c62828;font-weight:700;font-size:0.85rem;">⚠️ ブラックリスト指定' + reason + '</div>';
+    }
+
+    // VIP + 来店回数
+    var headBits = [];
+    if (isVip) headBits.push('<span style="display:inline-block;padding:1px 8px;border-radius:10px;background:#ffb300;color:#fff;font-size:0.72rem;font-weight:700">⭐ VIP</span>');
+    if (visitCount !== null && !isNaN(visitCount)) headBits.push('<span style="font-size:0.8rem;color:#455a64">来店 ' + visitCount + ' 回</span>');
+    if (headBits.length > 0) {
+      html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">' + headBits.join('') + '</div>';
+    }
+
+    // allergies は橙色 callout
+    if (allergies) {
+      html += '<div style="padding:6px 8px;margin-bottom:6px;background:#fff3e0;border-left:3px solid #ff7043;border-radius:4px;color:#bf360c;font-size:0.8rem;">🥜 アレルギー: ' + escapeHtml(allergies) + '</div>';
+    }
+
+    // internal_memo は黄色 box + ラベル明示
+    if (memoText) {
+      html += '<div style="padding:6px 8px;margin-bottom:6px;background:#fffde7;border-left:3px solid #fbc02d;border-radius:4px;color:#6d4c00;font-size:0.8rem;">📝 スタッフメモ: ' + escapeHtml(memoText) + '</div>';
+    }
+
+    // preferences (補助)
+    if (prefs) {
+      html += '<div style="font-size:0.8rem;color:#455a64;margin-bottom:4px;">好み: ' + escapeHtml(prefs) + '</div>';
+    }
+
+    // customer tags (補助、表示専用)
+    if (custTagsStr) {
+      html += '<div style="font-size:0.78rem;color:#546e7a;">タグ: ' + escapeHtml(custTagsStr) + '</div>';
+    }
+
+    html += '</div>';
+    return html;
   }
 
   function _installEscClose() {
@@ -533,6 +743,60 @@
     _installEscClose();
   }
 
+  // RSV-P1-2: 受付待ち → 着席用のテーブル選択モーダル
+  function openWaitlistSeatModal(r) {
+    var html = '<div class="rb-modal" id="rb-modal"><div class="rb-modal__content">';
+    html += '<button class="rb-modal__close" data-close type="button">×</button>';
+    html += '<h3>🪑 ' + escapeHtml(r.customer_name) + ' 様を着席</h3>';
+    html += '<p class="rb-empty rb-empty--inline" style="margin:0 0 8px;font-size:0.85rem;color:#555;">' + r.party_size + '名 / 受付待ち中</p>';
+    html += '<div class="rb-modal__form-group"><label>テーブル *</label><div class="rb-table-list" id="rb-ws-tables"></div></div>';
+    html += '<div class="rb-modal__form-group"><label>滞在分</label><input type="number" id="rb-ws-dur" value="90" min="15" step="15"></div>';
+    html += '<div class="rb-modal__actions"><button class="rb-btn-cancel" data-close type="button">戻る</button><button class="rb-btn-edit" id="rb-ws-save" type="button">着席する</button></div>';
+    html += '</div></div>';
+    document.getElementById('rb-modal-host').innerHTML = html;
+
+    if (_state.data && _state.data.tables) {
+      var tlist = document.getElementById('rb-ws-tables');
+      var th = '';
+      for (var i = 0; i < _state.data.tables.length; i++) {
+        var t = _state.data.tables[i];
+        th += '<label><input type="checkbox" value="' + escapeHtml(t.id) + '"> ' + escapeHtml(t.label) + ' (' + t.capacity + ')</label>';
+      }
+      tlist.innerHTML = th;
+    }
+
+    var modal = document.getElementById('rb-modal');
+    var closeBtns = modal.querySelectorAll('[data-close]');
+    for (var c = 0; c < closeBtns.length; c++) closeBtns[c].addEventListener('click', closeModal);
+
+    document.getElementById('rb-ws-save').addEventListener('click', function () {
+      var tblChecks = document.querySelectorAll('#rb-ws-tables input[type="checkbox"]:checked');
+      var tids = [];
+      for (var ci = 0; ci < tblChecks.length; ci++) tids.push(tblChecks[ci].value);
+      if (!tids.length) { alert('テーブルを選択してください'); return; }
+      var dur = parseInt(document.getElementById('rb-ws-dur').value, 10) || 90;
+      var saveBtn = this;
+      saveBtn.disabled = true; saveBtn.textContent = '…';
+      // 現在時刻を reserved_at に寄せ直す (waitlisted 作成時の登録時刻と着席時刻がずれるため)
+      var nowD = new Date();
+      var nowIso = ymd(nowD) + 'T' + pad2(nowD.getHours()) + ':' + pad2(nowD.getMinutes()) + ':00';
+      apiSend('PATCH', '/reservations.php', {
+        id: r.id, store_id: _storeId,
+        status: 'seated',
+        assigned_table_ids: tids,
+        duration_min: dur,
+        reserved_at: nowIso
+      }, function (err, data) {
+        if (err) { alert(err.message); saveBtn.disabled = false; saveBtn.textContent = '着席する'; return; }
+        // reservation-seat.php は confirmed からの着席を想定しているため、ここでは使わず
+        // 既に PATCH で status='seated' 済。その後 board を再描画
+        closeModal();
+        loadGantt();
+      });
+    });
+    _installEscClose();
+  }
+
   function handleAction(action, r) {
     if (action === 'seat') {
       if (!r.assigned_table_ids || !r.assigned_table_ids.length) {
@@ -544,6 +808,9 @@
         showSeatQrModal(r, data);
         loadGantt();
       });
+    } else if (action === 'seat_waitlist') {
+      // RSV-P1-2: 受付待ち → 着席。テーブル選択後 PATCH で status='seated' + assigned_table_ids
+      openWaitlistSeatModal(r);
     } else if (action === 'noshow') {
       if (!confirm('no-show として記録しますか?')) return;
       apiSend('POST', '/reservation-no-show.php', { reservation_id: r.id, store_id: _storeId }, function (err, data) {
@@ -632,29 +899,58 @@
     _installEscClose();
   }
 
-  function openCreateModal(walkin) {
+  // RSV-P1-2: mode は 'reservation' | 'walkin' | 'waitlist' の 3 モード。
+  // 後方互換: 真偽値渡し (true=walkin, false=reservation) も許容
+  function openCreateModal(mode) {
+    var modeStr;
+    if (mode === true) modeStr = 'walkin';
+    else if (mode === false || mode === undefined || mode === null) modeStr = 'reservation';
+    else modeStr = String(mode);
+    if (modeStr !== 'walkin' && modeStr !== 'waitlist' && modeStr !== 'reservation') modeStr = 'reservation';
+
     var nowD = new Date();
     var dateVal = ymd(nowD);
     var timeVal = pad2(nowD.getHours()) + ':' + pad2(nowD.getMinutes());
+    var titleText;
+    if (modeStr === 'walkin') titleText = '+ Walk-in 追加';
+    else if (modeStr === 'waitlist') titleText = '+ 受付待ち 追加';
+    else titleText = '+ 新規予約';
+
     var html = '<div class="rb-modal" id="rb-modal"><div class="rb-modal__content">';
     html += '<button class="rb-modal__close" data-close type="button">×</button>';
-    html += '<h3>' + (walkin ? '+ Walk-in 追加' : '+ 新規予約') + '</h3>';
+    html += '<h3>' + titleText + '</h3>';
+    if (modeStr === 'waitlist') {
+      html += '<p class="rb-empty rb-empty--inline" style="margin:0 0 8px;font-size:0.8rem;color:#666;">受付待ち客として登録します。席が空いたら「着席」で本席へ移してください。</p>';
+    }
     html += '<div class="rb-modal__form-group"><label>名前 *</label><input type="text" id="rb-c-name"></div>';
     html += '<div class="rb-modal__form-group"><label>電話</label><input type="tel" id="rb-c-phone"></div>';
     html += '<div class="rb-modal__form-group"><label>メール</label><input type="email" id="rb-c-email"></div>';
-    html += '<div class="rb-modal__form-group"><label>日付 *</label><input type="date" id="rb-c-date" value="' + dateVal + '"></div>';
-    html += '<div class="rb-modal__form-group"><label>時刻 *</label><input type="time" id="rb-c-time" value="' + timeVal + '" step="900"></div>';
+    // 受付待ちは時間軸に載せないが、レコードは reserved_at を要求するため現在時刻を使う
+    if (modeStr === 'waitlist') {
+      html += '<input type="hidden" id="rb-c-date" value="' + dateVal + '">';
+      html += '<input type="hidden" id="rb-c-time" value="' + timeVal + '">';
+    } else {
+      html += '<div class="rb-modal__form-group"><label>日付 *</label><input type="date" id="rb-c-date" value="' + dateVal + '"></div>';
+      html += '<div class="rb-modal__form-group"><label>時刻 *</label><input type="time" id="rb-c-time" value="' + timeVal + '" step="900"></div>';
+    }
     html += '<div class="rb-modal__form-group"><label>人数 *</label><input type="number" id="rb-c-party" value="2" min="1" max="50"></div>';
-    html += '<div class="rb-modal__form-group"><label>滞在分</label><input type="number" id="rb-c-dur" value="90" min="15" step="15"></div>';
-    html += '<div class="rb-modal__form-group"><label>テーブル割当</label><div class="rb-table-list" id="rb-c-tables"></div></div>';
+    if (modeStr !== 'waitlist') {
+      html += '<div class="rb-modal__form-group"><label>滞在分</label><input type="number" id="rb-c-dur" value="90" min="15" step="15"></div>';
+      html += '<div class="rb-modal__form-group"><label>テーブル割当</label><div class="rb-table-list" id="rb-c-tables"></div></div>';
+    } else {
+      // waitlist 時は滞在分/テーブルは後で着席時に入力
+      html += '<input type="hidden" id="rb-c-dur" value="90">';
+    }
     html += '<div class="rb-modal__form-group"><label>メモ</label><textarea id="rb-c-memo" rows="2"></textarea></div>';
     html += '<div class="rb-modal__form-group"><label>タグ</label><input type="text" id="rb-c-tags" placeholder="VIP, 誕生日 等"></div>';
-    html += '<div class="rb-modal__form-group"><label><input type="checkbox" id="rb-c-skip-deposit" checked> 予約金徴収をスキップ (店内手動入力)</label></div>';
+    if (modeStr !== 'waitlist') {
+      html += '<div class="rb-modal__form-group"><label><input type="checkbox" id="rb-c-skip-deposit" checked> 予約金徴収をスキップ (店内手動入力)</label></div>';
+    }
     html += '<div class="rb-modal__actions"><button class="rb-btn-cancel" data-close type="button">戻る</button><button class="rb-btn-edit" id="rb-c-save" type="button">作成</button></div>';
     html += '</div></div>';
     document.getElementById('rb-modal-host').innerHTML = html;
 
-    if (_state.data && _state.data.tables) {
+    if (modeStr !== 'waitlist' && _state.data && _state.data.tables) {
       var tlist = document.getElementById('rb-c-tables');
       var th = '';
       for (var i = 0; i < _state.data.tables.length; i++) {
@@ -677,10 +973,18 @@
       var dur = parseInt(document.getElementById('rb-c-dur').value, 10);
       var memo = document.getElementById('rb-c-memo').value;
       var tags = document.getElementById('rb-c-tags').value;
-      var skipDep = document.getElementById('rb-c-skip-deposit').checked;
-      var checked = document.querySelectorAll('#rb-c-tables input[type="checkbox"]:checked');
+      var skipDepEl = document.getElementById('rb-c-skip-deposit');
+      var skipDep = skipDepEl ? skipDepEl.checked : true; // 受付待ちは常に skip
       var tids = [];
-      for (var ci = 0; ci < checked.length; ci++) tids.push(checked[ci].value);
+      var tblChecks = document.querySelectorAll('#rb-c-tables input[type="checkbox"]:checked');
+      for (var ci = 0; ci < tblChecks.length; ci++) tids.push(tblChecks[ci].value);
+
+      var srcValue = modeStr === 'walkin' ? 'walk_in' : (modeStr === 'waitlist' ? 'walk_in' : 'phone');
+      var statusValue;
+      if (modeStr === 'walkin') statusValue = 'seated';
+      else if (modeStr === 'waitlist') statusValue = 'waitlisted';
+      else statusValue = 'confirmed';
+
       var body = {
         store_id: _storeId,
         customer_name: name,
@@ -691,14 +995,14 @@
         duration_min: dur,
         memo: memo, tags: tags,
         assigned_table_ids: tids,
-        source: walkin ? 'walk_in' : 'phone',
-        status: walkin ? 'seated' : 'confirmed',
-        skip_deposit: skipDep,
+        source: srcValue,
+        status: statusValue,
+        skip_deposit: skipDep
       };
       this.disabled = true; this.textContent = '…';
       apiSend('POST', '/reservations.php', body, function (err, data) {
         if (err) { alert(err.message); var b = document.getElementById('rb-c-save'); if (b) { b.disabled = false; b.textContent = '作成'; } return; }
-        if (walkin && tids.length) {
+        if (modeStr === 'walkin' && tids.length) {
           apiSend('POST', '/reservation-seat.php', { reservation_id: data.reservation.id, store_id: _storeId, table_ids: tids }, function () {
             closeModal(); loadGantt();
           });
@@ -728,7 +1032,10 @@
     fetchCustomers();
   }
   function fetchCustomers() {
-    var q = document.getElementById('rb-cust-q').value;
+    // RSV-P1-1 hotfix: 顧客タブ以外 (rb-cust-q/rb-cust-list 未 render) から呼ばれても JS エラーで落ちないよう guard
+    var qEl = document.getElementById('rb-cust-q');
+    if (!qEl) return;
+    var q = qEl.value;
     var vip = document.getElementById('rb-cust-vip').checked ? '1' : '';
     var bl = document.getElementById('rb-cust-bl').checked ? '1' : '';
     var url = '/reservation-customers.php?store_id=' + encodeURIComponent(_storeId) + '&q=' + encodeURIComponent(q);
@@ -759,7 +1066,9 @@
       }
     });
   }
-  function openCustomerModal(cid) {
+  // RSV-P1-1 hotfix: options.onSaved で呼び出し元ごとに保存後挙動を分岐
+  // (顧客タブ: fetchCustomers / 予約台帳経由: loadGantt)。未指定時は fetchCustomers が guard で安全に no-op
+  function openCustomerModal(cid, options) {
     apiGet('/reservation-customers.php?store_id=' + encodeURIComponent(_storeId) + '&id=' + encodeURIComponent(cid), function (err, data) {
       if (err) { alert(err.message); return; }
       var c = data.customer;
@@ -802,7 +1111,14 @@
         };
         apiSend('PATCH', '/reservation-customers.php', body, function (err) {
           if (err) { alert(err.message); return; }
-          closeModal(); fetchCustomers();
+          closeModal();
+          // RSV-P1-1 hotfix: options.onSaved があればそれを呼ぶ (予約台帳経由は loadGantt)、
+          // なければ顧客タブ前提で fetchCustomers (fetchCustomers 側にも DOM guard あり)
+          if (options && typeof options.onSaved === 'function') {
+            options.onSaved();
+          } else {
+            fetchCustomers();
+          }
         });
       });
       _installEscClose();

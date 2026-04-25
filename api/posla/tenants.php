@@ -9,10 +9,55 @@
  */
 
 require_once __DIR__ . '/auth-helper.php';
+require_once __DIR__ . '/admin-audit-helper.php';
+require_once __DIR__ . '/tenant-insights-helper.php';
 
 $admin = require_posla_admin();
 $method = require_method(['GET', 'PATCH', 'POST']);
 $pdo = get_db();
+
+function normalize_tenant_contract(array $tenant): array
+{
+    $tenant['plan_compat'] = $tenant['plan'] ?? 'standard';
+    $tenant['plan'] = 'standard';
+    $tenant['contract_label'] = 'POSLA標準';
+    $tenant['hq_menu_broadcast'] = !empty($tenant['hq_menu_broadcast']) ? 1 : 0;
+
+    return $tenant;
+}
+
+function build_bootstrap_username(PDO $pdo, string $slug, string $suffix): string
+{
+    $maxLength = 50;
+    $suffixPart = '-' . $suffix;
+    $counter = 0;
+    $stmt = $pdo->prepare('SELECT 1 FROM users WHERE username = ? LIMIT 1');
+
+    while (true) {
+        $counterSuffix = $counter > 0 ? ('-' . $counter) : '';
+        $baseLimit = $maxLength - strlen($suffixPart) - strlen($counterSuffix);
+        $base = substr($slug, 0, max(1, $baseLimit));
+        $candidate = $base . $suffixPart . $counterSuffix;
+
+        $stmt->execute([$candidate]);
+        if (!$stmt->fetch()) {
+            return $candidate;
+        }
+
+        $counter++;
+    }
+}
+
+function build_tenant_audit_value(array $tenant): array
+{
+    return [
+        'name' => $tenant['name'] ?? null,
+        'slug' => $tenant['slug'] ?? null,
+        'is_active' => !empty($tenant['is_active']) ? 1 : 0,
+        'hq_menu_broadcast' => !empty($tenant['hq_menu_broadcast']) ? 1 : 0,
+        'plan' => $tenant['plan'] ?? 'standard',
+    ];
+}
 
 // ============================================================
 // GET — 一覧 / 詳細
@@ -21,40 +66,22 @@ if ($method === 'GET') {
     $id = $_GET['id'] ?? '';
 
     if ($id !== '') {
-        // 1件詳細
-        $stmt = $pdo->prepare(
-            'SELECT t.id, t.slug, t.name, t.name_en, t.plan, t.is_active,
-                    t.subscription_status, t.current_period_end,
-                    t.stripe_connect_account_id, t.connect_onboarding_complete,
-                    t.created_at, t.updated_at,
-                    (SELECT COUNT(*) FROM stores s WHERE s.tenant_id = t.id) AS store_count,
-                    (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id) AS user_count
-             FROM tenants t
-             WHERE t.id = ?'
-        );
-        $stmt->execute([$id]);
-        $tenant = $stmt->fetch();
+        $insights = posla_fetch_tenant_insights($pdo, $id);
+        $tenant = !empty($insights) ? $insights[0] : null;
 
         if (!$tenant) {
             json_error('NOT_FOUND', 'テナントが見つかりません', 404);
         }
 
-        json_response(['tenant' => $tenant]);
+        $tenant['incident_timeline'] = posla_fetch_tenant_incident_timeline($pdo, $id);
+        $tenant['ops_timeline'] = posla_fetch_tenant_ops_timeline($pdo, $id);
+        $tenant['investigation_view'] = posla_fetch_tenant_investigation_view($pdo, $id);
+
+        json_response(['tenant' => normalize_tenant_contract($tenant)]);
     }
 
     // 全件一覧
-    $stmt = $pdo->prepare(
-        'SELECT t.id, t.slug, t.name, t.name_en, t.plan, t.is_active,
-                t.subscription_status, t.current_period_end,
-                t.stripe_connect_account_id, t.connect_onboarding_complete,
-                t.created_at, t.updated_at,
-                (SELECT COUNT(*) FROM stores s WHERE s.tenant_id = t.id) AS store_count,
-                (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id) AS user_count
-         FROM tenants t
-         ORDER BY t.created_at DESC'
-    );
-    $stmt->execute();
-    $tenants = $stmt->fetchAll();
+    $tenants = array_map('normalize_tenant_contract', posla_fetch_tenant_insights($pdo));
 
     json_response(['tenants' => $tenants]);
 }
@@ -71,9 +98,10 @@ if ($method === 'PATCH') {
     }
 
     // 対象テナント存在確認
-    $stmt = $pdo->prepare('SELECT id FROM tenants WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT id, slug, name, plan, is_active, hq_menu_broadcast FROM tenants WHERE id = ?');
     $stmt->execute([$id]);
-    if (!$stmt->fetch()) {
+    $existingTenant = $stmt->fetch();
+    if (!$existingTenant) {
         json_error('NOT_FOUND', 'テナントが見つかりません', 404);
     }
 
@@ -82,12 +110,12 @@ if ($method === 'PATCH') {
 
     // plan
     if (isset($input['plan'])) {
-        $plan = $input['plan'];
-        if (!in_array($plan, ['standard', 'pro', 'enterprise'], true)) {
-            json_error('INVALID_PLAN', 'プランが不正です', 400);
+        $plan = (string)$input['plan'];
+        if ($plan !== 'standard') {
+            json_error('LEGACY_PLAN_UNSUPPORTED', '単一プラン運用です。契約差分は hq_menu_broadcast のみを更新してください', 400);
         }
         $sets[] = 'plan = ?';
-        $params[] = $plan;
+        $params[] = 'standard';
     }
 
     // is_active
@@ -102,6 +130,11 @@ if ($method === 'PATCH') {
         $params[] = trim($input['name']);
     }
 
+    if (isset($input['hq_menu_broadcast'])) {
+        $sets[] = 'hq_menu_broadcast = ?';
+        $params[] = $input['hq_menu_broadcast'] ? 1 : 0;
+    }
+
     if (empty($sets)) {
         json_error('NO_CHANGES', '更新項目がありません', 400);
     }
@@ -109,6 +142,21 @@ if ($method === 'PATCH') {
     $params[] = $id;
     $sql = 'UPDATE tenants SET ' . implode(', ', $sets) . ' WHERE id = ?';
     $pdo->prepare($sql)->execute($params);
+
+    $stmt = $pdo->prepare('SELECT id, slug, name, plan, is_active, hq_menu_broadcast FROM tenants WHERE id = ?');
+    $stmt->execute([$id]);
+    $updatedTenant = $stmt->fetch();
+    posla_admin_write_audit_log(
+        $pdo,
+        $admin,
+        'tenant_update',
+        'tenant',
+        $id,
+        build_tenant_audit_value($existingTenant),
+        build_tenant_audit_value($updatedTenant),
+        null,
+        generate_uuid()
+    );
 
     json_response(['message' => 'テナントを更新しました']);
 }
@@ -120,19 +168,20 @@ if ($method === 'POST') {
     $input = get_json_body();
     $slug = trim($input['slug'] ?? '');
     $name = trim($input['name'] ?? '');
-    $plan = $input['plan'] ?? 'standard';
+    $plan = 'standard';
+    $hqMenuBroadcast = !empty($input['hq_menu_broadcast']) ? 1 : 0;
 
     if (empty($slug)) {
         json_error('MISSING_SLUG', 'slugは必須です', 400);
+    }
+    if (strlen($slug) > 50) {
+        json_error('SLUG_TOO_LONG', 'slugは50文字以内で入力してください', 400);
     }
     if (!preg_match('/^[a-z0-9\-]+$/', $slug)) {
         json_error('INVALID_SLUG', 'slugは半角英小文字・数字・ハイフンのみ使用できます', 400);
     }
     if (empty($name)) {
         json_error('MISSING_NAME', 'テナント名は必須です', 400);
-    }
-    if (!in_array($plan, ['standard', 'pro', 'enterprise'], true)) {
-        json_error('INVALID_PLAN', 'プランが不正です', 400);
     }
 
     // slug重複チェック
@@ -142,18 +191,149 @@ if ($method === 'POST') {
         json_error('DUPLICATE_SLUG', 'このslugは既に使用されています', 409);
     }
 
-    $id = generate_uuid();
-    $stmt = $pdo->prepare(
-        'INSERT INTO tenants (id, slug, name, plan) VALUES (?, ?, ?, ?)'
+    $tenantId = generate_uuid();
+    $storeId = generate_uuid();
+    $storeSlug = 'main';
+    $storeName = $name . ' 本店';
+    $loginUrl = '/admin/';
+    $commonPassword = 'Demo1234';
+    $passwordHash = password_hash($commonPassword, PASSWORD_DEFAULT);
+    if ($passwordHash === false) {
+        json_error('PASSWORD_HASH_FAILED', '初期パスワードの生成に失敗しました', 500);
+    }
+
+    $accounts = [
+        [
+            'id' => generate_uuid(),
+            'role' => 'owner',
+            'username' => build_bootstrap_username($pdo, $slug, 'owner'),
+            'display_name' => $name . ' オーナー',
+            'store_linked' => false,
+            'visible_tools' => null,
+        ],
+        [
+            'id' => generate_uuid(),
+            'role' => 'manager',
+            'username' => build_bootstrap_username($pdo, $slug, 'manager'),
+            'display_name' => $name . ' 店長',
+            'store_linked' => true,
+            'visible_tools' => null,
+        ],
+        [
+            'id' => generate_uuid(),
+            'role' => 'staff',
+            'username' => build_bootstrap_username($pdo, $slug, 'staff'),
+            'display_name' => $name . ' スタッフ',
+            'store_linked' => true,
+            'visible_tools' => null,
+        ],
+        [
+            'id' => generate_uuid(),
+            'role' => 'device',
+            'username' => build_bootstrap_username($pdo, $slug, 'kds01'),
+            'display_name' => $name . ' KDS',
+            'store_linked' => true,
+            'visible_tools' => 'kds,register',
+        ],
+    ];
+
+    try {
+        $pdo->beginTransaction();
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO tenants (id, slug, name, plan, hq_menu_broadcast) VALUES (?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([$tenantId, $slug, $name, $plan, $hqMenuBroadcast]);
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO stores (id, tenant_id, slug, name, timezone, is_active) VALUES (?, ?, ?, ?, ?, 1)'
+        );
+        $stmt->execute([$storeId, $tenantId, $storeSlug, $storeName, 'Asia/Tokyo']);
+
+        $stmt = $pdo->prepare('INSERT INTO store_settings (store_id) VALUES (?)');
+        $stmt->execute([$storeId]);
+
+        $userStmt = $pdo->prepare(
+            'INSERT INTO users (id, tenant_id, email, username, password_hash, display_name, role, is_active)
+             VALUES (?, ?, NULL, ?, ?, ?, ?, 1)'
+        );
+        $linkStmt = $pdo->prepare(
+            'INSERT INTO user_stores (user_id, store_id, visible_tools) VALUES (?, ?, ?)'
+        );
+
+        foreach ($accounts as $account) {
+            $userStmt->execute([
+                $account['id'],
+                $tenantId,
+                $account['username'],
+                $passwordHash,
+                $account['display_name'],
+                $account['role'],
+            ]);
+
+            if ($account['store_linked']) {
+                $linkStmt->execute([
+                    $account['id'],
+                    $storeId,
+                    $account['visible_tools'],
+                ]);
+            }
+        }
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('[api/posla/tenants.php] create tenant failed: ' . $e->getMessage());
+        json_error('CREATE_TENANT_FAILED', 'テナント初期構成の作成に失敗しました', 500);
+    }
+
+    $stmt = $pdo->prepare('SELECT id, slug, name, plan, is_active, hq_menu_broadcast FROM tenants WHERE id = ?');
+    $stmt->execute([$tenantId]);
+    $createdTenant = $stmt->fetch();
+
+    posla_admin_write_audit_log(
+        $pdo,
+        $admin,
+        'tenant_create',
+        'tenant',
+        $tenantId,
+        null,
+        build_tenant_audit_value($createdTenant ?: [
+            'name' => $name,
+            'slug' => $slug,
+            'plan' => $plan,
+            'is_active' => 1,
+            'hq_menu_broadcast' => $hqMenuBroadcast,
+        ]),
+        null,
+        generate_uuid()
     );
-    $stmt->execute([$id, $slug, $name, $plan]);
 
     json_response([
-        'tenant' => [
-            'id'   => $id,
+        'tenant' => normalize_tenant_contract([
+            'id' => $tenantId,
             'slug' => $slug,
             'name' => $name,
             'plan' => $plan,
-        ]
+            'hq_menu_broadcast' => $hqMenuBroadcast,
+        ]),
+        'bootstrap' => [
+            'login_url' => $loginUrl,
+            'store' => [
+                'id' => $storeId,
+                'slug' => $storeSlug,
+                'name' => $storeName,
+            ],
+            'common_password' => $commonPassword,
+            'accounts' => array_map(function ($account) {
+                return [
+                    'role' => $account['role'],
+                    'username' => $account['username'],
+                    'display_name' => $account['display_name'],
+                ];
+            }, $accounts),
+        ],
     ], 201);
 }

@@ -6,7 +6,7 @@
  * Body: { payment_id, store_id, reason? }
  *
  * 全額返金のみ対応（部分返金は将来拡張）
- * manager 以上のみ実行可能
+ * レジ担当（staff / manager / owner / device）が担当スタッフ PIN を通した場合に実行可能
  */
 
 require_once __DIR__ . '/../lib/response.php';
@@ -21,7 +21,10 @@ require_method(['POST']);
 // H-04: CSRF 対策 — 返金経路に Origin / Referer 検証を追加（opt-in）
 verify_origin();
 
-$user = require_role('manager');
+$user = require_auth();
+if (!in_array($user['role'], ['staff', 'manager', 'owner', 'device'], true)) {
+    json_error('FORBIDDEN', '返金操作の権限がありません', 403);
+}
 
 $data = json_decode(file_get_contents('php://input'), true);
 if (!$data) json_error('VALIDATION', 'リクエストボディが不正です', 400);
@@ -242,7 +245,7 @@ try {
     $pdo->commit();
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    error_log('[S3#10][refund-payment] claim_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[S3#10][refund-payment] claim_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     // 'pending' enum 値が DB に未追加の場合 (migration 未適用)
     if (strpos($e->getMessage(), 'Data truncated') !== false || strpos($e->getMessage(), 'Incorrect') !== false) {
         json_error('MIGRATION_REQUIRED', "返金用マイグレーション (migration-s3-refund-pending.sql) が未適用です", 500);
@@ -293,7 +296,7 @@ if (!$refundResult['success']) {
              WHERE id = ? AND store_id = ? AND refund_status = 'pending'"
         )->execute([$paymentId, $storeId]);
     } catch (PDOException $e) {
-        error_log('[S3#10][refund-payment] revert_pending_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[S3#10][refund-payment] revert_pending_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
     json_error('REFUND_FAILED', '返金に失敗しました: ' . ($refundResult['error'] ?? '不明なエラー'), 502);
 }
@@ -318,7 +321,7 @@ try {
     if ($finalStmt->rowCount() !== 1) {
         // 想定外: 'pending' でなくなっている (並列で revert 等)
         // Stripe 上は返金済みなので、refund_id だけは記録する
-        error_log('[S3#10][refund-payment] finalize_rowcount_zero payment=' . $paymentId . ' refund=' . $refundResult['refund_id'], 3, '/home/odah/log/php_errors.log');
+        error_log('[S3#10][refund-payment] finalize_rowcount_zero payment=' . $paymentId . ' refund=' . $refundResult['refund_id'], 3, POSLA_PHP_ERROR_LOG);
         $pdo->prepare(
             "UPDATE payments
              SET refund_status = 'full', refund_amount = ?, refund_id = ?, refund_reason = ?, refunded_at = NOW(), refunded_by = ?
@@ -329,7 +332,7 @@ try {
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     // Stripe 側は返金済みだが DB 反映に失敗した状態
-    error_log('[S3#10][refund-payment] finalize_failed payment=' . $paymentId . ' refund=' . $refundResult['refund_id'] . ' err=' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[S3#10][refund-payment] finalize_failed payment=' . $paymentId . ' refund=' . $refundResult['refund_id'] . ' err=' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('DB_ERROR', '返金は完了しましたが DB 反映に失敗しました。サポートへご連絡ください。 refund_id=' . $refundResult['refund_id'], 500);
 }
 

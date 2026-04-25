@@ -33,7 +33,7 @@ if ($logoutUser['user_id']) {
                 ->execute([$currentSessionId, $_SESSION['tenant_id'] ?? '']);
         } catch (PDOException $e) {
             // user_sessions テーブル未作成時はスキップ
-            error_log('[P1-12][api/auth/logout.php:34] logout_invalidate_self: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            error_log('[P1-12][api/auth/logout.php:34] logout_invalidate_self: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
     }
 }

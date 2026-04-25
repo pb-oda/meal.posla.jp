@@ -103,17 +103,53 @@ var SalesReport = (function () {
     var hourly = data.hourly || [];
     if (hourly.length > 0) {
       var maxRev = Math.max.apply(null, hourly.map(function (h) { return h.revenue; }));
-      html += '<div class="report-section"><h3 class="report-section__title">時間帯別売上</h3><div class="card"><ul class="bar-chart">';
+      var peakHour = null;
+      for (var hi = 0; hi < hourly.length; hi++) {
+        if (!peakHour || hourly[hi].revenue > peakHour.revenue) peakHour = hourly[hi];
+      }
+      html += '<div class="report-section"><h3 class="report-section__title">時間帯別売上</h3><div class="card">';
+      if (peakHour) {
+        html += '<div class="bar-chart__summary">'
+          + '<div class="bar-chart__summary-title">ピーク時間帯</div>'
+          + '<div class="bar-chart__summary-main">' + peakHour.hour + '時 <strong>' + Utils.formatYen(peakHour.revenue) + '</strong></div>'
+          + '<div class="bar-chart__summary-sub">' + peakHour.count + '件の注文</div>'
+          + '</div>';
+      }
+      html += '<div class="bar-chart__scale"><span>0</span><span>中間</span><span>最大</span></div><ul class="bar-chart">';
       hourly.forEach(function (h) {
         var pct = maxRev > 0 ? Math.round(h.revenue / maxRev * 100) : 0;
-        html += '<li class="bar-row"><span class="bar-row__label">' + h.hour + '時</span>'
-          + '<span class="bar-row__track"><span class="bar-row__fill" style="width:' + pct + '%"></span></span>'
-          + '<span class="bar-row__value">' + h.count + '件 / ' + Utils.formatYen(h.revenue) + '</span></li>';
+        var isPeak = maxRev > 0 && h.revenue === maxRev;
+        var rowClass = 'bar-row' + (isPeak ? ' bar-row--peak' : '');
+        var fillClass = 'bar-row__fill' + (pct <= 0 ? ' bar-row__fill--zero' : '');
+        html += '<li class="' + rowClass + '">'
+          + '<div class="bar-row__meta">'
+          + '<span class="bar-row__label">' + h.hour + '時</span>'
+          + '<span class="bar-row__count">' + h.count + '件</span>'
+          + (isPeak ? '<span class="bar-row__badge">ピーク</span>' : '')
+          + '<strong class="bar-row__amount">' + Utils.formatYen(h.revenue) + '</strong>'
+          + '</div>'
+          + '<div class="bar-row__bar">'
+          + '<span class="bar-row__track"><span class="' + fillClass + '" data-width="' + pct + '%"></span></span>'
+          + '<span class="bar-row__pct">' + pct + '%</span>'
+          + '</div></li>';
       });
       html += '</ul></div></div>';
     }
 
     el.innerHTML = html;
+    _animateHourlyBars(el);
+  }
+
+  function _animateHourlyBars(el) {
+    var fills = el.querySelectorAll('.bar-row__fill');
+    if (!fills || fills.length === 0) return;
+    setTimeout(function () {
+      for (var i = 0; i < fills.length; i++) {
+        var target = fills[i].getAttribute('data-width');
+        if (!target) continue;
+        fills[i].style.width = target;
+      }
+    }, 30);
   }
 
   return { init: init, load: load };

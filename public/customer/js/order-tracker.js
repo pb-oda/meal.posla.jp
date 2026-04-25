@@ -113,6 +113,12 @@ var OrderTracker = (function () {
       html += '<div class="order-status-card">';
       html += '<div class="order-status-card__header">';
       html += '<span class="order-status-card__time">' + Utils.escapeHtml((order.created_at || '').substring(11, 16)) + '</span>';
+      // SELF-P1-4: 任意ゲスト名 badge (存在時のみ表示、表示専用)
+      if (order.guest_alias) {
+        html += '<span class="order-status-card__alias">'
+             + Utils.escapeHtml(String(order.guest_alias))
+             + '</span>';
+      }
       var amt = parseInt(order.total_amount, 10) || 0;
       html += '<span class="order-status-card__total">&yen;' + amt.toLocaleString() + '</span>';
       html += '</div>';

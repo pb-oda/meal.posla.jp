@@ -305,7 +305,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
     } catch (PDOException $e) {
         // テーブル未作成時
-        error_log('[P1-12][api/owner/option-groups.php:306] count_linked_menus: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-12][api/owner/option-groups.php:306] count_linked_menus: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 
     json_response(['groups' => $groups]);

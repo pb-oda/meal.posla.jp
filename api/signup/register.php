@@ -134,7 +134,7 @@ try {
 } catch (Exception $e) {
     $pdo->rollBack();
     // S3 #11: 内部エラーメッセージはログのみ、レスポンスは固定文言
-    error_log('[A5][signup/register] db_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[A5][signup/register] db_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('DB_ERROR', '処理に失敗しました。時間を置いて再試行してください。', 500);
 }
 
@@ -149,11 +149,8 @@ $customerId = $custResult['customer_id'];
 $pdo->prepare('UPDATE tenants SET stripe_customer_id = ? WHERE id = ?')->execute([$customerId, $tenantId]);
 
 // ---------- Stripe Checkout Session 作成 ----------
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host = $_SERVER['HTTP_HOST'];
-$baseUrl = $protocol . '://' . $host;
-$successUrl = $baseUrl . '/public/signup-complete.html?t=' . urlencode($signupToken);
-$cancelUrl = $baseUrl . '/public/index.html?signup=cancel';
+$successUrl = app_url('/signup-complete.html') . '?t=' . urlencode($signupToken);
+$cancelUrl = app_url('/index.html') . '?signup=cancel';
 
 // trial_period_days=30 + metadata にテナント情報を埋めて webhook で識別
 $extraParams = array(
@@ -176,7 +173,7 @@ if (!$checkoutResult['success']) {
 try {
     $pdo->prepare('UPDATE tenants SET stripe_subscription_id = ? WHERE id = ?')->execute(['pending:' . $signupToken, $tenantId]);
 } catch (PDOException $e) {
-    error_log('[A5][signup/register] token_save_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[A5][signup/register] token_save_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 json_response([

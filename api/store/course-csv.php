@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         } catch (PDOException $e) {
             // course_phases 未作成時はスキップ
-            error_log('[P1-12][api/store/course-csv.php:54] fetch_course_phases: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            error_log('[P1-12][api/store/course-csv.php:54] fetch_course_phases: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
     }
 
@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } catch (PDOException $e) {
         // course_phases 未作成時はスキップ
-        error_log('[P1-12][api/store/course-csv.php:140] fetch_existing_phases: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-12][api/store/course-csv.php:140] fetch_existing_phases: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 
     // CSV全行を読み込んでコースごとにグループ化
@@ -258,7 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Exception $e) {
         $pdo->rollBack();
         // H-14: browser 応答から内部メッセージを排除、詳細は error_log にのみ残す
-        error_log('[H-14][api/store/course-csv.php] csv_import_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[H-14][api/store/course-csv.php] csv_import_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         json_error('IMPORT_FAILED', 'インポートに失敗しました', 500);
     }
 

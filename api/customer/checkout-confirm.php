@@ -145,27 +145,27 @@ $verifiedCurrency = isset($verifyResult['currency']) ? strtolower((string)$verif
 
 // 必須 metadata 欠落チェック (旧 session の流用も拒否)
 if ($mdTenant === '' || $mdStore === '' || $mdTable === '' || $mdExpAmt < 0 || $mdExpCur === '' || $mdOrderIds === '') {
-    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH metadata_missing session=' . $stripeSessionId, 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH metadata_missing session=' . $stripeSessionId, 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (metadata 不足)', 403);
 }
 // テナント/店舗/テーブル境界
 if ($mdTenant !== (string)$tenantId || $mdStore !== (string)$storeId || $mdTable !== (string)$tableId) {
-    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH context tenant_md=' . $mdTenant . ' store_md=' . $mdStore . ' table_md=' . $mdTable, 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH context tenant_md=' . $mdTenant . ' store_md=' . $mdStore . ' table_md=' . $mdTable, 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (テナント/店舗/テーブル)', 403);
 }
 // purpose 一致
 if ($mdPurpose !== 'dine_in_self_payment') {
-    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH purpose=' . $mdPurpose, 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH purpose=' . $mdPurpose, 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (用途)', 403);
 }
 // 通貨一致
 if ($mdExpCur !== 'jpy' || $verifiedCurrency !== 'jpy') {
-    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH currency md=' . $mdExpCur . ' stripe=' . $verifiedCurrency, 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH currency md=' . $mdExpCur . ' stripe=' . $verifiedCurrency, 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (通貨)', 403);
 }
 // expected_amount === Stripe amount_total
 if ($mdExpAmt !== $amountTotal) {
-    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH amount expected=' . $mdExpAmt . ' stripe=' . $amountTotal, 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH amount expected=' . $mdExpAmt . ' stripe=' . $amountTotal, 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (金額)', 403);
 }
 // metadata.order_ids を後段の paid 化フィルタに使う (ホワイトリスト)
@@ -217,12 +217,12 @@ foreach ($allOrders as $o) {
     }
 }
 if (empty($orders)) {
-    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH no_matching_orders md_ids=' . $mdOrderIds, 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH no_matching_orders md_ids=' . $mdOrderIds, 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (注文ID)', 403);
 }
 // 件数も完全一致を要求 (metadata の order_ids 全件が DB に存在し未払いであること)
 if (count($orders) !== count($mdOrderIdList)) {
-    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH order_count md=' . count($mdOrderIdList) . ' db=' . count($orders), 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH order_count md=' . count($mdOrderIdList) . ' db=' . count($orders), 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (注文ID不一致)', 403);
 }
 
@@ -261,7 +261,7 @@ foreach ($orders as $order) {
 
 // P0 #5: DB 上の合計が Stripe 側の amount_total/expected_amount と一致することを最終確認
 if ($totalAmount !== $mdExpAmt || $totalAmount !== $amountTotal) {
-    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH final_amount db=' . $totalAmount . ' md=' . $mdExpAmt . ' stripe=' . $amountTotal, 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][checkout-confirm] STRIPE_MISMATCH final_amount db=' . $totalAmount . ' md=' . $mdExpAmt . ' stripe=' . $amountTotal, 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (合計金額)', 403);
 }
 
@@ -276,7 +276,7 @@ try {
     $sessionId = $sessRow ? $sessRow['id'] : null;
 } catch (PDOException $e) {
     // table_sessions 未存在時はスキップ
-    error_log('[P1-12][api/customer/checkout-confirm.php:191] fetch_session_id: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][api/customer/checkout-confirm.php:191] fetch_session_id: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // ── カラム存在チェック ──
@@ -390,22 +390,64 @@ try {
         )->execute([$storeId, $tableId]);
     } catch (PDOException $e) {
         // table_sessions 未存在時はスキップ
-        error_log('[P1-12][api/customer/checkout-confirm.php:261] checkout_mark_paid: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-12][api/customer/checkout-confirm.php:261] checkout_mark_paid: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 
     // ── レシピ連動在庫引き落とし ──
+    // INV-P1-5: 冪等性マーカー + 消費履歴ログで二重消費防止と audit trail 追加
     try {
         $pdo->query('SELECT 1 FROM recipes LIMIT 0');
         $pdo->query('SELECT 1 FROM ingredients LIMIT 0');
 
+        // INV-P1-5: column / table 存在チェック (migration 未適用でも既存挙動)
+        $hasStockConsumedCol = false;
+        try { $pdo->query('SELECT stock_consumed_at FROM orders LIMIT 0'); $hasStockConsumedCol = true; }
+        catch (PDOException $e) {}
+        $hasConsumeLog = false;
+        try { $pdo->query('SELECT 1 FROM inventory_consumption_log LIMIT 0'); $hasConsumeLog = true; }
+        catch (PDOException $e) {}
+
+        // INV-P1-5: orders レベルで冪等性マーカーを atomic claim。
+        //   self-checkout は常に全額会計なので partial 分岐は不要。
+        //   stock_consumed_at IS NULL の orders だけ消費対象にする。
+        $consumeOrderIds = [];
+        if ($hasStockConsumedCol && !empty($orderIdList)) {
+            $markStmt = $pdo->prepare(
+                'UPDATE orders SET stock_consumed_at = NOW()
+                 WHERE id = ? AND store_id = ? AND stock_consumed_at IS NULL'
+            );
+            foreach ($orderIdList as $oid) {
+                $markStmt->execute([$oid, $storeId]);
+                if ($markStmt->rowCount() === 1) $consumeOrderIds[$oid] = true;
+            }
+        } else {
+            // migration 未適用: 既存通り全 orders を対象
+            foreach (($orders ?? []) as $o) {
+                if (isset($o['id'])) $consumeOrderIds[$o['id']] = true;
+            }
+        }
+
+        // 対象品目の集計: {menu_item_id => qty}
+        // INV-P1-5: per-(order, menu_item) も保持して log 作成に使う
         $itemQtyMap = [];
+        $perOrderQtyMap = []; // { order_id => { menu_item_id => qty } }
         foreach ($orders as $order) {
+            $oid = $order['id'] ?? null;
+            // INV-P1-5: マーカーが取れた orders のみ消費対象
+            if ($hasStockConsumedCol && $oid && empty($consumeOrderIds[$oid])) {
+                continue;
+            }
             $oItems = json_decode($order['items'] ?? '[]', true);
             if (!is_array($oItems)) continue;
             foreach ($oItems as $oi) {
                 $itemId = $oi['id'] ?? null;
                 if (!$itemId) continue;
-                $itemQtyMap[$itemId] = ($itemQtyMap[$itemId] ?? 0) + (int)($oi['qty'] ?? 1);
+                $q = (int)($oi['qty'] ?? 1);
+                $itemQtyMap[$itemId] = ($itemQtyMap[$itemId] ?? 0) + $q;
+                if ($oid) {
+                    if (!isset($perOrderQtyMap[$oid])) $perOrderQtyMap[$oid] = [];
+                    $perOrderQtyMap[$oid][$itemId] = ($perOrderQtyMap[$oid][$itemId] ?? 0) + $q;
+                }
             }
         }
 
@@ -441,17 +483,50 @@ try {
             foreach ($deductions as $ingId => $amount) {
                 $updateStmt->execute([$amount, $ingId, $tenantId]);
             }
+
+            // INV-P1-5: 消費履歴ログ (per-(order, ingredient))
+            if ($hasConsumeLog && !empty($perOrderQtyMap)) {
+                $logStmt = $pdo->prepare(
+                    'INSERT INTO inventory_consumption_log
+                     (id, tenant_id, store_id, order_id, ingredient_id, quantity, consumed_at)
+                     VALUES (?, ?, ?, ?, ?, ?, NOW())'
+                );
+                $recipeByMenu = [];
+                foreach ($recipeRows as $rr) {
+                    $mId = $rr['menu_template_id'];
+                    if (!isset($recipeByMenu[$mId])) $recipeByMenu[$mId] = [];
+                    $recipeByMenu[$mId][] = [
+                        'ingredient_id' => $rr['ingredient_id'],
+                        'quantity' => (float)$rr['quantity'],
+                    ];
+                }
+                foreach ($perOrderQtyMap as $ordId => $menuMap) {
+                    foreach ($menuMap as $mId => $qty) {
+                        if (empty($recipeByMenu[$mId])) continue;
+                        foreach ($recipeByMenu[$mId] as $r) {
+                            $logStmt->execute([
+                                generate_uuid(),
+                                $tenantId,
+                                $storeId,
+                                $ordId,
+                                $r['ingredient_id'],
+                                $r['quantity'] * $qty,
+                            ]);
+                        }
+                    }
+                }
+            }
         }
     } catch (PDOException $e) {
         // recipes/ingredients テーブル未作成時はスキップ
-        error_log('[P1-12][api/customer/checkout-confirm.php:307] recipe_deduct_stock: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-12][api/customer/checkout-confirm.php:307] recipe_deduct_stock: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 
     $pdo->commit();
 } catch (Exception $e) {
     $pdo->rollBack();
     // S3 #11: 内部エラーメッセージはログのみ、レスポンスは固定文言
-    error_log('[L-8 checkout-confirm] ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[L-8 checkout-confirm] ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     // S3 #3: CONFLICT は 409 で返す (二重決済確定検知)
     if (strpos($e->getMessage(), 'CONFLICT') === 0) {
         json_error('CONFLICT', 'この注文は既に他の操作で確定されました。画面を更新してご確認ください。', 409);

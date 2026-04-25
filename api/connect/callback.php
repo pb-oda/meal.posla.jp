@@ -28,9 +28,7 @@ if (!$tenantId) {
 start_auth_session();
 $expectedState = $_SESSION['connect_state_' . $tenantId] ?? null;
 if (!$state || !$expectedState || !hash_equals((string)$expectedState, (string)$state)) {
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'];
-    header('Location: ' . $protocol . '://' . $host . '/public/admin/owner-dashboard.html?tab=payment&connect=state_error');
+    header('Location: ' . app_url('/admin/owner-dashboard.html') . '?tab=payment&connect=state_error');
     exit;
 }
 // one-time use: 検証成功後に session から削除
@@ -53,7 +51,7 @@ if (!$tenant || !$tenant['stripe_connect_account_id']) {
 $platformConfig = get_platform_stripe_config($pdo);
 $secretKey = $platformConfig['secret_key'];
 
-$redirectBase = '/public/admin/owner-dashboard.html';
+$redirectBase = '/admin/owner-dashboard.html';
 $connectParam = 'pending';
 
 if ($secretKey) {
@@ -70,9 +68,7 @@ if ($secretKey) {
 }
 
 // owner-dashboard にリダイレクト
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host = $_SERVER['HTTP_HOST'];
-$redirectUrl = $protocol . '://' . $host . $redirectBase . '?tab=payment&connect=' . $connectParam;
+$redirectUrl = app_url($redirectBase) . '?tab=payment&connect=' . $connectParam;
 
 header('Location: ' . $redirectUrl);
 exit;

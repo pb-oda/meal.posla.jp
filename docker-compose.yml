@@ -15,12 +15,8 @@ services:
     platform: linux/amd64   # macOS Apple Silicon 対策（mysql:5.7 は arm64 ネイティブなし）
     container_name: posla_db
     restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: odah_eat-posla
-      MYSQL_USER: odah_eat-posla
-      MYSQL_PASSWORD: odah_eat-posla
-      TZ: Asia/Tokyo
+    env_file:
+      - ./docker/env/db.env
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -53,21 +49,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      # api/config/database.php が getenv() で読み出す
-      POSLA_DB_HOST: db
-      POSLA_DB_NAME: odah_eat-posla
-      POSLA_DB_USER: odah_eat-posla
-      POSLA_DB_PASS: odah_eat-posla
-      # api/.htaccess の本番 SetEnv を Docker local で迂回する専用キー
-      POSLA_LOCAL_DB_HOST: db
-      POSLA_LOCAL_DB_NAME: odah_eat-posla
-      POSLA_LOCAL_DB_USER: odah_eat-posla
-      POSLA_LOCAL_DB_PASS: odah_eat-posla
-      POSLA_ENV: local
-      TZ: Asia/Tokyo
+    env_file:
+      - ./docker/env/app.env
     ports:
-      - "8080:80"
+      - "8081:80"
     volumes:
       # アプリ本体（ホスト側で編集 → 即反映）
       - ./api:/var/www/html/api
@@ -75,7 +60,8 @@ services:
       - ./scripts:/var/www/html/scripts
       - ./sql:/var/www/html/sql:ro
       - ./uploads:/var/www/html/uploads
-      # DocumentRoot を public/ に向けるための index.php（ない場合は public/ を直接見る）
+      - ./privacy:/var/www/html/privacy:ro
+      - ./terms:/var/www/html/terms:ro
       - ./docker/php/apache-vhost.conf:/etc/apache2/sites-available/000-default.conf:ro
 
 volumes:

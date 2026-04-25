@@ -27,6 +27,7 @@ if (php_sapi_name() !== 'cli') {
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/reservation-availability.php';
 require_once __DIR__ . '/../lib/reservation-notifier.php';
+require_once __DIR__ . '/../config/app.php';
 
 $pdo = get_db();
 
@@ -47,7 +48,7 @@ foreach ($stmt->fetchAll() as $r) {
         $processed['skipped_disabled']++;
         continue;
     }
-    $editUrl = 'https://eat.posla.jp/public/customer/reserve-detail.html?id=' . urlencode($r['id']) . '&t=' . urlencode($r['edit_token'] ?: '');
+    $editUrl = app_url('/customer/reserve-detail.html') . '?id=' . urlencode($r['id']) . '&t=' . urlencode($r['edit_token'] ?: '');
     $res = send_reservation_notification($pdo, $r, 'reminder_24h', ['edit_url' => $editUrl]);
     if ($res['success']) {
         $pdo->prepare('UPDATE reservations SET reminder_24h_sent_at = NOW() WHERE id = ?')->execute([$r['id']]);
@@ -72,7 +73,7 @@ foreach ($stmt2->fetchAll() as $r) {
         $processed['skipped_disabled']++;
         continue;
     }
-    $editUrl = 'https://eat.posla.jp/public/customer/reserve-detail.html?id=' . urlencode($r['id']) . '&t=' . urlencode($r['edit_token'] ?: '');
+    $editUrl = app_url('/customer/reserve-detail.html') . '?id=' . urlencode($r['id']) . '&t=' . urlencode($r['edit_token'] ?: '');
     $res = send_reservation_notification($pdo, $r, 'reminder_2h', ['edit_url' => $editUrl]);
     if ($res['success']) {
         $pdo->prepare('UPDATE reservations SET reminder_2h_sent_at = NOW() WHERE id = ?')->execute([$r['id']]);

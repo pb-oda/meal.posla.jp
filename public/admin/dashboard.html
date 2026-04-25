@@ -5,13 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3f51b5">
   <title>管理ダッシュボード</title>
-  <link rel="stylesheet" href="css/admin.css?v=20260422-batch-c3">
+  <link rel="stylesheet" href="css/admin.css?v=20260422-sales-bars-anim">
   <link rel="stylesheet" href="css/reservation-board.css?v=20260422-batch-a">
   <style>
     /* L-3 Phase 3: ヘルプスタッフ表示 */
     .shift-help { background: #fff3e0 !important; border-left: 3px solid #e65100; }
     .help-badge { background: #e65100; color: #fff; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; margin-right: 2px; }
     .shift-help-swatch { display: inline-block; width: 12px; height: 12px; background: #fff3e0; border: 1px solid #e65100; }
+    /* RPT-P1-1: 週次サマリー (panel-sales 先頭表示) */
+    .weekly-summary { margin: 12px 16px 16px; padding: 12px 14px; background: #f7fafd; border: 1px solid #dde6ef; border-radius: 10px; }
+    .weekly-summary__head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; flex-wrap: wrap; gap: 4px; }
+    .weekly-summary__title { font-size: 0.9rem; font-weight: 700; color: #37474f; }
+    .weekly-summary__period { font-size: 0.78rem; color: #78909c; }
+    .weekly-summary__cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+    .weekly-summary__card { background: #fff; border: 1px solid #e4e8ed; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+    .weekly-summary__label { font-size: 0.72rem; color: #78909c; letter-spacing: 0.05em; }
+    .weekly-summary__value { font-size: 1.1rem; font-weight: 700; color: #263238; }
+    .weekly-summary__delta { font-size: 0.72rem; font-weight: 600; }
+    .weekly-summary__delta small { font-weight: 400; color: #90a4ae; margin-left: 4px; }
+    .weekly-summary__delta--up { color: #2e7d32; }
+    .weekly-summary__delta--down { color: #c62828; }
+    .weekly-summary__delta--flat { color: #78909c; }
+    .weekly-summary__delta--na { color: #90a4ae; font-weight: 400; }
+    .weekly-summary__top { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #dde6ef; }
+    .weekly-summary__top-title { font-size: 0.78rem; font-weight: 600; color: #455a64; margin-right: 8px; }
+    .weekly-summary__top-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; counter-reset: ws-top; }
+    .weekly-summary__top-list li { display: flex; align-items: baseline; gap: 8px; font-size: 0.82rem; color: #37474f; }
+    .weekly-summary__top-list li::before { counter-increment: ws-top; content: counter(ws-top) "."; font-weight: 700; color: #1976d2; min-width: 16px; }
+    .weekly-summary__top-name { flex: 1; }
+    .weekly-summary__top-qty { color: #78909c; font-size: 0.78rem; }
+    .weekly-summary__top-revenue { font-weight: 600; color: #37474f; min-width: 80px; text-align: right; }
   </style>
   <!-- PWA -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -82,7 +105,7 @@
             <span class="admin-user-menu__caret" aria-hidden="true">▾</span>
           </button>
           <div class="admin-user-menu__drop" id="admin-user-menu-drop" role="menu">
-            <a class="admin-user-menu__item" href="/public/docs-tenant/" target="_blank" rel="noopener" role="menuitem" data-role-min="manager">📖 取扱説明書</a>
+            <a class="admin-user-menu__item" href="/docs-tenant/" target="_blank" rel="noopener" role="menuitem" data-role-min="manager">📖 取扱説明書</a>
             <button class="admin-user-menu__item" id="btn-change-password" type="button" role="menuitem">🔑 パスワード変更</button>
             <div class="admin-user-menu__sep"></div>
             <button class="admin-user-menu__item admin-user-menu__item--danger" id="btn-logout" type="button" role="menuitem">⎋ ログアウト</button>
@@ -261,6 +284,8 @@
         </div>
       </div>
       <div class="panel-body panel-body--flush">
+        <!-- RPT-P1-1: 週次サマリー (過去 7 日 KPI + 前週比) -->
+        <div id="weekly-summary-container"></div>
         <div id="sales-report-container"></div>
       </div>
     </div>
@@ -793,7 +818,9 @@
   <script src="js/daily-recommendation-editor.js"></script>
   <script src="js/table-editor.js?v=20260418"></script>
   <script src="js/floor-map.js?v=20260408p1be"></script>
-  <script src="js/sales-report.js"></script>
+  <script src="js/sales-report.js?v=20260422-sales-bars-anim"></script>
+  <!-- RPT-P1-1: 週次サマリー (store dashboard 売上レポート先頭に表示) -->
+  <script src="js/weekly-summary.js?v=20260423-rpt1"></script>
   <script src="js/register-report.js?v=20260421-pwa4d-3"></script>
   <script src="js/order-history.js"></script>
   <script src="js/turnover-report.js"></script>
@@ -811,7 +838,7 @@
   <script src="js/device-editor.js?v=20260418"></script>
   <script src="js/audit-log-viewer.js?v=20260422-batch-a2"></script>
   <script src="js/error-stats-viewer.js?v=20260422-batch-a2"></script>
-  <script src="../shared/js/posla-helpdesk-fab.js?v=20260419-cb1c"></script>
+  <script src="../shared/js/posla-supportdesk-fab.js?v=20260423"></script>
   <script src="js/receipt-settings.js?v=20260405c"></script>
   <script src="js/takeout-manager.js"></script>
   <script src="js/ai-assistant.js?v=20260422-batch-a2b"></script>
@@ -1178,6 +1205,10 @@
       );
       FloorMap.init(document.getElementById('floor-map-container'));
       SalesReport.init(document.getElementById('sales-report-container'));
+      // RPT-P1-1: 週次サマリー (panel-sales 先頭表示)
+      if (typeof WeeklySummary !== 'undefined') {
+        WeeklySummary.init(document.getElementById('weekly-summary-container'));
+      }
       RegisterReport.init(document.getElementById('register-report-container'));
       OrderHistory.init(document.getElementById('order-history-container'));
       TurnoverReport.init(document.getElementById('turnover-report-container'));
@@ -1542,7 +1573,11 @@
         case 'local-menu': LocalItemEditor.load(); break;
         case 'tables': TableEditor.load(); break;
         case 'floor-map': FloorMap.load(); break;
-        case 'sales': SalesReport.load(); break;
+        case 'sales':
+          // RPT-P1-1: 週次サマリーを先に load (既存売上レポートの前)
+          if (typeof WeeklySummary !== 'undefined') WeeklySummary.load();
+          SalesReport.load();
+          break;
         case 'register': RegisterReport.load(); break;
         case 'orders': OrderHistory.load(); break;
         case 'turnover': TurnoverReport.load(); break;

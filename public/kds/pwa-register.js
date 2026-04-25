@@ -22,8 +22,8 @@
       && location.pathname.indexOf('/kds/') === -1) return;
 
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('/public/kds/sw.js', {
-      scope: '/public/kds/',
+    navigator.serviceWorker.register('/kds/sw.js', {
+      scope: '/kds/',
       updateViaCache: 'none'
     }).then(function (reg) {
       // PWA Phase 1 (修正版): waiting への自動 SKIP_WAITING 送信を撤廃。

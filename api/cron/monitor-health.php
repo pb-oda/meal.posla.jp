@@ -5,13 +5,14 @@
  * 推奨実行: 5分毎 (Sakura cron)
  *
  * やること:
- *   1. /home/odah/log/php_errors.log の末尾を走査 → 直近 5 分の ERROR/FATAL を検出
+ *   1. POSLA_PHP_ERROR_LOG の末尾を走査 → 直近 5 分の ERROR/FATAL を検出
  *   2. subscription_events / reservation_notifications_log の 'failed' を検知
  *   3. posla_settings.monitor_last_heartbeat を更新 (外部から監視される用)
  *
  * 異常検知時:
  *   - monitor_events に記録
- *   - Slack webhook 通知 (posla_settings.slack_webhook_url)
+ *   - Google Chat webhook 通知 (posla_settings.google_chat_webhook_url)
+ *     ※ 旧 slack_webhook_url は fallback 用に温存
  *   - 同一イベント連続3件以上 → Hiro個人メール (ops_notify_email) へ
  *
  * 認証: CLI または X-POSLA-CRON-SECRET ヘッダ
@@ -26,15 +27,16 @@ if (php_sapi_name() !== 'cli') {
 
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/push.php';
+require_once __DIR__ . '/../config/app.php';
 $pdo = get_db();
 
 $now = date('Y-m-d H:i:s');
-$result = ['php_errors' => 0, 'stripe_failed' => 0, 'reserve_mail_failed' => 0, 'api_errors' => 0, 'slack_sent' => 0];
+$result = ['php_errors' => 0, 'stripe_failed' => 0, 'reserve_mail_failed' => 0, 'api_errors' => 0, 'alert_sent' => 0, 'slack_sent' => 0];
 
 // posla_settings から通知先を取得
 $settings = [];
 try {
-    $stmt = $pdo->query("SELECT setting_key, setting_value FROM posla_settings WHERE setting_key IN ('slack_webhook_url','ops_notify_email')");
+    $stmt = $pdo->query("SELECT setting_key, setting_value FROM posla_settings WHERE setting_key IN ('google_chat_webhook_url','slack_webhook_url','ops_notify_email')");
     foreach ($stmt->fetchAll() as $r) $settings[$r['setting_key']] = $r['setting_value'];
 } catch (PDOException $e) { /* テーブル未存在は無視 */ }
 
@@ -45,7 +47,7 @@ try {
 } catch (PDOException $e) { /* ignore */ }
 
 // -------- 1. PHP エラーログ走査 (直近 5 分) --------
-$logFile = '/home/odah/log/php_errors.log';
+$logFile = POSLA_PHP_ERROR_LOG;
 if (is_readable($logFile)) {
     $cutoff = time() - 5 * 60;
     $lines = _tail($logFile, 200);
@@ -60,10 +62,13 @@ if (is_readable($logFile)) {
     }
     if (!empty($recentErrors)) {
         $detail = implode("\n", array_slice($recentErrors, 0, 5));
-        _logEvent($pdo, 'php_error', 'error', 'php_errors.log', 'PHP エラーを検知 (' . count($recentErrors) . ' 件)', $detail);
-        _notifySlack($settings, '⚠️ POSLA: PHP エラー ' . count($recentErrors) . ' 件', $detail);
+        $destination = _notifyOpsAlert($settings, '⚠️ POSLA: PHP エラー ' . count($recentErrors) . ' 件', $detail);
+        _logEvent($pdo, 'php_error', 'error', 'php_errors.log', 'PHP エラーを検知 (' . count($recentErrors) . ' 件)', $detail, null, null, $destination !== '');
         $result['php_errors'] = count($recentErrors);
-        $result['slack_sent']++;
+        if ($destination !== '') {
+            $result['alert_sent']++;
+            if ($destination === 'slack_legacy') $result['slack_sent']++;
+        }
     }
 }
 
@@ -83,8 +88,8 @@ try {
     $total = 0;
     foreach ($rows as $r) $total += (int)$r['cnt'];
     if ($total > 0) {
-        _logEvent($pdo, 'stripe_webhook_fail', 'warn', 'subscription_events', 'Stripe Webhook 失敗 (' . $total . ' 件) 直近5分', null);
-        _notifySlack($settings, '⚠️ POSLA: Stripe Webhook 失敗 ' . $total . ' 件 (直近5分)', '詳細は subscription_events テーブル参照');
+        $destination = _notifyOpsAlert($settings, '⚠️ POSLA: Stripe Webhook 失敗 ' . $total . ' 件 (直近5分)', '詳細は subscription_events テーブル参照');
+        _logEvent($pdo, 'stripe_webhook_fail', 'warn', 'subscription_events', 'Stripe Webhook 失敗 (' . $total . ' 件) 直近5分', null, null, null, $destination !== '');
         foreach ($rows as $r) {
             if (!empty($r['tenant_id'])) {
                 _pushImportantError(
@@ -95,7 +100,10 @@ try {
             }
         }
         $result['stripe_failed'] = $total;
-        $result['slack_sent']++;
+        if ($destination !== '') {
+            $result['alert_sent']++;
+            if ($destination === 'slack_legacy') $result['slack_sent']++;
+        }
     }
 } catch (PDOException $e) { /* subscription_events 未存在は無視 */ }
 
@@ -118,10 +126,11 @@ try {
 //   - 認証系エラー (E3xxx 401/403) が 30 件以上 → warn (ブルートフォースの可能性)
 try {
     $cb1 = $pdo->query(
-        "SELECT error_no, code, http_status, COUNT(*) AS cnt, MAX(message) AS msg
+        "SELECT error_no, code, http_status, tenant_id, store_id, request_path,
+                COUNT(*) AS cnt, MAX(message) AS msg
          FROM error_log
          WHERE created_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
-         GROUP BY error_no, code, http_status
+         GROUP BY error_no, code, http_status, tenant_id, store_id, request_path
          HAVING cnt >= 20
             OR (http_status >= 500 AND cnt >= 3)
             OR (http_status IN (401, 403) AND cnt >= 30)
@@ -133,18 +142,39 @@ try {
         $sev = ((int)$r['http_status'] >= 500) ? 'error' : 'warn';
         $tag = $r['error_no'] ? $r['error_no'] : $r['code'];
         $title = '[' . $tag . '] ' . $r['code'] . ' が ' . $r['cnt'] . ' 件 (直近5分)';
-        $detail = 'http_status=' . $r['http_status'] . "\nmessage=" . $r['msg'];
-        // 同一 errorNo の重複通知を防ぐため、直近 30 分のイベントを確認
+        $tenantId = isset($r['tenant_id']) ? trim((string)$r['tenant_id']) : '';
+        $storeId = isset($r['store_id']) ? trim((string)$r['store_id']) : '';
+        $requestPath = isset($r['request_path']) ? trim((string)$r['request_path']) : '';
+        $requestPathLabel = $requestPath !== '' ? $requestPath : '-';
+        $detail = implode("\n", [
+            'テナント: ' . ($tenantId !== '' ? $tenantId : '-'),
+            '店舗: ' . ($storeId !== '' ? $storeId : '-'),
+            'エラー番号: ' . $tag,
+            'エラーコード: ' . $r['code'],
+            'HTTP: ' . $r['http_status'],
+            '件数: ' . $r['cnt'] . ' 件 / 直近5分',
+            '経路: ' . $requestPathLabel,
+            '内容: ' . (string)$r['msg'],
+            'ソース: error_log',
+        ]);
+        // 同一 errorNo + tenant/store/path の重複通知を防ぐため、直近 30 分のイベントを確認
         $dup = $pdo->prepare(
             "SELECT COUNT(*) FROM monitor_events
-             WHERE source = 'error_log' AND title LIKE ?
+             WHERE source = 'error_log'
+               AND title = ?
+               AND COALESCE(tenant_id, '') = ?
+               AND COALESCE(store_id, '') = ?
+               AND detail LIKE ?
                AND created_at >= DATE_SUB(NOW(), INTERVAL 30 MINUTE)"
         );
-        $dup->execute(['[' . $tag . ']%']);
+        $dup->execute([$title, $tenantId, $storeId, '%経路: ' . $requestPathLabel . '%']);
         if ((int)$dup->fetchColumn() === 0) {
-            _logEvent($pdo, 'custom', $sev, 'error_log', $title, $detail);
-            _notifySlack($settings, ($sev === 'error' ? '🔴' : '⚠️') . ' POSLA: ' . $title, $detail);
-            $result['slack_sent']++;
+            $destination = _notifyOpsAlert($settings, ($sev === 'error' ? '🔴' : '⚠️') . ' POSLA: ' . $title, $detail);
+            _logEvent($pdo, 'custom', $sev, 'error_log', $title, $detail, $tenantId, $storeId, $destination !== '');
+            if ($destination !== '') {
+                $result['alert_sent']++;
+                if ($destination === 'slack_legacy') $result['slack_sent']++;
+            }
         }
         $result['api_errors'] += (int)$r['cnt'];
     }
@@ -184,24 +214,59 @@ function _tail($filepath, $lines) {
     return array_slice($arr, -$lines);
 }
 
-function _logEvent($pdo, $type, $severity, $source, $title, $detail) {
+function _logEvent($pdo, $type, $severity, $source, $title, $detail, $tenantId = null, $storeId = null, $notifiedWebhook = false) {
     try {
         $id = bin2hex(random_bytes(18));
         $pdo->prepare(
-            "INSERT INTO monitor_events (id, event_type, severity, source, title, detail, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())"
-        )->execute([$id, $type, $severity, $source, mb_substr($title, 0, 250), mb_substr($detail ?? '', 0, 1000)]);
+            "INSERT INTO monitor_events
+                (id, event_type, severity, source, title, detail, tenant_id, store_id, notified_slack, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+        )->execute([
+            $id,
+            $type,
+            $severity,
+            $source,
+            mb_substr($title, 0, 250),
+            mb_substr($detail ?? '', 0, 1000),
+            $tenantId,
+            $storeId,
+            $notifiedWebhook ? 1 : 0,
+        ]);
     } catch (PDOException $e) {
-        error_log('[I-1][monitor] log_event_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[I-1][monitor] log_event_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 }
 
-function _notifySlack($settings, $title, $detail) {
-    $url = $settings['slack_webhook_url'] ?? '';
-    if (!$url) return;
+function _notifyOpsAlert($settings, $title, $detail) {
+    $googleChatUrl = trim((string)($settings['google_chat_webhook_url'] ?? ''));
+    if ($googleChatUrl !== '') {
+        return _notifyGoogleChat($googleChatUrl, $title, $detail) ? 'google_chat' : '';
+    }
+
+    $slackUrl = trim((string)($settings['slack_webhook_url'] ?? ''));
+    if ($slackUrl !== '') {
+        return _notifySlack($slackUrl, $title, $detail) ? 'slack_legacy' : '';
+    }
+
+    return '';
+}
+
+function _notifyGoogleChat($url, $title, $detail) {
+    $payload = json_encode([
+        'text' => $title . "\n" . mb_substr((string)($detail ?? ''), 0, 3000)
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    return _postWebhookJson($url, $payload);
+}
+
+function _notifySlack($url, $title, $detail) {
     $payload = json_encode([
         'text' => $title,
         'attachments' => [['text' => mb_substr($detail ?? '', 0, 2000), 'color' => '#ff9800']]
-    ]);
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    return _postWebhookJson($url, $payload);
+}
+
+function _postWebhookJson($url, $payload) {
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
@@ -210,8 +275,10 @@ function _notifySlack($settings, $title, $detail) {
         CURLOPT_TIMEOUT => 5,
         CURLOPT_RETURNTRANSFER => true,
     ]);
-    @curl_exec($ch);
+    $raw = @curl_exec($ch);
+    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
+    return ($raw !== false && $httpCode >= 200 && $httpCode < 300);
 }
 
 /**
@@ -256,18 +323,18 @@ function _pushImportantError($pdo, $tenantId, $type, $title, $detail) {
         push_send_to_roles($pdo, $storeId, ['manager', 'owner'], 'important_error', [
             'title' => '重要エラー: ' . $title,
             'body'  => mb_substr((string)$detail, 0, 140),
-            'url'   => '/public/admin/dashboard.html',
+            'url'   => '/admin/dashboard.html',
             'tag'   => $type,
         ]);
     } catch (\Throwable $e) {
-        error_log('[I-1][push] important_error_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[I-1][push] important_error_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 }
 
 function _sendOpsMail($to, $subject, $body) {
     if (function_exists('mb_language')) { mb_language('Japanese'); mb_internal_encoding('UTF-8'); }
     $fromName = 'POSLA 運用監視';
-    $fromEmail = 'noreply@eat.posla.jp';
+    $fromEmail = APP_FROM_EMAIL;
     $fromHeader = '=?UTF-8?B?' . base64_encode($fromName) . '?= <' . $fromEmail . '>';
     $headers = "From: " . $fromHeader . "\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n";
     if (function_exists('mb_send_mail')) @mb_send_mail($to, $subject, $body, $headers);

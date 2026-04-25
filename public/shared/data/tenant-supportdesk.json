@@ -1,0 +1,268 @@
+{
+  "version": "2026-04-23",
+  "categories": [
+    { "id": "login", "label": "ログイン" },
+    { "id": "order", "label": "注文" },
+    { "id": "payment", "label": "会計" },
+    { "id": "print", "label": "印刷" },
+    { "id": "reservation", "label": "予約" },
+    { "id": "kds", "label": "KDS" },
+    { "id": "menu", "label": "メニュー" },
+    { "id": "shift", "label": "シフト" },
+    { "id": "takeout", "label": "テイクアウト" },
+    { "id": "setting", "label": "設定 / 連携" }
+  ],
+  "faq": [
+    {
+      "id": "faq-login-01",
+      "title": "ログインできない",
+      "answer": "よくある原因は3つ: (1) パスワードを間違えている (2) アカウントが無効化されている (3) IPアドレスからのログイン試行回数が5分以内に10回を超えて一時ロックされている。まずオーナーまたはマネージャーにパスワードリセットを依頼してください。ロックの場合は5分待ってから再試行します。",
+      "keywords": ["ログイン", "パスワード", "入れない", "login", "失敗", "ロック"],
+      "category": "login",
+      "doc_link": "/docs-tenant/tenant/02-login.html"
+    },
+    {
+      "id": "faq-login-02",
+      "title": "パスワードを変更したい",
+      "answer": "画面右上の「パスワード変更」ボタンから自分で変更できます。現在のパスワード＋新しいパスワード(8文字以上、英字と数字を含む)を入力します。他のスタッフのパスワードをリセットする場合は、オーナーまたはマネージャー権限でログインし、ユーザー管理画面から実施します。",
+      "keywords": ["パスワード", "変更", "リセット", "password"],
+      "category": "login",
+      "doc_link": "/docs-tenant/tenant/02-login.html"
+    },
+    {
+      "id": "faq-login-03",
+      "title": "セッションが切れましたと出た",
+      "answer": "30分以上操作しなかった場合、自動的にセッションが切れます。再度ログイン画面から入り直してください。POSLA管理者でパスワードを変更した直後にも、他のタブ/端末のセッションは強制終了されます(SESSION_REVOKED)。",
+      "keywords": ["セッション", "タイムアウト", "session", "切れ"],
+      "category": "login",
+      "doc_link": "/docs-tenant/tenant/02-login.html"
+    },
+    {
+      "id": "faq-order-01",
+      "title": "注文がKDSに届かない",
+      "answer": "(1) KDS端末の電源とWi-Fi接続を確認 (2) KDS画面で店舗選択が正しいか確認 (3) ハンディから送信した注文の「店舗」が一致しているか確認 (4) 店舗設定の「KDS表示」がONか確認。通信断の場合は緊急レジモードに切り替わります。",
+      "keywords": ["注文", "KDS", "届かない", "表示されない"],
+      "category": "kds",
+      "doc_link": "/docs-tenant/tenant/07-kds.html"
+    },
+    {
+      "id": "faq-order-02",
+      "title": "お客様が注文できないと言っている",
+      "answer": "(1) QRコードを正しく読み取っているか (2) セッション有効期限(4時間)が切れていないか (3) Wi-Fi接続 (4) メニューが売り切れ表示になっていないか。セッション切れなら新しいQRコードを発行してください(テーブル詳細画面 → QR再発行)。",
+      "keywords": ["注文", "お客様", "セルフ", "QR", "できない"],
+      "category": "order",
+      "doc_link": "/docs-tenant/tenant/04-menu.html"
+    },
+    {
+      "id": "faq-payment-01",
+      "title": "会計時にPINを求められた",
+      "answer": "スタッフPIN(4〜8桁数字)は会計操作で「誰が会計したか」を記録するために必須です。PINが分からない場合はマネージャー/オーナーに再設定を依頼してください(ユーザー管理 → 対象スタッフ → PIN再設定)。5回連続で間違えると10分間ロックされます。",
+      "keywords": ["PIN", "会計", "レジ", "暗証番号"],
+      "category": "payment",
+      "doc_link": "/docs-tenant/tenant/08-cashier.html"
+    },
+    {
+      "id": "faq-payment-02",
+      "title": "返金したい",
+      "answer": "レジ画面の会計履歴から対象決済を選択 → 「返金」ボタン。全額返金のみ対応(部分返金は未対応)。現金決済は即時、カード決済(Stripe)は5〜10営業日後にカード会社経由で返金されます。マネージャー以上の権限が必要です。",
+      "keywords": ["返金", "refund", "キャンセル", "取消"],
+      "category": "payment",
+      "doc_link": "/docs-tenant/tenant/08-cashier.html"
+    },
+    {
+      "id": "faq-payment-03",
+      "title": "クレジットカード決済が失敗する",
+      "answer": "(1) レジ端末のネット接続 (2) Stripe Terminal の接続状態(緑ランプ点灯) (3) カード会社側のエラー(署名不一致・残高不足) (4) Stripe アカウントの Live モード設定。エラーコード E6xxx が出たらエラーコタログで確認してください。",
+      "keywords": ["カード", "決済", "Stripe", "失敗", "支払い"],
+      "category": "payment",
+      "doc_link": "/docs-tenant/tenant/21-stripe-full.html"
+    },
+    {
+      "id": "faq-print-01",
+      "title": "レシートが印刷されない",
+      "answer": "(1) プリンタの電源とUSB/ネットワーク接続 (2) 用紙切れ・紙詰まり (3) 店舗設定の「自動印刷」がONか (4) ブラウザで印刷ダイアログを許可しているか。ローカル印刷(Star TSP100)はUSB接続、ネットワーク印刷はIPアドレス設定を確認。",
+      "keywords": ["印刷", "レシート", "プリンタ", "出ない"],
+      "category": "print",
+      "doc_link": "/docs-tenant/tenant/16-settings.html"
+    },
+    {
+      "id": "faq-reservation-01",
+      "title": "予約が入らない / 予約メールが届かない",
+      "answer": "(1) 店舗設定の「予約を受け付ける」がON (2) 営業時間と予約可能時間が適切に設定済み (3) メール送信設定(SPF/DKIM)が有効 (4) 顧客のメールアドレスが間違っていないか。メール未達の場合は予約管理画面 → 該当予約 → 「通知再送」ボタン。",
+      "keywords": ["予約", "メール", "届かない", "受付"],
+      "category": "reservation",
+      "doc_link": "/docs-tenant/tenant/24-reservations.html"
+    },
+    {
+      "id": "faq-menu-01",
+      "title": "メニューが表示されない",
+      "answer": "(1) カテゴリに「表示する」チェックが入っているか (2) メニューに価格が0円以上で設定済みか (3) 売り切れ状態になっていないか (4) 店舗別オーバーライドで非表示になっていないか。本部配信メニューの場合、店舗側は価格変更と非表示のみ可能です。",
+      "keywords": ["メニュー", "表示", "出ない", "売り切れ"],
+      "category": "menu",
+      "doc_link": "/docs-tenant/tenant/04-menu.html"
+    },
+    {
+      "id": "faq-menu-02",
+      "title": "メニュー画像をアップロードしたい",
+      "answer": "メニュー詳細画面 → 「画像をアップロード」ボタン → JPG/PNG(最大5MB)。画像は自動で圧縮・リサイズされます。複数店舗で同じメニューを使う場合は本部メニューから画像を設定すれば全店舗に配信されます。",
+      "keywords": ["メニュー", "画像", "写真", "アップロード"],
+      "category": "menu",
+      "doc_link": "/docs-tenant/tenant/04-menu.html"
+    },
+    {
+      "id": "faq-shift-01",
+      "title": "出勤打刻ができない",
+      "answer": "(1) ログインしているアカウントで自分のシフトが当日分として登録されているか (2) GPS 許可が有効か(店舗設定で「GPSチェック」がONの場合) (3) 店舗から一定距離以内にいるか。デバイス端末(role=device)は GPS 必須です。",
+      "keywords": ["出勤", "打刻", "シフト", "GPS"],
+      "category": "shift",
+      "doc_link": "/docs-tenant/tenant/12-shift.html"
+    },
+    {
+      "id": "faq-takeout-01",
+      "title": "テイクアウト注文が入らない",
+      "answer": "(1) 店舗設定の「テイクアウト受付」がON (2) Stripe決済設定が live モード (3) 受取時間の設定が適切 (4) メニューに「テイクアウト可」フラグが立っているか。オンライン決済必須のため、Stripe 未設定では受付不可。",
+      "keywords": ["テイクアウト", "takeout", "注文", "入らない"],
+      "category": "takeout",
+      "doc_link": "/docs-tenant/tenant/09-takeout.html"
+    },
+    {
+      "id": "faq-setting-01",
+      "title": "Stripe決済キーはどこで設定する",
+      "answer": "owner-dashboard → 「決済設定」タブで入力します。Stripe Dashboard から Secret Key(`sk_live_...`)をコピーしてペースト。Connect アカウント連携の場合は別途オンボーディングが必要です。テストキー(`sk_test_`)では本番決済は通りません。",
+      "keywords": ["Stripe", "キー", "設定", "決済"],
+      "category": "setting",
+      "doc_link": "/docs-tenant/tenant/21-stripe-full.html"
+    },
+    {
+      "id": "faq-setting-02",
+      "title": "スマレジと連携したい",
+      "answer": "owner-dashboard → 「スマレジ連携」タブ → 「スマレジで認可する」ボタン。スマレジ側で店舗とOAuth認可 → POSLA側で店舗マッピング設定 → メニュー同期。注文発生時に自動でスマレジへ売上転送されます。",
+      "keywords": ["スマレジ", "連携", "smaregi", "POS"],
+      "category": "setting",
+      "doc_link": "/docs-tenant/tenant/22-smaregi-full.html"
+    }
+  ],
+  "flows": [
+    {
+      "id": "flow-login-failed",
+      "title": "ログインできない時の手順",
+      "category": "login",
+      "steps": [
+        "画面に表示されたエラーメッセージを確認(E3xxxは認証系エラー)",
+        "CapsLock / 全角/半角 の確認",
+        "オーナー/マネージャーにパスワードリセットを依頼",
+        "リセット後の初期パスワードでログイン → 画面右上で自分のパスワードに変更",
+        "それでもログインできない → POSLAサポートに連絡(テナント名・ユーザー名・発生時刻を伝える)"
+      ],
+      "doc_link": "/docs-tenant/tenant/19-troubleshoot.html"
+    },
+    {
+      "id": "flow-order-kds",
+      "title": "注文がKDSに出ない時の手順",
+      "category": "kds",
+      "steps": [
+        "KDS端末のWi-Fi接続を確認(画面上部に電波アイコン)",
+        "KDS画面で店舗選択が正しいか",
+        "ハンディから送った注文が「店舗」一致か",
+        "店舗設定でKDS表示ONか",
+        "それでも出ない → テーブル画面で注文履歴を確認、該当注文があれば KDS再同期ボタン"
+      ],
+      "doc_link": "/docs-tenant/tenant/07-kds.html"
+    },
+    {
+      "id": "flow-payment-card-failed",
+      "title": "カード決済が失敗した時の手順",
+      "category": "payment",
+      "steps": [
+        "エラーコード(E6xxx)を控える",
+        "レジ端末のネット接続確認",
+        "Stripe Terminal(カードリーダー)の接続ランプ確認",
+        "別のカードで再試行 → 同じエラーならStripe側の問題",
+        "最終手段: 現金決済に切り替え + お客様に後日カード決済の案内(テイクアウトなら Stripe Checkout の再送リンクから)"
+      ],
+      "doc_link": "/docs-tenant/tenant/21-stripe-full.html"
+    },
+    {
+      "id": "flow-print-receipt",
+      "title": "レシートが出ない時の手順",
+      "category": "print",
+      "steps": [
+        "プリンタの電源とケーブル確認",
+        "用紙切れ・紙詰まりチェック",
+        "店舗設定の「自動印刷」ON確認",
+        "ブラウザの印刷許可設定確認(Chrome→設定→詳細→プライバシー)",
+        "手動印刷 → 会計履歴 → 対象決済 → 「再印刷」ボタン"
+      ],
+      "doc_link": "/docs-tenant/tenant/16-settings.html"
+    },
+    {
+      "id": "flow-reservation-mail",
+      "title": "予約メールが届かない時の手順",
+      "category": "reservation",
+      "steps": [
+        "予約管理画面で対象予約の「メール送信ログ」を確認",
+        "エラー表示があればSPF/DKIM設定問題の可能性",
+        "店舗設定 → メール送信設定 → 送信元メールが新ドメイン用にSPF設定済みか",
+        "顧客のメールアドレス自体が正しいか確認",
+        "手動で送る → 該当予約 → 「通知再送」ボタン"
+      ],
+      "doc_link": "/docs-tenant/tenant/24-reservations.html"
+    },
+    {
+      "id": "flow-shift-clock-in",
+      "title": "出勤打刻できない時の手順",
+      "category": "shift",
+      "steps": [
+        "ログインユーザーの今日のシフトが登録済みか確認",
+        "GPS 許可が有効か(ブラウザのURL横の鍵アイコン → 位置情報 → 許可)",
+        "店舗設定でGPSチェックがONなら店舗近くにいるか",
+        "device端末(KDS/レジ/ハンディ)は GPS 必須",
+        "それでも不可 → マネージャーに手動打刻を依頼"
+      ],
+      "doc_link": "/docs-tenant/tenant/12-shift.html"
+    }
+  ],
+  "error_codes": [
+    { "code": "E1001", "title": "システムエラー", "message": "予期しないサーバーエラー", "action": "再読み込み → 改善なければPOSLAサポートへ画面キャプチャとエラー番号を連絡", "category": "system" },
+    { "code": "E1021", "title": "リクエスト過多", "message": "同じ操作を短時間に多数送信しています", "action": "1〜5分待ってから再試行。ログインのリトライなら5分待機", "category": "system" },
+    { "code": "E3001", "title": "認証エラー", "message": "ログインが必要です", "action": "ログイン画面に戻って再ログイン", "category": "login" },
+    { "code": "E3004", "title": "パスワード不正", "message": "パスワードが正しくありません", "action": "CapsLock確認 → パスワードリセット依頼", "category": "login" },
+    { "code": "E3005", "title": "セッション切れ", "message": "セッションが無効化されました", "action": "再ログイン。POSLA管理者のパスワード変更直後は他タブが強制終了される", "category": "login" },
+    { "code": "E3017", "title": "権限不足", "message": "この操作には管理者権限が必要です", "action": "マネージャーまたはオーナー権限のアカウントでログインし直す", "category": "login" },
+    { "code": "E3035", "title": "認証必須", "message": "このAPIはログイン必須です", "action": "ログイン画面から入り直す", "category": "login" },
+    { "code": "E5001", "title": "注文送信失敗", "message": "注文をサーバーに送信できませんでした", "action": "Wi-Fi接続確認 → 再送信。複数回失敗するなら緊急レジモードに切り替え", "category": "order" },
+    { "code": "E5020", "title": "KDS送信失敗", "message": "KDSへの注文同期に失敗", "action": "KDS端末の接続確認 → テーブル画面で該当注文を選び「KDS再同期」ボタン", "category": "kds" },
+    { "code": "E6001", "title": "決済失敗", "message": "カード決済に失敗しました", "action": "別のカードまたは現金で会計。カード会社側エラーの可能性", "category": "payment" },
+    { "code": "E6017", "title": "Stripe未設定", "message": "決済ゲートウェイが設定されていません", "action": "owner-dashboard → 決済設定タブ → Stripeキーを入力", "category": "payment" },
+    { "code": "E6020", "title": "返金失敗", "message": "Stripeへの返金処理に失敗", "action": "Stripe Dashboard で元決済の状態確認 → 必要ならStripe側で直接返金", "category": "payment" },
+    { "code": "E7001", "title": "競合発生", "message": "同じリソースが同時更新されています", "action": "画面を再読み込みしてから再試行", "category": "system" },
+    { "code": "E9001", "title": "予約作成失敗", "message": "予約をDBに保存できませんでした", "action": "日時重複 → 別時間で再試行。店舗設定の予約可能時間も確認", "category": "reservation" },
+    { "code": "E9017", "title": "AI APIエラー", "message": "Gemini API呼び出しに失敗", "action": "一時的な上限超過の可能性。数分待って再試行 → 解消しなければPOSLAサポートへ", "category": "system" }
+  ],
+  "articles": [
+    {
+      "id": "art-prepare-contact",
+      "title": "POSLAサポートに連絡する前の準備",
+      "summary": "問い合わせ時は (1) テナント名・店舗名 (2) ユーザー名 (3) エラー番号(E3xxx等) (4) 発生時刻 (5) 画面キャプチャ (6) 再現手順 を伝えるとスムーズです。",
+      "keywords": ["サポート", "問い合わせ", "連絡"],
+      "category": "system",
+      "doc_link": "/docs-tenant/tenant/19-troubleshoot.html"
+    },
+    {
+      "id": "art-emergency-register",
+      "title": "通信が切れた時 (緊急レジモード)",
+      "summary": "ネット断絶時はPOSLAが自動で緊急レジモードに切り替わります。手入力で金額を打ち込み、通信復旧後に自動転記。再会計や領収書再印刷も可能です。",
+      "keywords": ["緊急レジ", "通信", "オフライン", "ネット断"],
+      "category": "payment",
+      "doc_link": "/docs-tenant/tenant/08-cashier.html"
+    },
+    {
+      "id": "art-device-account",
+      "title": "端末専用アカウント (device ロール)",
+      "summary": "KDS・レジ・ハンディ端末には共有アカウント不可。端末ごとに device ロールのアカウントを作成すると、シフト管理・人件費集計から除外されつつ業務利用可能になります。",
+      "keywords": ["device", "端末", "KDS", "レジ", "ハンディ"],
+      "category": "setting",
+      "doc_link": "/docs-tenant/tenant/15-owner.html"
+    }
+  ]
+}

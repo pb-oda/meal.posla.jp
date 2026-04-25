@@ -62,6 +62,41 @@ var PoslaApi = (function() {
     },
     updateSettings: function(data) {
       return request('PATCH', '/settings.php', data);
-    }
+    },
+    getPushVapid: function() {
+      return request('GET', '/push-vapid.php');
+    },
+    runPushVapidAction: function(action, payload) {
+      var body = payload || {};
+      body.action = action;
+      return request('POST', '/push-vapid.php', body);
+    },
+    runMonitorAction: function(action, payload) {
+      var body = payload || {};
+      body.action = action;
+      return request('POST', '/monitor-actions.php', body);
+    },
+    getAdminUsers: function() {
+      return request('GET', '/admin-users.php');
+    },
+    createAdminUser: function(data) {
+      return request('POST', '/admin-users.php', data);
+    },
+    updateAdminUser: function(data) {
+      return request('PATCH', '/admin-users.php', data);
+    },
+    getCustomerSupportSessions: function(params) {
+      params = params || {};
+      var query = [];
+      if (params.tenant_id) query.push('tenant_id=' + encodeURIComponent(params.tenant_id));
+      if (params.store_id) query.push('store_id=' + encodeURIComponent(params.store_id));
+      if (params.status) query.push('status=' + encodeURIComponent(params.status));
+      if (params.limit) query.push('limit=' + encodeURIComponent(String(params.limit)));
+      return request('GET', '/customer-support.php' + (query.length ? ('?' + query.join('&')) : ''));
+    },
+    getCustomerSupportDetail: function(sessionId) {
+      return request('GET', '/customer-support.php?session_id=' + encodeURIComponent(sessionId));
+    },
+    // HELPDESK-P2-NONAI-ALL-20260425: AI helpdesk 系は retire 済。
   };
 })();

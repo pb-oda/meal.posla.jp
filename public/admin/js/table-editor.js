@@ -129,9 +129,7 @@ var TableEditor = (function () {
 
   function showQR(id, name) {
     var storeId = AdminApi.getCurrentStore();
-    // 現在のページ（/xxx/public/admin/dashboard.html）からベースパスを算出
-    var basePath = window.location.pathname.replace(/\/public\/admin\/.*$/, '');
-    var url = window.location.origin + basePath + '/public/customer/menu.html?store_id=' + storeId + '&table_id=' + id;
+    var url = window.location.origin + '/customer/menu.html?store_id=' + storeId + '&table_id=' + id;
 
     var overlay = document.getElementById('admin-modal-overlay');
     overlay.querySelector('.modal__title').textContent = name + ' QRコード';
@@ -190,14 +188,13 @@ var TableEditor = (function () {
   }
 
   function _renderSubQrPanel(overlay, storeId, tableId, tableCode, sessionId, subs) {
-    var basePath = window.location.pathname.replace(/\/public\/admin\/.*$/, '');
     var html = '';
 
     if (subs.length > 0) {
       html += '<div style="margin-bottom:1rem">';
       for (var i = 0; i < subs.length; i++) {
         var s = subs[i];
-        var qrUrl = window.location.origin + basePath + '/public/customer/menu.html?store_id=' + encodeURIComponent(storeId)
+        var qrUrl = window.location.origin + '/customer/menu.html?store_id=' + encodeURIComponent(storeId)
           + '&table_id=' + encodeURIComponent(tableId) + '&sub_token=' + encodeURIComponent(s.subToken);
         html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid #eee;">'
           + '<div><strong style="color:#ff6f00">' + Utils.escapeHtml(s.label || '-') + '</strong>'

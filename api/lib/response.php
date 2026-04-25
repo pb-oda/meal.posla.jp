@@ -10,16 +10,17 @@
  */
 
 require_once __DIR__ . '/error-codes.php';
+require_once __DIR__ . '/../config/app.php';
 
 function send_api_headers(): void
 {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
 
-    // S3-#19 (Q3=B): 自ドメインのみ Origin allow (eat.posla.jp / meal.posla.jp)
+    // S3-#19 (Q3=B): 自ドメインのみ Origin allow
     // 通常は同一オリジン前提だが、将来のサブドメイン分離やローカル開発に備える
     $origin  = $_SERVER['HTTP_ORIGIN'] ?? '';
-    $allowed = ['https://eat.posla.jp', 'https://meal.posla.jp'];
+    $allowed = app_allowed_origins();
     if (in_array($origin, $allowed, true)) {
         header('Access-Control-Allow-Origin: ' . $origin);
         header('Vary: Origin');

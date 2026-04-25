@@ -66,7 +66,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TSV = os.path.join(ROOT, 'scripts/output/error-audit.tsv')
 OUT_PHP        = os.path.join(ROOT, 'api/lib/error-codes.php')
 OUT_MD         = os.path.join(ROOT, 'docs/error-catalog.md')                # 開発者向け raw 版
-OUT_MD_TENANT  = os.path.join(ROOT, 'docs/manual/tenant/99-error-catalog.md')      # テナント向け (AI helpdesk が参照)
+OUT_MD_TENANT  = os.path.join(ROOT, 'docs/manual/tenant/99-error-catalog.md')      # テナント向け (非AI サポートガイドが参照)
 OUT_MD_INTERNAL= os.path.join(ROOT, 'docs/manual/internal/99-error-catalog.md')   # POSLA 運営向け
 OUT_JSON       = os.path.join(ROOT, 'scripts/output/error-codes.json')
 
@@ -219,8 +219,37 @@ PINNED_NUMBERS = {
     'INVALID_OPTION':   ('E1', 'システム / インフラ (未分類)', 1004),
     'INVALID_QUANTITY': ('E1', 'システム / インフラ (未分類)', 1005),
     'STRIPE_MISMATCH':  ('E1', 'システム / インフラ (未分類)', 1006),
+    'RATE_LIMIT':       ('E1', 'システム / インフラ', 1029),
+    'INVALID_MODE':     ('E2', '入力検証', 2078),
+    'MISSING_TENANT':   ('E2', '入力検証', 2079),
     'FORBIDDEN_FIELD':  ('E3', '認証・認可', 3040),
     'FORBIDDEN_SCOPE':  ('E3', '認証・認可', 3041),
+    'FORBIDDEN_ORIGIN': ('E3', '認証・認可', 3042),
+    'PIN_RATE_LIMITED': ('E3', '認証・認可', 3043),
+    'SESSION_CLOSED':   ('E5', '注文・KDS・テーブル', 5018),
+    'PLAN_ALREADY_SET': ('E5', '注文・KDS・テーブル', 5019),
+    'COURSE_SET':       ('E5', '注文・KDS・テーブル', 5020),
+    # 2026-04-25: 旧 AI helpdesk retire に伴い E9011 を欠番化。
+    # 後続の既存 E9 番号はサポート履歴との整合のため維持する。
+    'LEAD_TIME_VIOLATION':    ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9012),
+    'NOT_AVAILABLE':          ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9013),
+    'PICKUP_TOO_EARLY':       ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9014),
+    'RESERVATION_DISABLED':   ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9015),
+    'SAME_STORE':             ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9016),
+    'SELF_CHECKOUT_DISABLED': ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9017),
+    'SLOT_FULL':              ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9018),
+    'SLOT_UNAVAILABLE':       ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9019),
+    'SMAREGI_API_ERROR':      ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9020),
+    'SMAREGI_NOT_CONFIGURED': ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9021),
+    'TAKEOUT_DISABLED':       ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9022),
+    'LINE_NOT_CONFIGURED':    ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9023),
+    'NOT_CONFIGURED':         ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9024),
+    'ORDER_TERMINAL':         ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9025),
+    'TAKEOUT_READY_DISABLED': ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9026),
+    'TOKEN_ISSUE_FAILED':     ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9027),
+    'REVOKE_FAILED':          ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9028),
+    'ALREADY_UNLINKED':       ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9029),
+    'UNLINK_FAILED':          ('E9', '顧客・予約・テイクアウト・AI・外部連携', 9030),
 }
 
 # message と http_status から人間向けの説明文 (action) を派生させるテンプレ
@@ -405,14 +434,14 @@ def build_md(by_category, catalog, audience='dev', existing_blocks=None):
                      新規 errorNo は basic な詳細ブロックを自動生成する。
     """
     if audience == 'tenant':
-        title = '99. エラーカタログ（番号で AI に質問できます）'
+        title = '99. エラーカタログ（番号で直引きできます）'
         intro = [
             '',
             '> **このページの使い方**',
             '>',
-            '> POSLA で操作中にエラーが表示されたら、画面に出た **エラー番号 (`Exxxx`) または英字コード**を控えてください。',
-            '> AI ヘルプデスクで「**E2017 って何？**」「**`PIN_INVALID` の対処は？**」のように質問すると、',
-            '> 該当エラーの意味と推奨対応を回答します。',
+            '> POSLA で操作中にエラーが表示されたら、画面に出た **エラー番号 (`Exxxx`) または英字コード**を控えて、このカタログで検索してください (Ctrl+F / ⌘+F で番号を検索)。',
+            '>',
+            '> **もっと速く見つけたい場合**: 管理画面右下の **「📚 サポートガイド」** ボタン → 「エラー番号」タブで `E3024` のように入力すると、代表的なコードについては即座に意味と対処を表示します (非AI、誤回答なし)。全件を見る場合は本カタログを参照してください。',
             '>',
             '> 番号は 9 系統に分かれています。先頭の数字でおおまかな分野が分かります（例: `E3xxx` は認証関連）。',
             '',
@@ -507,13 +536,13 @@ def build_md(by_category, catalog, audience='dev', existing_blocks=None):
 
         lines += [
             '',
-            '## AI ヘルプデスクへの質問例',
+            '## 検索例',
             '',
-            '- 「**E2017 とは？**」 → 該当する操作と対処を回答',
-            '- 「**`MISSING_STORE` はどう直す？**」 → 同上',
-            '- 「**E3015 が出ました**」 → 認証系エラーとして対処手順を案内',
+            '- `E2017` → エラー番号をそのまま検索',
+            '- `PIN_INVALID` → 英字コードで検索',
+            '- `MISSING_STORE` → コード名で検索',
             '',
-            '番号がうまく見つからない場合は、画面に出た**エラーメッセージそのまま**を貼り付けて質問してください。',
+            '番号がうまく見つからない場合は、画面に出た**エラーメッセージや英字コード**をそのまま検索してください。',
             '',
         ]
     else:
@@ -683,14 +712,14 @@ def main():
         f.write('\n'.join(md_lines))
     print(f'Wrote {OUT_MD}')
 
-    # ── 出力 3b: テナント向け (AI ヘルプデスク参照用) ──
+    # ── 出力 3b: テナント向け (非AI サポートガイド参照用) ──
     md_lines = build_md(by_category, catalog, audience='tenant', existing_blocks=existing_tenant_blocks)
     os.makedirs(os.path.dirname(OUT_MD_TENANT), exist_ok=True)
     with open(OUT_MD_TENANT, 'w', encoding='utf-8') as f:
         f.write('\n'.join(md_lines))
     print(f'Wrote {OUT_MD_TENANT}')
 
-    # ── 出力 3c: POSLA 運営向け (internal AI ヘルプデスク参照用) ──
+    # ── 出力 3c: POSLA 運営向け ──
     md_lines = build_md(by_category, catalog, audience='internal')
     os.makedirs(os.path.dirname(OUT_MD_INTERNAL), exist_ok=True)
     with open(OUT_MD_INTERNAL, 'w', encoding='utf-8') as f:

@@ -91,7 +91,7 @@
 
     html += '<div class="rs-completion__actions">';
     if (r.status === 'confirmed' || r.status === 'pending') {
-      html += '<a class="rs-btn rs-btn--secondary" style="text-decoration:none;text-align:center;" href="webcal://eat.posla.jp/public/customer/reservation-ical.php?id=' + encodeURIComponent(_id) + '&t=' + encodeURIComponent(_token) + '">📅 カレンダーに追加</a>';
+      html += '<a class="rs-btn rs-btn--secondary" style="text-decoration:none;text-align:center;" href="webcal://' + window.location.host + '/customer/reservation-ical.php?id=' + encodeURIComponent(_id) + '&t=' + encodeURIComponent(_token) + '">📅 カレンダーに追加</a>';
       html += '<button class="rs-btn rs-btn--secondary" id="rd-edit">時間・人数・メモを変更</button>';
       html += '<button class="rs-btn rs-btn--secondary" id="rd-cancel" style="background:#ffebee;color:#c62828;">予約をキャンセル</button>';
     }

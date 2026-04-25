@@ -1,0 +1,227 @@
+{
+  "version": "2026-04-23",
+  "audience": "posla-admin",
+  "categories": [
+    { "id": "login", "label": "POSLA管理者ログイン" },
+    { "id": "onboarding", "label": "テナント作成 / オンボーディング" },
+    { "id": "billing", "label": "課金 / Stripe / Connect" },
+    { "id": "ops", "label": "運用監視 / cron / error_log" },
+    { "id": "migration", "label": "新サーバ移行" },
+    { "id": "reservation", "label": "予約 (L-9)" },
+    { "id": "line", "label": "LINE 連携 (L-17)" },
+    { "id": "support", "label": "テナント問い合わせ対応" }
+  ],
+  "faq": [
+    {
+      "id": "ifq-login-session-revoked",
+      "title": "POSLA管理者ログイン直後に SESSION_REVOKED が出る",
+      "answer": "`posla_admin_sessions` テーブルに該当 session_id レコードが無い / is_active=0 が記録されている状態。パスワード変更や自分で logout した直後は正常な挙動(他端末セッション無効化)。予期せず発生する場合は:\n(1) posla_admin_sessions テーブルが migration 済か確認 (sql/migration-p1-6d-posla-admin-sessions.sql)\n(2) 同時ログインしている別端末の logout がトリガーされていないか確認\n(3) DB 側で `SELECT * FROM posla_admin_sessions WHERE admin_id='<自分のID>'` で現状態を直接確認",
+      "keywords": ["SESSION_REVOKED", "401", "ログイン", "セッション", "posla_admin_sessions"],
+      "category": "login",
+      "doc_link": "/docs-internal/internal/05-operations.html"
+    },
+    {
+      "id": "ifq-login-rate-limited",
+      "title": "POSLA管理者ログインで RATE_LIMITED 429 が返る",
+      "answer": "1 IP あたり 10 回/5 分の failure-only brute force 防御 (SEC-HOTFIX-20260423-B)。成功ログインはカウントされない。\n(1) 正しい email/password を確認 (typo ロックの可能性)\n(2) 5 分待機で自動解除\n(3) 緊急解除: sandbox では `/tmp/posla_rate_limit/<md5(IP:posla-login)>.json` を削除。本番 VPS でも `sys_get_temp_dir()/posla_rate_limit/` 配下で同じ",
+      "keywords": ["RATE_LIMITED", "429", "ログイン", "brute force", "ロック"],
+      "category": "login",
+      "doc_link": "/docs-internal/internal/05-operations.html"
+    },
+    {
+      "id": "ifq-onboarding-signup-webhook",
+      "title": "新規テナント申込の Stripe Webhook が届かない",
+      "answer": "(1) Stripe Dashboard > Webhooks で `https://<本番>/api/signup/webhook.php` が有効か\n(2) `posla_settings.stripe_webhook_secret_signup` が本番キーに更新済みか\n(3) POSLA_PHP_ERROR_LOG に `[A5][webhook] secret_load_failed` / `FAIL_CLOSE` が出ていないか\n(4) Webhook 失敗時は §2.1.5 フォールバック (`api/signup/activate.php`) で手動アクティベート可",
+      "keywords": ["Stripe", "Webhook", "signup", "申込", "activate"],
+      "category": "onboarding",
+      "doc_link": "/docs-internal/internal/02-onboarding.html"
+    },
+    {
+      "id": "ifq-billing-connect-onboard",
+      "title": "テナントの Stripe Connect オンボーディングが完了しない",
+      "answer": "`tenants.connect_onboarding_complete` が 0 のまま。Stripe Dashboard でアカウントステータスを確認:\n(1) `charges_enabled` = true\n(2) `details_submitted` = true\n(3) 不足要求 (`requirements.currently_due`) が空\nいずれも OK でも POSLA 側に反映されない場合、/api/connect/status.php を手動実行するか webhook `account.updated` の到着を確認する。",
+      "keywords": ["Connect", "Stripe", "onboard", "connect_onboarding_complete"],
+      "category": "billing",
+      "doc_link": "/docs-internal/internal/04-payment.html"
+    },
+    {
+      "id": "ifq-billing-price-id",
+      "title": "Stripe Billing の Price ID が想定と違う",
+      "answer": "α-1 単一プランでは 3 種の price が必要: `stripe_price_base` (1 店舗目 ¥20,000) / `stripe_price_additional_store` (2 店舗目以降 ¥17,000) / `stripe_price_hq_broadcast` (本部配信 +¥3,000)。POSLA管理画面 > API設定で確認し、live/test の混在がないかチェック。`sk_test_*` キーに `price_live_*` を組み合わせると Stripe 側で 400 エラー。",
+      "keywords": ["Stripe", "Price", "Billing", "プラン", "α-1"],
+      "category": "billing",
+      "doc_link": "/docs-internal/internal/03-billing.html"
+    },
+    {
+      "id": "ifq-ai-not-configured",
+      "title": "AI_NOT_CONFIGURED 503 が返る (Gemini API 使用箇所)",
+      "answer": "`posla_settings.gemini_api_key` が未設定。POSLA管理画面 > API設定タブで `AIza...` を入力。\n影響範囲: AIウェイター / AIキッチン / 予約AI解析 / SNS生成 / 翻訳 など現場 AI 機能のみ。tenant 管理画面のサポートガイドと POSLA管理画面のサポートセンターは**非AIのため影響なし** (2026-04-23 HELPDESK-P2-NONAI-ALL 以降)。",
+      "keywords": ["AI_NOT_CONFIGURED", "503", "Gemini", "gemini_api_key"],
+      "category": "ops",
+      "doc_link": "/docs-internal/internal/01-posla-admin.html"
+    },
+    {
+      "id": "ifq-ops-cron-silent",
+      "title": "cron が silent に落ちている (§5.3.6 沈黙事故と同類)",
+      "answer": "`.htaccess` の SetEnv は cron/CLI では読まれない。crontab / wrapper script / systemd EnvironmentFile 側に `POSLA_DB_*` / `POSLA_APP_BASE_URL` / `POSLA_PHP_ERROR_LOG` / `POSLA_CRON_SECRET` を複製必須。\n(1) `php -r 'echo getenv(\"POSLA_DB_HOST\");'` を cron 実行 user で確認\n(2) `POSLA_PHP_ERROR_LOG` に cron 側のエラーが出ているか\n(3) monitor-health.php の直近走行ログを確認",
+      "keywords": ["cron", "silent", "env", "沈黙", "POSLA_DB", "POSLA_PHP_ERROR_LOG"],
+      "category": "ops",
+      "doc_link": "/docs-internal/internal/05-operations.html"
+    },
+    {
+      "id": "ifq-ops-error-log-path",
+      "title": "POSLA_PHP_ERROR_LOG の出力先が想定と違う",
+      "answer": "(1) env 未設定時 fallback は `/home/odah/log/php_errors.log` (sandbox path)\n(2) 新サーバでは env で明示上書き必須 (§5.3.4 canonical / §9-0 production-api-checklist)\n(3) 指定 path が書込可か: `test -w $POSLA_PHP_ERROR_LOG && echo OK`\n(4) `.htaccess` + cron env 両方で同じ値を供給する",
+      "keywords": ["POSLA_PHP_ERROR_LOG", "error_log", "path", "fallback"],
+      "category": "ops",
+      "doc_link": "/docs-internal/internal/05-operations.html"
+    },
+    {
+      "id": "ifq-migration-first-page",
+      "title": "新サーバ移行時の最初に確認するページ",
+      "answer": "最上位の canonical は `docs/production-api-checklist.md §9-0` (新サーバ移行で設定すべき環境変数一覧 + cutover 8 step overview)。internal docs 入口 (`internal/index.md`) の hero action 「🚀 新サーバ移行チェックを見る」から `internal/05-operations §5.3.4 / §5.3.7 / §5.3.8` に誘導される。SQL migration 実行確認は §5.3.8、hotfix 運用インパクトは §5.3.7。",
+      "keywords": ["移行", "cutover", "新サーバ", "production", "canonical"],
+      "category": "migration",
+      "doc_link": "/docs-internal/internal/05-operations.html"
+    },
+    {
+      "id": "ifq-migration-cron-secret",
+      "title": "POSLA_CRON_SECRET の設置場所",
+      "answer": "HTTP 経由で `api/cron/*.php` を叩く場合のみ必須。web 側 (`.htaccess` SetEnv) と cron 側 (crontab / wrapper) で**完全一致**する値を両方に設定する。どちらか片方だけだと HTTP cron 呼び出しが 403 で即ブロック。CLI cron (crontab から直接 php を叩く) のみなら設定不要。",
+      "keywords": ["POSLA_CRON_SECRET", "cron", "secret", "HTTP"],
+      "category": "migration",
+      "doc_link": "/docs-internal/internal/production-api-checklist.html"
+    },
+    {
+      "id": "ifq-reservation-deposit-mismatch",
+      "title": "予約デポジット decimal が Stripe 側と食い違う",
+      "answer": "(1) `reservations.deposit_amount` (円) と Stripe Checkout session の `amount_total` (JPY は最小単位=円) を突合\n(2) Webhook `checkout.session.completed` の metadata で `purpose=reservation_deposit` / `reservation_id` / `expected_amount` を付与しているか\n(3) P0#5 整合性チェック失敗時は POSLA_PHP_ERROR_LOG に `[P0#5][reserve-deposit-webhook] STRIPE_MISMATCH` が残る",
+      "keywords": ["予約", "reservation", "deposit", "デポジット", "P0#5"],
+      "category": "reservation",
+      "doc_link": "/docs-internal/internal/04-payment.html"
+    },
+    {
+      "id": "ifq-line-webhook",
+      "title": "LINE 予約通知が届かない (L-17)",
+      "answer": "(1) `tenants.line_channel_access_token` / `line_channel_secret` / `line_official_account_id` の 3 セットが入っているか\n(2) `api/line/webhook.php` に LINE Platform から POST が届いているか (raw body ログ)\n(3) Channel access token の有効期限切れ (LINE Developers コンソールで確認)\n(4) 顧客の LINE ID がテナントとひも付け済か (`line_customer_links` テーブル)",
+      "keywords": ["LINE", "webhook", "通知", "L-17"],
+      "category": "line",
+      "doc_link": "/docs-internal/internal/05-operations.html"
+    },
+    {
+      "id": "ifq-support-tenant-contact",
+      "title": "テナントから問い合わせが来たときの初動",
+      "answer": "(1) テナント名 / 店舗名 / ユーザー名 / 発生時刻 / エラー番号 (Exxxx) をヒアリング\n(2) POSLA管理画面のテナント管理タブで該当 tenant を開き、status / connect_onboarding_complete / plan_tier を確認\n(3) `error_log` テーブルを tenant_id / 時刻で絞って詳細を見る\n(4) `audit_log` で直前のユーザー操作を追う\n(5) 具体的 E コードが不明なら本サポートセンターの「エラー番号」タブで直引き",
+      "keywords": ["問い合わせ", "support", "テナント", "初動"],
+      "category": "support",
+      "doc_link": "/docs-internal/internal/06-troubleshoot.html"
+    }
+  ],
+  "flows": [
+    {
+      "id": "iflow-login-locked",
+      "title": "POSLA管理者が自分でロックアウトした",
+      "category": "login",
+      "steps": [
+        "エラー画面の code が `RATE_LIMITED` か `INVALID_CREDENTIALS` を確認",
+        "RATE_LIMITED なら 5 分待機 (自動解除)",
+        "緊急時: SSH で sandbox に入り `ls /tmp/posla_rate_limit/*.json` を削除",
+        "INVALID_CREDENTIALS なら別 admin から DB 直接 UPDATE でパスワードリセット (password_hash を bcrypt で新規生成)",
+        "それでも解決しない場合: schema.sql / posla_admins テーブルの is_active を DB 直叩きで確認"
+      ],
+      "doc_link": "/docs-internal/internal/05-operations.html"
+    },
+    {
+      "id": "iflow-tenant-onboarding-stuck",
+      "title": "テナントがオンボーディングの途中で止まっている",
+      "category": "onboarding",
+      "steps": [
+        "tenants テーブルで該当 tenant の status / signup_stripe_customer_id / connect_onboarding_complete を確認",
+        "signup_stripe_customer_id が NULL → Stripe Webhook 未着 or secret 不一致",
+        "connect_onboarding_complete が 0 → Stripe Connect 側で不足要求を確認 (Dashboard)",
+        "手動フォールバック: `api/signup/activate.php` を CLI 実行 (tenant_id 指定)",
+        "それでも不可: POSLA管理画面 > テナント編集で status を手動で `active` に更新 + owner アカウントにパスワードリセット通知"
+      ],
+      "doc_link": "/docs-internal/internal/02-onboarding.html"
+    },
+    {
+      "id": "iflow-cron-silent-debug",
+      "title": "cron が silent に止まっている時の切り分け",
+      "category": "ops",
+      "steps": [
+        "POSLA_PHP_ERROR_LOG の末尾 200 行を確認 (`tail -n 200 $POSLA_PHP_ERROR_LOG`)",
+        "monitor-health.php の直近走行ログ (monitor_events テーブル) を確認",
+        "crontab の実行 user で `env | grep POSLA_` して env 供給を目視確認",
+        "`.htaccess` の SetEnv は CLI で読まれない点を再確認 (§5.3.5 / §5.3.6)",
+        "DB credentials ローテーション直後なら web と cron の両方の env を同時更新",
+        "上記で出ない場合は sandbox コンパネ「環境変数一覧」または systemd EnvironmentFile を確認"
+      ],
+      "doc_link": "/docs-internal/internal/05-operations.html"
+    },
+    {
+      "id": "iflow-migration-cutover",
+      "title": "新サーバ cutover の手順 (省略版)",
+      "category": "migration",
+      "steps": [
+        "production-api-checklist §9-0 cutover 8 step overview で必須 5 項目 (env / HTTPS / /tmp 書込 / uploads 永続化 / mail 基盤) を満たす",
+        "DB dump restore + §5.3.8 SQL 実行確認リスト ① Schema health check を実行",
+        "§5.3.8 ② で直近 migration 11 項目が適用済か schema-based で判定 → 欠落分を個別実行",
+        "§5.3.8 ③ で posla_settings 19 必須キーの missing/present 確認",
+        "`.htaccess` + cron env の両方で全 env を明示設定 (fallback 依存禁止)",
+        "smoke test: `/api/monitor/ping.php` → `{\"ok\":true,\"db\":\"ok\"}` / `/api/auth/me.php` 401 / `/api/posla/me.php` 401",
+        "DNS / SSL / Stripe webhook URL / smaregi redirect_uri を新ドメインへ切替"
+      ],
+      "doc_link": "/docs-internal/internal/production-api-checklist.html"
+    },
+    {
+      "id": "iflow-billing-debug",
+      "title": "テナントの課金状態がおかしい",
+      "category": "billing",
+      "steps": [
+        "tenants.stripe_subscription_id を Stripe Dashboard で直接検索",
+        "Stripe 側の subscription status (active / past_due / canceled) を確認",
+        "POSLA 側の tenants.status と一致しているか照合",
+        "直近の invoice イベントが webhook で届いているか確認 (`stripe_webhook_events` テーブル)",
+        "不一致がある場合: Stripe を正として手動 UPDATE、または webhook を Stripe Dashboard から resend"
+      ],
+      "doc_link": "/docs-internal/internal/03-billing.html"
+    }
+  ],
+  "error_codes": [
+    { "code": "SESSION_REVOKED", "title": "POSLA管理者セッション失効", "message": "posla_admin_sessions テーブルに該当 session_id が無い or is_active=0", "action": "再ログイン。意図しない場合は posla_admin_sessions を DB で直接確認", "category": "login" },
+    { "code": "RATE_LIMITED", "title": "リクエスト過多", "message": "POSLA 管理者ログインは 10回/5分 の failure-only 制限", "action": "5 分程度待機で自動解除。緊急時は /tmp/posla_rate_limit/*.json 削除", "category": "login" },
+    { "code": "AI_NOT_CONFIGURED", "title": "Gemini APIキー未設定", "message": "posla_settings.gemini_api_key が空", "action": "POSLA管理画面 > API設定タブで Gemini APIキー入力", "category": "ops" },
+    { "code": "FORBIDDEN_ORIGIN", "title": "Origin / Host 検証失敗", "message": "許可されていないドメインや Host からのリクエスト", "action": "POSLA_ALLOWED_ORIGINS / POSLA_ALLOWED_HOSTS を現在の環境に合わせて確認し、legacy fallback に依存しない", "category": "migration" },
+    { "code": "FETCH_FAILED", "title": "外部 API 呼び出し失敗", "message": "Gemini / Stripe / LINE 等への HTTP リクエストが timeout or 502", "action": "外部サービスステータスを確認 (status.stripe.com, etc.)。本サーバの egress firewall も確認", "category": "ops" },
+    { "code": "PARSE_FAILED", "title": "レスポンス解析失敗", "message": "外部 API レスポンスが JSON でない or 空", "action": "POSLA_PHP_ERROR_LOG で raw body を確認。多くは外部側の一時エラー", "category": "ops" },
+    { "code": "STRIPE_MISMATCH", "title": "Stripe metadata 整合性違反 (P0#5)", "message": "Webhook の metadata と DB の状態が一致しない (tenant_id / store_id / amount / currency 等)", "action": "POSLA_PHP_ERROR_LOG の `[P0#5]` ログで具体的な差分を特定。手動修正は Stripe 側を正とする", "category": "billing" },
+    { "code": "TENANT_NOT_FOUND", "title": "テナント不一致", "message": "Stripe webhook 等で stripe_customer_id / stripe_subscription_id に該当する tenant が無い", "action": "tenants テーブルで該当 ID を検索。event_log に tenant_not_found が残る。手動で tenant を link する", "category": "billing" },
+    { "code": "DEVICE_NOT_ASSIGNABLE", "title": "device ロールにシフト割当不可", "message": "AI シフト提案で device user が候補に含まれた", "action": "sift 割当対象から device role を除外 (api/store/shift/apply-ai-suggestions.php 仕様)。テナント側に「device は人件費/シフト対象外」を案内", "category": "support" }
+  ],
+  "articles": [
+    {
+      "id": "iart-ai-helpdesk-retired",
+      "title": "旧 AI helpdesk は retire 済み (2026-04-25)",
+      "summary": "POSLA管理画面の AI helpdesk は非AI サポートセンターへ置換済みで、旧 endpoint / FAB / knowledge base 生成物は `*no_deploy/retired_ai_helpdesk/` へ退避しました。",
+      "keywords": ["AI", "helpdesk", "retired", "supportdesk"],
+      "category": "ops",
+      "doc_link": "/docs-internal/internal/01-posla-admin.html"
+    },
+    {
+      "id": "iart-role-separation",
+      "title": "POSLA管理者 / tenant / 現場 の AI 責務分離",
+      "summary": "2026-04-23 以降、product 内 help は全面非AI化。tenant (dashboard/owner-dashboard) と POSLA管理画面はともに static support center。AI は現場業務 (AIウェイター / 予約AI解析 / AIキッチン / SNS生成 / 需要予測) に集中。",
+      "keywords": ["AI", "責務", "非AI", "分離"],
+      "category": "support",
+      "doc_link": "/docs-internal/internal/01-posla-admin.html"
+    },
+    {
+      "id": "iart-canonical-env",
+      "title": "env canonical は production-api-checklist §9-0",
+      "summary": "`docs/production-api-checklist.md §9-0` が環境変数設定の canonical source。13 env (必須 10 + 条件付き 1 + ローカル only 2) を 1 表に集約。internal docs (05-operations §5.3.4 / §5.3.5) はここを参照する形に整理済。",
+      "keywords": ["env", "canonical", "production-api-checklist", "9-0"],
+      "category": "migration",
+      "doc_link": "/docs-internal/internal/production-api-checklist.html"
+    }
+  ]
+}

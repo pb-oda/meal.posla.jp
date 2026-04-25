@@ -13,6 +13,9 @@ var KdsRenderer = (function () {
     preparing: null,
     ready: null
   };
+  // KDS-P1-1: expeditor (まとめ表示) モード用
+  var _expeditorEl = null;
+  var _mode = 'normal'; // 'normal' | 'expeditor'
 
   // 時間超過アラート閾値（秒）
   var WARNING_THRESHOLD_SEC = 600;  // 10分
@@ -22,6 +25,22 @@ var KdsRenderer = (function () {
     _columns.pending = pendingEl;
     _columns.preparing = preparingEl;
     _columns.ready = readyEl;
+  }
+
+  // KDS-P1-1: expeditor コンテナ登録 (呼び出し側でなくても動作 - null でも問題なし)
+  function initExpeditor(el) {
+    _expeditorEl = el;
+  }
+
+  // KDS-P1-1: 表示モード切替。render() はこの値を見て分岐
+  function setMode(mode) {
+    if (mode !== 'normal' && mode !== 'expeditor') return;
+    _mode = mode;
+    render();
+  }
+
+  function getMode() {
+    return _mode;
   }
 
   function onData(data) {
@@ -39,6 +58,12 @@ var KdsRenderer = (function () {
   }
 
   function render() {
+    // KDS-P1-1: expeditor モードでは専用レンダラへ委譲 (通常 3 列カンバンは維持)
+    if (_mode === 'expeditor' && _expeditorEl) {
+      renderExpeditor();
+      return;
+    }
+
     var groups = { pending: [], preparing: [], ready: [] };
 
     Object.keys(_orders).forEach(function (id) {
@@ -257,6 +282,227 @@ var KdsRenderer = (function () {
       + '</div></div>';
   }
 
+  // ============================================================
+  // KDS-P1-1: expeditor (まとめ表示) モード
+  //   - 注文単位のカードを 1 カラムに並べる
+  //   - 優先: (1) ready item を持つ注文を先頭 (2) 経過時間が長い順
+  //   - 各カードに ready/preparing/pending 品目のグループ表示
+  //   - 既存 event delegation (.kds-item-action / .kds-card__action / .kds-card__cancel) をそのまま使う
+  // ============================================================
+  function renderExpeditor() {
+    if (!_expeditorEl) return;
+
+    // 変更前のスクロール位置・カード数を保存
+    var prevCount = _expeditorEl.querySelectorAll('.kds-card').length;
+    var prevScroll = _expeditorEl.scrollTop;
+
+    // active な item を持つ注文を集める
+    var activeOrders = [];
+    Object.keys(_orders).forEach(function (id) {
+      var o = _orders[id];
+      var hasItems = o.items && o.items.length > 0;
+      if (!hasItems) {
+        // レガシー互換: items なし注文は order.status で判定
+        if (o.status === 'pending' || o.status === 'preparing' || o.status === 'ready') {
+          activeOrders.push({ order: o, hasReady: o.status === 'ready', elapsed: _elapsedSec(o) });
+        }
+        return;
+      }
+      var hasReady = false;
+      var anyActive = false;
+      for (var i = 0; i < o.items.length; i++) {
+        var s = o.items[i].status || 'pending';
+        if (s === 'served' || s === 'cancelled') continue;
+        anyActive = true;
+        if (s === 'ready') hasReady = true;
+      }
+      if (!anyActive) return; // 全品完了/取消
+      activeOrders.push({ order: o, hasReady: hasReady, elapsed: _elapsedSec(o) });
+    });
+
+    // ソート: ready 持ちが先頭、続いて経過時間が長い順
+    activeOrders.sort(function (a, b) {
+      if (a.hasReady !== b.hasReady) return a.hasReady ? -1 : 1;
+      return b.elapsed - a.elapsed;
+    });
+
+    // counts 更新 (通常モードと同じ count-* 要素を共有)
+    var counts = { pending: 0, preparing: 0, ready: 0 };
+    for (var n = 0; n < activeOrders.length; n++) {
+      var items = activeOrders[n].order.items || [];
+      for (var m = 0; m < items.length; m++) {
+        var s2 = items[m].status || 'pending';
+        if (counts[s2] !== undefined) counts[s2]++;
+      }
+    }
+    ['pending', 'preparing', 'ready'].forEach(function (s) {
+      var countEl = document.getElementById('count-' + s);
+      if (countEl) countEl.textContent = counts[s];
+    });
+
+    // カードを描画
+    var html = '';
+    for (var k = 0; k < activeOrders.length; k++) {
+      html += _renderExpeditorCard(activeOrders[k].order, activeOrders[k].hasReady, activeOrders[k].elapsed);
+    }
+    _expeditorEl.innerHTML = html || '<div class="kds-empty">\u6D3B\u6027\u306A\u6CE8\u6587\u306F\u3042\u308A\u307E\u305B\u3093</div>';
+
+    // スクロール復元 (カードが増えたら最下部へ)
+    var newCount = _expeditorEl.querySelectorAll('.kds-card').length;
+    if (newCount > prevCount) {
+      _expeditorEl.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      _expeditorEl.scrollTop = prevScroll;
+    }
+
+    _applyStaleReadonlyIfNeeded();
+  }
+
+  function _elapsedSec(order) {
+    var t = order.created_at ? new Date(order.created_at).getTime() : 0;
+    if (!t) return 0;
+    return Math.floor((Date.now() - t) / 1000);
+  }
+
+  function _renderExpeditorCard(order, hasReady, elapsed) {
+    var timeStr = Utils.formatDuration(elapsed);
+
+    // テーブル/テイクアウト ラベル (既存 renderCard と同じ)
+    var tableLabel = order.table_code || '';
+    var typeBadge = '';
+    if (order.order_type === 'takeout') {
+      tableLabel = order.customer_name || 'テイクアウト';
+      typeBadge = '<span class="kds-badge-takeout">テイクアウト</span> ';
+      if (order.pickup_at) {
+        var pickupDate = new Date(order.pickup_at);
+        var pickupTimeStr = ('0' + pickupDate.getHours()).slice(-2) + ':' + ('0' + pickupDate.getMinutes()).slice(-2);
+        typeBadge += '<span class="kds-card__pickup-time">' + pickupTimeStr + '</span> ';
+      }
+    } else if (order.order_type === 'handy') {
+      typeBadge = '<span class="kds-badge-handy">H</span> ';
+    }
+    var courseBadge = '';
+    if (order.course_id && order.current_phase) {
+      var cLabel = (order.course_name || 'コース') + ' P' + order.current_phase;
+      if (order.phase_name) cLabel += ':' + order.phase_name;
+      courseBadge = '<span class="kds-badge-course">' + Utils.escapeHtml(cLabel) + '</span> ';
+    }
+
+    // urgency クラス
+    var cardClass = 'kds-card kds-card--expeditor';
+    if (hasReady) cardClass += ' kds-card--ready-priority';
+    if (order.order_type === 'takeout') cardClass += ' kds-card--takeout';
+    if (order.course_id) cardClass += ' kds-card--course';
+    if (elapsed >= DANGER_THRESHOLD_SEC) {
+      cardClass += ' kds-card--danger';
+    } else if (elapsed >= WARNING_THRESHOLD_SEC) {
+      cardClass += ' kds-card--warning';
+    }
+
+    // 品目を status でグルーピング
+    var byStatus = { ready: [], preparing: [], pending: [] };
+    (order.items || []).forEach(function (item) {
+      var s = item.status || 'pending';
+      if (s === 'served' || s === 'cancelled') return;
+      if (byStatus[s]) byStatus[s].push(item);
+    });
+
+    function _itemLine(item) {
+      var optHtml = '';
+      if (item.options && item.options.length > 0) {
+        var optLabels = item.options.map(function (o) {
+          return Utils.escapeHtml(o.choiceName || o.name || '');
+        }).join(', ');
+        optHtml = ' <span class="kds-item-options">' + optLabels + '</span>';
+      }
+      var itemStatus = item.status || 'pending';
+      var actionHtml = '';
+      if (item.item_id) {
+        if (itemStatus === 'pending') {
+          actionHtml = '<button class="kds-item-action kds-item-action--start" data-item-id="' + item.item_id + '" data-item-status="preparing">\u8abf\u7406\u958b\u59cb</button>';
+        } else if (itemStatus === 'preparing') {
+          actionHtml = '<button class="kds-item-action kds-item-action--ready" data-item-id="' + item.item_id + '" data-item-status="ready">\u5b8c\u6210</button>';
+        } else if (itemStatus === 'ready') {
+          actionHtml = '<button class="kds-item-action kds-item-action--served" data-item-id="' + item.item_id + '" data-item-status="served">\u63d0\u4f9b\u6e08</button>';
+        }
+      }
+      return '<li>' + Utils.escapeHtml(item.name) + ' &times;' + item.qty + optHtml + actionHtml + '</li>';
+    }
+
+    function _section(title, items, cls) {
+      if (!items.length) return '';
+      var out = '<div class="kds-expeditor-section kds-expeditor-section--' + cls + '">';
+      out += '<div class="kds-expeditor-section__title">' + Utils.escapeHtml(title) + ' (' + items.length + ')</div>';
+      out += '<ul class="kds-card__items">';
+      for (var i = 0; i < items.length; i++) out += _itemLine(items[i]);
+      out += '</ul></div>';
+      return out;
+    }
+
+    // N-3: メモ / アレルギー (既存 renderCard と同じ)
+    var memoHtml = order.memo ? '<div class="kds-order-memo">' + Utils.escapeHtml(order.memo) + '</div>' : '';
+    var allergenSet = {};
+    (order._allItems || order.items || []).forEach(function (item) {
+      if (item.allergen_selections) {
+        var sels = typeof item.allergen_selections === 'string' ? JSON.parse(item.allergen_selections) : item.allergen_selections;
+        if (sels && sels.forEach) {
+          sels.forEach(function (a) { allergenSet[a] = true; });
+        }
+      }
+    });
+    var allergenKeys = Object.keys(allergenSet);
+    var allergenHtml = '';
+    if (allergenKeys.length > 0) {
+      var allergenLabels = { egg: '\u5375', milk: '\u4E73', wheat: '\u5C0F\u9EA6', shrimp: '\u3048\u3073', crab: '\u304B\u306B', buckwheat: '\u305D\u3070', peanut: '\u843D\u82B1\u751F' };
+      var labels = allergenKeys.map(function (k) { return allergenLabels[k] || k; });
+      allergenHtml = '<div class="kds-order-allergen">\u26A0\uFE0F \u30A2\u30EC\u30EB\u30AE\u30FC: ' + labels.join(', ') + '</div>';
+    }
+
+    // KDS-P1-1 hotfix: 一括ボタンは「単一ステータス状態」のときだけ出す。
+    // 混在 (例: ready + pending) で全品○○を押すと handleAction() が全items を巻き戻すため、
+    // 誤操作を防ぐため 一括ボタンを抑止 + 品目ごと操作を案内する
+    var nextAction = '';
+    var cancelBtn = '<button class="kds-card__cancel" data-order="' + order.id + '" data-status="cancelled">\u53d6\u6d88</button>';
+    var readyCount = byStatus.ready.length;
+    var preparingCount = byStatus.preparing.length;
+    var pendingCount = byStatus.pending.length;
+    var activeBuckets = (readyCount > 0 ? 1 : 0) + (preparingCount > 0 ? 1 : 0) + (pendingCount > 0 ? 1 : 0);
+    if (activeBuckets === 1) {
+      // 単一状態 → 巻き戻しなしで一括遷移可
+      if (readyCount > 0) {
+        nextAction = cancelBtn + '<button class="kds-card__action" data-order="' + order.id + '" data-status="served">\u5168\u54c1\u63d0\u4f9b\u6e08\u307f</button>';
+      } else if (preparingCount > 0) {
+        nextAction = cancelBtn + '<button class="kds-card__action" data-order="' + order.id + '" data-status="ready">\u5168\u54c1\u5b8c\u6210</button>';
+      } else if (pendingCount > 0) {
+        nextAction = cancelBtn + '<button class="kds-card__action" data-order="' + order.id + '" data-status="preparing">\u5168\u54c1\u8abf\u7406\u958b\u59cb</button>';
+      } else {
+        nextAction = cancelBtn;
+      }
+    } else if (activeBuckets > 1) {
+      // 混在状態 → 巻き戻し事故防止のため一括ボタンは出さない。品目個別ボタンで操作してもらう
+      nextAction = cancelBtn
+        + '<span class="kds-expeditor-hint">\u54c1\u76ee\u3054\u3068\u306b\u64cd\u4f5c\u3057\u3066\u304f\u3060\u3055\u3044</span>';
+    } else {
+      nextAction = cancelBtn;
+    }
+
+    return '<div class="' + cardClass + '" data-order-id="' + order.id + '"'
+      + (order.course_id ? ' data-course-id="' + order.course_id + '" data-table-id="' + (order.table_id || '') + '"' : '')
+      + '>'
+      + '<div class="kds-card__header">'
+      + '<span class="kds-card__table">' + typeBadge + courseBadge + Utils.escapeHtml(tableLabel) + '</span>'
+      + '<span class="kds-card__time">' + timeStr + '</span>'
+      + '</div>'
+      + memoHtml + allergenHtml
+      + _section('\u63d0\u4f9b\u53ef\u80fd', byStatus.ready, 'ready')
+      + _section('\u8abf\u7406\u4e2d', byStatus.preparing, 'preparing')
+      + _section('\u53d7\u4ed8', byStatus.pending, 'pending')
+      + '<div class="kds-card__footer">'
+      + '<span class="kds-card__total">' + (order.course_id ? '' : Utils.formatYen(order.total_amount)) + '</span>'
+      + nextAction
+      + '</div></div>';
+  }
+
   // Phase 3 レビュー指摘 #1: 状態変更関数の冒頭で offline/stale を判定し、
   // 楽観更新 + API 呼び出しを両方とも止める。DOM disabled だけでは voice-commander の
   // 直接呼び出し経路で防げないため、関数側で必ずガードする。
@@ -448,6 +694,10 @@ var KdsRenderer = (function () {
 
   return {
     init: init,
+    // KDS-P1-1: expeditor モード公開 API
+    initExpeditor: initExpeditor,
+    setMode: setMode,
+    getMode: getMode,
     onData: onData,
     handleAction: handleAction,
     handleItemAction: handleItemAction,

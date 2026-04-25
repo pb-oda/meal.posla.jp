@@ -172,7 +172,7 @@ try {
     $recommendations = $recStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     // テーブル未作成時は空配列のまま
-    error_log('[P1-12][customer/menu.php:169] fetch_recommendations: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][customer/menu.php:169] fetch_recommendations: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // L-7: Google Place ID（レビュー誘導用）
@@ -186,7 +186,7 @@ try {
     }
 } catch (PDOException $e) {
     // カラム未存在時はスキップ
-    error_log('[P1-12][customer/menu.php:182] fetch_google_place_id: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][customer/menu.php:182] fetch_google_place_id: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // N-6: 人気ランキング（過去30日の注文数上位10）
@@ -207,7 +207,7 @@ try {
     }
 } catch (PDOException $e) {
     // order_items テーブル未作成時は空配列のまま
-    error_log('[P1-12][customer/menu.php:202] fetch_popularity: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][customer/menu.php:202] fetch_popularity: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 json_response([

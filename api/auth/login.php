@@ -98,7 +98,7 @@ try {
     }
 } catch (PDOException $e) {
     // user_sessions テーブル未作成時はスキップ
-    error_log('[P1-12][api/auth/login.php:95] record_session: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][api/auth/login.php:95] record_session: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // アクセス可能店舗一覧を取得

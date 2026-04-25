@@ -129,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
             }
         } catch (PDOException $e) {
             // カラム未作成時はスキップ
-            error_log('[P1-12][api/store/menu-overrides.php:130] non_hq_master_update: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            error_log('[P1-12][api/store/menu-overrides.php:130] non_hq_master_update: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
     }
 

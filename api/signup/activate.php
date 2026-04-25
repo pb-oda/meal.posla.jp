@@ -16,6 +16,7 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
 require_once __DIR__ . '/../lib/stripe-billing.php';
+require_once __DIR__ . '/../config/app.php';
 
 require_method(['POST']);
 check_rate_limit('signup-activate:' . ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'), 10, 3600);
@@ -53,7 +54,7 @@ if ((int)$tenant['is_active'] === 1) {
 $stripeConfig = get_stripe_config($pdo);
 $secretKey = $stripeConfig['stripe_secret_key'] ?? '';
 if (!$secretKey) {
-    error_log('[A5][activate] STRIPE_NOT_CONFIGURED tenant=' . $tenant['id'], 3, '/home/odah/log/php_errors.log');
+    error_log('[A5][activate] STRIPE_NOT_CONFIGURED tenant=' . $tenant['id'], 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_NOT_CONFIGURED', '決済設定が未完了です。運営までお問い合わせください', 503);
 }
 
@@ -69,7 +70,7 @@ if (!$subscription) {
 
 $subStatus = isset($subscription['status']) ? (string)$subscription['status'] : '';
 if ($subStatus !== 'active' && $subStatus !== 'trialing') {
-    error_log('[A5][activate] PAYMENT_NOT_CONFIRMED tenant=' . $tenant['id'] . ' status=' . $subStatus, 3, '/home/odah/log/php_errors.log');
+    error_log('[A5][activate] PAYMENT_NOT_CONFIRMED tenant=' . $tenant['id'] . ' status=' . $subStatus, 3, POSLA_PHP_ERROR_LOG);
     json_error('PAYMENT_NOT_CONFIRMED', '決済が完了していません (status=' . $subStatus . ')', 402);
 }
 
@@ -89,7 +90,7 @@ try {
     $pdo->commit();
 } catch (Exception $e) {
     $pdo->rollBack();
-    error_log('[A5][activate] failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[A5][activate] failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('ACTIVATE_FAILED', '有効化に失敗しました', 500);
 }
 
@@ -102,7 +103,7 @@ try {
         _a5_send_welcome($u['email'], $u['display_name'] ?: $u['username'], $u['username'], $tenant['name']);
     }
 } catch (Exception $e) {
-    error_log('[A5][activate] mail_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[A5][activate] mail_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 json_response(['ok' => true, 'tenant_name' => $tenant['name']]);
@@ -123,7 +124,7 @@ function _a5_find_subscription_by_token($secretKey, $customerId, $token) {
     $err = curl_error($ch);
     curl_close($ch);
     if ($err || $code >= 400 || !$resp) {
-        error_log('[A5][activate] stripe_list_subs_failed code=' . $code . ' err=' . $err, 3, '/home/odah/log/php_errors.log');
+        error_log('[A5][activate] stripe_list_subs_failed code=' . $code . ' err=' . $err, 3, POSLA_PHP_ERROR_LOG);
         return null;
     }
     $body = json_decode($resp, true);
@@ -140,7 +141,7 @@ function _a5_find_subscription_by_token($secretKey, $customerId, $token) {
 function _a5_send_welcome($to, $displayName, $username, $storeName) {
     if (function_exists('mb_language')) { mb_language('Japanese'); mb_internal_encoding('UTF-8'); }
     $subject = '【POSLA】ご登録ありがとうございます';
-    $loginUrl = 'https://eat.posla.jp/public/admin/index.html';
+    $loginUrl = app_url('/admin/index.html');
     $body = "{$displayName} 様\n\nPOSLAにご登録ありがとうございます。\n\n"
           . "■ 店舗名: {$storeName}\n"
           . "■ ログインURL: {$loginUrl}\n"
@@ -148,7 +149,7 @@ function _a5_send_welcome($to, $displayName, $username, $storeName) {
           . "■ パスワード: ご登録時のもの\n\n"
           . "30日間無料トライアル中です。\n\n--\nPOSLA 運営チーム";
     $fromName = 'POSLA';
-    $fromEmail = 'noreply@eat.posla.jp';
+    $fromEmail = APP_FROM_EMAIL;
     $fromHeader = '=?UTF-8?B?' . base64_encode($fromName) . '?= <' . $fromEmail . '>';
     $headers = "From: " . $fromHeader . "\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n";
     if (function_exists('mb_send_mail')) @mb_send_mail($to, $subject, $body, $headers);

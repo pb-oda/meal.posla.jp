@@ -65,10 +65,10 @@
     var title = (payload && payload.title) ? String(payload.title) : 'POSLA 通知';
     var options = {
       body: (payload && payload.body) ? String(payload.body) : '',
-      icon: (payload && payload.icon) ? String(payload.icon) : '/public/handy/icons/icon-192.png',
-      badge: (payload && payload.badge) ? String(payload.badge) : '/public/handy/icons/icon-192.png',
+      icon: (payload && payload.icon) ? String(payload.icon) : '/handy/icons/icon-192.png',
+      badge: (payload && payload.badge) ? String(payload.badge) : '/handy/icons/icon-192.png',
       tag: (payload && payload.tag) ? String(payload.tag) : 'posla-handy',
-      data: { url: (payload && payload.url) ? String(payload.url) : '/public/handy/index.html' },
+      data: { url: (payload && payload.url) ? String(payload.url) : '/handy/index.html' },
       requireInteraction: false
     };
     event.waitUntil(self.registration.showNotification(title, options));
@@ -77,12 +77,13 @@
   // ---- notificationclick: 同一origin かつ /public/handy/ 配下のみ許可 ----
   self.addEventListener('notificationclick', function (event) {
     event.notification.close();
-    var rawUrl = (event.notification.data && event.notification.data.url) || '/public/handy/index.html';
-    var targetUrl = '/public/handy/index.html';
+    var rawUrl = (event.notification.data && event.notification.data.url) || '/handy/index.html';
+    var targetUrl = '/handy/index.html';
     try {
       var u = new URL(rawUrl, self.location.origin);
       if (u.origin === self.location.origin
-          && u.pathname.indexOf('/public/handy/') === 0
+          && (u.pathname.indexOf('/handy/') === 0 || u.pathname.indexOf('/public/handy/') === 0)
+          && u.pathname.indexOf('/customer/') === -1
           && u.pathname.indexOf('/public/customer/') === -1) {
         targetUrl = u.pathname + u.search + u.hash;
       }
@@ -93,7 +94,7 @@
           var c = clientList[i];
           try {
             var cu = new URL(c.url);
-            if (cu.pathname.indexOf('/public/handy/') === 0) {
+            if (cu.pathname.indexOf('/handy/') === 0 || cu.pathname.indexOf('/public/handy/') === 0) {
               return c.focus().then(function (focused) {
                 if (focused && focused.navigate) focused.navigate(targetUrl);
                 return focused;

@@ -55,7 +55,7 @@ if ($stripeEventId) {
         $checkStmt = $pdo->prepare('SELECT id FROM subscription_events WHERE stripe_event_id = ? LIMIT 1');
         $checkStmt->execute([$stripeEventId]);
         if ($checkStmt->fetch()) {
-            error_log('[P1-25][api/subscription/webhook.php:58] webhook_duplicate_event_ignored: ' . $stripeEventId, 3, '/home/odah/log/php_errors.log');
+            error_log('[P1-25][api/subscription/webhook.php:58] webhook_duplicate_event_ignored: ' . $stripeEventId, 3, POSLA_PHP_ERROR_LOG);
             send_api_headers();
             http_response_code(200);
             echo json_encode([
@@ -66,7 +66,7 @@ if ($stripeEventId) {
             exit;
         }
     } catch (Exception $e) {
-        error_log('[P1-25][api/subscription/webhook.php:69] idempotency_check_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-25][api/subscription/webhook.php:69] idempotency_check_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         // チェック失敗時は通常処理に進ませる（既存挙動を壊さない）
     }
 }
@@ -101,7 +101,7 @@ switch ($eventType) {
 
         $tenant = $findTenantByCustomerId($customerId);
         if (!$tenant) {
-            error_log('[P1-25][api/subscription/webhook.php:100] tenant_not_found: ' . $eventType . ' stripe_customer_id=' . $customerId, 3, '/home/odah/log/php_errors.log');
+            error_log('[P1-25][api/subscription/webhook.php:100] tenant_not_found: ' . $eventType . ' stripe_customer_id=' . $customerId, 3, POSLA_PHP_ERROR_LOG);
             break;
         }
         $tenantId = $tenant['id'];
@@ -144,7 +144,7 @@ switch ($eventType) {
 
         $tenant = $findTenantBySubscriptionId($subscriptionId);
         if (!$tenant) {
-            error_log('[P1-25][api/subscription/webhook.php:153] tenant_not_found: ' . $eventType . ' stripe_subscription_id=' . $subscriptionId, 3, '/home/odah/log/php_errors.log');
+            error_log('[P1-25][api/subscription/webhook.php:153] tenant_not_found: ' . $eventType . ' stripe_subscription_id=' . $subscriptionId, 3, POSLA_PHP_ERROR_LOG);
             break;
         }
         $tenantId = $tenant['id'];
@@ -172,7 +172,7 @@ switch ($eventType) {
 
         $tenant = $findTenantBySubscriptionId($subscriptionId);
         if (!$tenant) {
-            error_log('[P1-25][api/subscription/webhook.php:204] tenant_not_found: ' . $eventType . ' stripe_subscription_id=' . $subscriptionId, 3, '/home/odah/log/php_errors.log');
+            error_log('[P1-25][api/subscription/webhook.php:204] tenant_not_found: ' . $eventType . ' stripe_subscription_id=' . $subscriptionId, 3, POSLA_PHP_ERROR_LOG);
             break;
         }
         $tenantId = $tenant['id'];
@@ -196,7 +196,7 @@ switch ($eventType) {
 }
 } catch (\Exception $e) {
     // P1-25: ハンドラ内の例外は 500 を返し Stripe にリトライさせる
-    error_log('[P1-25][api/subscription/webhook.php] event_dispatch_failed: ' . $eventType . ': ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-25][api/subscription/webhook.php] event_dispatch_failed: ' . $eventType . ': ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     send_api_headers();
     http_response_code(500);
     echo json_encode(['error' => 'temporary_failure']);
@@ -217,10 +217,10 @@ if ($tenantId) {
         );
         $stmt->execute([$eventId, $tenantId, $eventType, $stripeEventId, $eventData]);
     } catch (\PDOException $e) {
-        error_log('[P1-25][api/subscription/webhook.php] event_log_insert_failed: ' . $eventType . ': ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-25][api/subscription/webhook.php] event_log_insert_failed: ' . $eventType . ': ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 } else {
-    error_log('[P1-25][api/subscription/webhook.php] event_log_skipped_no_tenant: ' . $eventType . ' stripe_event_id=' . ($stripeEventId ?: 'none'), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-25][api/subscription/webhook.php] event_log_skipped_no_tenant: ' . $eventType . ' stripe_event_id=' . ($stripeEventId ?: 'none'), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // Stripe にはリトライを防ぐため必ず 200 を返す

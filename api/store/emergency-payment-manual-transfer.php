@@ -462,6 +462,6 @@ try {
         $inTx = false;
     }
     // H-14: browser 応答から内部メッセージを排除、詳細は error_log にのみ残す
-    error_log('[H-14][api/store/emergency-payment-manual-transfer.php] db_error: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[H-14][api/store/emergency-payment-manual-transfer.php] db_error: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('DB_ERROR', '手入力計上に失敗しました', 500);
 }

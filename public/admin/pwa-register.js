@@ -22,8 +22,8 @@
       && location.pathname.indexOf('/admin/') === -1) return;
 
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('/public/admin/sw.js', {
-      scope: '/public/admin/',
+    navigator.serviceWorker.register('/admin/sw.js', {
+      scope: '/admin/',
       updateViaCache: 'none'
     }).then(function (reg) {
       // PWA Phase 1 (修正版): waiting への自動 SKIP_WAITING 送信を撤廃。

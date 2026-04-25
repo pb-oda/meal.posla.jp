@@ -17,7 +17,11 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- -----------------------------------------------------------
 INSERT INTO posla_settings (setting_key, setting_value) VALUES
   ('gemini_api_key',        ''),
-  ('google_places_api_key', '')
+  ('google_places_api_key', ''),
+  ('google_chat_webhook_url', ''),
+  ('ops_notify_email', 'info@posla.jp'),
+  ('monitor_cron_secret', 'local-monitor-secret-20260424'),
+  ('monitor_last_heartbeat', '')
 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
 
 -- -----------------------------------------------------------

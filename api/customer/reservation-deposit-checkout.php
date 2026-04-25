@@ -12,6 +12,7 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
 require_once __DIR__ . '/../lib/reservation-deposit.php';
+require_once __DIR__ . '/../config/app.php';
 
 require_method(['POST']);
 check_rate_limit('reserve-deposit:' . ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'), 5, 60);
@@ -34,7 +35,7 @@ $sStmt = $pdo->prepare('SELECT id, tenant_id, name FROM stores WHERE id = ?');
 $sStmt->execute([$r['store_id']]);
 $store = $sStmt->fetch();
 
-$base = 'https://eat.posla.jp/public/customer/reserve-detail.html';
+$base = app_url('/customer/reserve-detail.html');
 $successUrl = $base . '?id=' . urlencode($id) . '&t=' . urlencode($token) . '&deposit=success';
 $cancelUrl = $base . '?id=' . urlencode($id) . '&t=' . urlencode($token) . '&deposit=cancel';
 $checkout = reservation_deposit_create_checkout($pdo, $r, $store, (int)$r['deposit_amount'], $successUrl, $cancelUrl);

@@ -178,7 +178,7 @@ try {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    error_log('[P1-21][apply-ai-suggestions.php] ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-21][apply-ai-suggestions.php] ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('DB_ERROR', 'AI提案の適用に失敗しました', 500);
 }
 

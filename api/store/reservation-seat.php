@@ -16,6 +16,7 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/reservation-deposit.php';
+require_once __DIR__ . '/../config/app.php';
 
 require_method(['POST']);
 $user = require_role('staff');
@@ -91,7 +92,7 @@ try {
 } catch (Exception $e) {
     $pdo->rollBack();
     // H-14: browser 応答から内部メッセージを排除、詳細は error_log にのみ残す（既存）
-    error_log('[L-9][reservation-seat] ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[L-9][reservation-seat] ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('SEAT_FAILED', '着席処理に失敗しました', 500);
 }
 
@@ -106,7 +107,7 @@ if ($r['deposit_payment_intent_id']) {
     }
 }
 
-$qrUrl = 'https://eat.posla.jp/public/customer/menu.html?store_id=' . urlencode($storeId) . '&table_id=' . urlencode($primaryTableId);
+$qrUrl = app_url('/customer/menu.html') . '?store_id=' . urlencode($storeId) . '&table_id=' . urlencode($primaryTableId);
 
 json_response([
     'ok' => true,

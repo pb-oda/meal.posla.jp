@@ -9,6 +9,10 @@
  * 注意: マルチテナント境界 — 呼び出し側で store_id を必ず authorize すること
  */
 
+// REL-HOTFIX-20260423-SERVER-READY: POSLA_PHP_ERROR_LOG constant を確実にロードする
+// (本 file は response.php 等を require しないため、app.php を explicit require)
+require_once __DIR__ . '/../config/app.php';
+
 if (!function_exists('get_reservation_settings')) {
     /**
      * 店舗の予約設定を取得 (未設定ならデフォルト値を返す)
@@ -49,7 +53,7 @@ if (!function_exists('get_reservation_settings')) {
                 return array_merge($defaults, $row);
             }
         } catch (PDOException $e) {
-            error_log('[L-9][reservation-availability] get_settings: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            error_log('[L-9][reservation-availability] get_settings: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
         return $defaults;
     }
@@ -121,7 +125,7 @@ if (!function_exists('purge_expired_holds')) {
                 $pdo->exec('DELETE FROM reservation_holds WHERE expires_at <= NOW()');
             }
         } catch (PDOException $e) {
-            error_log('[L-9][reservation-availability] purge_holds: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            error_log('[L-9][reservation-availability] purge_holds: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
     }
 }

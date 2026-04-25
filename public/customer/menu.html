@@ -73,7 +73,10 @@
     /* N-2: 注文追跡 */
     .order-status-section { padding:0 16px 12px; }
     .order-status-card { background:#16213e; border-radius:12px; padding:12px; margin-bottom:10px; }
-    .order-status-card__header { display:flex; justify-content:space-between; margin-bottom:8px; font-size:0.85rem; color:#888; }
+    .order-status-card__header { display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:8px; font-size:0.85rem; color:#888; }
+    /* SELF-P1-4: 任意ゲスト名 badge (注文者を見分けるための表示専用) */
+    .order-status-card__alias { flex:0 0 auto; padding:1px 8px; border-radius:10px; background:rgba(100,181,246,0.2); color:#90caf9; font-size:0.72rem; font-weight:600; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .order-status-card__total { margin-left:auto; }
     .order-status-item { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
     .order-status-item__name { font-size:0.9rem; color:#e0e0e0; }
     .order-status-item__badge { padding:2px 10px; border-radius:10px; font-size:0.75rem; font-weight:bold; }
@@ -100,6 +103,9 @@
     .rating-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
     .rating-toast--review { text-align:center; padding:16px 20px; min-width:240px; }
     .customer-header__takeout { color:#fff; font-size:0.75rem; font-weight:600; text-decoration:none; padding:0.25rem 0.625rem; border:1.5px solid #fff; border-radius:1rem; white-space:nowrap; }
+    .support-preview-banner { display:none; margin:0.75rem; padding:0.85rem 1rem; border-radius:14px; background:linear-gradient(135deg,#e8f0ff,#f3f7ff); border:1px solid #c7d7ff; color:#294375; font-size:0.83rem; line-height:1.7; }
+    .support-preview-banner strong { color:#12316b; display:block; font-size:0.88rem; margin-bottom:0.2rem; }
+    .menu-item__readonly { display:inline-flex; align-items:center; justify-content:center; min-width:88px; padding:0.5rem 0.8rem; border-radius:999px; background:#eef2ff; color:#42526e; font-size:0.78rem; font-weight:700; }
     /* L-4: 言語セレクター */
     .lang-selector { position:relative; display:inline-flex; align-items:center; gap:6px; }
     .lang-selector__btn { background:rgba(255,255,255,0.2); border:1.5px solid rgba(255,255,255,0.6); color:#fff; border-radius:1rem; padding:0.25rem 0.625rem; font-size:0.8125rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px; white-space:nowrap; }
@@ -168,6 +174,10 @@
     .checkout-modal__method-badge--apple { color:#000; border-color:#000; }
     .checkout-modal__method-badge--google { color:#4285f4; border-color:#4285f4; }
     .checkout-modal__note { text-align:center; font-size:0.75rem; color:#999; margin:0 0 8px; }
+    .history-entry { padding:0.75rem 0.75rem 0; }
+    .history-entry__btn { display:block; width:100%; border:none; border-radius:12px; background:#eef4ff; color:#1c4f9c; padding:0.875rem 1rem; font-size:0.95rem; font-weight:700; text-align:left; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,0.08); font-family:inherit; }
+    .history-entry__btn:active { opacity:0.9; }
+    .history-entry__sub { display:block; margin-top:0.25rem; font-size:0.78rem; font-weight:400; color:#5f6f8f; }
 
     /* UI-P0-3: 割り勘 calculator */
     .checkout-split { background:#f5f7fa; border:1px solid #e0e0e0; border-radius:8px; padding:12px 14px; margin:12px 0; }
@@ -183,6 +193,10 @@
     .checkout-split__result strong { color:#2d7a4f; font-size:1.1rem; }
     .checkout-split__diff { color:#888; font-size:0.8rem; }
     .checkout-split__note { font-size:0.7rem; color:#888; margin:6px 0 0; line-height:1.5; }
+    /* SELF-P1-6: 個人負担目安モード専用フィールド (personal モード選択時のみ表示) */
+    .checkout-split__label--wide { flex:0 0 88px; font-size:0.85rem; color:#555; }
+    .checkout-split__input--wide { width:92px; text-align:right; padding:6px 8px; border:1px solid #ccc; border-radius:6px; font-size:0.95rem; font-family:inherit; }
+    .checkout-split__result-breakdown { display:block; font-size:0.78rem; color:#666; margin-top:4px; font-weight:400; }
 
     /* UI-P0-2: 会計済み含む注文履歴 */
     .checkout-history { margin:12px 0 8px; border-top:1px dashed #e0e0e0; padding-top:12px; }
@@ -204,6 +218,17 @@
     .checkout-history__badge.status-served { background:#555; }
     .checkout-history__badge.status-paid { background:#2d7a4f; }
     .checkout-history__total { margin-left:auto; font-weight:700; color:#2d7a4f; }
+    /* SELF-P1-4: 任意ゲスト名 badge (checkout 履歴用、存在時のみ表示) */
+    .checkout-history__alias { display:inline-block; padding:1px 7px; border-radius:10px; background:#e3f2fd; color:#1565c0; font-size:0.7rem; font-weight:600; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    /* SELF-P1-5: 二層表示 (未払い / 会計済) セクションヘッダ */
+    .checkout-history__section { margin-bottom:10px; }
+    .checkout-history__section + .checkout-history__section { margin-top:4px; }
+    .checkout-history__section-head { display:flex; align-items:center; gap:6px; margin:4px 0 6px; font-size:0.78rem; font-weight:700; color:#555; }
+    .checkout-history__section-head--unpaid { color:#1976d2; }
+    .checkout-history__section-head--paid { color:#2d7a4f; }
+    .checkout-history__section-count { display:inline-block; padding:1px 7px; border-radius:10px; background:#eef; color:#1c4f9c; font-size:0.7rem; font-weight:700; }
+    .checkout-history__section-head--paid .checkout-history__section-count { background:#e3f1ea; color:#246b4a; }
+    .checkout-history__section-empty { font-size:0.8rem; color:#999; padding:4px 2px; margin:0; }
     .checkout-history__items { color:#666; font-size:0.8rem; line-height:1.5; }
     .checkout-done-modal { position:fixed; inset:0; z-index:2200; display:none; align-items:center; justify-content:center; }
     .checkout-done-modal.open { display:flex; }
@@ -217,6 +242,10 @@
     .checkout-done-modal__receipt-btn:active { opacity:0.8; }
     .checkout-done-modal__note { font-size:0.75rem; color:#999; margin:0; }
     .checkout-done-modal__close-btn { background:none; border:1px solid #ccc; border-radius:8px; padding:8px 32px; font-size:0.9rem; color:#666; cursor:pointer; margin-top:16px; }
+    /* SELF-P1-7: 会計後「続けて注文する」CTA */
+    .checkout-done-modal__continue-btn { background:#1976d2; color:#fff; border:none; border-radius:8px; padding:10px 28px; font-size:0.95rem; font-weight:700; cursor:pointer; margin:0 0 8px; display:inline-block; }
+    .checkout-done-modal__continue-btn:active { opacity:0.85; }
+    .checkout-done-modal__continue-hint { font-size:0.75rem; color:#777; margin:6px 0 0; line-height:1.5; }
   </style>
 </head>
 <body>
@@ -260,11 +289,21 @@
     <div class="lo-banner" id="lo-banner" style="display:none">ラストオーダーです。ご注文はお早めに！</div>
   </div>
 
+  <div class="support-preview-banner" id="support-preview-banner"></div>
+
   <!-- カテゴリナビ -->
   <nav class="category-nav" id="category-nav"></nav>
 
   <!-- N-2: 注文追跡セクション -->
   <div id="order-status-section" class="order-status-section" style="display:none"></div>
+
+  <!-- UI-P0-2c: Stripe設定に依存しない独立の注文履歴ボタン -->
+  <div class="history-entry" id="history-entry" style="display:none">
+    <button type="button" class="history-entry__btn" id="btn-open-history">
+      注文履歴を見る
+      <span class="history-entry__sub">会計済みを含む、この卓の注文履歴を確認できます</span>
+    </button>
+  </div>
 
   <!-- 前回の注文（再注文セクション） -->
   <div id="reorder-section" style="display:none"></div>
@@ -285,7 +324,8 @@
       <button class="cart-bar__btn" id="btn-view-cart">注文を確認</button>
     </div>
     <!-- L-8: セルフレジ — チェックアウトバー -->
-    <div class="checkout-bar" id="checkout-bar">
+    <!-- UI-P0-1b: 初期 display:none。checkSelfCheckout() で payment_available=true のときのみ表示 (CSS .action-bar > .checkout-bar の display:flex を復活) -->
+    <div class="checkout-bar" id="checkout-bar" style="display:none">
       <button class="checkout-bar__btn" id="btn-checkout">お会計</button>
     </div>
   </div>
@@ -298,6 +338,11 @@
         <button class="cart-modal__close" id="btn-close-cart">&times;</button>
       </div>
       <div class="cart-modal__body" id="cart-items"></div>
+      <!-- SELF-P1-4: 任意ゲスト名 (表示整理専用、payment には使わない) -->
+      <div class="cart-modal__memo-section" id="guest-alias-section">
+        <label class="cart-memo-label" for="order-guest-alias">お名前（任意）</label>
+        <input type="text" id="order-guest-alias" class="cart-memo-input" maxlength="32" placeholder="例：山田、太郎、A" autocomplete="off">
+      </div>
       <!-- N-3: メモ・アレルギー -->
       <div class="cart-modal__memo-section" id="memo-section">
         <label class="cart-memo-label">ひとことメモ（任意）</label>
@@ -418,6 +463,19 @@
     </div>
   </div>
 
+  <!-- UI-P0-2c: 注文履歴専用モーダル -->
+  <div class="checkout-modal" id="history-modal">
+    <div class="checkout-modal__overlay"></div>
+    <div class="checkout-modal__content">
+      <div class="checkout-modal__header">
+        <h2>注文履歴</h2>
+        <button class="checkout-modal__close" id="history-close">&times;</button>
+      </div>
+      <div class="checkout-modal__body" id="history-body">
+      </div>
+    </div>
+  </div>
+
   <!-- L-8: 決済完了モーダル -->
   <div class="checkout-done-modal" id="checkout-done-modal">
     <div class="checkout-done-modal__overlay"></div>
@@ -434,6 +492,9 @@
       <p class="checkout-done-modal__note">
         紙の領収書が必要な場合はスタッフにお申し付けください
       </p>
+      <!-- SELF-P1-7: 会計後 再注文 CTA。同一 session_token で menu.html をリロードして通常メニューへ戻る -->
+      <button class="checkout-done-modal__continue-btn" id="btn-continue-order" type="button">＋ 続けて注文する</button>
+      <p class="checkout-done-modal__continue-hint" id="checkout-done-continue-hint">続けて注文できます。終了する場合は下の「閉じる」を押してください。</p>
       <button class="checkout-done-modal__close-btn" id="btn-checkout-done-close">閉じる</button>
     </div>
   </div>
@@ -484,7 +545,10 @@
     var _checkoutAvailable = false; // payment_available フラグ
     var _checkoutPaymentId = null;  // 決済完了後の payment_id
 
-    var isPreview = !tableId;
+    var supportSessionId = params.get('support_session_id') || '';
+    var supportPreviewToken = params.get('token') || '';
+    var isSupportPreview = params.get('support_preview') === '1';
+    var isPreview = !tableId && !isSupportPreview;
 
     if (!storeId) {
       document.getElementById('menu-container').innerHTML =
@@ -506,6 +570,35 @@
     // 外部JSから参照可能にする
     window.__posla_lang = function () { return lang; };
     window.__posla_t = _t;
+    window.__posla_support_preview = function () { return isSupportPreview; };
+
+    function updateSupportPreviewBannerText() {
+      var el = document.getElementById('support-preview-banner');
+      if (!el) return;
+      if (!isSupportPreview) {
+        el.style.display = 'none';
+        el.innerHTML = '';
+        return;
+      }
+      el.style.display = '';
+      el.innerHTML = '<strong>' + Utils.escapeHtml(_t('support_preview_title', 'サポートプレビュー')) + '</strong>'
+        + Utils.escapeHtml(_t('support_preview_desc', 'この画面は POSLA 管理者向けの閲覧専用コピーです。注文追加・会計・スタッフ呼び出しは無効化されています。'));
+    }
+
+    function showSupportPreviewToast() {
+      var toast = document.getElementById('order-toast');
+      var msg = _t('support_preview_readonly', '閲覧専用のため操作できません');
+      if (!toast) {
+        alert(msg);
+        return;
+      }
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(function () {
+        toast.classList.remove('show');
+        toast.textContent = _t('order_success', 'ご注文ありがとうございます！');
+      }, 2000);
+    }
 
     /** メニューアイテム/カテゴリ等の翻訳済み名前を取得 */
     function _getLocalizedName(obj, nameKey, nameEnKey) {
@@ -667,6 +760,7 @@
       // 注文トースト
       el = document.getElementById('order-toast');
       if (el) el.textContent = _t('order_success', 'ご注文ありがとうございます！');
+      updateSupportPreviewBannerText();
       // 呼び出しボタン（call-staff.js が生成）
       el = document.querySelector('.cs-btn');
       if (el && !el.disabled) el.innerHTML = '&#x1F514; ' + _t('call_staff', '呼び出し');
@@ -842,6 +936,19 @@
       document.getElementById('table-name').textContent = 'プレビュー';
       document.getElementById('cart-bar').style.display = 'none';
       loadMenu();
+    } else if (isSupportPreview) {
+      if (!tableId || !supportPreviewToken) {
+        document.getElementById('menu-container').innerHTML =
+          '<div class="empty-state"><p>サポートプレビュー用のトークンが不足しています</p></div>';
+        return;
+      }
+      document.getElementById('table-name').textContent = '閲覧専用';
+      document.getElementById('action-bar').style.display = 'none';
+      CartManager.init(storeId, tableId, supportPreviewToken, BASE_API);
+      CartManager.clearCart();
+      syncHistoryEntryVisibility();
+      updateSupportPreviewBannerText();
+      loadMenu();
     } else {
       // 通常モード: テーブルセッション取得
       // S6: PIN対応セッション取得
@@ -894,6 +1001,7 @@
         applyBranding(d.store);
         document.getElementById('table-name').textContent = d.table.tableCode;
         CartManager.init(storeId, tableId, d.sessionToken, BASE_API);
+        syncHistoryEntryVisibility();
 
         function proceedAfterWelcome() {
           // コースセッション検出（プランより優先チェック）
@@ -1007,25 +1115,37 @@
             _recommendations[_recList[ri].menu_item_id] = _recList[ri];
           }
           _popularity = d.popularity || {};
-          if (isPreview && d.store) {
+          if ((isPreview || isSupportPreview) && d.store) {
             document.getElementById('store-name').textContent = d.store.name;
             applyBranding(d.store);
           }
           renderCategoryNav();
           renderMenu();
           if (!isPreview) {
-            updateCartBar();
+            if (isSupportPreview) {
+              document.getElementById('cart-bar').style.display = 'none';
+              document.getElementById('checkout-bar').style.display = 'none';
+            } else {
+              updateCartBar();
+            }
+            syncHistoryEntryVisibility();
             startMenuVersionCheck();
             startTokenValidation();
             loadOrderHistory();
             startOrderTracking();
             startLastOrderCheck();
-            checkSelfCheckout(); // L-8: 既存注文があればチェックアウトバー表示
+            if (!isSupportPreview) {
+              checkSelfCheckout(); // L-8: 既存注文があればチェックアウトバー表示
+            }
           }
           // テイクアウト導線
           (function() {
             var takeoutBtn = document.getElementById('btn-takeout');
             if (!takeoutBtn) return;
+            if (isSupportPreview) {
+              takeoutBtn.style.display = 'none';
+              return;
+            }
             fetch(BASE_API + '/customer/takeout-orders.php?action=settings&store_id=' + storeId)
               .then(function(res) { return res.text(); })
               .then(function(text) {
@@ -1258,10 +1378,11 @@
           priceText = Utils.formatYen(currentPrice);
         }
 
-        var btnClass = 'reorder-item__add' + (isSoldOut ? ' reorder-item__add--disabled' : '');
+        var btnDisabled = isSoldOut || isSupportPreview;
+        var btnClass = 'reorder-item__add' + (btnDisabled ? ' reorder-item__add--disabled' : '');
         var btnText = isSoldOut
           ? _t('sold_out', '品切れ')
-          : ('+ ' + _t('btn_add', '追加'));
+          : (isSupportPreview ? _t('support_preview_readonly_short', '閲覧専用') : ('+ ' + _t('btn_add', '追加')));
 
         html += '<div class="reorder-item">';
         html += '<div class="reorder-item__info">';
@@ -1275,7 +1396,7 @@
           + '</div>';
         html += '</div>';
         html += '<button class="' + btnClass + '" data-reorder-idx="' + ri + '"'
-          + (isSoldOut ? ' disabled' : '') + '>' + btnText + '</button>';
+          + (btnDisabled ? ' disabled' : '') + '>' + btnText + '</button>';
         html += '</div>';
       }
 
@@ -1287,6 +1408,10 @@
     document.getElementById('reorder-section').addEventListener('click', function (e) {
       var btn = e.target.closest('.reorder-item__add');
       if (!btn || btn.disabled) return;
+      if (isSupportPreview) {
+        showSupportPreviewToast();
+        return;
+      }
       var idx = parseInt(btn.dataset.reorderIdx, 10);
       var rItem = _reorderItems[idx];
       if (!rItem) return;
@@ -1436,7 +1561,9 @@
             : '<span class="menu-item__image-placeholder" aria-hidden="true">🍽️</span>')
         + '</div>';
       var qtyHtml = '';
-      if (!isPreview) {
+      if (isSupportPreview) {
+        qtyHtml = '<div class="menu-item__readonly">' + _t('support_preview_readonly_short', '閲覧専用') + '</div>';
+      } else if (!isPreview) {
         var cartQty = CartManager.getItemQty(itemId);
         var itemHasOptions = item.optionGroups && item.optionGroups.length > 0;
 
@@ -1582,6 +1709,10 @@
       // 追加ボタン
       var addBtn = e.target.closest('.menu-item__add-btn');
       if (addBtn) {
+        if (isSupportPreview) {
+          showSupportPreviewToast();
+          return;
+        }
         var itemId = addBtn.dataset.id;
         if (hasOptions(itemId)) {
           openOptionModal(itemId);
@@ -1602,6 +1733,10 @@
       // +/- ボタン（オプションなしアイテム専用）
       var qtyBtn = e.target.closest('[data-action]');
       if (qtyBtn) {
+        if (isSupportPreview) {
+          showSupportPreviewToast();
+          return;
+        }
         var id = qtyBtn.dataset.id;
         if (qtyBtn.dataset.action === 'plus') CartManager.incrementItem(id);
         else CartManager.decrementItem(id);
@@ -1616,6 +1751,10 @@
     var _optionItem = null; // 現在モーダルで選択中のメニューアイテム
 
     function openOptionModal(menuItemId) {
+      if (isSupportPreview) {
+        showSupportPreviewToast();
+        return;
+      }
       var item = findMenuItem(menuItemId);
       if (!item) return;
       _optionItem = item;
@@ -1748,6 +1887,10 @@
 
     // カートに追加
     document.getElementById('btn-option-add').addEventListener('click', function () {
+      if (isSupportPreview) {
+        showSupportPreviewToast();
+        return;
+      }
       if (!_optionItem) return;
 
       var item = _optionItem;
@@ -1797,6 +1940,10 @@
     // カートバー
     // ============================================================
     function updateCartBar() {
+      if (isSupportPreview) {
+        document.getElementById('cart-bar').style.display = 'none';
+        return;
+      }
       var cart = CartManager.getCart();
       var count = cart.reduce(function (s, i) { return s + i.qty; }, 0);
       var total = cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0);
@@ -1811,7 +1958,19 @@
     // カートモーダル
     // ============================================================
     document.getElementById('btn-view-cart').addEventListener('click', function () {
+      if (isSupportPreview) {
+        showSupportPreviewToast();
+        return;
+      }
       renderCartModal();
+      // SELF-P1-4: カートモーダルを開く際に localStorage からゲスト名を prefill
+      try {
+        var savedAlias = localStorage.getItem('mt_guest_alias');
+        var aliasEl = document.getElementById('order-guest-alias');
+        if (aliasEl && savedAlias && !aliasEl.value) {
+          aliasEl.value = savedAlias;
+        }
+      } catch (e) { /* localStorage 無効環境では無視 */ }
       document.getElementById('cart-overlay').classList.add('open');
     });
 
@@ -1885,6 +2044,10 @@
     document.getElementById('cart-items').addEventListener('click', function (e) {
       var rmBtn = e.target.closest('.cart-item__remove');
       if (rmBtn) {
+        if (isSupportPreview) {
+          showSupportPreviewToast();
+          return;
+        }
         CartManager.removeItem(rmBtn.dataset.cartkey);
         renderCartModal();
         renderMenu();
@@ -1896,6 +2059,10 @@
     // 注文送信
     // ============================================================
     document.getElementById('btn-send-order').addEventListener('click', function () {
+      if (isSupportPreview) {
+        showSupportPreviewToast();
+        return;
+      }
       var btn = this;
       var cart = CartManager.getCart();
       if (cart.length === 0) return;
@@ -1908,14 +2075,27 @@
         allergens.push(allergenChecks[i].value);
       }
 
+      // SELF-P1-4: 任意ゲスト名取得 (32 文字で client 側も制限)
+      var aliasEl = document.getElementById('order-guest-alias');
+      var guestAlias = aliasEl ? aliasEl.value.trim().substring(0, 32) : '';
+      // localStorage に保存して次回注文のデフォルトに (空の場合は削除)
+      try {
+        if (guestAlias) {
+          localStorage.setItem('mt_guest_alias', guestAlias);
+        } else {
+          localStorage.removeItem('mt_guest_alias');
+        }
+      } catch (e) { /* localStorage 無効環境では無視 */ }
+
       btn.disabled = true;
       btn.textContent = _t('sending', '送信中...');
 
-      OrderSender.send(BASE_API, storeId, tableId, cart, CartManager.getSessionToken(), CartManager.getRemovedItems(), 0, null, memo, allergens)
+      OrderSender.send(BASE_API, storeId, tableId, cart, CartManager.getSessionToken(), CartManager.getRemovedItems(), 0, null, memo, allergens, guestAlias || null)
         .then(function () {
           CartManager.clearCart();
           document.getElementById('cart-overlay').classList.remove('open');
           document.getElementById('order-memo').value = '';
+          // SELF-P1-4: ゲスト名は送信後も保持 (同一セッションで再注文しやすくする)
           var checkedAllergens = document.querySelectorAll('#allergen-chips input:checked');
           for (var j = 0; j < checkedAllergens.length; j++) {
             checkedAllergens[j].checked = false;
@@ -2134,7 +2314,7 @@
         storeId: storeId,
         tableId: tableId,
         sessionToken: token,
-        onServed: function (order, item) {
+        onServed: isSupportPreview ? null : function (order, item) {
           showSatisfactionRating(order, item);
         },
         onSessionInvalid: function () {
@@ -2423,7 +2603,7 @@
 
     /** get-bill APIで決済可否を確認し、チェックアウトバーを表示制御 */
     function checkSelfCheckout() {
-      if (_checkoutAvailable || isPreview) return;
+      if (_checkoutAvailable || isPreview || isSupportPreview) return;
       var token = CartManager.getSessionToken();
       if (!token) return;
       fetch(BASE_API + '/customer/get-bill.php?store_id=' + encodeURIComponent(storeId)
@@ -2438,7 +2618,8 @@
           if (d.payment_available && d.self_checkout_enabled) {
             _checkoutAvailable = true;
             var bar = document.getElementById('checkout-bar');
-            bar.style.display = 'block';
+            // UI-P0-1b: インライン display:none をクリアし CSS の display:flex (action-bar 配下) を復活させる
+            bar.style.display = '';
             // カートバーを上にずらす
             var cartBar = document.getElementById('cart-bar');
             cartBar.classList.add('checkout-active');
@@ -2451,6 +2632,10 @@
 
     /** チェックアウトモーダルを開く */
     function openCheckoutModal() {
+      if (isSupportPreview) {
+        showSupportPreviewToast();
+        return;
+      }
       var modal = document.getElementById('checkout-modal');
       var body = document.getElementById('checkout-body');
       body.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">読み込み中...</div>';
@@ -2565,13 +2750,26 @@
       bindCheckoutHistoryToggle();
     }
 
+    function syncHistoryEntryVisibility() {
+      var entry = document.getElementById('history-entry');
+      if (!entry) return;
+      if (isPreview) {
+        entry.style.display = 'none';
+        return;
+      }
+      entry.style.display = CartManager.getSessionToken() ? '' : 'none';
+    }
+
     // ============================================================
     // UI-P0-3: 割り勘 calculator (UI のみ、決済額は合計のまま)
     // ============================================================
     function renderSplitBillWidget(total) {
+      // SELF-P1-6: 卓会計の目安 (計算のみ)。均等割 2 モード + 個人負担目安モードの 3 モード。
+      // 決済額は卓合計のまま不変。このウィジェットは現金で割る時の目安計算専用。
       var html = '<div class="checkout-split">';
-      html += '<div class="checkout-split__title">' + _t('checkout_split_title', '割り勘 (計算のみ)') + '</div>';
-      html += '<div class="checkout-split__row">';
+      html += '<div class="checkout-split__title">' + _t('checkout_split_title', '卓会計の目安 (計算のみ)') + '</div>';
+      // SELF-P1-6 hotfix: 人数行は均等割系モード (ceil / oneExtra) 専用。personal モードでは hide
+      html += '<div class="checkout-split__row checkout-split__equal" id="checkout-split-row-n">';
       html += '<label class="checkout-split__label" for="checkout-split-n">' + _t('checkout_split_people', '人数') + '</label>';
       html += '<div class="checkout-split__controls">';
       html += '<button type="button" class="checkout-split__btn" data-split-delta="-1" aria-label="人数を減らす">−</button>';
@@ -2580,14 +2778,26 @@
       html += '</div>';
       html += '</div>';
       html += '<div class="checkout-split__row">';
-      html += '<label class="checkout-split__label" for="checkout-split-mode">' + _t('checkout_split_mode', '端数') + '</label>';
+      html += '<label class="checkout-split__label" for="checkout-split-mode">' + _t('checkout_split_mode', '方法') + '</label>';
       html += '<select id="checkout-split-mode" class="checkout-split__select">';
       html += '<option value="ceil">' + _t('checkout_split_mode_ceil', '均等に切り上げ') + '</option>';
       html += '<option value="oneExtra">' + _t('checkout_split_mode_one', '1 人が端数を負担') + '</option>';
+      html += '<option value="personal">' + _t('checkout_split_mode_personal', '自分の分+残りを人数割り') + '</option>';
       html += '</select>';
       html += '</div>';
+      // SELF-P1-6: personal モード専用の 2 行 (初期非表示)
+      html += '<div class="checkout-split__row checkout-split__personal" id="checkout-split-personal-mine" style="display:none">';
+      html += '<label class="checkout-split__label--wide" for="checkout-split-mine">' + _t('checkout_split_mine', '自分の分') + '</label>';
+      html += '<input type="number" id="checkout-split-mine" class="checkout-split__input--wide" min="0" step="10" value="0" inputmode="numeric" placeholder="0">';
+      html += '<span style="font-size:0.78rem;color:#888">円</span>';
+      html += '</div>';
+      html += '<div class="checkout-split__row checkout-split__personal" id="checkout-split-personal-share" style="display:none">';
+      html += '<label class="checkout-split__label--wide" for="checkout-split-share">' + _t('checkout_split_share', '共有人数') + '</label>';
+      html += '<input type="number" id="checkout-split-share" class="checkout-split__input--wide" min="1" max="99" value="2" inputmode="numeric">';
+      html += '<span style="font-size:0.78rem;color:#888">人</span>';
+      html += '</div>';
       html += '<div class="checkout-split__result" id="checkout-split-result">1 人あたり <strong>&yen;' + (total || 0).toLocaleString() + '</strong></div>';
-      html += '<p class="checkout-split__note">' + _t('checkout_split_note', '※ 店頭/オンライン決済は合計金額でまとめて行います。現金で割る場合の目安にお使いください。') + '</p>';
+      html += '<p class="checkout-split__note">' + _t('checkout_split_note', '※ オンライン決済は常に卓合計でまとめて行います。この計算で自分の分だけ決済されることはありません。現金で割る場合の目安にお使いください。') + '</p>';
       html += '</div>';
       return html;
     }
@@ -2598,14 +2808,67 @@
       var result = document.getElementById('checkout-split-result');
       if (!input || !modeSel || !result) return;
 
+      // SELF-P1-6: personal モード用の追加入力
+      var mineInput = document.getElementById('checkout-split-mine');
+      var shareInput = document.getElementById('checkout-split-share');
+      var personalRows = document.querySelectorAll('.checkout-split__personal');
+      // SELF-P1-6 hotfix: 人数行は均等割系モード専用。personal モードでは hide して矛盾入力を防ぐ
+      var equalRows = document.querySelectorAll('.checkout-split__equal');
+
+      function togglePersonalRows(show) {
+        for (var p = 0; p < personalRows.length; p++) {
+          personalRows[p].style.display = show ? '' : 'none';
+        }
+        for (var q = 0; q < equalRows.length; q++) {
+          equalRows[q].style.display = show ? 'none' : '';
+        }
+      }
+
+      function clampIntField(el, min, max, fallback) {
+        var v = parseInt(el.value, 10);
+        if (isNaN(v)) v = fallback;
+        if (v < min) v = min;
+        if (v > max) v = max;
+        return v;
+      }
+
       function update() {
         var n = parseInt(input.value, 10);
         if (!n || n < 1) n = 1;
         if (n > 99) n = 99;
         if (String(n) !== String(input.value)) input.value = n;
         var mode = modeSel.value;
+
+        // personal モードの行 show/hide
+        togglePersonalRows(mode === 'personal');
+
         var html = '';
-        if (n <= 1) {
+        if (mode === 'personal') {
+          // 個人負担目安: 自分の分 (任意入力) + 残りを共有人数で割る
+          var mine = 0;
+          if (mineInput) {
+            mine = parseInt(mineInput.value, 10);
+            if (isNaN(mine) || mine < 0) mine = 0;
+            if (mine > total) mine = total;
+          }
+          var sharePeople = 2;
+          if (shareInput) {
+            sharePeople = clampIntField(shareInput, 1, 99, 1);
+            if (String(sharePeople) !== String(shareInput.value) && shareInput.value !== '') {
+              shareInput.value = sharePeople;
+            }
+          }
+          var shared = total - mine;
+          if (shared < 0) shared = 0;
+          var sharedPer = sharePeople > 0 ? Math.ceil(shared / sharePeople) : 0;
+          var yours = mine + sharedPer;
+          html = 'あなたの目安 <strong>&yen;' + yours.toLocaleString() + '</strong>';
+          html += '<span class="checkout-split__result-breakdown">'
+               + '自分の注文 &yen;' + mine.toLocaleString()
+               + ' + 共有分 &yen;' + sharedPer.toLocaleString()
+               + ' (卓の残り &yen;' + shared.toLocaleString() + ' を ' + sharePeople + ' 人で)'
+               + '</span>';
+        } else if (n <= 1) {
           html = '1 人あたり <strong>&yen;' + total.toLocaleString() + '</strong>';
         } else if (mode === 'oneExtra') {
           var perFloor = Math.floor(total / n);
@@ -2624,6 +2887,8 @@
       }
       input.addEventListener('input', update);
       modeSel.addEventListener('change', update);
+      if (mineInput) mineInput.addEventListener('input', update);
+      if (shareInput) shareInput.addEventListener('input', update);
       var deltas = document.querySelectorAll('[data-split-delta]');
       for (var i = 0; i < deltas.length; i++) {
         deltas[i].addEventListener('click', function (e) {
@@ -2686,6 +2951,7 @@
     }
 
     function renderCheckoutHistoryList(body, orders) {
+      // SELF-P1-5: 二層表示 (未払い / 会計済)
       if (!orders.length) {
         body.innerHTML = '<p class="checkout-history__empty">' + _t('checkout_history_empty', '履歴はありません') + '</p>';
         return;
@@ -2698,33 +2964,85 @@
         'served':          { text: '提供済', cls: 'status-served' },
         'paid':            { text: '会計済', cls: 'status-paid' }
       };
-      var h = '<ul class="checkout-history__list">';
-      for (var i = 0; i < orders.length; i++) {
-        var o = orders[i];
-        var sb = statusLabel[o.status] || { text: o.status, cls: '' };
-        var itemsLabel = '';
-        var items = o.items || [];
-        var names = [];
-        for (var ii = 0; ii < items.length; ii++) {
-          names.push((items[ii].name || '?') + ' ×' + (items[ii].qty || 1));
-        }
-        itemsLabel = names.join(' / ');
-        var t = String(o.created_at || '').substring(11, 16);
-        h += '<li class="checkout-history__item">';
-        h += '<div class="checkout-history__head">';
-        h += '<span class="checkout-history__time">' + Utils.escapeHtml(t) + '</span>';
-        h += '<span class="checkout-history__badge ' + sb.cls + '">' + Utils.escapeHtml(sb.text) + '</span>';
-        h += '<span class="checkout-history__total">&yen;' + (o.total_amount || 0).toLocaleString() + '</span>';
-        h += '</div>';
-        h += '<div class="checkout-history__items">' + Utils.escapeHtml(itemsLabel) + '</div>';
-        h += '</li>';
+      // 未払い = status !== 'paid' (cancelled は API 側で除外済)
+      var unpaidOrders = [];
+      var paidOrders = [];
+      for (var u = 0; u < orders.length; u++) {
+        if (orders[u].status === 'paid') paidOrders.push(orders[u]);
+        else unpaidOrders.push(orders[u]);
       }
-      h += '</ul>';
+
+      function renderSection(list, titleText, countCls, emptyText) {
+        var out = '<section class="checkout-history__section">';
+        out += '<div class="checkout-history__section-head ' + countCls + '">';
+        out += '<span class="checkout-history__section-title">' + Utils.escapeHtml(titleText) + '</span>';
+        out += '<span class="checkout-history__section-count">' + list.length + '</span>';
+        out += '</div>';
+        if (!list.length) {
+          out += '<p class="checkout-history__section-empty">' + Utils.escapeHtml(emptyText) + '</p>';
+          out += '</section>';
+          return out;
+        }
+        out += '<ul class="checkout-history__list">';
+        for (var i = 0; i < list.length; i++) {
+          var o = list[i];
+          var sb = statusLabel[o.status] || { text: o.status, cls: '' };
+          var items = o.items || [];
+          var names = [];
+          for (var ii = 0; ii < items.length; ii++) {
+            names.push((items[ii].name || '?') + ' ×' + (items[ii].qty || 1));
+          }
+          var itemsLabel = names.join(' / ');
+          var t = String(o.created_at || '').substring(11, 16);
+          out += '<li class="checkout-history__item">';
+          out += '<div class="checkout-history__head">';
+          out += '<span class="checkout-history__time">' + Utils.escapeHtml(t) + '</span>';
+          out += '<span class="checkout-history__badge ' + sb.cls + '">' + Utils.escapeHtml(sb.text) + '</span>';
+          // SELF-P1-4: 任意ゲスト名 badge (存在時のみ、表示専用)
+          if (o.guest_alias) {
+            out += '<span class="checkout-history__alias">' + Utils.escapeHtml(String(o.guest_alias)) + '</span>';
+          }
+          out += '<span class="checkout-history__total">&yen;' + (o.total_amount || 0).toLocaleString() + '</span>';
+          out += '</div>';
+          out += '<div class="checkout-history__items">' + Utils.escapeHtml(itemsLabel) + '</div>';
+          out += '</li>';
+        }
+        out += '</ul></section>';
+        return out;
+      }
+
+      var h = '';
+      h += renderSection(
+        unpaidOrders,
+        _t('checkout_history_unpaid_title', '未払いの注文'),
+        'checkout-history__section-head--unpaid',
+        _t('checkout_history_unpaid_empty', '未払いの注文はありません')
+      );
+      h += renderSection(
+        paidOrders,
+        _t('checkout_history_paid_title', '会計済みの注文'),
+        'checkout-history__section-head--paid',
+        _t('checkout_history_paid_empty', '会計済みの注文はまだありません')
+      );
       body.innerHTML = h;
+    }
+
+    function openHistoryModal() {
+      var modal = document.getElementById('history-modal');
+      var body = document.getElementById('history-body');
+      if (!modal || !body) return;
+      modal.querySelector('.checkout-modal__header h2').textContent = _t('order_history_title', '注文履歴');
+      body.innerHTML = '<p class="checkout-history__loading">' + _t('checkout_history_loading', '読み込み中...') + '</p>';
+      modal.classList.add('open');
+      fetchCheckoutHistory(body);
     }
 
     /** Stripe決済開始 */
     function startPayment() {
+      if (isSupportPreview) {
+        showSupportPreviewToast();
+        return;
+      }
       var btn = document.getElementById('btn-pay');
       btn.disabled = true;
       btn.textContent = _t('checkout_processing', '処理中...');
@@ -2791,6 +3109,7 @@
         CartManager.clearCart();
         document.getElementById('cart-bar').style.display = 'none';
         document.getElementById('checkout-bar').style.display = 'none';
+        document.getElementById('history-entry').style.display = 'none';
 
         // URLからcheckoutパラメータを除去
         var cleanUrl = window.location.pathname + '?store_id=' + encodeURIComponent(storeId) + '&table_id=' + encodeURIComponent(tableId);
@@ -2818,6 +3137,11 @@
       document.getElementById('checkout-done-amount').textContent = '\u00a5' + total.toLocaleString();
       document.getElementById('btn-view-receipt').textContent = _t('checkout_view_receipt', '領収書を表示');
       modal.querySelector('.checkout-done-modal__note').textContent = _t('checkout_receipt_note', '紙の領収書が必要な場合はスタッフにお申し付けください');
+      // SELF-P1-7: 再注文 CTA + ヒントの i18n 更新
+      var continueBtn = document.getElementById('btn-continue-order');
+      if (continueBtn) continueBtn.textContent = _t('checkout_continue_order', '＋ 続けて注文する');
+      var continueHint = document.getElementById('checkout-done-continue-hint');
+      if (continueHint) continueHint.textContent = _t('checkout_continue_hint', '続けて注文できます。終了する場合は下の「閉じる」を押してください。');
       document.getElementById('btn-checkout-done-close').textContent = _t('btn_close', '閉じる');
       modal.classList.add('open');
     }
@@ -2951,11 +3275,20 @@
     document.getElementById('btn-checkout').addEventListener('click', function () {
       openCheckoutModal();
     });
+    document.getElementById('btn-open-history').addEventListener('click', function () {
+      openHistoryModal();
+    });
     document.getElementById('checkout-close').addEventListener('click', function () {
       document.getElementById('checkout-modal').classList.remove('open');
     });
     document.querySelector('#checkout-modal .checkout-modal__overlay').addEventListener('click', function () {
       document.getElementById('checkout-modal').classList.remove('open');
+    });
+    document.getElementById('history-close').addEventListener('click', function () {
+      document.getElementById('history-modal').classList.remove('open');
+    });
+    document.querySelector('#history-modal .checkout-modal__overlay').addEventListener('click', function () {
+      document.getElementById('history-modal').classList.remove('open');
     });
     document.getElementById('btn-view-receipt').addEventListener('click', function () {
       viewReceipt();
@@ -2965,6 +3298,22 @@
       _checkoutPaymentId = null; // ガード解除
       showSessionEnded();
     });
+    // SELF-P1-7: 続けて注文する → session_token を保持したまま menu.html をリロードし通常メニューへ戻る
+    // URL は confirmCheckoutPayment で既に clean 化されている (?store_id=...&table_id=...)
+    // ため reload() で同一セッションの新規注文が開始できる。showSessionEnded は呼ばない
+    var continueOrderBtn = document.getElementById('btn-continue-order');
+    if (continueOrderBtn) {
+      continueOrderBtn.addEventListener('click', function () {
+        _checkoutPaymentId = null; // ガード解除 (showSessionEnded が再入しないため)
+        window.location.reload();
+      });
+    }
+
+    function clearSavedGuestAlias() {
+      try {
+        localStorage.removeItem('mt_guest_alias');
+      } catch (e) { /* localStorage 無効環境では無視 */ }
+    }
 
     function showSessionEnded() {
       // 全ポーリング停止
@@ -2976,6 +3325,9 @@
 
       // L-8: 決済完了モーダル表示中なら session-ended は出さない
       if (_checkoutPaymentId) return;
+
+      // SEC-HOTFIX-20260423-A: shared device で前客の alias を残さない
+      clearSavedGuestAlias();
 
       // 言語対応
       var titleEl = document.getElementById('session-ended-title');
@@ -2991,6 +3343,7 @@
       document.getElementById('cart-bar').style.display = 'none';
       // L-8: チェックアウトバーも非表示
       document.getElementById('checkout-bar').style.display = 'none';
+      document.getElementById('history-entry').style.display = 'none';
     }
   })();
   </script>

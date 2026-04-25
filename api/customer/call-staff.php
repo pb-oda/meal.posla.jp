@@ -99,7 +99,7 @@ try {
     push_send_to_store($pdo, $storeId, 'call_staff', [
         'title' => 'お客様呼び出し: テーブル ' . $tableCode,
         'body'  => $reason,
-        'url'   => '/public/handy/index.html',
+        'url'   => '/handy/index.html',
         'tag'   => 'call_staff_' . $tableCode,
     ]);
 } catch (\Throwable $e) {

@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->rollBack();
         fclose($handle);
         // H-14: browser 応答から内部メッセージを排除、詳細は error_log にのみ残す
-        error_log('[H-14][api/owner/ingredients-csv.php] csv_import_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[H-14][api/owner/ingredients-csv.php] csv_import_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         json_error('IMPORT_FAILED', 'インポートに失敗しました', 500);
     }
 

@@ -12,6 +12,7 @@
     el.style.opacity = '1';
     setTimeout(function() { el.style.opacity = '0'; }, 3000);
   }
+  window.PoslaShowToast = showToast;
 
   // ── 認証チェック ──
   PoslaApi.me().then(function(data) {
@@ -45,6 +46,15 @@
         var btn = e.target.closest('[data-tab]');
         if (!btn) return;
         activateTab(btn.getAttribute('data-tab'));
+      });
+    }
+
+    var adminContent = document.querySelector('.admin-content');
+    if (adminContent) {
+      adminContent.addEventListener('click', function(e) {
+        var jumpBtn = e.target.closest('[data-tab-jump]');
+        if (!jumpBtn) return;
+        activateTab(jumpBtn.getAttribute('data-tab-jump'));
       });
     }
 
@@ -87,8 +97,44 @@
     var clearApiBtn = document.getElementById('btn-clear-api');
     if (clearApiBtn) clearApiBtn.addEventListener('click', clearApiSettings);
 
+    var runMonitorBtn = document.getElementById('btn-run-monitor-health');
+    if (runMonitorBtn) runMonitorBtn.addEventListener('click', runMonitorHealth);
+
+    var sendMonitorTestBtn = document.getElementById('btn-send-monitor-test');
+    if (sendMonitorTestBtn) sendMonitorTestBtn.addEventListener('click', sendMonitorTestAlert);
+
+    var sendOpsMailTestBtn = document.getElementById('btn-send-ops-mail-test');
+    if (sendOpsMailTestBtn) sendOpsMailTestBtn.addEventListener('click', sendOpsMailTest);
+
     var refreshPushBtn = document.getElementById('btn-refresh-push');
     if (refreshPushBtn) refreshPushBtn.addEventListener('click', loadPushStatus);
+
+    var pushGenerateBtn = document.getElementById('btn-push-generate-apply');
+    if (pushGenerateBtn) pushGenerateBtn.addEventListener('click', generateAndApplyPushVapid);
+
+    var pushPublicBtn = document.getElementById('btn-push-public-view');
+    if (pushPublicBtn) pushPublicBtn.addEventListener('click', function() {
+      revealPushSecret('get_public_key');
+    });
+
+    var pushPrivateBtn = document.getElementById('btn-push-private-view');
+    if (pushPrivateBtn) pushPrivateBtn.addEventListener('click', function() {
+      revealPushSecret('get_private_pem');
+    });
+
+    var pushBackupBtn = document.getElementById('btn-push-backup-view');
+    if (pushBackupBtn) pushBackupBtn.addEventListener('click', function() {
+      revealPushSecret('get_backup_bundle');
+    });
+
+    var copyPushBtn = document.getElementById('btn-push-secret-copy');
+    if (copyPushBtn) copyPushBtn.addEventListener('click', copyPushSecretValue);
+
+    var downloadPushBtn = document.getElementById('btn-push-secret-download');
+    if (downloadPushBtn) downloadPushBtn.addEventListener('click', downloadPushSecretValue);
+
+    // サポートセンター (HELPDESK-P2-NONAI-ALL-20260423: AIコード案内→非AI置換)
+    // 実装は js/posla-supportdesk.js (PoslaSupportdesk.mount)
 
     // 初期タブ
     activateTab('overview');
@@ -125,10 +171,67 @@
     if (tabId === 'tenants') loadTenants();
     if (tabId === 'api-settings') loadApiStatus();
     if (tabId === 'pwa-push') loadPushStatus();
+    if (tabId === 'admin-users') loadAdminUsers();
+    if (tabId === 'customer-support') loadCustomerSupport();
+    if (tabId === 'support') loadSupport();
+    if (tabId === 'ops') loadOpsCenter();
   }
 
-  // ── PWA/Push タブ: 情報表示 (読み取り専用) ──
-  function loadPushStatus() {
+  // ── POSLA 管理者ユーザー管理 ──
+  function loadAdminUsers() {
+    var rootEl = document.getElementById('posla-admin-users-root');
+    if (!rootEl) return;
+    if (typeof PoslaSupportConsole === 'undefined' || !PoslaSupportConsole || !PoslaSupportConsole.mountAdminUsers) {
+      rootEl.innerHTML = '<div style="padding:1.5rem;color:#c62828;">posla-support-console.js の読み込みに失敗しています。ページを再読み込みしてください。</div>';
+      return;
+    }
+    PoslaSupportConsole.mountAdminUsers(rootEl);
+  }
+
+  // ── 顧客サポートビュー (read-only) ──
+  function loadCustomerSupport() {
+    var rootEl = document.getElementById('posla-customer-support-root');
+    if (!rootEl) return;
+    if (typeof PoslaSupportConsole === 'undefined' || !PoslaSupportConsole || !PoslaSupportConsole.mountSupport) {
+      rootEl.innerHTML = '<div style="padding:1.5rem;color:#c62828;">posla-support-console.js の読み込みに失敗しています。ページを再読み込みしてください。</div>';
+      return;
+    }
+    PoslaSupportConsole.mountSupport(rootEl);
+  }
+
+  // ── サポートセンター (非AI、HELPDESK-P2-NONAI-ALL-20260423) ──
+  function loadSupport() {
+    var rootEl = document.getElementById('posla-support-root');
+    if (!rootEl) return;
+    if (typeof PoslaSupportdesk === 'undefined' || !PoslaSupportdesk || !PoslaSupportdesk.mount) {
+      rootEl.innerHTML = '<div style="padding:1.5rem;color:#c62828;">posla-supportdesk.js の読み込みに失敗しています。ページを再読み込みしてください。</div>';
+      return;
+    }
+    PoslaSupportdesk.mount(rootEl);
+  }
+
+  // ── 運用補助センター (非AI / read-only、OPS-CENTER-P1-READONLY-20260423) ──
+  function loadOpsCenter() {
+    var rootEl = document.getElementById('posla-ops-root');
+    if (!rootEl) return;
+    if (typeof PoslaOpsCenter === 'undefined' || !PoslaOpsCenter || !PoslaOpsCenter.mount) {
+      rootEl.innerHTML = '<div style="padding:1.5rem;color:#c62828;">posla-ops-center.js の読み込みに失敗しています。ページを再読み込みしてください。</div>';
+      return;
+    }
+    PoslaOpsCenter.mount(rootEl);
+  }
+
+  // ── PWA/Push タブ ──
+  var _pushSecretState = {
+    value: '',
+    filename: '',
+    label: '',
+    note: ''
+  };
+  var _lastPushStatus = null;
+
+  function loadPushStatus(options) {
+    options = options || {};
     var statusEl = document.getElementById('posla-push-status');
     var subsEl = document.getElementById('posla-push-subs');
     var logEl = document.getElementById('posla-push-sendlog');
@@ -137,76 +240,626 @@
     statusEl.textContent = '読み込み中...';
     subsEl.textContent = '';
     logEl.textContent = '';
+    if (!options.keepSecretOutput) {
+      setPushSecretOutput('', '', '', '');
+    }
 
-    fetch('/api/posla/push-vapid.php', { credentials: 'same-origin' })
-      .then(function (r) { return r.text(); })
-      .then(function (t) {
-        var json;
-        try { json = JSON.parse(t); } catch (e) {
-          statusEl.textContent = '取得失敗 (JSON パースエラー)';
+    PoslaApi.getPushVapid()
+      .then(function(data) {
+        if (!data) {
+          statusEl.textContent = '取得失敗: unknown';
           return;
         }
-        if (!json || !json.ok || !json.data) {
-          statusEl.textContent = '取得失敗: ' + ((json && json.error && json.error.message) || 'unknown');
-          return;
-        }
-        renderPushStatus(json.data, statusEl, subsEl, logEl);
+        _lastPushStatus = data;
+        renderPushStatus(data, statusEl, subsEl, logEl);
       })
-      .catch(function () {
-        statusEl.textContent = '取得失敗 (ネットワークエラー)';
+      .catch(function(err) {
+        statusEl.textContent = '取得失敗: ' + ((err && err.message) || 'ネットワークエラー');
       });
+  }
+
+  function generateAndApplyPushVapid() {
+    var btn = document.getElementById('btn-push-generate-apply');
+    var current = _lastPushStatus || {};
+    var vapid = current.vapid || {};
+    var subscriptions = current.subscriptions || {};
+    var enabledCount = Number(subscriptions.enabled || 0);
+    var needsConfirm = !!(vapid.available || vapid.public_key || vapid.private_pem_set || enabledCount > 0);
+    var confirmMessage = '';
+    var note = '';
+
+    if (needsConfirm) {
+      confirmMessage = '既存の VAPID 鍵を再生成して適用します。';
+      if (enabledCount > 0) {
+        confirmMessage += '\n有効購読 ' + enabledCount + ' 件は無効化され、再登録が必要です。';
+      } else {
+        confirmMessage += '\n既存のブラウザ購読は新しい公開鍵で再登録が必要になる可能性があります。';
+      }
+      confirmMessage += '\n続行しますか？';
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+    }
+
+    if (btn) btn.disabled = true;
+
+    PoslaApi.runPushVapidAction('generate_and_apply', {
+      confirm_regenerate: needsConfirm
+    })
+      .then(function(data) {
+        var summary = data.summary || {};
+        note = '新しい VAPID 鍵を適用しました。退避用 bundle を安全な保管先に保存してください。';
+        if (summary.disabled_subscriptions > 0) {
+          note += ' 有効購読 ' + summary.disabled_subscriptions + ' 件を無効化しています。';
+        }
+        setPushSecretOutput(data.label || 'VAPID 退避用 bundle', data.value || '', data.filename || '', note);
+        showToast(summary.rotated ? 'VAPID 鍵を再生成して適用しました' : 'VAPID 鍵を生成して適用しました');
+        loadPushStatus({ keepSecretOutput: true });
+      })
+      .catch(function(err) {
+        showToast('VAPID 鍵の適用に失敗しました: ' + err.message);
+      })
+      .then(function() {
+        if (btn) btn.disabled = false;
+      });
+  }
+
+  function revealPushSecret(action) {
+    var buttonIdMap = {
+      get_public_key: 'btn-push-public-view',
+      get_private_pem: 'btn-push-private-view',
+      get_backup_bundle: 'btn-push-backup-view'
+    };
+    var btn = document.getElementById(buttonIdMap[action] || '');
+    if (btn) btn.disabled = true;
+
+    PoslaApi.runPushVapidAction(action)
+      .then(function(data) {
+        var note = '';
+        if (action === 'get_private_pem') {
+          note = '秘密鍵です。画面共有・チャット貼り付け・第三者転送は避けてください。';
+        } else if (action === 'get_backup_bundle') {
+          note = '公開鍵と秘密鍵を 1 つの退避テキストにまとめています。安全な保管先に退避してください。';
+        } else {
+          note = '公開鍵です。PWA 登録や service worker 設定の確認に使えます。';
+        }
+        setPushSecretOutput(data.label || 'VAPID 鍵', data.value || '', data.filename || '', note);
+        showToast((data.label || 'VAPID 鍵') + ' を取得しました');
+      })
+      .catch(function(err) {
+        showToast('鍵の取得に失敗しました: ' + err.message);
+      })
+      .then(function() {
+        if (btn) btn.disabled = false;
+      });
+  }
+
+  function setPushSecretOutput(label, value, filename, note) {
+    var wrapEl = document.getElementById('posla-push-secret-output');
+    var labelEl = document.getElementById('posla-push-secret-label');
+    var valueEl = document.getElementById('posla-push-secret-value');
+    var noteEl = document.getElementById('posla-push-secret-note');
+    var copyBtn = document.getElementById('btn-push-secret-copy');
+    var downloadBtn = document.getElementById('btn-push-secret-download');
+    if (!wrapEl || !labelEl || !valueEl || !noteEl) return;
+
+    _pushSecretState = {
+      value: value || '',
+      filename: filename || '',
+      label: label || '',
+      note: note || ''
+    };
+
+    if (!_pushSecretState.value) {
+      wrapEl.style.display = 'none';
+      valueEl.value = '';
+      noteEl.textContent = '';
+      labelEl.textContent = 'VAPID 鍵';
+      if (copyBtn) copyBtn.disabled = true;
+      if (downloadBtn) downloadBtn.disabled = true;
+      return;
+    }
+
+    wrapEl.style.display = 'block';
+    labelEl.textContent = _pushSecretState.label;
+    valueEl.value = _pushSecretState.value;
+    noteEl.textContent = _pushSecretState.note;
+    if (copyBtn) copyBtn.disabled = false;
+    if (downloadBtn) downloadBtn.disabled = false;
+  }
+
+  function copyPushSecretValue() {
+    if (!_pushSecretState.value) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(_pushSecretState.value)
+        .then(function() {
+          showToast((_pushSecretState.label || 'VAPID 鍵') + ' をコピーしました');
+        })
+        .catch(function() {
+          fallbackCopyPushSecret();
+        });
+      return;
+    }
+    fallbackCopyPushSecret();
+  }
+
+  function fallbackCopyPushSecret() {
+    var valueEl = document.getElementById('posla-push-secret-value');
+    if (!valueEl) return;
+    valueEl.focus();
+    valueEl.select();
+    try {
+      document.execCommand('copy');
+      showToast((_pushSecretState.label || 'VAPID 鍵') + ' をコピーしました');
+    } catch (e) {
+      showToast('コピーに失敗しました');
+    }
+  }
+
+  function downloadPushSecretValue() {
+    if (!_pushSecretState.value) return;
+    var blob = new Blob([_pushSecretState.value], { type: 'text/plain;charset=utf-8' });
+    var url = window.URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = _pushSecretState.filename || 'posla-vapid.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    showToast((_pushSecretState.label || 'VAPID 鍵') + ' をダウンロードしました');
   }
 
   function renderPushStatus(data, statusEl, subsEl, logEl) {
     var v = data.vapid || {};
+    var generateBtn = document.getElementById('btn-push-generate-apply');
     var availableMark = v.available
       ? '<span style="color:#2e7d32;font-weight:600;">✓ 設定済み</span>'
       : '<span style="color:#c62828;font-weight:600;">✗ 未設定</span>';
     var pubSnippet = v.public_key
       ? (v.public_key.substring(0, 16) + '...' + v.public_key.substring(v.public_key.length - 8))
       : '(未設定)';
+    if (generateBtn) {
+      generateBtn.textContent = v.available ? 'VAPID 鍵を再生成して適用' : 'VAPID 鍵を生成して適用';
+    }
     statusEl.innerHTML =
-        '<div>VAPID 状態: ' + availableMark + '</div>' +
-        '<div>公開鍵: <code style="font-size:0.8rem;">' + escapeHtml(pubSnippet) + '</code> (' + v.public_key_length + ' 文字)</div>' +
-        '<div>秘密鍵: ' + (v.private_pem_set ? ('設定済み (' + v.private_pem_length + ' 文字)') : '<span style="color:#c62828;">未設定</span>') + '</div>';
+        '<div class="metric-list">' +
+        buildMetricRow('VAPID 状態', availableMark, 'ブラウザ購読で使われる公開鍵セットの状態です。') +
+        buildMetricRow('公開鍵', v.public_key ? '<code class="metric-code">' + escapeHtml(pubSnippet) + '</code>' : '<span style="color:#c62828;">未設定</span>', String(v.public_key_length || 0) + ' 文字') +
+        buildMetricRow('秘密鍵', v.private_pem_set ? '設定済み' : '<span style="color:#c62828;">未設定</span>', v.private_pem_set ? (String(v.private_pem_length || 0) + ' 文字') : '未設定の場合は通知署名ができません') +
+        '</div>';
 
     var s = data.subscriptions || { total: 0, enabled: 0, tenants_with_subs: 0, by_role: {} };
-    var byRoleText = '';
     var roles = ['owner', 'manager', 'staff', 'device'];
+    var roleTags = [];
     for (var i = 0; i < roles.length; i++) {
       var cnt = s.by_role && s.by_role[roles[i]] ? s.by_role[roles[i]] : 0;
-      byRoleText += roles[i] + ': ' + cnt + ' / ';
+      roleTags.push('<span class="tag' + (cnt ? '' : ' tag--muted') + '">' + escapeHtml(roles[i]) + ': ' + cnt + '</span>');
     }
-    byRoleText = byRoleText.replace(/ \/ $/, '');
     subsEl.innerHTML =
-        '<div>全購読数: ' + s.total + '</div>' +
-        '<div>有効購読: ' + s.enabled + '</div>' +
-        '<div>有効購読がいる tenant 数: ' + s.tenants_with_subs + '</div>' +
-        '<div>role 別 (有効): ' + escapeHtml(byRoleText) + '</div>';
+        '<div class="metric-list">' +
+        buildMetricRow('全購読数', escapeHtml(String(s.total)), '現在保存されているブラウザ購読の総数です。') +
+        buildMetricRow('有効購読', escapeHtml(String(s.enabled)), '実際に通知送信対象として使われる件数です。') +
+        buildMetricRow('有効 tenant 数', escapeHtml(String(s.tenants_with_subs)), '少なくとも 1 件の有効購読が存在する tenant 数です。') +
+        '</div>' +
+        '<div class="metric-list__meta" style="margin-top:0.9rem;">role 別 (有効)</div>' +
+        '<div class="tag-row">' + roleTags.join('') + '</div>';
 
     var r = data.recent_24h || { total: 0, sent_ok: 0, gone_disabled: 0, transient: 0, other_error: 0, by_type: {} };
-    var byTypeLines = [];
+    var byTypeTags = [];
     if (r.by_type) {
       for (var k in r.by_type) {
         if (Object.prototype.hasOwnProperty.call(r.by_type, k)) {
-          byTypeLines.push('<div style="margin-left:1rem;">' + escapeHtml(k) + ': ' + r.by_type[k] + '</div>');
+          byTypeTags.push('<span class="tag">' + escapeHtml(k) + ': ' + r.by_type[k] + '</span>');
         }
       }
     }
     logEl.innerHTML =
-        '<div>総送信: ' + r.total + '</div>' +
-        '<div>成功 (2xx): <span style="color:#2e7d32;">' + r.sent_ok + '</span></div>' +
-        '<div>失効 (410/404, 自動無効化): ' + r.gone_disabled + '</div>' +
-        '<div>一時失敗 (429/5xx): ' + r.transient + '</div>' +
-        '<div>その他エラー (401/403/413): ' + r.other_error + '</div>' +
-        '<div style="margin-top:0.75rem;font-weight:600;">type 別:</div>' +
-        (byTypeLines.length ? byTypeLines.join('') : '<div style="margin-left:1rem;color:var(--text-secondary);">送信なし</div>');
+        '<div class="metric-list">' +
+        buildMetricRow('総送信', escapeHtml(String(r.total)), '直近 24 時間で送信を試みた件数です。') +
+        buildMetricRow('成功 (2xx)', '<span style="color:#2e7d32;">' + escapeHtml(String(r.sent_ok)) + '</span>', '正常に配信完了した通知') +
+        buildMetricRow('失効 (410/404)', escapeHtml(String(r.gone_disabled)), '端末削除などで自動無効化された購読') +
+        buildMetricRow('一時失敗 (429/5xx)', escapeHtml(String(r.transient)), '再試行検討が必要な一時エラー') +
+        buildMetricRow('その他エラー', escapeHtml(String(r.other_error)), '401 / 403 / 413 など設定起因の失敗') +
+        '</div>' +
+        '<div class="metric-list__meta" style="margin-top:0.9rem;">type 別</div>' +
+        (byTypeTags.length ? ('<div class="tag-row">' + byTypeTags.join('') + '</div>') : '<div class="tag-row"><span class="tag tag--muted">送信なし</span></div>');
+  }
+
+  function buildMetricRow(label, valueHtml, metaText) {
+    return '<div class="metric-list__row">' +
+      '<div>' +
+      '<div class="metric-list__label">' + escapeHtml(label) + '</div>' +
+      (metaText ? ('<div class="metric-list__meta">' + escapeHtml(metaText) + '</div>') : '') +
+      '</div>' +
+      '<div class="metric-list__value">' + valueHtml + '</div>' +
+      '</div>';
+  }
+
+  function buildTenantContractHtml(tenant) {
+    var parts = [
+      '<span class="badge badge--standard">POSLA標準</span>'
+    ];
+
+    if (parseInt(tenant && tenant.hq_menu_broadcast, 10)) {
+      parts.push('<span class="badge badge--active">本部一括配信</span>');
+    }
+
+    return '<div class="tenant-contract">' + parts.join('') + '</div>';
+  }
+
+  function getHealthTone(status) {
+    if (status === 'ok') return 'ok';
+    if (status === 'warn') return 'warn';
+    return 'danger';
+  }
+
+  function getProgressTone(progress) {
+    progress = parseInt(progress, 10) || 0;
+    if (progress >= 100) return 'ok';
+    if (progress >= 60) return 'warn';
+    return 'alert';
+  }
+
+  function buildProgressBar(percent, tone) {
+    var safePercent = parseInt(percent, 10) || 0;
+    if (safePercent < 0) safePercent = 0;
+    if (safePercent > 100) safePercent = 100;
+    return '<div class="progress-track"><div class="progress-track__bar progress-track__bar--' + tone + '" style="width:' + safePercent + '%;"></div></div>';
+  }
+
+  function buildTenantHealthHtml(tenant) {
+    var tone = getHealthTone(tenant.health_status);
+    var flags = tenant.health_flags || [];
+    return '<div class="tenant-health">' +
+      '<div class="tenant-health__top">' +
+        '<span class="status-pill status-pill--' + tone + '">' + escapeHtml(tenant.health_label || '要確認') + '</span>' +
+        '<span class="tenant-health__score">' + escapeHtml(String(tenant.health_score || 0)) + ' / 100</span>' +
+      '</div>' +
+      buildProgressBar(tenant.health_score || 0, tone === 'danger' ? 'alert' : tone) +
+      '<div class="tenant-health__flags">' + escapeHtml(flags.join(' / ')) + '</div>' +
+      '</div>';
+  }
+
+  function buildTenantProgressHtml(tenant) {
+    var tone = getProgressTone(tenant.onboarding_progress);
+    var completed = tenant.onboarding_completed_steps || 0;
+    var total = tenant.onboarding_total_steps || 0;
+    return '<div class="tenant-progress">' +
+      '<div class="tenant-progress__top">' +
+        '<span class="status-pill status-pill--' + (tone === 'alert' ? 'danger' : tone) + '">' + escapeHtml(String(tenant.onboarding_progress || 0)) + '%</span>' +
+        '<span class="tenant-progress__score">' + escapeHtml(String(completed)) + ' / ' + escapeHtml(String(total)) + ' 完了</span>' +
+      '</div>' +
+      buildProgressBar(tenant.onboarding_progress || 0, tone) +
+      '<div class="tenant-progress__meta">次アクション: ' + escapeHtml(tenant.next_action || '確認') + '</div>' +
+      '</div>';
+  }
+
+  function buildTenantIncidentHtml(tenant) {
+    var tone = 'muted';
+    var meta = '直近異常なし';
+    if (parseInt(tenant.critical_open_count, 10) > 0 || parseInt(tenant.open_incident_count, 10) > 0) {
+      tone = 'danger';
+      meta = (tenant.last_incident_at ? tenant.last_incident_at.replace('T', ' ').substring(0, 16) : tenant.last_incident_at || '未解決あり');
+    } else if (parseInt(tenant.incident_count_24h, 10) > 0) {
+      tone = 'warn';
+      meta = '24h 内に記録あり';
+    }
+    return '<div class="tenant-incident">' +
+      '<span class="status-pill status-pill--' + tone + '">' + escapeHtml(tenant.recent_incident_label || '異常なし') + '</span>' +
+      '<div class="tenant-incident__meta">' + escapeHtml(meta) + '</div>' +
+      '</div>';
+  }
+
+  function formatTenantTimelineDate(value) {
+    if (!value) return '-';
+    return String(value).replace('T', ' ').substring(0, 16);
+  }
+
+  function buildTenantModalSummaryHtml(tenant) {
+    var healthTone = getHealthTone(tenant.health_status);
+    var progressTone = getProgressTone(tenant.onboarding_progress);
+    var incidentTone = 'muted';
+    var incidentValue = tenant.recent_incident_label || '異常なし';
+    var incidentMeta = tenant.last_incident_at ? ('最終記録 ' + formatTenantTimelineDate(tenant.last_incident_at)) : '直近 14 日に重大イベントなし';
+
+    if (parseInt(tenant.critical_open_count, 10) > 0 || parseInt(tenant.open_incident_count, 10) > 0) {
+      incidentTone = 'danger';
+    } else if (parseInt(tenant.incident_count_24h, 10) > 0) {
+      incidentTone = 'warn';
+    }
+
+    return '' +
+      '<div class="tenant-modal-summary__card">' +
+        '<div class="tenant-modal-summary__label">健全性</div>' +
+        '<div class="tenant-modal-summary__value"><span class="status-pill status-pill--' + (healthTone === 'danger' ? 'danger' : healthTone) + '">' + escapeHtml(tenant.health_label || '要確認') + '</span> ' + escapeHtml(String(tenant.health_score || 0)) + ' / 100</div>' +
+        '<div class="tenant-modal-summary__meta">' + escapeHtml((tenant.health_flags || []).join(' / ') || '安定稼働中') + '</div>' +
+      '</div>' +
+      '<div class="tenant-modal-summary__card">' +
+        '<div class="tenant-modal-summary__label">導入状況</div>' +
+        '<div class="tenant-modal-summary__value"><span class="status-pill status-pill--' + (progressTone === 'alert' ? 'danger' : progressTone) + '">' + escapeHtml(String(tenant.onboarding_progress || 0)) + '%</span></div>' +
+        '<div class="tenant-modal-summary__meta">完了 ' + escapeHtml(String(tenant.onboarding_completed_steps || 0)) + ' / ' + escapeHtml(String(tenant.onboarding_total_steps || 0)) + ' ・ 次: ' + escapeHtml(tenant.next_action || '確認') + '</div>' +
+      '</div>' +
+      '<div class="tenant-modal-summary__card">' +
+        '<div class="tenant-modal-summary__label">監視イベント</div>' +
+        '<div class="tenant-modal-summary__value"><span class="status-pill status-pill--' + incidentTone + '">' + escapeHtml(incidentValue) + '</span></div>' +
+        '<div class="tenant-modal-summary__meta">' + escapeHtml(incidentMeta) + '</div>' +
+      '</div>';
+  }
+
+  function buildTenantInvestigationSummaryHtml(view) {
+    var summary = view || {};
+    var cards = summary.cards || [];
+    var html = '';
+    var i;
+    var card;
+    var tone;
+
+    if (summary.headline) {
+      html += '<div class="tenant-investigation-banner">' + escapeHtml(summary.headline) + '</div>';
+    }
+
+    if (!cards.length) {
+      return html + '<div class="tenant-modal-timeline__empty">調査材料がまだありません。監視イベントまたは設定変更が入るとここに要約が表示されます。</div>';
+    }
+
+    html += '<div class="tenant-modal-summary">';
+    for (i = 0; i < cards.length; i++) {
+      card = cards[i] || {};
+      tone = card.tone || 'muted';
+      html += '<div class="tenant-modal-summary__card">' +
+        '<div class="tenant-modal-summary__label">' + escapeHtml(card.label || '要約') + '</div>' +
+        '<div class="tenant-modal-summary__value">' + _buildStatusPill(card.pill_label || '-', tone === 'danger' ? 'danger' : tone) + ' ' + escapeHtml(card.value || '-') + '</div>' +
+        '<div class="tenant-modal-summary__meta">' + escapeHtml(card.meta || '-') + '</div>' +
+      '</div>';
+    }
+    html += '</div>';
+
+    return html;
+  }
+
+  function buildTenantInvestigationChangesHtml(view) {
+    var items = (view && view.related_changes) || [];
+    var html = '';
+    var i;
+    var item;
+    var tone;
+    var meta = [];
+    var actorText;
+
+    if (!items.length) {
+      return '<div class="tenant-modal-timeline__empty">関連しそうな POSLA 側変更はありません。店舗設定や外部連携先を優先して確認してください。</div>';
+    }
+
+    for (i = 0; i < items.length; i++) {
+      item = items[i] || {};
+      tone = item.tone || 'muted';
+      meta = ['変更: ' + formatTenantTimelineDate(item.created_at)];
+      if (item.status_label) {
+        meta.push('区分: ' + item.status_label);
+      }
+      if (item.relation_label) {
+        meta.push(item.relation_label);
+      }
+      actorText = item.actor_label ? ('変更者: ' + item.actor_label) : '';
+
+      html += '<div class="tenant-timeline-item tenant-timeline-item--' + escapeHtml(tone) + '">' +
+        '<div class="tenant-timeline-item__head">' +
+          '<div class="tenant-timeline-item__title">' + escapeHtml(item.title || '設定変更') + '</div>' +
+          '<div class="tenant-timeline-item__badges">' +
+            '<span class="status-pill status-pill--' + (tone === 'danger' ? 'danger' : tone) + '">' + escapeHtml(item.status_label || '変更') + '</span>' +
+            (item.relation_label ? ('<span class="status-pill status-pill--info">' + escapeHtml(item.relation_label) + '</span>') : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="tenant-timeline-item__meta">' + escapeHtml(meta.join(' / ')) + '</div>' +
+        '<div class="tenant-timeline-item__detail">' + escapeHtml(item.detail || '詳細メッセージはありません。') + '</div>' +
+        (actorText ? ('<div class="tenant-timeline-item__subnote">' + escapeHtml(actorText) + '</div>') : '') +
+      '</div>';
+    }
+
+    return html;
+  }
+
+  function buildTenantTimelineHtml(items) {
+    var html = '';
+    var i;
+    var item;
+    var tone;
+    var stateLabel;
+    var sourceLabel;
+    var meta = [];
+    var detail;
+
+    if (!items || !items.length) {
+      return '<div class="tenant-modal-timeline__empty">直近 14 日の監視イベントはありません。未解決アラートも無く、いまは安定稼働です。</div>';
+    }
+
+    for (i = 0; i < items.length; i++) {
+      item = items[i];
+      tone = item.severity || 'info';
+      if (parseInt(item.resolved, 10)) {
+        tone = 'resolved';
+      }
+      stateLabel = parseInt(item.resolved, 10) ? '解消済み' : '未解決';
+      sourceLabel = item.source || item.event_type || 'monitor';
+      meta = [
+        '発生: ' + formatTenantTimelineDate(item.created_at),
+        'ソース: ' + sourceLabel
+      ];
+      if (item.store_name) {
+        meta.push('店舗: ' + item.store_name);
+      }
+      if (parseInt(item.resolved, 10) && item.resolved_at) {
+        meta.push('解消: ' + formatTenantTimelineDate(item.resolved_at));
+      }
+      detail = item.detail ? escapeHtml(item.detail) : '詳細メッセージは記録されていません。';
+
+      html += '<div class="tenant-timeline-item tenant-timeline-item--' + escapeHtml(tone) + '">' +
+        '<div class="tenant-timeline-item__head">' +
+          '<div class="tenant-timeline-item__title">' + escapeHtml(item.title || '監視イベント') + '</div>' +
+          '<div class="tenant-timeline-item__badges">' +
+            '<span class="status-pill status-pill--' + (item.severity === 'critical' || item.severity === 'error' ? 'danger' : (item.severity || 'info')) + '">' + escapeHtml(item.severity || 'info') + '</span>' +
+            '<span class="status-pill status-pill--' + (parseInt(item.resolved, 10) ? 'muted' : 'warn') + '">' + escapeHtml(stateLabel) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="tenant-timeline-item__meta">' + escapeHtml(meta.join(' / ')) + '</div>' +
+        '<div class="tenant-timeline-item__detail">' + detail + '</div>' +
+      '</div>';
+    }
+
+    return html;
+  }
+
+  function buildTenantOpsTimelineHtml(items) {
+    var html = '';
+    var i;
+    var item;
+    var tone;
+    var meta = [];
+    var badges;
+    var actorText;
+
+    if (!items || !items.length) {
+      return '<div class="tenant-modal-timeline__empty">まだ運用タイムラインはありません。POSLA 側の変更や監視イベントが発生するとここにまとまります。</div>';
+    }
+
+    for (i = 0; i < items.length; i++) {
+      item = items[i];
+      tone = item.tone || 'info';
+      meta = ['発生: ' + formatTenantTimelineDate(item.created_at)];
+      if (item.meta_label) {
+        meta.push('ソース: ' + item.meta_label);
+      }
+      if (item.store_name) {
+        meta.push('店舗: ' + item.store_name);
+      }
+      if (parseInt(item.resolved, 10) && item.resolved_at) {
+        meta.push('解消: ' + formatTenantTimelineDate(item.resolved_at));
+      }
+      badges = '<div class="tenant-timeline-item__badges">' +
+        '<span class="status-pill status-pill--' + (tone === 'resolved' ? 'muted' : (tone === 'critical' || tone === 'error' ? 'danger' : tone)) + '">' + escapeHtml(item.status_label || '記録') + '</span>' +
+        '<span class="status-pill status-pill--info">' + escapeHtml(item.timeline_type || 'ops') + '</span>' +
+        '</div>';
+      actorText = item.actor_label ? ('操作者: ' + item.actor_label) : '';
+
+      html += '<div class="tenant-timeline-item tenant-timeline-item--' + escapeHtml(tone) + '">' +
+        '<div class="tenant-timeline-item__head">' +
+          '<div class="tenant-timeline-item__title">' + escapeHtml(item.title || '運用イベント') + '</div>' +
+          badges +
+        '</div>' +
+        '<div class="tenant-timeline-item__meta">' + escapeHtml(meta.join(' / ')) + '</div>' +
+        '<div class="tenant-timeline-item__detail">' + escapeHtml(item.detail || '詳細メッセージはありません。') + '</div>' +
+        (actorText ? ('<div class="tenant-timeline-item__subnote">' + escapeHtml(actorText) + '</div>') : '') +
+      '</div>';
+    }
+
+    return html;
+  }
+
+  function buildWatchListHtml(items, emptyMessage, mode) {
+    var html = '<div class="watch-list">';
+    var i;
+    var item;
+    var tone;
+    var flags;
+    if (!items || !items.length) {
+      html += '<div class="watch-item"><div class="watch-item__title">' + escapeHtml(emptyMessage) + '</div></div>';
+      html += '</div>';
+      return html;
+    }
+
+    for (i = 0; i < items.length; i++) {
+      item = items[i];
+      tone = mode === 'risk' ? getHealthTone(item.health_status) : getProgressTone(item.onboarding_progress);
+      flags = item.health_flags || [];
+      html += '<div class="watch-item watch-item--' + (tone === 'danger' ? 'alert' : tone) + '">' +
+        '<div class="watch-item__head">' +
+          '<div>' +
+            '<div class="watch-item__title">' + escapeHtml(item.name || '-') + '</div>' +
+            '<div class="watch-item__slug">' + escapeHtml(item.slug || '-') + '</div>' +
+          '</div>' +
+          '<span class="status-pill status-pill--' + (tone === 'danger' ? 'danger' : tone) + '">' +
+            (mode === 'risk'
+              ? (escapeHtml(item.health_label || '要確認') + ' ' + escapeHtml(String(item.health_score || 0)))
+              : (escapeHtml(String(item.onboarding_progress || 0)) + '%')) +
+          '</span>' +
+        '</div>' +
+        '<div class="watch-item__meta">';
+      if (mode === 'risk') {
+        html += '<div>直近異常: ' + escapeHtml(item.recent_incident_label || '異常なし') + '</div>' +
+          '<div>次アクション: ' + escapeHtml(item.next_action || '確認') + '</div>';
+      } else {
+        html += '<div>完了ステップ: ' + escapeHtml(String(item.onboarding_completed_steps || 0)) + ' / ' + escapeHtml(String(item.onboarding_total_steps || 0)) + '</div>' +
+          '<div>次アクション: ' + escapeHtml(item.next_action || '確認') + '</div>';
+      }
+      html += '</div>';
+      if (flags.length) {
+        html += '<div class="watch-item__tags">';
+        for (var j = 0; j < flags.length; j++) {
+          html += '<span class="tag">' + escapeHtml(flags[j]) + '</span>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function renderTenantCreateResult(data) {
+    var container = document.getElementById('tenant-create-result');
+    var bootstrap = data && data.bootstrap ? data.bootstrap : {};
+    var accounts = bootstrap.accounts || [];
+    var rows = '';
+    var i;
+
+    if (!container) return;
+
+    for (i = 0; i < accounts.length; i++) {
+      rows += '<tr>' +
+        '<td>' + escapeHtml(accounts[i].role) + '</td>' +
+        '<td><code>' + escapeHtml(accounts[i].username) + '</code></td>' +
+        '<td>' + escapeHtml(accounts[i].display_name || '') + '</td>' +
+        '</tr>';
+    }
+
+    container.innerHTML =
+      '<div class="tenant-create-result__head">' +
+        '<div>' +
+          '<div class="tenant-create-result__eyebrow">Bootstrap Complete</div>' +
+          '<div class="tenant-create-result__title">初期ログイン情報を発行しました</div>' +
+        '</div>' +
+        '<span class="status-pill status-pill--ok">作成済み</span>' +
+      '</div>' +
+      '<div class="metric-list">' +
+        buildMetricRow('テナント', escapeHtml((data.tenant && data.tenant.name) || '-'), (data.tenant && data.tenant.slug) ? ('slug: ' + data.tenant.slug) : '') +
+        buildMetricRow('契約', buildTenantContractHtml(data.tenant || {}), '') +
+        buildMetricRow('初期店舗', escapeHtml((bootstrap.store && bootstrap.store.name) || '-'), (bootstrap.store && bootstrap.store.slug) ? ('store slug: ' + bootstrap.store.slug) : '') +
+        buildMetricRow('ログイン画面', '<code>' + escapeHtml(bootstrap.login_url || (window.location.origin + '/admin/')) + '</code>', 'owner / manager / staff / device 共通') +
+        buildMetricRow('初期パスワード', '<code>' + escapeHtml(bootstrap.common_password || 'Demo1234') + '</code>', '必要に応じてログイン後に変更') +
+      '</div>' +
+      '<div class="data-table-wrap" style="margin-top:1rem;"><table class="data-table"><thead><tr><th>ロール</th><th>username</th><th>表示名</th></tr></thead><tbody>' +
+        rows +
+      '</tbody></table></div>' +
+      '<div class="tenant-create-result__note">外部連携やメニュー・テーブル詳細はまだ未設定です。まずは上記 ID でテナント側管理画面に入り、その後の設定を進めてください。</div>';
+
+    container.classList.add('open');
+  }
+
+  function clearTenantCreateResult() {
+    var container = document.getElementById('tenant-create-result');
+    if (!container) return;
+    container.classList.remove('open');
+    container.innerHTML = '';
   }
 
   function escapeHtml(s) {
     s = String(s == null ? '' : s);
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+
+  // ── (HELPDESK-P2-NONAI-ALL-20260423: AIコード案内関連の内部関数は削除、posla-supportdesk.js に置換) ──
 
   // ── ダッシュボード ──
   function loadDashboard() {
@@ -217,31 +870,28 @@
         statsEl.innerHTML =
           '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.totalTenants)) + '</div><div class="stat-card__label">テナント数</div></div>' +
           '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.totalStores)) + '</div><div class="stat-card__label">店舗数</div></div>' +
-          '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.totalUsers)) + '</div><div class="stat-card__label">ユーザー数</div></div>';
+          '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.totalUsers)) + '</div><div class="stat-card__label">ユーザー数</div></div>' +
+          '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.averageHealthScore || 0)) + '</div><div class="stat-card__label">平均健全性スコア</div></div>' +
+          '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.onboardingTenantCount || 0)) + '</div><div class="stat-card__label">要フォロー導入中</div></div>' +
+          '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.alertTenantCount || 0)) + '</div><div class="stat-card__label">要対応テナント</div></div>';
       }
 
-      // プラン分布
+      // 契約構成
       var planEl = document.getElementById('plan-distribution');
       if (planEl) {
-        var planLabels = { standard: 'Standard', pro: 'Pro', enterprise: 'Enterprise' };
-        var html = '<table class="data-table"><thead><tr><th>プラン</th><th>テナント数</th></tr></thead><tbody>';
-        if (data.planDistribution && data.planDistribution.length > 0) {
-          for (var i = 0; i < data.planDistribution.length; i++) {
-            var p = data.planDistribution[i];
-            var label = planLabels[p.plan] || p.plan;
-            html += '<tr><td><span class="badge badge--' + Utils.escapeHtml(p.plan) + '">' + Utils.escapeHtml(label) + '</span></td><td>' + Utils.escapeHtml(String(p.count)) + '</td></tr>';
-          }
-        } else {
-          html += '<tr><td colspan="2" style="text-align:center;color:var(--text-muted);">データなし</td></tr>';
-        }
-        html += '</tbody></table>';
+        var baseCount = parseInt(data.totalTenants, 10) || 0;
+        var addonCount = parseInt(data.hqAddonTenants, 10) || 0;
+        var html = '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>契約</th><th>テナント数</th></tr></thead><tbody>';
+        html += '<tr><td>' + buildTenantContractHtml({ hq_menu_broadcast: 0 }) + '</td><td>' + Utils.escapeHtml(String(baseCount)) + '</td></tr>';
+        html += '<tr><td><div class="tenant-contract"><span class="badge badge--active">本部一括配信 契約</span></div></td><td>' + Utils.escapeHtml(String(addonCount)) + '</td></tr>';
+        html += '</tbody></table></div>';
         planEl.innerHTML = html;
       }
 
       // 最近のテナント
       var recentEl = document.getElementById('recent-tenants');
       if (recentEl) {
-        var rhtml = '<table class="data-table"><thead><tr><th>テナント名</th><th>Slug</th><th>プラン</th><th>状態</th><th>作成日</th></tr></thead><tbody>';
+        var rhtml = '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>テナント名</th><th>Slug</th><th>契約</th><th>状態</th><th>作成日</th></tr></thead><tbody>';
         if (data.recentTenants && data.recentTenants.length > 0) {
           for (var j = 0; j < data.recentTenants.length; j++) {
             var t = data.recentTenants[j];
@@ -251,7 +901,7 @@
             rhtml += '<tr>' +
               '<td>' + Utils.escapeHtml(t.name) + '</td>' +
               '<td><code>' + Utils.escapeHtml(t.slug) + '</code></td>' +
-              '<td><span class="badge badge--' + Utils.escapeHtml(t.plan) + '">' + Utils.escapeHtml(t.plan) + '</span></td>' +
+              '<td>' + buildTenantContractHtml(t) + '</td>' +
               '<td><span class="badge badge--' + activeClass + '">' + activeLabel + '</span></td>' +
               '<td>' + Utils.escapeHtml(dateStr) + '</td>' +
               '</tr>';
@@ -259,8 +909,18 @@
         } else {
           rhtml += '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">データなし</td></tr>';
         }
-        rhtml += '</tbody></table>';
+        rhtml += '</tbody></table></div>';
         recentEl.innerHTML = rhtml;
+      }
+
+      var riskyEl = document.getElementById('risky-tenants');
+      if (riskyEl) {
+        riskyEl.innerHTML = buildWatchListHtml(data.riskyTenants || [], '現時点で要対応テナントはありません', 'risk');
+      }
+
+      var onboardingEl = document.getElementById('onboarding-watchlist');
+      if (onboardingEl) {
+        onboardingEl.innerHTML = buildWatchListHtml(data.onboardingWatchlist || [], '導入途中のテナントはありません', 'onboarding');
       }
     }).catch(function(err) {
       showToast('ダッシュボードの読み込みに失敗しました: ' + err.message);
@@ -274,13 +934,13 @@
       if (!container) return;
 
       var tenants = data.tenants || [];
-      var html = '<table class="data-table"><thead><tr>' +
-        '<th>テナント名</th><th>Slug</th><th>プラン</th>' +
+      var html = '<div class="data-table-wrap"><table class="data-table"><thead><tr>' +
+        '<th>テナント名</th><th>Slug</th><th>健全性</th><th>導入状況</th><th>直近異常</th><th>契約</th>' +
         '<th>店舗数</th><th>ユーザー数</th><th>サブスク</th><th>Connect</th><th>状態</th><th>操作</th>' +
         '</tr></thead><tbody>';
 
       if (tenants.length === 0) {
-        html += '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);">テナントがありません</td></tr>';
+        html += '<tr><td colspan="12" style="text-align:center;color:var(--text-muted);">テナントがありません</td></tr>';
       } else {
         for (var i = 0; i < tenants.length; i++) {
           var t = tenants[i];
@@ -312,7 +972,10 @@
           html += '<tr>' +
             '<td>' + Utils.escapeHtml(t.name) + '</td>' +
             '<td><code>' + Utils.escapeHtml(t.slug) + '</code></td>' +
-            '<td><span class="badge badge--' + Utils.escapeHtml(t.plan) + '">' + Utils.escapeHtml(t.plan) + '</span></td>' +
+            '<td>' + buildTenantHealthHtml(t) + '</td>' +
+            '<td>' + buildTenantProgressHtml(t) + '</td>' +
+            '<td>' + buildTenantIncidentHtml(t) + '</td>' +
+            '<td>' + buildTenantContractHtml(t) + '</td>' +
             '<td>' + Utils.escapeHtml(String(t.store_count)) + '</td>' +
             '<td>' + Utils.escapeHtml(String(t.user_count)) + '</td>' +
             '<td>' + subHtml + '</td>' +
@@ -323,7 +986,7 @@
         }
       }
 
-      html += '</tbody></table>';
+      html += '</tbody></table></div>';
       container.innerHTML = html;
     }).catch(function(err) {
       showToast('テナント一覧の読み込みに失敗しました: ' + err.message);
@@ -334,12 +997,33 @@
   function openTenantModal(id) {
     PoslaApi.getTenant(id).then(function(data) {
       var t = data.tenant;
+      var summaryEl = document.getElementById('modal-tenant-summary');
+      var investigationSummaryEl = document.getElementById('modal-tenant-investigation-summary');
+      var investigationChangesEl = document.getElementById('modal-tenant-investigation-changes');
+      var timelineEl = document.getElementById('modal-tenant-incident-timeline');
+      var opsTimelineEl = document.getElementById('modal-tenant-ops-timeline');
       document.getElementById('modal-tenant-id').value = t.id;
       document.getElementById('modal-tenant-title').textContent = Utils.escapeHtml(t.name) + ' の編集';
       document.getElementById('modal-tenant-name').value = t.name || '';
       document.getElementById('modal-tenant-slug').value = t.slug || '';
-      document.getElementById('modal-tenant-plan').value = t.plan || 'standard';
+      document.getElementById('modal-tenant-plan-label').value = 'POSLA標準（互換値: ' + (t.plan_compat || t.plan || 'standard') + '）';
+      document.getElementById('modal-tenant-hq-broadcast').checked = !!parseInt(t.hq_menu_broadcast, 10);
       document.getElementById('modal-tenant-active').value = parseInt(t.is_active) ? '1' : '0';
+      if (summaryEl) {
+        summaryEl.innerHTML = buildTenantModalSummaryHtml(t);
+      }
+      if (investigationSummaryEl) {
+        investigationSummaryEl.innerHTML = buildTenantInvestigationSummaryHtml(t.investigation_view || {});
+      }
+      if (investigationChangesEl) {
+        investigationChangesEl.innerHTML = buildTenantInvestigationChangesHtml(t.investigation_view || {});
+      }
+      if (timelineEl) {
+        timelineEl.innerHTML = buildTenantTimelineHtml(t.incident_timeline || []);
+      }
+      if (opsTimelineEl) {
+        opsTimelineEl.innerHTML = buildTenantOpsTimelineHtml(t.ops_timeline || []);
+      }
 
       document.getElementById('tenant-modal-overlay').classList.add('open');
     }).catch(function(err) {
@@ -348,6 +1032,16 @@
   }
 
   function closeModal() {
+    var summaryEl = document.getElementById('modal-tenant-summary');
+    var investigationSummaryEl = document.getElementById('modal-tenant-investigation-summary');
+    var investigationChangesEl = document.getElementById('modal-tenant-investigation-changes');
+    var timelineEl = document.getElementById('modal-tenant-incident-timeline');
+    var opsTimelineEl = document.getElementById('modal-tenant-ops-timeline');
+    if (summaryEl) summaryEl.innerHTML = '';
+    if (investigationSummaryEl) investigationSummaryEl.innerHTML = '';
+    if (investigationChangesEl) investigationChangesEl.innerHTML = '';
+    if (timelineEl) timelineEl.innerHTML = '';
+    if (opsTimelineEl) opsTimelineEl.innerHTML = '';
     document.getElementById('tenant-modal-overlay').classList.remove('open');
   }
 
@@ -355,7 +1049,8 @@
     var id = document.getElementById('modal-tenant-id').value;
     var updateData = {
       name: document.getElementById('modal-tenant-name').value.trim(),
-      is_active: parseInt(document.getElementById('modal-tenant-active').value)
+      is_active: parseInt(document.getElementById('modal-tenant-active').value),
+      hq_menu_broadcast: document.getElementById('modal-tenant-hq-broadcast').checked
     };
 
     var saveBtn = document.getElementById('modal-save-btn');
@@ -365,6 +1060,7 @@
       showToast('テナントを更新しました');
       closeModal();
       loadTenants();
+      loadDashboard();
     }).catch(function(err) {
       showToast('更新に失敗しました: ' + err.message);
     }).then(function() {
@@ -376,7 +1072,7 @@
   function createTenant() {
     var slug = document.getElementById('new-slug').value.trim();
     var name = document.getElementById('new-name').value.trim();
-    var plan = document.getElementById('new-plan').value;
+    var hqMenuBroadcast = document.getElementById('new-hq-broadcast').checked;
 
     if (!slug) { showToast('Slugは必須です'); return; }
     if (!/^[a-z0-9\-]+$/.test(slug)) { showToast('Slugは半角英小文字・数字・ハイフンのみ'); return; }
@@ -384,13 +1080,16 @@
 
     var btn = document.getElementById('btn-create-tenant');
     btn.disabled = true;
+    clearTenantCreateResult();
 
-    PoslaApi.createTenant({ slug: slug, name: name, plan: plan }).then(function() {
+    PoslaApi.createTenant({ slug: slug, name: name, hq_menu_broadcast: hqMenuBroadcast }).then(function(data) {
       showToast('テナントを作成しました');
+      renderTenantCreateResult(data);
       document.getElementById('new-slug').value = '';
       document.getElementById('new-name').value = '';
-      document.getElementById('new-plan').value = 'standard';
-      activateTab('tenants');
+      document.getElementById('new-hq-broadcast').checked = false;
+      loadTenants();
+      loadDashboard();
     }).catch(function(err) {
       showToast('作成に失敗しました: ' + err.message);
     }).then(function() {
@@ -401,13 +1100,234 @@
   // ── API設定（POSLA共通） ──
   var _apiSettings = {};
 
-  // 機密キーは「設定済みかどうか + マスク表示」のみ。実値はサーバーから返らない
-  function _buildKeyDisplay(label, isSet, masked) {
-    if (!isSet) {
-      return '<span class="ai-status ai-status--unset"></span>未設定';
+  function _buildKeyDisplay(isSet, masked) {
+    if (!isSet) return '<span class="ai-status ai-status--unset"></span>未設定';
+    return '<span class="ai-status ai-status--set"></span><span>' + Utils.escapeHtml(masked || '********') + '</span>';
+  }
+
+  function _buildStatusPill(label, tone) {
+    return '<span class="status-pill status-pill--' + tone + '">' + Utils.escapeHtml(label) + '</span>';
+  }
+
+  function _summaryLine(label, valueHtml) {
+    return '<div><strong>' + Utils.escapeHtml(label) + ':</strong> ' + valueHtml + '</div>';
+  }
+
+  function _buildSummaryCard(eyebrow, title, lines) {
+    return '<div class="settings-summary-card">' +
+      '<div class="settings-summary-card__eyebrow">' + Utils.escapeHtml(eyebrow) + '</div>' +
+      '<div class="settings-summary-card__title">' + Utils.escapeHtml(title) + '</div>' +
+      '<div class="settings-summary-card__meta">' + lines.join('') + '</div>' +
+      '</div>';
+  }
+
+  function _setInputValue(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.value = value || '';
+  }
+
+  function _formatAuditDate(value) {
+    if (!value) return '-';
+    return String(value).replace('T', ' ').substring(0, 16);
+  }
+
+  function _buildAuditActor(change) {
+    return (change && (change.admin_display_name || change.admin_email)) || '-';
+  }
+
+  function _buildAuditActionPill(action) {
+    var label = '更新';
+    var tone = 'info';
+    if (action === 'settings_create') {
+      label = '新規';
+      tone = 'ok';
+    } else if (action === 'settings_clear') {
+      label = 'クリア';
+      tone = 'warn';
     }
-    return '<span class="ai-status ai-status--set"></span>' +
-      '<span>' + Utils.escapeHtml(masked || '********') + '</span>';
+    return '<span class="status-pill status-pill--' + tone + '">' + escapeHtml(label) + '</span>';
+  }
+
+  function _buildAuditDiffHtml(change) {
+    var oldValue = change && change.old_value ? change.old_value : {};
+    var newValue = change && change.new_value ? change.new_value : {};
+    return '<div class="settings-history-diff">' +
+      '<div class="settings-history-diff__line"><strong>前</strong>' + escapeHtml(oldValue.display || '未設定') + '</div>' +
+      '<div class="settings-history-diff__line"><strong>後</strong>' + escapeHtml(newValue.display || '未設定') + '</div>' +
+      '</div>';
+  }
+
+  function _renderSettingsAuditSummary(summary) {
+    var data = summary || {};
+    return '<div class="metric-list">' +
+      buildMetricRow('最終更新', escapeHtml(_formatAuditDate(data.last_changed_at)), '直近の設定変更時刻') +
+      buildMetricRow('更新者', escapeHtml(data.last_changed_by || '-'), '最後に保存した POSLA 管理者') +
+      buildMetricRow('直近24hの変更件数', escapeHtml(String(data.changes_24h || 0)), 'setting_key 単位の差分件数') +
+      buildMetricRow('直近24hの保存回数', escapeHtml(String(data.batches_24h || 0)), '同時保存を 1 回として集計') +
+      '</div>';
+  }
+
+  function _renderSettingsAuditList(changes) {
+    var list = changes || [];
+    var html = '<div class="data-table-wrap"><table class="data-table"><thead><tr>' +
+      '<th>日時</th><th>更新者</th><th>種別</th><th>設定</th><th>差分</th>' +
+      '</tr></thead><tbody>';
+    var i;
+    var change;
+    var label;
+
+    if (!list.length) {
+      html += '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">変更履歴はまだありません</td></tr>';
+      html += '</tbody></table></div>';
+      return html;
+    }
+
+    for (i = 0; i < list.length; i++) {
+      change = list[i];
+      label = (change.new_value && change.new_value.label) || (change.old_value && change.old_value.label) || change.entity_id || '-';
+      html += '<tr>' +
+        '<td>' + escapeHtml(_formatAuditDate(change.created_at)) + '</td>' +
+        '<td>' + escapeHtml(_buildAuditActor(change)) + '</td>' +
+        '<td>' + _buildAuditActionPill(change.action || 'settings_update') + '</td>' +
+        '<td>' + escapeHtml(label) + '</td>' +
+        '<td>' + _buildAuditDiffHtml(change) + '</td>' +
+        '</tr>';
+    }
+
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function _renderConfigHealth(data) {
+    var checks = (data && data.checks) || [];
+    var overall = (data && data.overall) || {};
+    var html = '<div class="metric-list" style="margin-bottom:1rem;">' +
+      buildMetricRow('正常', escapeHtml(String(overall.ok_count || 0)), '判定が揃っている連携') +
+      buildMetricRow('要確認', escapeHtml(String(overall.warn_count || 0)), '未設定・部分設定・heartbeat 遅延') +
+      buildMetricRow('要対応', escapeHtml(String(overall.danger_count || 0)), 'test/live 不一致などの即修正項目') +
+      buildMetricRow('対象数', escapeHtml(String(overall.total_count || 0)), '今回チェックしている共通連携数') +
+      '</div>';
+    var i;
+    var check;
+    var details;
+    var tone;
+
+    if (!checks.length) {
+      return html + '<div class="tenant-modal-timeline__empty">まだ判定できる設定がありません。</div>';
+    }
+
+    html += '<div class="settings-health-grid">';
+    for (i = 0; i < checks.length; i++) {
+      check = checks[i];
+      details = check.details || [];
+      tone = check.tone || 'muted';
+      html += '<div class="settings-health-card">' +
+        '<div class="settings-health-card__head">' +
+          '<div>' +
+            '<div class="settings-health-card__title">' + escapeHtml(check.label || '-') + '</div>' +
+            '<div class="settings-health-card__summary">' + escapeHtml(check.summary || '-') + '</div>' +
+          '</div>' +
+          _buildStatusPill(
+            tone === 'ok' ? '正常' : (tone === 'danger' ? '要対応' : '要確認'),
+            tone === 'danger' ? 'danger' : tone
+          ) +
+        '</div>' +
+        '<ul class="settings-health-card__details">';
+      if (details.length) {
+        for (var j = 0; j < details.length; j++) {
+          html += '<li>' + escapeHtml(details[j]) + '</li>';
+        }
+      } else {
+        html += '<li>詳細なし</li>';
+      }
+      html += '</ul></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function _renderNotificationCenter(data) {
+    var center = data || {};
+    var googleChat = center.google_chat || {};
+    var opsMail = center.ops_mail || {};
+    var webPush = center.web_push || {};
+    var monitor = center.monitor || {};
+    var html = '<div class="settings-health-grid">';
+
+    html += '<div class="settings-health-card">' +
+      '<div class="settings-health-card__head">' +
+        '<div>' +
+          '<div class="settings-health-card__title">Google Chat</div>' +
+          '<div class="settings-health-card__summary">' + escapeHtml(googleChat.detail || '通知先未設定') + '</div>' +
+        '</div>' +
+        _buildStatusPill(googleChat.available ? '送信可' : '未設定', googleChat.available ? 'ok' : 'warn') +
+      '</div>' +
+      '<ul class="settings-health-card__details">' +
+        '<li>現在ルート: ' + escapeHtml(googleChat.route || 'none') + '</li>' +
+        '<li>送信は monitor-health 経路を利用</li>' +
+      '</ul>' +
+    '</div>';
+
+    html += '<div class="settings-health-card">' +
+      '<div class="settings-health-card__head">' +
+        '<div>' +
+          '<div class="settings-health-card__title">運用通知メール</div>' +
+          '<div class="settings-health-card__summary">' + escapeHtml(opsMail.recipient || '宛先未設定') + '</div>' +
+        '</div>' +
+        _buildStatusPill(opsMail.available ? '送信可' : '要確認', opsMail.available ? 'ok' : 'warn') +
+      '</div>' +
+      '<ul class="settings-health-card__details">' +
+        '<li>送信方式: ' + escapeHtml(opsMail.transport || 'none') + '</li>' +
+        '<li>本文は下のテストメッセージ欄を共用</li>' +
+      '</ul>' +
+    '</div>';
+
+    html += '<div class="settings-health-card">' +
+      '<div class="settings-health-card__head">' +
+        '<div>' +
+          '<div class="settings-health-card__title">Web Push</div>' +
+          '<div class="settings-health-card__summary">有効購読 ' + escapeHtml(String(webPush.enabled_subscriptions || 0)) + ' 件</div>' +
+        '</div>' +
+        _buildStatusPill(webPush.available ? '準備完了' : '未設定', webPush.available ? 'ok' : 'warn') +
+      '</div>' +
+      '<ul class="settings-health-card__details">' +
+        '<li>push_test 24h: ' + escapeHtml(String(webPush.push_test_24h || 0)) + ' 件</li>' +
+        '<li>最終 push_test: ' + escapeHtml(webPush.last_push_test_at || '未実行') + '</li>' +
+      '</ul>' +
+    '</div>';
+
+    html += '<div class="settings-health-card">' +
+      '<div class="settings-health-card__head">' +
+        '<div>' +
+          '<div class="settings-health-card__title">監視 heartbeat</div>' +
+          '<div class="settings-health-card__summary">' + escapeHtml(monitor.heartbeat || '未到達') + '</div>' +
+        '</div>' +
+        _buildStatusPill(monitor.heartbeat ? '更新中' : '未到達', monitor.heartbeat ? 'ok' : 'warn') +
+      '</div>' +
+      '<ul class="settings-health-card__details">' +
+        '<li>必要時は「監視を再実行」で確認</li>' +
+        '<li>Google Chat テスト送信後に状態更新</li>' +
+      '</ul>' +
+    '</div>';
+
+    html += '</div>';
+    return html;
+  }
+
+  function _renderNotifyTestResult(title, lines, tone) {
+    var resultEl = document.getElementById('posla-notify-test-result');
+    var html = '<strong>' + escapeHtml(title) + '</strong>';
+    var i;
+    if (lines && lines.length) {
+      for (i = 0; i < lines.length; i++) {
+        html += '<div>' + escapeHtml(lines[i]) + '</div>';
+      }
+    }
+    if (resultEl) {
+      resultEl.innerHTML = html;
+      resultEl.style.borderColor = tone === 'danger' ? '#f5c2c7' : (tone === 'warn' ? '#ffe0b2' : '#dfe4f5');
+      resultEl.style.background = tone === 'danger' ? '#fff5f5' : (tone === 'warn' ? '#fffaf2' : '#f8faff');
+    }
   }
 
   // posla_settings GET レスポンスからキー情報 {set, masked} を取り出す
@@ -437,6 +1357,11 @@
       _apiSettings = data.settings || {};
       var s = _apiSettings;
       var statusEl = document.getElementById('current-api-status');
+      var configHealthEl = document.getElementById('posla-config-health');
+      var notifyCenterEl = document.getElementById('posla-notification-center');
+      var monitorStatusEl = document.getElementById('posla-monitor-status');
+      var auditSummaryEl = document.getElementById('posla-settings-audit-summary');
+      var auditListEl = document.getElementById('posla-settings-audit-list');
       if (!statusEl) return;
 
       var gemini = _getKeyInfo(s, 'gemini_api_key');
@@ -445,48 +1370,81 @@
       var stripePub = _getKeyInfo(s, 'stripe_publishable_key');
       var stripeWebhook = _getKeyInfo(s, 'stripe_webhook_secret');
       var smaregiSecret = _getKeyInfo(s, 'smaregi_client_secret');
-
-      var geminiHtml = _buildKeyDisplay('gemini', gemini.set, gemini.masked);
-      var placesHtml = _buildKeyDisplay('places', places.set, places.masked);
-      var stripeSecretHtml = _buildKeyDisplay('stripe-secret', stripeSecret.set, stripeSecret.masked);
-      var stripePubHtml = _buildKeyDisplay('stripe-pub', stripePub.set, stripePub.masked);
-      var stripeWebhookHtml = _buildKeyDisplay('stripe-webhook', stripeWebhook.set, stripeWebhook.masked);
-      var smaregiSecretHtml = _buildKeyDisplay('smaregi-secret', smaregiSecret.set, smaregiSecret.masked);
+      var googleChat = _getKeyInfo(s, 'google_chat_webhook_url');
+      var slackWebhook = _getKeyInfo(s, 'slack_webhook_url');
+      var monitorSecret = _getKeyInfo(s, 'monitor_cron_secret');
 
       var priceBaseVal = _getPlainValue(s, 'stripe_price_base');
       var priceAddVal = _getPlainValue(s, 'stripe_price_additional_store');
       var priceHqVal = _getPlainValue(s, 'stripe_price_hq_broadcast');
       var connectFeeVal = _getPlainValue(s, 'connect_application_fee_percent');
       var smaregiClientIdVal = _getPlainValue(s, 'smaregi_client_id');
+      var opsNotifyEmailVal = _getPlainValue(s, 'ops_notify_email');
+      var heartbeatVal = _getPlainValue(s, 'monitor_last_heartbeat');
 
       statusEl.innerHTML =
-        '<table class="data-table"><tbody>' +
-        '<tr><td style="font-weight:600;">Gemini API</td><td>' + geminiHtml + '</td></tr>' +
-        '<tr><td style="font-weight:600;">Google Places API</td><td>' + placesHtml + '</td></tr>' +
-        '<tr><td colspan="2" style="border-top:2px solid #e0e0e0;font-weight:600;padding-top:0.75rem;">Stripe Billing</td></tr>' +
-        '<tr><td style="font-weight:600;">Secret Key</td><td>' + stripeSecretHtml + '</td></tr>' +
-        '<tr><td style="font-weight:600;">Publishable Key</td><td>' + stripePubHtml + '</td></tr>' +
-        '<tr><td style="font-weight:600;">Webhook Secret</td><td>' + stripeWebhookHtml + '</td></tr>' +
-        '<tr><td style="font-weight:600;">Price: 基本料金 (¥20,000)</td><td>' + (priceBaseVal ? Utils.escapeHtml(priceBaseVal) : '<span style="color:#999;">未設定</span>') + '</td></tr>' +
-        '<tr><td style="font-weight:600;">Price: 追加店舗 (¥17,000)</td><td>' + (priceAddVal ? Utils.escapeHtml(priceAddVal) : '<span style="color:#999;">未設定</span>') + '</td></tr>' +
-        '<tr><td style="font-weight:600;">Price: 本部一括配信 (¥3,000)</td><td>' + (priceHqVal ? Utils.escapeHtml(priceHqVal) : '<span style="color:#999;">未設定</span>') + '</td></tr>' +
-        '<tr><td colspan="2" style="border-top:2px solid #e0e0e0;font-weight:600;padding-top:0.75rem;">Stripe Connect</td></tr>' +
-        '<tr><td style="font-weight:600;">Application Fee (%)</td><td>' + (connectFeeVal ? Utils.escapeHtml(connectFeeVal) : '未設定') + '</td></tr>' +
-        '<tr><td colspan="2" style="border-top:2px solid #e0e0e0;font-weight:600;padding-top:0.75rem;">スマレジ連携</td></tr>' +
-        '<tr><td style="font-weight:600;">Client ID</td><td>' + (smaregiClientIdVal ? Utils.escapeHtml(smaregiClientIdVal) : '<span style="color:#999;">未設定</span>') + '</td></tr>' +
-        '<tr><td style="font-weight:600;">Client Secret</td><td>' + smaregiSecretHtml + '</td></tr>' +
-        '</tbody></table>';
+        _buildSummaryCard('AI / MAPS', 'Gemini・Places', [
+          _summaryLine('Gemini', gemini.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'muted')),
+          _summaryLine('Places', places.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'muted'))
+        ]) +
+        _buildSummaryCard('BILLING', 'Stripe Billing', [
+          _summaryLine('Secret', stripeSecret.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'muted')),
+          _summaryLine('Webhook', stripeWebhook.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'muted')),
+          _summaryLine('Price ID', (priceBaseVal && priceAddVal && priceHqVal) ? _buildStatusPill('3/3 設定済み', 'info') : _buildStatusPill('一部未設定', 'warn'))
+        ]) +
+        _buildSummaryCard('EXTERNAL', 'Connect・スマレジ', [
+          _summaryLine('手数料率', connectFeeVal ? Utils.escapeHtml(connectFeeVal) + '%' : '<span style="color:#999;">未設定</span>'),
+          _summaryLine('Client ID', smaregiClientIdVal ? Utils.escapeHtml(smaregiClientIdVal) : '<span style="color:#999;">未設定</span>'),
+          _summaryLine('Client Secret', smaregiSecret.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'muted'))
+        ]) +
+        _buildSummaryCard('MONITORING', 'Google Chat・運用通知', [
+          _summaryLine('Google Chat', googleChat.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
+          _summaryLine('運用通知', opsNotifyEmailVal ? Utils.escapeHtml(opsNotifyEmailVal) : '<span style="color:#999;">未設定</span>'),
+          _summaryLine('heartbeat', heartbeatVal ? Utils.escapeHtml(heartbeatVal) : '<span style="color:#999;">未到達</span>')
+        ]);
 
-      // Connect手数料率フィールドに現在値をセット
-      var feeInput = document.getElementById('posla-connect-fee');
-      if (feeInput && connectFeeVal) {
-        feeInput.value = connectFeeVal;
+      if (monitorStatusEl) {
+        monitorStatusEl.innerHTML =
+          '<div class="settings-monitor-status__row">' +
+          '<div class="settings-monitor-status__label">Google Chat</div>' +
+          '<div class="settings-monitor-status__value">' + _buildKeyDisplay(googleChat.set, googleChat.masked) + '</div>' +
+          '</div>' +
+          '<div class="settings-monitor-status__row">' +
+          '<div class="settings-monitor-status__label">Slack fallback</div>' +
+          '<div class="settings-monitor-status__value">' + _buildKeyDisplay(slackWebhook.set, slackWebhook.masked) + '</div>' +
+          '</div>' +
+          '<div class="settings-monitor-status__row">' +
+          '<div class="settings-monitor-status__label">運用通知メール</div>' +
+          '<div class="settings-monitor-status__value">' + (opsNotifyEmailVal ? Utils.escapeHtml(opsNotifyEmailVal) : '<span style="color:#999;">未設定</span>') + '</div>' +
+          '</div>' +
+          '<div class="settings-monitor-status__row">' +
+          '<div class="settings-monitor-status__label">最終 heartbeat</div>' +
+          '<div class="settings-monitor-status__value">' + (heartbeatVal ? Utils.escapeHtml(heartbeatVal) : '<span style="color:#999;">未到達</span>') + '</div>' +
+          '</div>' +
+          '<div class="settings-monitor-status__row">' +
+          '<div class="settings-monitor-status__label">DB共有秘密</div>' +
+          '<div class="settings-monitor-status__value">' + _buildKeyDisplay(monitorSecret.set, monitorSecret.masked) + '</div>' +
+          '</div>';
       }
 
-      // スマレジ Client IDに現在値をセット
-      var smClientIdInput = document.getElementById('posla-smaregi-client-id');
-      if (smClientIdInput && smaregiClientIdVal) {
-        smClientIdInput.value = smaregiClientIdVal;
+      _setInputValue('posla-stripe-price-base', priceBaseVal);
+      _setInputValue('posla-stripe-price-add', priceAddVal);
+      _setInputValue('posla-stripe-price-hq', priceHqVal);
+      _setInputValue('posla-connect-fee', connectFeeVal);
+      _setInputValue('posla-smaregi-client-id', smaregiClientIdVal);
+      _setInputValue('posla-ops-notify-email', opsNotifyEmailVal);
+
+      if (auditSummaryEl) {
+        auditSummaryEl.innerHTML = _renderSettingsAuditSummary(data.audit_summary || {});
+      }
+      if (auditListEl) {
+        auditListEl.innerHTML = _renderSettingsAuditList(data.recent_changes || []);
+      }
+      if (configHealthEl) {
+        configHealthEl.innerHTML = _renderConfigHealth(data.config_health || {});
+      }
+      if (notifyCenterEl) {
+        notifyCenterEl.innerHTML = _renderNotificationCenter(data.notification_center || {});
       }
     }).catch(function(err) {
       showToast('API設定の読み込みに失敗しました: ' + err.message);
@@ -504,6 +1462,8 @@
     var priceHq = document.getElementById('posla-stripe-price-hq').value.trim();
     var connectFeeEl = document.getElementById('posla-connect-fee');
     var connectFee = connectFeeEl ? connectFeeEl.value.trim() : '';
+    var googleChatWebhook = document.getElementById('posla-google-chat-webhook').value.trim();
+    var opsNotifyEmail = document.getElementById('posla-ops-notify-email').value.trim();
 
     var data = {};
     if (aiKey) data.gemini_api_key = aiKey;
@@ -515,6 +1475,8 @@
     if (priceAdd) data.stripe_price_additional_store = priceAdd;
     if (priceHq) data.stripe_price_hq_broadcast = priceHq;
     if (connectFee !== '') data.connect_application_fee_percent = connectFee;
+    if (googleChatWebhook) data.google_chat_webhook_url = googleChatWebhook;
+    if (opsNotifyEmail !== '') data.ops_notify_email = opsNotifyEmail;
 
     var smaregiClientId = document.getElementById('posla-smaregi-client-id');
     var smaregiClientSecret = document.getElementById('posla-smaregi-client-secret');
@@ -536,13 +1498,7 @@
       document.getElementById('posla-stripe-secret').value = '';
       document.getElementById('posla-stripe-pub').value = '';
       document.getElementById('posla-stripe-webhook').value = '';
-      document.getElementById('posla-stripe-price-base').value = '';
-      document.getElementById('posla-stripe-price-add').value = '';
-      document.getElementById('posla-stripe-price-hq').value = '';
-      var feeEl = document.getElementById('posla-connect-fee');
-      if (feeEl) feeEl.value = '';
-      var smIdEl = document.getElementById('posla-smaregi-client-id');
-      if (smIdEl) smIdEl.value = '';
+      document.getElementById('posla-google-chat-webhook').value = '';
       var smSecEl = document.getElementById('posla-smaregi-client-secret');
       if (smSecEl) smSecEl.value = '';
       loadApiStatus();
@@ -554,7 +1510,7 @@
   }
 
   function clearApiSettings() {
-    if (!confirm('APIキーを削除します。よろしいですか？')) return;
+    if (!confirm('機密値をクリアします。よろしいですか？')) return;
 
     var btn = document.getElementById('btn-clear-api');
     btn.disabled = true;
@@ -565,14 +1521,96 @@
       stripe_secret_key: null,
       stripe_publishable_key: null,
       stripe_webhook_secret: null,
-      stripe_price_base: null,
-      stripe_price_additional_store: null,
-      stripe_price_hq_broadcast: null
+      smaregi_client_secret: null,
+      google_chat_webhook_url: null
     }).then(function() {
-      showToast('キーを削除しました');
+      document.getElementById('posla-ai-key').value = '';
+      document.getElementById('posla-places-key').value = '';
+      document.getElementById('posla-stripe-secret').value = '';
+      document.getElementById('posla-stripe-pub').value = '';
+      document.getElementById('posla-stripe-webhook').value = '';
+      document.getElementById('posla-google-chat-webhook').value = '';
+      var smSecEl = document.getElementById('posla-smaregi-client-secret');
+      if (smSecEl) smSecEl.value = '';
+      showToast('機密値をクリアしました');
       loadApiStatus();
     }).catch(function(err) {
       showToast('削除に失敗しました: ' + err.message);
+    }).then(function() {
+      btn.disabled = false;
+    });
+  }
+
+  function runMonitorHealth() {
+    var btn = document.getElementById('btn-run-monitor-health');
+    if (!btn) return;
+    btn.disabled = true;
+
+    PoslaApi.runMonitorAction('run_health_check').then(function() {
+      showToast('monitor-health を実行しました');
+      loadApiStatus();
+    }).catch(function(err) {
+      showToast('監視再実行に失敗しました: ' + err.message);
+    }).then(function() {
+      btn.disabled = false;
+    });
+  }
+
+  function sendMonitorTestAlert() {
+    var btn = document.getElementById('btn-send-monitor-test');
+    if (!btn) return;
+
+    var payload = {};
+    var tenantEl = document.getElementById('posla-monitor-tenant');
+    var storeEl = document.getElementById('posla-monitor-store');
+    var messageEl = document.getElementById('posla-monitor-message');
+
+    if (tenantEl && tenantEl.value.trim()) payload.tenant_id = tenantEl.value.trim();
+    if (storeEl && storeEl.value.trim()) payload.store_id = storeEl.value.trim();
+    if (messageEl && messageEl.value.trim()) payload.message = messageEl.value.trim();
+
+    btn.disabled = true;
+    PoslaApi.runMonitorAction('send_test_alert', payload).then(function(data) {
+      var scope = data && data.scope ? data.scope : {};
+      _renderNotifyTestResult('Google Chat テスト通知を送信しました', [
+        'ルート: ' + (data.destination || 'google_chat'),
+        'tenant_id: ' + (scope.tenant_id || '-'),
+        'store_id: ' + (scope.store_id || '-'),
+        'error_no: ' + (scope.error_no || 'E1025')
+      ], 'ok');
+      showToast('Google Chat テスト通知を送信しました: ' + (scope.error_no || 'E1025'));
+      loadApiStatus();
+    }).catch(function(err) {
+      _renderNotifyTestResult('Google Chat テスト通知に失敗しました', [err.message || 'unknown'], 'danger');
+      showToast('テスト通知に失敗しました: ' + err.message);
+    }).then(function() {
+      btn.disabled = false;
+    });
+  }
+
+  function sendOpsMailTest() {
+    var btn = document.getElementById('btn-send-ops-mail-test');
+    var messageEl = document.getElementById('posla-monitor-message');
+    var payload = {};
+
+    if (!btn) return;
+    if (messageEl && messageEl.value.trim()) {
+      payload.message = messageEl.value.trim();
+    }
+
+    btn.disabled = true;
+    PoslaApi.runMonitorAction('send_ops_mail_test', payload).then(function(data) {
+      var mail = data && data.mail ? data.mail : {};
+      _renderNotifyTestResult('運用通知メールを送信しました', [
+        '宛先: ' + (mail.recipient || '-'),
+        '送信方式: ' + (mail.transport || '-'),
+        '件名: ' + (mail.subject || '-')
+      ], 'ok');
+      showToast('運用通知メールを送信しました');
+      loadApiStatus();
+    }).catch(function(err) {
+      _renderNotifyTestResult('運用通知メールの送信に失敗しました', [err.message || 'unknown'], 'danger');
+      showToast('運用通知メールの送信に失敗しました: ' + err.message);
     }).then(function() {
       btn.disabled = false;
     });

@@ -11,6 +11,7 @@
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
+require_once __DIR__ . '/../config/app.php';
 
 require_method(['GET']);
 
@@ -34,7 +35,7 @@ if ($r['status'] === 'seated' && $r['table_session_id']) {
     $tsStmt->execute([$r['table_session_id']]);
     $ts = $tsStmt->fetch();
     if ($ts) {
-        $url = 'https://eat.posla.jp/public/customer/menu.html?store_id=' . urlencode($r['store_id']) . '&table_id=' . urlencode($ts['table_id']) . '&token=' . urlencode($ts['session_token']);
+        $url = app_url('/customer/menu.html') . '?store_id=' . urlencode($r['store_id']) . '&table_id=' . urlencode($ts['table_id']) . '&token=' . urlencode($ts['session_token']);
         json_response([
             'mode' => 'live',
             'menu_url' => $url,
@@ -54,7 +55,7 @@ if ($now < $reservedTs - 30 * 60) {
 }
 
 // プレビューモード (注文不可、メニュー閲覧のみ)
-$previewUrl = 'https://eat.posla.jp/public/customer/menu.html?store_id=' . urlencode($r['store_id']) . '&preview=1&reservation_id=' . urlencode($id);
+$previewUrl = app_url('/customer/menu.html') . '?store_id=' . urlencode($r['store_id']) . '&preview=1&reservation_id=' . urlencode($id);
 json_response([
     'mode' => 'preview',
     'preview_url' => $previewUrl,

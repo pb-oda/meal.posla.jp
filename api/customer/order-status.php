@@ -48,9 +48,19 @@ try {
     $hasMemo = true;
 } catch (PDOException $e) {}
 
+// SELF-P1-4: guest_alias カラム存在チェック (migration-self-p1-4-guest-alias.sql)
+$hasGuestAliasCol = false;
+try {
+    $pdo->query('SELECT guest_alias FROM orders LIMIT 0');
+    $hasGuestAliasCol = true;
+} catch (PDOException $e) {}
+
 $selectCols = 'id, status, created_at, total_amount';
 if ($hasMemo) {
     $selectCols .= ', memo';
+}
+if ($hasGuestAliasCol) {
+    $selectCols .= ', guest_alias';
 }
 
 $stmt = $pdo->prepare(
@@ -121,6 +131,10 @@ foreach ($orders as &$o) {
     if (!$hasMemo) {
         $o['memo'] = null;
     }
+    // SELF-P1-4: guest_alias が SELECT に含まれていない場合は null をセット
+    if (!$hasGuestAliasCol) {
+        $o['guest_alias'] = null;
+    }
 }
 unset($o);
 
@@ -135,7 +149,7 @@ try {
     $ratedItemIds = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'order_item_id');
 } catch (PDOException $e) {
     // satisfaction_ratings テーブル未作成
-    error_log('[P1-12][api/customer/order-status.php:132] fetch_rated_items: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][api/customer/order-status.php:132] fetch_rated_items: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 json_response([

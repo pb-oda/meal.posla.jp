@@ -7,27 +7,96 @@
   <title>本部管理画面</title>
   <link rel="stylesheet" href="css/admin.css?v=20260422-batch-c3">
   <style>
-    /* owner-dashboard 固有スタイル（admin.cssは共通流用） */
-    .owner-tab-panel {
-      display: none;
+    /* owner-dashboard 固有スタイル (admin.css の .admin-layout / .admin-sidebar / .admin-main /
+       .admin-user-menu / .tab-nav / .sub-tab-nav を manager と同じく流用。ここは owner 差分のみ) */
+
+    /* UI-P1-2d: manager と同構造 (admin-layout + admin-sidebar + admin-main) に揃えつつ、
+       owner 固有アクセント (OWNER badge + 本部モードラベル) を最小限に残す */
+
+    .owner-tab-panel { display: none; }
+    .owner-tab-panel.active { display: block; }
+
+    /* OWNER バッジ (admin-header の dark bg + 白文字の上) */
+    .owner-role-badge {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 1px 8px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      vertical-align: 2px;
     }
-    .owner-tab-panel.active {
-      display: block;
+
+    /* panel-header の title + subtitle を group div で 2 段階層化 */
+    .panel-header--owner { flex-wrap: wrap; gap: 4px; }
+    .panel-header__title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1 1 auto;
     }
-    /* P1-5: パスワード変更ボタン */
-    .btn-change-password {
-      background: transparent;
-      border: 1px solid var(--border, #ddd);
-      color: var(--text-secondary, #666);
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      margin-right: 8px;
+    .panel-header__subtitle {
+      font-size: 0.78rem;
+      font-weight: 400;
+      color: #78909c;
+      margin: 0;
+      line-height: 1.4;
     }
-    .btn-change-password:hover {
-      background: var(--bg-hover, #f5f5f5);
-      color: var(--text-primary, #333);
+
+    /* owner-intro (3 panel 限定) */
+    .owner-intro {
+      margin: 0 0 16px;
+      padding: 10px 14px;
+      background: #f3f5fb;
+      border-left: 3px solid #9fa8da;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      color: #455a64;
+      line-height: 1.6;
+    }
+    .owner-intro strong { color: #1a237e; }
+
+    .owner-tab-panel { margin-bottom: 20px; }
+
+    /* UI-P1-2d: シフト概況の店舗カードは grid で常に均等幅に。
+       admin.css の .card + .card { margin-top: 1rem } を無効化し、グリッドの整列を守る */
+    #shift-summary-container .unified-store-card { margin-top: 0 !important; }
+    #shift-summary-container .card + .card { margin-top: 0; }
+
+    /* UI-P1-2d: シフト概況などのフィルターバー (ラベル + 入力を縦 group で並べる整然レイアウト) */
+    .owner-filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 12px;
+      padding: 12px 16px;
+      background: #fff;
+      border: 1px solid #e0e3eb;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .owner-filter-bar__field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .owner-filter-bar__field label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #78909c;
+      letter-spacing: 0.05em;
+    }
+    .owner-filter-bar__field .form-input {
+      min-width: 160px;
+    }
+    .owner-filter-bar__actions {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
     }
   </style>
   <!-- PWA -->
@@ -36,55 +105,98 @@
 </head>
 <body>
 
-  <!-- ヘッダー -->
-  <header class="admin-header">
-    <div class="admin-header__left">
-      <span class="admin-header__title" id="owner-header-title">本部管理画面</span>
-    </div>
-    <div class="admin-header__actions">
-      <span class="admin-header__user" id="owner-header-user">-</span>
-      <a class="btn-change-password" href="/public/docs-tenant/" target="_blank" rel="noopener" title="取扱説明書を開く" style="text-decoration:none;">📖 取扱説明書</a>
-      <button class="btn-change-password" id="owner-btn-change-password" type="button" title="パスワード変更">パスワード変更</button>
-      <button class="btn-logout" id="owner-btn-logout">ログアウト</button>
-    </div>
-  </header>
+  <!-- UI-P1-2d: manager と同じ admin-layout (sidebar + main) 構造。
+       admin.css の既存クラス (.admin-sidebar / .admin-main / .admin-user-menu / .tab-nav) をそのまま流用 -->
+  <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
 
-  <!-- タブナビゲーション -->
-  <nav class="tab-nav" id="owner-tab-nav">
-    <button class="tab-nav__btn" data-tab="cross-store">クロス店舗レポート</button>
-    <button class="tab-nav__btn" data-tab="abc-analytics">ABC分析</button>
-    <button class="tab-nav__btn" data-tab="hq-menu">本部メニュー</button>
-    <button class="tab-nav__btn" data-tab="stores">店舗管理</button>
-    <button class="tab-nav__btn" data-tab="users">ユーザー管理</button>
-    <button class="tab-nav__btn" data-tab="ai-assistant">AIアシスタント</button>
-    <button class="tab-nav__btn" data-tab="subscription">契約・プラン</button>
-    <button class="tab-nav__btn" data-tab="payment">決済設定</button>
-    <button class="tab-nav__btn" data-tab="shift-overview">シフト概況</button>
-    <button class="tab-nav__btn" data-tab="external-pos">外部連携</button>
-  </nav>
+  <div class="admin-layout">
 
-  <!-- 店舗セレクター（非表示、StoreSelector初期化用） -->
-  <select id="owner-store-select" style="display:none;"></select>
+    <!-- サイドバー (左): ブランド + タブ nav -->
+    <aside class="admin-sidebar" id="admin-sidebar" aria-label="メインナビゲーション">
+      <div class="admin-sidebar__brand">
+        <span class="admin-sidebar__brand-logo" aria-hidden="true">P</span>
+        <span id="sidebar-brand-name">POSLA 本部</span>
+        <button class="admin-sidebar__close" id="admin-sidebar-close" type="button" aria-label="閉じる">×</button>
+      </div>
 
-  <!-- メインコンテンツ -->
-  <div class="admin-content">
+      <!-- owner-tab-nav: 10 フラットタブ。owner-app.js の click handler がそのまま動く -->
+      <nav class="tab-nav" id="owner-tab-nav" aria-label="owner navigation">
+        <button class="tab-nav__btn" data-tab="cross-store">クロス店舗レポート</button>
+        <button class="tab-nav__btn" data-tab="abc-analytics">ABC分析</button>
+        <button class="tab-nav__btn" data-tab="shift-overview">シフト概況</button>
+        <button class="tab-nav__btn" data-tab="hq-menu">本部メニュー</button>
+        <button class="tab-nav__btn" data-tab="stores">店舗管理</button>
+        <button class="tab-nav__btn" data-tab="users">ユーザー管理</button>
+        <button class="tab-nav__btn" data-tab="ai-assistant">AIアシスタント</button>
+        <button class="tab-nav__btn" data-tab="subscription">契約・プラン</button>
+        <button class="tab-nav__btn" data-tab="payment">決済設定</button>
+        <button class="tab-nav__btn" data-tab="external-pos">外部連携</button>
+      </nav>
+    </aside>
+
+    <!-- メイン: ヘッダー + コンテンツ -->
+    <div class="admin-main">
+
+      <!-- ヘッダー (manager と同じ構造: ハンバーガー + タイトル + ユーザーメニュー ドロップダウン) -->
+      <header class="admin-header">
+        <button class="admin-sidebar-toggle" id="admin-sidebar-toggle" type="button" aria-label="メニュー" aria-controls="admin-sidebar">☰</button>
+        <div class="admin-header__left">
+          <span class="admin-header__title">
+            <span id="owner-header-title">本部管理画面</span><span class="owner-role-badge">OWNER</span>
+          </span>
+        </div>
+
+        <!-- ユーザーメニュー (manager と同じドロップダウン。owner-app.js が参照する id を維持) -->
+        <div class="admin-user-menu" id="admin-user-menu">
+          <button class="admin-user-menu__trigger" id="admin-user-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="admin-user-menu__avatar" id="admin-user-menu-avatar">–</span>
+            <span class="admin-user-menu__name" id="owner-header-user">-</span>
+            <span class="admin-user-menu__caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="admin-user-menu__drop" id="admin-user-menu-drop" role="menu">
+            <a class="admin-user-menu__item" href="/docs-tenant/" target="_blank" rel="noopener" role="menuitem">📖 取扱説明書</a>
+            <button class="admin-user-menu__item" id="owner-btn-change-password" type="button" role="menuitem">🔑 パスワード変更</button>
+            <div class="admin-user-menu__sep"></div>
+            <button class="admin-user-menu__item admin-user-menu__item--danger" id="owner-btn-logout" type="button" role="menuitem">⎋ ログアウト</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- 店舗セレクター (非表示、StoreSelector 初期化用) -->
+      <select id="owner-store-select" style="display:none;"></select>
+
+      <!-- メインコンテンツ -->
+      <div class="admin-content">
 
     <!-- クロス店舗レポート -->
     <div class="owner-tab-panel" id="owner-panel-cross-store">
-      <div class="panel-header"><h2 class="panel-header__title">全店舗横断分析</h2></div>
+      <div class="panel-header panel-header--owner">
+        <div class="panel-header__title-group">
+          <h2 class="panel-header__title">全店舗横断分析</h2>
+          <p class="panel-header__subtitle">店舗間の売上・客数・回転率を横並びで比較</p>
+        </div>
+      </div>
       <div id="cross-store-container"></div>
     </div>
 
     <!-- ABC分析 -->
     <div class="owner-tab-panel" id="owner-panel-abc-analytics">
-      <div class="panel-header"><h2 class="panel-header__title">ABC分析・売上ダッシュボード</h2></div>
+      <div class="panel-header panel-header--owner">
+        <div class="panel-header__title-group">
+          <h2 class="panel-header__title">ABC分析・売上ダッシュボード</h2>
+          <p class="panel-header__subtitle">メニュー別の売上貢献度をA/B/Cランクで可視化</p>
+        </div>
+      </div>
       <div id="abc-analytics-container"></div>
     </div>
 
     <!-- 本部メニュー（enterprise限定: hq_menu_broadcast） -->
     <div class="owner-tab-panel" id="owner-panel-hq-menu">
-      <div class="panel-header">
-        <h2 class="panel-header__title">本部メニュー一括配信</h2>
+      <div class="panel-header panel-header--owner">
+        <div class="panel-header__title-group">
+          <h2 class="panel-header__title">本部メニュー一括配信</h2>
+          <p class="panel-header__subtitle">全店共通のマスタメニューを一元管理・配信</p>
+        </div>
         <div class="panel-header__actions">
           <button class="btn btn-sm btn-outline" id="btn-hq-menu-csv-export">CSVエクスポート</button>
           <button class="btn btn-sm btn-outline" id="btn-hq-menu-csv-import">CSVインポート</button>
@@ -92,9 +204,8 @@
           <button class="btn btn-primary" id="btn-add-hq-menu">+ メニュー追加</button>
         </div>
       </div>
-      <p style="color:var(--text-muted);font-size:0.9rem;margin:0 0 12px;">
-        本部で登録したメニューは、全店舗の<strong>メニューテンプレート</strong>として共有されます。<br>
-        各店舗の在庫や売り切れ状態は <code>store_menu_overrides</code> で個別管理されます。
+      <p class="owner-intro">
+        ここで登録したメニューは全店舗のマスタ (menu_templates) として共有されます。各店舗の<strong>価格上書き・売切・非表示</strong>は店舗 dashboard 側 (store_menu_overrides) で個別管理されます。
       </p>
       <div class="card" style="margin-bottom:12px;">
         <div class="card__body" style="display:flex;align-items:center;gap:12px;">
@@ -111,8 +222,11 @@
 
     <!-- 店舗管理 -->
     <div class="owner-tab-panel" id="owner-panel-stores">
-      <div class="panel-header">
-        <h2 class="panel-header__title">店舗管理</h2>
+      <div class="panel-header panel-header--owner">
+        <div class="panel-header__title-group">
+          <h2 class="panel-header__title">店舗管理</h2>
+          <p class="panel-header__subtitle">テナント配下の全店舗の登録・休業・削除</p>
+        </div>
         <button class="btn btn-primary" id="btn-add-store">+ 店舗追加</button>
       </div>
       <div id="store-list"></div>
@@ -120,8 +234,11 @@
 
     <!-- ユーザー管理（owner は owner / manager / staff を管理） -->
     <div class="owner-tab-panel" id="owner-panel-users">
-      <div class="panel-header">
-        <h2 class="panel-header__title">ユーザー管理</h2>
+      <div class="panel-header panel-header--owner">
+        <div class="panel-header__title-group">
+          <h2 class="panel-header__title">ユーザー管理</h2>
+          <p class="panel-header__subtitle">owner / manager / staff の作成とロール管理</p>
+        </div>
         <button class="btn btn-primary" id="btn-add-user">+ ユーザー追加</button>
       </div>
       <div id="user-list"></div>
@@ -129,15 +246,23 @@
 
     <!-- AIアシスタント -->
     <div class="owner-tab-panel" id="owner-panel-ai-assistant">
-      <div class="panel-header">
-        <h2 class="panel-header__title">AIアシスタント</h2>
+      <div class="panel-header panel-header--owner">
+        <div class="panel-header__title-group">
+          <h2 class="panel-header__title">AIアシスタント</h2>
+          <p class="panel-header__subtitle">SNS 生成 / 売上分析 / 競合調査 / 需要予測</p>
+        </div>
       </div>
       <div class="card" id="ai-assistant-container"></div>
     </div>
 
     <!-- 契約・プラン -->
     <div class="owner-tab-panel" id="owner-panel-subscription">
-      <div class="panel-header"><h2 class="panel-header__title">契約・プラン</h2></div>
+      <div class="panel-header panel-header--owner">
+        <div class="panel-header__title-group">
+          <h2 class="panel-header__title">契約・プラン</h2>
+          <p class="panel-header__subtitle">POSLA との契約状況 / トライアル / アドオン</p>
+        </div>
+      </div>
       <div id="subscription-container">
         <p style="color:var(--text-muted);">読み込み中...</p>
       </div>
@@ -145,9 +270,13 @@
 
     <!-- 決済設定 -->
     <div class="owner-tab-panel" id="owner-panel-payment">
-      <div class="panel-header">
-        <h2 class="panel-header__title">決済設定</h2>
+      <div class="panel-header panel-header--owner">
+        <div class="panel-header__title-group">
+          <h2 class="panel-header__title">決済設定</h2>
+          <p class="panel-header__subtitle">Stripe Connect / tenant 決済キーの登録</p>
+        </div>
       </div>
+      <p class="owner-intro">テナントごとに 1 組の決済設定です。Stripe Connect オンボーディング完了 or tenant の Stripe Secret Key 登録でセルフ会計が有効化されます。</p>
       <div class="card" id="api-key-manager">
         <div class="card__body">
           <div id="api-key-manager-content">
@@ -157,20 +286,34 @@
       </div>
     </div>
 
-    <!-- シフト概況 -->
+    <!-- シフト概況 (UI-P1-2d: filter バーを panel-header から分離して整然配置) -->
     <div class="owner-tab-panel" id="owner-panel-shift-overview">
-      <div class="panel-header">
-        <h2 class="panel-header__title">シフト概況</h2>
-        <div class="panel-header__actions">
-          <label style="font-weight:600;margin-right:8px;">店舗:</label>
-          <select id="shift-store-select" class="form-input" style="max-width:260px;"></select>
-          <label style="font-weight:600;margin-left:16px;margin-right:8px;">期間:</label>
-          <select id="shift-period-select" class="form-input" style="max-width:120px;">
+      <div class="panel-header panel-header--owner">
+        <div class="panel-header__title-group">
+          <h2 class="panel-header__title">シフト概況</h2>
+          <p class="panel-header__subtitle">店舗 × 期間ごとの人件費 / 労務コンプライアンス概況</p>
+        </div>
+      </div>
+      <!-- フィルターバー: owner-app.js の dynamic "全店舗概況" ボタン挿入先として
+           .panel-header__actions クラスも維持 -->
+      <div class="owner-filter-bar panel-header__actions">
+        <div class="owner-filter-bar__field">
+          <label for="shift-store-select">店舗</label>
+          <select id="shift-store-select" class="form-input" style="width:240px;"></select>
+        </div>
+        <div class="owner-filter-bar__field">
+          <label for="shift-period-select">期間</label>
+          <select id="shift-period-select" class="form-input" style="width:120px;">
             <option value="weekly">週次</option>
             <option value="monthly">月次</option>
           </select>
-          <input type="date" id="shift-date-input" class="form-input" style="max-width:180px;margin-left:8px;">
-          <button class="btn btn-sm btn-primary" id="shift-load-summary" style="margin-left:8px;">表示</button>
+        </div>
+        <div class="owner-filter-bar__field">
+          <label for="shift-date-input">日付</label>
+          <input type="date" id="shift-date-input" class="form-input" style="width:160px;">
+        </div>
+        <div class="owner-filter-bar__actions">
+          <button class="btn btn-sm btn-primary" id="shift-load-summary">表示</button>
         </div>
       </div>
       <div id="shift-summary-container">
@@ -180,7 +323,13 @@
 
     <!-- 外部連携 -->
     <div class="owner-tab-panel" id="owner-panel-external-pos">
-      <div class="panel-header"><h2 class="panel-header__title">外部連携</h2></div>
+      <div class="panel-header panel-header--owner">
+        <div class="panel-header__title-group">
+          <h2 class="panel-header__title">外部連携</h2>
+          <p class="panel-header__subtitle">LINE 公式アカウント / 顧客連携 / スマレジ</p>
+        </div>
+      </div>
+      <p class="owner-intro">LINE (予約・テイクアウト通知) とスマレジ (POS 連携) の設定はテナント単位です。各設定は全店舗に適用されます。</p>
 
       <!-- LINE連携 -->
       <div id="line-integration-section" class="card" style="margin-bottom:20px; padding:20px;">
@@ -227,7 +376,10 @@
       </div>
     </div>
 
-  </div>
+      </div><!-- /.admin-content -->
+    </div><!-- /.admin-main -->
+
+  </div><!-- /.admin-layout -->
 
   <!-- 共通モーダル -->
   <div class="modal-overlay" id="admin-modal-overlay">
@@ -256,8 +408,8 @@
   <script src="js/menu-template-editor.js?v=20260408a"></script>
   <script src="js/ai-assistant.js?v=20260422-batch-a2b"></script>
   <script src="../js/shift-manager.js?v=20260406b"></script>
-  <script src="js/owner-app.js?v=20260422-line2d2"></script>
-  <script src="../shared/js/posla-helpdesk-fab.js?v=20260419-cb1c"></script>
+  <script src="js/owner-app.js?v=20260423-ui-p1-2d4"></script>
+  <script src="../shared/js/posla-supportdesk-fab.js?v=20260423"></script>
 
   <!-- グローバルトースト（dashboard.htmlと同一パターン） -->
   <script>
@@ -452,6 +604,76 @@
         panel.style.display = (panel.style.display === 'none') ? '' : 'none';
       });
     })();
+  </script>
+
+  <!-- UI-P1-2d: sidebar drawer + user menu ドロップダウン (manager dashboard.html と同一ロジック) -->
+  <script>
+  (function () {
+    'use strict';
+    // サイドバー drawer (mobile)
+    var toggleBtn = document.getElementById('admin-sidebar-toggle');
+    var closeBtn = document.getElementById('admin-sidebar-close');
+    var backdrop = document.getElementById('admin-sidebar-backdrop');
+    var sidebar = document.getElementById('admin-sidebar');
+    function openSidebar() {
+      document.body.classList.add('sidebar-open');
+      if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+    }
+    function closeSidebar() {
+      document.body.classList.remove('sidebar-open');
+      if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+    }
+    if (toggleBtn) toggleBtn.addEventListener('click', function () {
+      if (document.body.classList.contains('sidebar-open')) closeSidebar(); else openSidebar();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+    if (backdrop) backdrop.addEventListener('click', closeSidebar);
+    // モバイルでサイドバー内のタブを押したら drawer を閉じる
+    if (sidebar) {
+      sidebar.addEventListener('click', function (e) {
+        if (window.innerWidth > 767) return;
+        var t = e.target;
+        while (t && t !== sidebar) {
+          if (t.classList && t.classList.contains('tab-nav__btn')) { closeSidebar(); return; }
+          t = t.parentNode;
+        }
+      });
+    }
+
+    // ユーザーメニュー drop-down
+    var menu = document.getElementById('admin-user-menu');
+    var menuTrigger = document.getElementById('admin-user-menu-trigger');
+    if (menu && menuTrigger) {
+      menuTrigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var isOpen = menu.classList.toggle('open');
+        menuTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+      document.addEventListener('click', function (e) {
+        if (!menu.classList.contains('open')) return;
+        if (menu.contains(e.target)) return;
+        menu.classList.remove('open');
+        menuTrigger.setAttribute('aria-expanded', 'false');
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && menu.classList.contains('open')) {
+          menu.classList.remove('open');
+          menuTrigger.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    // アバター: user 表示名の 1 文字目で埋める (owner-app.js が textContent を設定する owner-header-user を参照)
+    var userNameEl = document.getElementById('owner-header-user');
+    var avatarEl = document.getElementById('admin-user-menu-avatar');
+    if (userNameEl && avatarEl) {
+      var observer = new MutationObserver(function () {
+        var txt = (userNameEl.textContent || '').trim();
+        avatarEl.textContent = txt ? txt.charAt(0).toUpperCase() : '–';
+      });
+      observer.observe(userNameEl, { childList: true, characterData: true, subtree: true });
+    }
+  })();
   </script>
 </body>
 </html>

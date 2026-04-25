@@ -8,6 +8,7 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/reservation-notifier.php';
+require_once __DIR__ . '/../config/app.php';
 
 require_method(['POST']);
 $user = require_role('staff');
@@ -29,7 +30,7 @@ $r = $stmt->fetch();
 if (!$r) json_error('RESERVATION_NOT_FOUND', '予約が見つかりません', 404);
 if (empty($r['customer_email'])) json_error('NO_EMAIL', 'メールアドレスが登録されていません', 400);
 
-$editUrl = 'https://eat.posla.jp/public/customer/reserve-detail.html?id=' . urlencode($resId) . '&t=' . urlencode($r['edit_token'] ?: '');
+$editUrl = app_url('/customer/reserve-detail.html') . '?id=' . urlencode($resId) . '&t=' . urlencode($r['edit_token'] ?: '');
 $result = send_reservation_notification($pdo, $r, $type, ['edit_url' => $editUrl]);
 if ($result['success']) {
     json_response(['ok' => true, 'sent' => true]);

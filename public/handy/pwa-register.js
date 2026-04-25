@@ -22,8 +22,8 @@
       && location.pathname.indexOf('/handy/') === -1) return;
 
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('/public/handy/sw.js', {
-      scope: '/public/handy/',
+    navigator.serviceWorker.register('/handy/sw.js', {
+      scope: '/handy/',
       updateViaCache: 'none'
     }).then(function (reg) {
       // PWA Phase 1 (修正版): waiting への自動 SKIP_WAITING 送信を撤廃。

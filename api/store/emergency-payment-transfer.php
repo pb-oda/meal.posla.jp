@@ -598,7 +598,7 @@ try {
         )->execute([$storeId, $tableIdVal]);
     } catch (PDOException $e) {
         // table_sessions 未作成環境はスキップ (process-payment.php と同じ)
-        error_log('[pwa4c2] table_sessions close skip: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[pwa4c2] table_sessions close skip: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 
     // 14. emergency_payments を UPDATE (synced_payment_id + transferred_*)
@@ -641,6 +641,6 @@ try {
         $inTx = false;
     }
     // H-14: browser 応答から内部メッセージを排除、詳細は error_log にのみ残す
-    error_log('[H-14][api/store/emergency-payment-transfer.php] db_error: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[H-14][api/store/emergency-payment-transfer.php] db_error: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('DB_ERROR', '緊急会計の転記に失敗しました', 500);
 }

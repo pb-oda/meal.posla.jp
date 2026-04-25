@@ -100,11 +100,11 @@
           }
 
           // docs-tenant 認証ゲートからの戻り先指定に対応（オープンリダイレクト防止のため
-          // ホワイトリスト `/public/docs-tenant/` プレフィックスのみ許可。device は対象外）
+          // ホワイトリスト `/docs-tenant/` プレフィックスのみ許可。device は対象外）
           if (role !== 'device') {
             var params = new URLSearchParams(window.location.search);
             var ret = params.get('return');
-            if (ret && ret.indexOf('/public/docs-tenant/') === 0) {
+            if (ret && ret.indexOf('/docs-tenant/') === 0) {
               dest = ret;
             }
           }

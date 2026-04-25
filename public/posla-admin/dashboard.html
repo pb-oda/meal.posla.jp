@@ -5,9 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3f51b5">
   <title>POSLA管理画面</title>
-  <link rel="stylesheet" href="../admin/css/admin.css">
+  <link rel="stylesheet" href="../admin/css/admin.css?v=20260424-posla-shell1">
   <style>
     /* POSLA管理画面固有スタイル */
+    .posla-admin-page .admin-content {
+      padding-top: 1.25rem;
+    }
     .posla-tab-panel {
       display: none;
     }
@@ -21,11 +24,12 @@
       margin-bottom: 1.5rem;
     }
     .stat-card {
-      background: var(--bg-card);
-      border-radius: var(--radius);
+      background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+      border: 1px solid #dde3f5;
+      border-radius: 16px;
       box-shadow: var(--shadow-sm);
       padding: 1.25rem;
-      text-align: center;
+      text-align: left;
     }
     .stat-card__value {
       font-size: 2rem;
@@ -74,6 +78,304 @@
     }
     .ai-status--set { background: var(--success); }
     .ai-status--unset { background: #ccc; }
+    .settings-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .settings-summary-card {
+      background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+      border: 1px solid #dde3f5;
+      border-radius: 16px;
+      box-shadow: var(--shadow-sm);
+      padding: 1rem 1.1rem;
+    }
+    .settings-summary-card__eyebrow {
+      color: var(--text-secondary);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.55rem;
+      text-transform: uppercase;
+    }
+    .settings-summary-card__title {
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.65rem;
+    }
+    .settings-summary-card__meta {
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      line-height: 1.65;
+    }
+    .settings-layout {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    .settings-card {
+      height: 100%;
+    }
+    .settings-card__eyebrow {
+      color: var(--primary);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+    }
+    .settings-card__title {
+      color: var(--text-primary);
+      font-size: 1.06rem;
+      font-weight: 700;
+      margin-bottom: 0.55rem;
+    }
+    .settings-card__note {
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      line-height: 1.65;
+      margin-bottom: 1rem;
+    }
+    .settings-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+    .settings-inline-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+    .settings-test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.75rem;
+    }
+    .settings-monitor-status {
+      background: #f8faff;
+      border: 1px solid #dfe4f5;
+      border-radius: 14px;
+      margin-bottom: 1rem;
+      padding: 0.95rem 1rem;
+    }
+    .settings-monitor-status__row {
+      align-items: center;
+      display: flex;
+      font-size: 0.84rem;
+      gap: 0.75rem;
+      justify-content: space-between;
+      line-height: 1.5;
+    }
+    .settings-monitor-status__row + .settings-monitor-status__row {
+      margin-top: 0.55rem;
+    }
+    .settings-monitor-status__label {
+      color: var(--text-secondary);
+      flex: 0 0 108px;
+      font-weight: 600;
+    }
+    .settings-monitor-status__value {
+      color: var(--text-primary);
+      flex: 1 1 auto;
+      text-align: right;
+      word-break: break-word;
+    }
+    .settings-test-result {
+      background: #f8faff;
+      border: 1px solid #dfe4f5;
+      border-radius: 14px;
+      color: var(--text-secondary);
+      font-size: 0.83rem;
+      line-height: 1.7;
+      margin-top: 1rem;
+      padding: 0.95rem 1rem;
+    }
+    .settings-test-result strong {
+      color: var(--text-primary);
+    }
+    .settings-health-wrap {
+      margin-bottom: 1rem;
+    }
+    .settings-health-grid {
+      display: grid;
+      gap: 0.9rem;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .settings-health-card {
+      background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+      border: 1px solid #dfe4f5;
+      border-radius: 16px;
+      padding: 1rem;
+    }
+    .settings-health-card__head {
+      align-items: flex-start;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin-bottom: 0.7rem;
+    }
+    .settings-health-card__title {
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+    .settings-health-card__summary {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      line-height: 1.6;
+    }
+    .settings-health-card__details {
+      color: var(--text-secondary);
+      font-size: 0.79rem;
+      line-height: 1.65;
+      margin: 0;
+      padding-left: 1rem;
+    }
+    .settings-health-card__details li + li {
+      margin-top: 0.25rem;
+    }
+    .push-secret-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .push-secret-output {
+      background: #0f172a;
+      border-radius: 14px;
+      color: #e2e8f0;
+      display: none;
+      margin-top: 1rem;
+      padding: 1rem;
+    }
+    .push-secret-output__head {
+      align-items: center;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .push-secret-output__title {
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+    .push-secret-output__note {
+      color: #cbd5e1;
+      font-size: 0.78rem;
+      line-height: 1.6;
+      margin-top: 0.75rem;
+    }
+    .push-secret-output textarea {
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 10px;
+      color: #f8fafc;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem;
+      line-height: 1.6;
+      min-height: 180px;
+      padding: 0.9rem;
+      resize: vertical;
+      width: 100%;
+    }
+    .status-pill {
+      border-radius: 999px;
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.18rem 0.6rem;
+    }
+    .status-pill--ok {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    .status-pill--warn {
+      background: #fff3e0;
+      color: #ef6c00;
+    }
+    .status-pill--muted {
+      background: #eceff1;
+      color: #607d8b;
+    }
+    .status-pill--info {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+    .status-pill--danger {
+      background: #ffebee;
+      color: #c62828;
+    }
+    .tenant-contract {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+    .tenant-option-row {
+      align-items: flex-start;
+      background: #f8faff;
+      border: 1px solid #dfe4f5;
+      border-radius: 12px;
+      color: var(--text-primary);
+      display: flex;
+      gap: 0.7rem;
+      line-height: 1.6;
+      padding: 0.85rem 0.95rem;
+    }
+    .tenant-option-row input {
+      margin-top: 0.2rem;
+    }
+    .tenant-option-row strong {
+      display: block;
+      font-size: 0.92rem;
+    }
+    .tenant-option-row small {
+      color: var(--text-secondary);
+      display: block;
+      font-size: 0.78rem;
+      margin-top: 0.15rem;
+    }
+    .tenant-create-result {
+      background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+      border: 1px solid #dde3f5;
+      border-radius: 16px;
+      display: none;
+      margin-top: 1rem;
+      padding: 1rem;
+    }
+    .tenant-create-result.open {
+      display: block;
+    }
+    .tenant-create-result__head {
+      align-items: flex-start;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin-bottom: 0.9rem;
+    }
+    .tenant-create-result__eyebrow {
+      color: var(--primary);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+      text-transform: uppercase;
+    }
+    .tenant-create-result__title {
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .tenant-create-result__note {
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      line-height: 1.6;
+      margin-top: 0.8rem;
+    }
     .modal-section {
       margin-bottom: 1rem;
     }
@@ -83,199 +385,1055 @@
       color: var(--text-secondary);
       margin-bottom: 0.5rem;
     }
-    /* P1-5: パスワード変更ボタン */
-    .btn-change-password {
-      background: transparent;
-      border: 1px solid var(--border, #ddd);
-      color: var(--text-secondary, #666);
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      margin-right: 8px;
+    .tenant-modal-summary {
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     }
-    .btn-change-password:hover {
-      background: var(--bg-hover, #f5f5f5);
-      color: var(--text-primary, #333);
+    .tenant-modal-summary__card {
+      background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+      border: 1px solid #dde3f5;
+      border-radius: 14px;
+      padding: 0.9rem 1rem;
+    }
+    .tenant-modal-summary__label {
+      color: var(--text-secondary);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+    }
+    .tenant-modal-summary__value {
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .tenant-modal-summary__meta {
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      line-height: 1.6;
+      margin-top: 0.35rem;
+    }
+    .tenant-modal-note {
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      line-height: 1.65;
+      margin-bottom: 0.7rem;
+    }
+    .tenant-investigation-banner {
+      background: linear-gradient(180deg, #f7f9ff 0%, #ffffff 100%);
+      border: 1px solid #d9e3ff;
+      border-radius: 14px;
+      color: var(--text-primary);
+      font-size: 0.84rem;
+      line-height: 1.7;
+      margin-bottom: 0.75rem;
+      padding: 0.9rem 1rem;
+    }
+    .tenant-modal-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .tenant-modal-timeline__empty {
+      background: #f8faff;
+      border: 1px dashed #d9e3ff;
+      border-radius: 14px;
+      color: var(--text-secondary);
+      font-size: 0.88rem;
+      line-height: 1.7;
+      padding: 1rem;
+    }
+    .tenant-timeline-item {
+      background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+      border: 1px solid #e3e8f5;
+      border-left-width: 4px;
+      border-radius: 14px;
+      padding: 0.9rem 1rem;
+    }
+    .tenant-timeline-item--critical,
+    .tenant-timeline-item--error {
+      border-left-color: #d32f2f;
+    }
+    .tenant-timeline-item--warn {
+      border-left-color: #ef6c00;
+    }
+    .tenant-timeline-item--info {
+      border-left-color: #1565c0;
+    }
+    .tenant-timeline-item--resolved {
+      border-left-color: #90a4ae;
+    }
+    .tenant-timeline-item__head {
+      align-items: flex-start;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin-bottom: 0.45rem;
+    }
+    .tenant-timeline-item__title {
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+    .tenant-timeline-item__meta {
+      color: var(--text-secondary);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem 0.75rem;
+      font-size: 0.78rem;
+      line-height: 1.6;
+      margin-bottom: 0.45rem;
+    }
+    .tenant-timeline-item__detail {
+      color: var(--text-primary);
+      font-size: 0.84rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .tenant-timeline-item__subnote {
+      color: var(--text-secondary);
+      font-size: 0.76rem;
+      line-height: 1.6;
+      margin-top: 0.45rem;
+    }
+    .tenant-timeline-item__badges {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+    }
+    .panel-header {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.55rem;
+      margin-bottom: 1.25rem;
+    }
+    .panel-header__eyebrow {
+      color: var(--primary);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .panel-header__lead {
+      color: var(--text-secondary);
+      font-size: 0.92rem;
+      line-height: 1.68;
+      margin: 0;
+      max-width: 860px;
+    }
+    .panel-header__actions {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 0.15rem;
+    }
+    .panel-grid {
+      display: grid;
+      gap: 1rem;
+    }
+    .panel-grid--two {
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+    .panel-grid--wide {
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+    .panel-shell {
+      max-width: none;
+    }
+    .panel-shell--narrow {
+      max-width: 720px;
+    }
+    .card--tint {
+      background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+      border: 1px solid #dde3f5;
+    }
+    .card--accent {
+      background: linear-gradient(160deg, #eef2ff 0%, #ffffff 100%);
+      border: 1px solid #d9e3ff;
+    }
+    .table-card .card__body {
+      padding: 0;
+    }
+    .table-card .data-table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .card-intro {
+      color: var(--text-secondary);
+      font-size: 0.84rem;
+      line-height: 1.65;
+      margin-top: 0.2rem;
+    }
+    .helper-list {
+      color: var(--text-secondary);
+      font-size: 0.88rem;
+      line-height: 1.75;
+      margin: 0;
+      padding-left: 1.1rem;
+    }
+    .helper-list li + li {
+      margin-top: 0.35rem;
+    }
+    .metric-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .metric-list__row {
+      align-items: flex-start;
+      border-bottom: 1px solid #edf1f7;
+      display: flex;
+      gap: 1rem;
+      justify-content: space-between;
+      padding-bottom: 0.8rem;
+    }
+    .metric-list__row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .metric-list__label {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .metric-list__meta {
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      line-height: 1.55;
+      margin-top: 0.18rem;
+    }
+    .metric-list__value {
+      color: var(--text-primary);
+      font-size: 0.92rem;
+      font-weight: 700;
+      line-height: 1.55;
+      text-align: right;
+      word-break: break-word;
+    }
+    .metric-code {
+      background: #f3f6ff;
+      border: 1px solid #dbe2fb;
+      border-radius: 8px;
+      color: #2d3f9e;
+      display: inline-block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem;
+      padding: 0.18rem 0.45rem;
+    }
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.85rem;
+    }
+    .tag {
+      background: #eef2ff;
+      border: 1px solid #d7dfff;
+      border-radius: 999px;
+      color: #3949ab;
+      display: inline-flex;
+      font-size: 0.76rem;
+      font-weight: 700;
+      gap: 0.25rem;
+      padding: 0.3rem 0.68rem;
+    }
+    .tag--muted {
+      background: #f5f7fb;
+      border-color: #e2e7f1;
+      color: #607d8b;
+    }
+    .tenant-health,
+    .tenant-progress,
+    .tenant-incident {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      min-width: 180px;
+    }
+    .tenant-health__top,
+    .tenant-progress__top {
+      align-items: center;
+      display: flex;
+      gap: 0.45rem;
+      justify-content: space-between;
+    }
+    .tenant-health__score,
+    .tenant-progress__score {
+      color: var(--text-primary);
+      font-size: 0.86rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .tenant-health__flags,
+    .tenant-progress__meta,
+    .tenant-incident__meta {
+      color: var(--text-secondary);
+      font-size: 0.76rem;
+      line-height: 1.55;
+    }
+    .tenant-progress__meta,
+    .tenant-incident__meta {
+      margin-top: 0.05rem;
+    }
+    .progress-track {
+      background: #edf2f8;
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+      width: 100%;
+    }
+    .progress-track__bar {
+      border-radius: 999px;
+      height: 100%;
+    }
+    .progress-track__bar--ok {
+      background: linear-gradient(90deg, #43a047 0%, #66bb6a 100%);
+    }
+    .progress-track__bar--warn {
+      background: linear-gradient(90deg, #fb8c00 0%, #ffb300 100%);
+    }
+    .progress-track__bar--alert {
+      background: linear-gradient(90deg, #e53935 0%, #ef5350 100%);
+    }
+    .watch-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+    .watch-item {
+      background: #fff;
+      border: 1px solid #e1e7f2;
+      border-left: 4px solid #90a4ae;
+      border-radius: 14px;
+      padding: 0.95rem 1rem;
+    }
+    .watch-item--ok {
+      border-left-color: #43a047;
+    }
+    .watch-item--warn {
+      border-left-color: #fb8c00;
+    }
+    .watch-item--alert {
+      border-left-color: #e53935;
+    }
+    .watch-item__head {
+      align-items: flex-start;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .watch-item__title {
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+    .watch-item__slug {
+      color: var(--text-secondary);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem;
+      margin-top: 0.12rem;
+    }
+    .watch-item__meta {
+      color: var(--text-secondary);
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.8rem;
+      line-height: 1.55;
+      margin-top: 0.55rem;
+    }
+    .watch-item__tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.6rem;
+    }
+    .settings-history-note {
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      line-height: 1.6;
+      margin-top: 0.7rem;
+    }
+    .settings-history-diff {
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      min-width: 220px;
+    }
+    .settings-history-diff__line {
+      font-size: 0.78rem;
+      line-height: 1.55;
+    }
+    .settings-history-diff__line strong {
+      color: var(--text-secondary);
+      display: inline-block;
+      min-width: 2.6rem;
+    }
+    .pwa-callout {
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 12px;
+      color: #6d4c41;
+      font-size: 0.84rem;
+      line-height: 1.7;
+      padding: 0.9rem 1rem;
+    }
+    .pwa-callout strong {
+      color: #5d4037;
+    }
+    .posla-admin-shell-note {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 500;
+      line-height: 1.4;
+      margin-top: 0.15rem;
+      opacity: 0.88;
+    }
+    .posla-admin-page .admin-sidebar__footer {
+      gap: 0.5rem;
+    }
+    .posla-admin-page .header-shortcut {
+      justify-content: flex-start;
+    }
+    .posla-admin-page .header-shortcut code {
+      font-size: 0.7rem;
+    }
+    .posla-admin-page .admin-sidebar .tab-nav__btn {
+      justify-content: flex-start;
+      line-height: 1.45;
+    }
+    .ai-guide-layout {
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+      gap: 1rem;
+      align-items: start;
+    }
+    .ai-guide-note {
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 10px;
+      color: #795548;
+      font-size: 0.875rem;
+      line-height: 1.7;
+      margin-top: 1rem;
+      padding: 0.875rem 1rem;
+    }
+    .ai-guide-note strong {
+      color: #5d4037;
+    }
+    .ai-guide-list {
+      margin: 0;
+      padding-left: 1.1rem;
+    }
+    .ai-guide-list li + li {
+      margin-top: 0.45rem;
+    }
+    .ai-guide-log {
+      background: #fafbff;
+      border: 1px solid #dfe3f6;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-height: 540px;
+      min-height: 360px;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+    .ai-guide-msg {
+      border-radius: 10px;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      max-width: 92%;
+      padding: 0.75rem 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .ai-guide-msg--ai {
+      align-self: flex-start;
+      background: #fff;
+      border: 1px solid #dde3f5;
+      color: var(--text-primary);
+    }
+    .ai-guide-msg--user {
+      align-self: flex-end;
+      background: #3f51b5;
+      color: #fff;
+    }
+    .ai-guide-msg--system {
+      align-self: stretch;
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      color: #6d4c41;
+      font-size: 0.82rem;
+    }
+    .ai-guide-status {
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      margin-top: 0.75rem;
+      min-height: 1.2rem;
+    }
+    .ai-guide-input-wrap {
+      background: var(--bg-card);
+      border-radius: 12px;
+      box-shadow: var(--shadow-sm);
+      margin-top: 1rem;
+      padding: 1rem;
+    }
+    .ai-guide-input {
+      min-height: 108px;
+      resize: vertical;
+    }
+    .ai-guide-actions {
+      align-items: center;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin-top: 0.75rem;
+    }
+    .ai-guide-actions__left {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .ai-guide-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.9rem;
+    }
+    .ai-guide-chip {
+      background: #fff;
+      border: 1px solid #c5cae9;
+      border-radius: 999px;
+      color: #3949ab;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.35rem 0.7rem;
+    }
+    .ai-guide-chip:hover {
+      background: #eef1ff;
+    }
+    .ai-guide-source {
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    @media (max-width: 860px) {
+      .panel-header__actions {
+        width: 100%;
+      }
+      .panel-header__actions .btn {
+        width: 100%;
+      }
+      .ai-guide-layout {
+        grid-template-columns: 1fr;
+      }
+      .ai-guide-log {
+        max-height: none;
+      }
+      .ai-guide-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .ai-guide-actions__left {
+        justify-content: flex-end;
+      }
+      .posla-admin-shell-note {
+        display: none;
+      }
     }
   </style>
 </head>
-<body>
+<body class="posla-admin-page">
 
-  <!-- ヘッダー -->
-  <header class="admin-header">
-    <div class="admin-header__left">
-      <span class="admin-header__title" id="posla-header-title">POSLA管理画面</span>
-    </div>
-    <div class="admin-header__actions">
-      <span class="admin-header__user" id="posla-header-user">-</span>
-      <button class="btn-change-password" id="posla-btn-change-password" type="button" title="パスワード変更">パスワード変更</button>
-      <button class="btn-logout" id="posla-btn-logout">ログアウト</button>
-    </div>
-  </header>
+  <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
 
-  <!-- タブナビゲーション -->
-  <nav class="tab-nav" id="posla-tab-nav">
-    <button class="tab-nav__btn" data-tab="overview">ダッシュボード</button>
-    <button class="tab-nav__btn" data-tab="tenants">テナント管理</button>
-    <button class="tab-nav__btn" data-tab="create-tenant">テナント作成</button>
-    <button class="tab-nav__btn" data-tab="api-settings">API設定</button>
-    <button class="tab-nav__btn" data-tab="pwa-push">PWA/Push</button>
-  </nav>
+  <div class="admin-layout">
 
-  <!-- メインコンテンツ -->
-  <div class="admin-content">
+    <aside class="admin-sidebar" id="admin-sidebar" aria-label="POSLA admin navigation">
+      <div class="admin-sidebar__brand">
+        <span class="admin-sidebar__brand-logo" aria-hidden="true">P</span>
+        <span id="sidebar-brand-name">POSLA 運営</span>
+        <button class="admin-sidebar__close" id="admin-sidebar-close" type="button" aria-label="閉じる">×</button>
+      </div>
+
+      <nav class="tab-nav" id="posla-tab-nav">
+        <button class="tab-nav__btn" data-tab="overview">ダッシュボード</button>
+        <button class="tab-nav__btn" data-tab="tenants">テナント管理</button>
+        <button class="tab-nav__btn" data-tab="create-tenant">テナント作成</button>
+        <button class="tab-nav__btn" data-tab="api-settings">API設定</button>
+        <button class="tab-nav__btn" data-tab="pwa-push">PWA / Web Push</button>
+        <button class="tab-nav__btn" data-tab="admin-users">管理者ユーザー</button>
+        <button class="tab-nav__btn" data-tab="customer-support">顧客サポート</button>
+        <button class="tab-nav__btn" data-tab="support">サポートセンター</button>
+        <button class="tab-nav__btn" data-tab="ops">運用補助センター</button>
+      </nav>
+
+      <div class="admin-sidebar__footer">
+        <div class="admin-sidebar__footer-title">運用リンク</div>
+        <div class="header-shortcuts">
+          <a class="header-shortcut" href="/docs-internal/" target="_blank" rel="noopener">運営マニュアル</a>
+          <a class="header-shortcut" href="/docs-tenant/" target="_blank" rel="noopener">テナント docs</a>
+          <a class="header-shortcut" href="/api/monitor/ping.php" target="_blank" rel="noopener">稼働確認 <code>/api/monitor/ping.php</code></a>
+        </div>
+      </div>
+    </aside>
+
+    <div class="admin-main">
+
+      <header class="admin-header">
+        <button class="admin-sidebar-toggle" id="admin-sidebar-toggle" type="button" aria-label="メニュー" aria-controls="admin-sidebar">☰</button>
+        <div class="admin-header__left">
+          <span class="admin-header__title" id="posla-header-title">
+            POSLA管理画面
+            <span class="posla-admin-shell-note">テナント運用、共通設定、サポート、監視をまとめて扱います</span>
+          </span>
+        </div>
+
+        <div class="admin-user-menu" id="admin-user-menu">
+          <button class="admin-user-menu__trigger" id="admin-user-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="admin-user-menu__avatar" id="admin-user-menu-avatar">–</span>
+            <span class="admin-user-menu__name" id="posla-header-user">-</span>
+            <span class="admin-user-menu__caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="admin-user-menu__drop" id="admin-user-menu-drop" role="menu">
+            <a class="admin-user-menu__item" href="/docs-internal/internal/01-posla-admin.html" target="_blank" rel="noopener" role="menuitem">📖 POSLA管理画面ガイド</a>
+            <button class="admin-user-menu__item" id="posla-btn-change-password" type="button" role="menuitem">🔑 パスワード変更</button>
+            <div class="admin-user-menu__sep"></div>
+            <button class="admin-user-menu__item admin-user-menu__item--danger" id="posla-btn-logout" type="button" role="menuitem">⎋ ログアウト</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="admin-content">
 
     <!-- ダッシュボード -->
     <div class="posla-tab-panel" id="posla-panel-overview">
-      <div class="panel-header"><h2 class="panel-header__title">ダッシュボード</h2></div>
-      <div id="overview-stats" class="stat-grid"></div>
-      <div class="section-block">
-        <h3 class="section-title">プラン別分布</h3>
-        <div id="plan-distribution"></div>
+      <div class="panel-header">
+        <div class="panel-header__eyebrow">Operations Overview</div>
+        <h2 class="panel-header__title">ダッシュボード</h2>
+        <p class="panel-header__lead">擬似本番で現在見えている全体像を素早く把握するための入口です。テナント数、店舗数、利用状況の偏りをここで確認し、必要なら各管理タブに移動します。</p>
+        <div class="panel-header__actions">
+          <button class="btn btn-secondary" type="button" data-tab-jump="tenants">テナント管理へ</button>
+          <button class="btn btn-secondary" type="button" data-tab-jump="api-settings">API設定へ</button>
+        </div>
       </div>
-      <div class="section-block">
-        <h3 class="section-title">最近のテナント</h3>
-        <div id="recent-tenants"></div>
+      <div id="overview-stats" class="stat-grid"></div>
+      <div class="panel-grid">
+        <section class="card card--tint table-card">
+          <div class="card__header">
+            <div>
+              <h3 class="section-title" style="margin-bottom:0;">契約構成</h3>
+              <p class="card-intro">単一プラン運用を前提に、標準契約数と本部一括配信オプション契約数を確認します。</p>
+            </div>
+          </div>
+          <div class="card__body">
+            <div id="plan-distribution"></div>
+          </div>
+        </section>
+        <section class="card table-card">
+          <div class="card__header">
+            <div>
+              <h3 class="section-title" style="margin-bottom:0;">最近のテナント</h3>
+              <p class="card-intro">直近で作成または確認対象になったテナントを一覧で確認します。</p>
+            </div>
+          </div>
+          <div class="card__body">
+            <div id="recent-tenants"></div>
+          </div>
+        </section>
+      </div>
+      <div class="panel-grid panel-grid--two" style="margin-top:1rem;">
+        <section class="card table-card">
+          <div class="card__header">
+            <div>
+              <h3 class="section-title" style="margin-bottom:0;">危険テナント上位</h3>
+              <p class="card-intro">健全性スコアが低いか、直近で未解決異常を抱えているテナントを優先表示します。</p>
+            </div>
+          </div>
+          <div class="card__body">
+            <div id="risky-tenants"></div>
+          </div>
+        </section>
+        <section class="card card--tint table-card">
+          <div class="card__header">
+            <div>
+              <h3 class="section-title" style="margin-bottom:0;">オンボーディング要フォロー</h3>
+              <p class="card-intro">卓・メニュー・運営アカウントなどが揃い切っていないテナントを進捗順に確認します。</p>
+            </div>
+          </div>
+          <div class="card__body">
+            <div id="onboarding-watchlist"></div>
+          </div>
+        </section>
       </div>
     </div>
 
     <!-- テナント管理 -->
     <div class="posla-tab-panel" id="posla-panel-tenants">
-      <div class="panel-header"><h2 class="panel-header__title">テナント管理</h2></div>
-      <div id="tenants-list"></div>
+      <div class="panel-header">
+        <div class="panel-header__eyebrow">Tenant Operations</div>
+        <h2 class="panel-header__title">テナント管理</h2>
+        <p class="panel-header__lead">契約、Stripe Connect、店舗数、ユーザー数を横断で確認する一覧です。テナント単位の異常や運用差分をここから拾います。</p>
+        <div class="panel-header__actions">
+          <button class="btn btn-primary" type="button" data-tab-jump="create-tenant">新規テナントを作成</button>
+        </div>
+      </div>
+      <div class="card table-card">
+        <div class="card__header">
+          <div>
+            <h3 class="section-title" style="margin-bottom:0;">テナント一覧</h3>
+            <p class="card-intro">健全性スコア、導入進捗、直近異常、契約状態を 1 行で追える構成です。</p>
+          </div>
+        </div>
+        <div class="card__body">
+          <div id="tenants-list"></div>
+        </div>
+      </div>
     </div>
 
     <!-- テナント作成 -->
     <div class="posla-tab-panel" id="posla-panel-create-tenant">
-      <div class="panel-header"><h2 class="panel-header__title">テナント新規作成</h2></div>
-      <div class="card" style="max-width:500px;">
-        <div class="card__body">
-          <div class="form-group">
-            <label class="form-label" for="new-slug">Slug（URL識別子）</label>
-            <input class="form-input" type="text" id="new-slug" placeholder="my-restaurant" pattern="[a-z0-9\-]+">
-            <span class="form-hint">半角英小文字・数字・ハイフンのみ</span>
+      <div class="panel-header">
+        <div class="panel-header__eyebrow">Provisioning</div>
+        <h2 class="panel-header__title">テナント新規作成</h2>
+        <p class="panel-header__lead">擬似本番で新しいテナントを追加し、同時にテスト用の店舗とログインIDまで立ち上げる入口です。作成直後から owner / manager / staff / device で検証を始められます。</p>
+      </div>
+      <div class="panel-grid panel-grid--two">
+        <div class="card card--tint panel-shell panel-shell--narrow">
+          <div class="card__body">
+            <div class="form-group">
+              <label class="form-label" for="new-slug">Slug（URL識別子）</label>
+              <input class="form-input" type="text" id="new-slug" placeholder="my-restaurant" pattern="[a-z0-9\-]+">
+              <span class="form-hint">半角英小文字・数字・ハイフンのみ</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="new-name">テナント名</label>
+              <input class="form-input" type="text" id="new-name" placeholder="レストラン名">
+            </div>
+            <div class="form-group">
+              <label class="form-label">契約プラン</label>
+              <input class="form-input" type="text" value="POSLA標準（全機能込み）" readonly style="background:#f8faff;cursor:not-allowed;">
+              <span class="form-hint">α-1 以降は単一プラン運用です。`tenants.plan` には互換用に `standard` を保存します。</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="new-hq-broadcast">オプション</label>
+              <label class="tenant-option-row" for="new-hq-broadcast">
+                <input type="checkbox" id="new-hq-broadcast">
+                <span>
+                  <strong>本部一括メニュー配信</strong>
+                  <small>チェーン本部向けの唯一の契約差分です。未契約ならオフのまま作成します。</small>
+                </span>
+              </label>
+            </div>
+            <div class="panel-header__actions">
+              <button class="btn btn-primary" id="btn-create-tenant">テナントを作成</button>
+              <button class="btn btn-secondary" type="button" data-tab-jump="tenants">一覧に戻る</button>
+            </div>
+            <div class="tenant-create-result" id="tenant-create-result"></div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="new-name">テナント名</label>
-            <input class="form-input" type="text" id="new-name" placeholder="レストラン名">
+        </div>
+        <div class="card card--accent">
+          <div class="card__body">
+            <h3 class="section-title">作成時の前提</h3>
+            <ul class="helper-list">
+              <li>作成時に既定店舗 `main` と `store_settings`、テスト用ログイン `owner / manager / staff / device` を同時に作成します。</li>
+              <li>初期パスワードは共通で `Demo1234` です。結果カードに生成済み username を表示します。</li>
+              <li>作成直後は Stripe・Connect・Google Chat・PWA などの外部連携は未設定でも構いません。</li>
+              <li>契約差分は `hq_menu_broadcast` オプションだけです。旧 `plan` は表示互換のためだけに保持しています。</li>
+            </ul>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="new-plan">プラン (レガシー表示のみ)</label>
-            <select class="form-input" id="new-plan">
-              <option value="standard" selected>Standard (α-1 以降は意味なし)</option>
-              <option value="pro">Pro (α-1 以降は意味なし)</option>
-              <option value="enterprise">Enterprise (α-1 以降は意味なし)</option>
-            </select>
-            <span class="form-hint" style="color:#d9534f;">α-1 単一プラン構成（2026-04-09〜）では機能差別化は `hq_menu_broadcast` アドオンのみ。この値は `tenants.plan` に書き込まれますが動作には影響しません。アドオン契約はテナント側「決済設定」タブから。</span>
-          </div>
-          <button class="btn btn-primary" id="btn-create-tenant">テナントを作成</button>
         </div>
       </div>
     </div>
 
     <!-- API設定 -->
     <div class="posla-tab-panel" id="posla-panel-api-settings">
-      <div class="panel-header"><h2 class="panel-header__title">API設定（POSLA共通）</h2></div>
-      <div class="card" style="max-width:560px;">
+      <div class="panel-header">
+        <div class="panel-header__eyebrow">Platform Settings</div>
+        <h2 class="panel-header__title">API設定（POSLA共通）</h2>
+        <p class="panel-header__lead">POSLA運営が全テナント共通で使う外部連携設定です。実値は読み出さず、状態だけ表示して変更時のみ新しい値を入力します。運用監視は Google Chat webhook を正系、旧 Slack webhook を後方互換 fallback として扱います。</p>
+      </div>
+
+      <div class="settings-summary-grid" id="current-api-status"></div>
+
+      <div class="card card--accent settings-health-wrap">
+        <div class="card__header">
+          <div>
+            <h3 class="section-title" style="margin-bottom:0;">秘密値充足チェック</h3>
+            <p class="card-intro">実値は表示せず、連携ごとの `設定済 / 未設定 / 不整合` だけを判定します。本番投入前の差分確認用です。</p>
+          </div>
+        </div>
         <div class="card__body">
-          <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1.25rem;">
-            POSLA運営が管理するAPIキーです。全テナントで共通利用されます。
-          </p>
-          <div id="current-api-status" style="margin-bottom:1.25rem;"></div>
-          <div class="form-group">
-            <label class="form-label" for="posla-ai-key">Gemini APIキー</label>
-            <input class="form-input" type="password" id="posla-ai-key" placeholder="新しいキーを入力...">
+          <div id="posla-config-health"></div>
+        </div>
+      </div>
+
+      <div class="settings-layout">
+        <div class="card settings-card">
+          <div class="card__body">
+            <div class="settings-card__eyebrow">AI / Maps</div>
+            <div class="settings-card__title">Gemini・Places</div>
+            <div class="settings-card__note">AI機能と店舗情報補完で使う共通キーです。空欄送信では変更しません。</div>
+            <div class="form-group">
+              <label class="form-label" for="posla-ai-key">Gemini APIキー</label>
+              <input class="form-input" type="password" id="posla-ai-key" placeholder="新しいキーを入力...">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-places-key">Google Places APIキー</label>
+              <input class="form-input" type="password" id="posla-places-key" placeholder="新しいキーを入力...">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="posla-places-key">Google Places APIキー</label>
-            <input class="form-input" type="password" id="posla-places-key" placeholder="新しいキーを入力...">
+        </div>
+
+        <div class="card settings-card">
+          <div class="card__body">
+            <div class="settings-card__eyebrow">Billing</div>
+            <div class="settings-card__title">Stripe Billing</div>
+            <div class="settings-card__note">サブスクリプション課金で使う共通キーと Price ID です。</div>
+            <div class="form-group">
+              <label class="form-label" for="posla-stripe-secret">Stripe Secret Key</label>
+              <input class="form-input" type="password" id="posla-stripe-secret" placeholder="sk_test_...">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-stripe-pub">Stripe Publishable Key</label>
+              <input class="form-input" type="password" id="posla-stripe-pub" placeholder="pk_test_...">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-stripe-webhook">Stripe Webhook Secret</label>
+              <input class="form-input" type="password" id="posla-stripe-webhook" placeholder="whsec_...">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-stripe-price-base">Price ID: 基本料金（¥20,000/月）</label>
+              <input class="form-input" type="text" id="posla-stripe-price-base" placeholder="price_...">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-stripe-price-add">Price ID: 追加店舗（¥17,000/店舗・月）</label>
+              <input class="form-input" type="text" id="posla-stripe-price-add" placeholder="price_...">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-stripe-price-hq">Price ID: 本部一括配信アドオン（¥3,000/店舗・月）</label>
+              <input class="form-input" type="text" id="posla-stripe-price-hq" placeholder="price_...">
+            </div>
           </div>
-          <hr style="margin:1.5rem 0;">
-          <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1.25rem;">
-            Stripe Billing（サブスクリプション課金）
-          </p>
-          <div class="form-group">
-            <label class="form-label" for="posla-stripe-secret">Stripe Secret Key</label>
-            <input class="form-input" type="password" id="posla-stripe-secret" placeholder="sk_test_...">
+        </div>
+
+        <div class="card settings-card">
+          <div class="card__body">
+            <div class="settings-card__eyebrow">External</div>
+            <div class="settings-card__title">Connect・スマレジ</div>
+            <div class="settings-card__note">Stripe Connect の料率とスマレジ OAuth をここで管理します。</div>
+            <div class="form-group">
+              <label class="form-label" for="posla-connect-fee">Application Fee (%)</label>
+              <input class="form-input" type="number" id="posla-connect-fee" step="0.1" min="0" max="10" placeholder="1.0">
+              <span class="form-hint">テナント決済時にPOSLAが受け取る手数料率</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-smaregi-client-id">スマレジ Client ID</label>
+              <input class="form-input" type="text" id="posla-smaregi-client-id" placeholder="スマレジ Client ID">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-smaregi-client-secret">スマレジ Client Secret</label>
+              <input class="form-input" type="password" id="posla-smaregi-client-secret" placeholder="スマレジ Client Secret">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="posla-stripe-pub">Stripe Publishable Key</label>
-            <input class="form-input" type="password" id="posla-stripe-pub" placeholder="pk_test_...">
+        </div>
+
+        <div class="card settings-card">
+          <div class="card__body">
+            <div class="settings-card__eyebrow">Monitoring</div>
+            <div class="settings-card__title">運用監視 / Google Chat</div>
+            <div class="settings-card__note">Google Chat webhook と運用通知メールを管理します。テスト通知は `error_log` を経由して現在の監視ルートを実行します。</div>
+            <div class="settings-monitor-status" id="posla-monitor-status"></div>
+            <div class="settings-card__eyebrow" style="margin-top:0.9rem;">Notification Center</div>
+            <div class="settings-card__note">Google Chat / 運用通知メール / Web Push の現在ルートとテスト導線をまとめた read-only センターです。</div>
+            <div class="settings-health-grid" id="posla-notification-center"></div>
+            <div class="form-group">
+              <label class="form-label" for="posla-google-chat-webhook">Google Chat Webhook URL</label>
+              <input class="form-input" type="password" id="posla-google-chat-webhook" placeholder="https://chat.googleapis.com/...">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-ops-notify-email">運用通知メール</label>
+              <input class="form-input" type="email" id="posla-ops-notify-email" placeholder="support@posla.jp">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-monitor-message">テスト通知メッセージ</label>
+              <textarea class="form-input" id="posla-monitor-message" rows="3" placeholder="Google Chat / 運用通知メールで使う確認文面"></textarea>
+              <span class="form-hint">tenant / store は未入力なら自動採番します。</span>
+            </div>
+            <div class="settings-test-grid">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" for="posla-monitor-tenant">テナントID（任意）</label>
+                <input class="form-input" type="text" id="posla-monitor-tenant" placeholder="tenant-monitor-test-...">
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" for="posla-monitor-store">店舗ID（任意）</label>
+                <input class="form-input" type="text" id="posla-monitor-store" placeholder="store-monitor-test-...">
+              </div>
+            </div>
+            <div class="settings-inline-actions">
+              <button class="btn btn-secondary" id="btn-run-monitor-health" type="button">監視を再実行</button>
+              <button class="btn" id="btn-send-monitor-test" type="button" style="border:1px solid var(--primary);color:var(--primary);">Google Chat テスト通知</button>
+              <button class="btn" id="btn-send-ops-mail-test" type="button" style="border:1px solid var(--primary);color:var(--primary);">運用通知メール テスト</button>
+              <button class="btn btn-secondary" type="button" data-tab-jump="pwa-push">PWA / Web Push を開く</button>
+            </div>
+            <div class="settings-test-result" id="posla-notify-test-result">テスト結果はここに表示します。Google Chat は監視経路を通して送信、メールは `ops_notify_email` へ直接送信します。Web Push は PWA / Web Push タブで詳細確認します。</div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="posla-stripe-webhook">Stripe Webhook Secret</label>
-            <input class="form-input" type="password" id="posla-stripe-webhook" placeholder="whsec_...">
+        </div>
+      </div>
+      <div class="settings-actions">
+        <button class="btn btn-primary" id="btn-save-api">保存</button>
+        <button class="btn btn-secondary" id="btn-clear-api" type="button">機密値をクリア</button>
+      </div>
+
+      <div class="panel-grid panel-grid--two" style="margin-top:1rem;">
+        <div class="card card--tint">
+          <div class="card__body">
+            <h3 class="section-title">設定変更サマリ</h3>
+            <div id="posla-settings-audit-summary"></div>
+            <div class="settings-history-note">秘密値は履歴上でも実値を保存せず、設定有無とマスク表示だけを残します。</div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="posla-stripe-price-base">Price ID: 基本料金（¥20,000/月）</label>
-            <input class="form-input" type="text" id="posla-stripe-price-base" placeholder="price_...">
+        </div>
+        <div class="card table-card">
+          <div class="card__header">
+            <div>
+              <h3 class="section-title" style="margin-bottom:0;">設定差分・変更履歴</h3>
+              <p class="card-intro">POSLA 運営が更新した共通設定の差分を新しい順に確認します。</p>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="posla-stripe-price-add">Price ID: 追加店舗（¥17,000/店舗・月）</label>
-            <input class="form-input" type="text" id="posla-stripe-price-add" placeholder="price_...">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="posla-stripe-price-hq">Price ID: 本部一括配信アドオン（¥3,000/店舗・月）</label>
-            <input class="form-input" type="text" id="posla-stripe-price-hq" placeholder="price_...">
-          </div>
-          <hr style="margin:1.5rem 0;">
-          <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1.25rem;">
-            Stripe Connect（決済代行）
-          </p>
-          <div class="form-group">
-            <label class="form-label" for="posla-connect-fee">Application Fee (%)</label>
-            <input class="form-input" type="number" id="posla-connect-fee" step="0.1" min="0" max="10" style="width:120px;" placeholder="1.0">
-            <span class="form-hint">テナント決済時にPOSLAが受け取る手数料率</span>
-          </div>
-          <hr style="margin:1.5rem 0;">
-          <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1.25rem;">
-            スマレジ連携（外部POS）
-          </p>
-          <div class="form-group">
-            <label class="form-label" for="posla-smaregi-client-id">Client ID</label>
-            <input class="form-input" type="text" id="posla-smaregi-client-id" placeholder="スマレジ Client ID">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="posla-smaregi-client-secret">Client Secret</label>
-            <input class="form-input" type="password" id="posla-smaregi-client-secret" placeholder="スマレジ Client Secret">
-          </div>
-          <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
-            <button class="btn btn-primary" id="btn-save-api">保存</button>
-            <button class="btn" id="btn-clear-api" style="color:var(--danger);border:1px solid var(--danger);">キーを削除</button>
+          <div class="card__body">
+            <div id="posla-settings-audit-list"></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- PWA/Push (情報表示のみ / 読み取り専用) -->
+    <!-- PWA/Push -->
     <div class="posla-tab-panel" id="posla-panel-pwa-push">
-      <div class="panel-header"><h2 class="panel-header__title">PWA / Web Push</h2></div>
-      <div class="card" style="max-width:720px;">
-        <div class="card__body">
-          <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:1.25rem;">
-            Web Push の設定状況を読み取り専用で表示します。鍵の生成・ローテーション・ダウンロードは
-            誤操作防止のため本画面からは行いません。CLI 手順は `docs/manual/internal/09-pwa.md` §9.14.8 を参照してください。
-          </p>
-          <div id="posla-push-status" style="font-size:0.875rem;line-height:1.7;"></div>
-          <hr style="margin:1.5rem 0;">
-          <h3 class="section-title" style="margin-bottom:0.75rem;">購読統計</h3>
-          <div id="posla-push-subs" style="font-size:0.875rem;line-height:1.7;"></div>
-          <hr style="margin:1.5rem 0;">
-          <h3 class="section-title" style="margin-bottom:0.75rem;">直近 24 時間 送信統計</h3>
-          <div id="posla-push-sendlog" style="font-size:0.875rem;line-height:1.7;"></div>
-          <div style="margin-top:1rem;">
-            <button class="btn" id="btn-refresh-push">再読込</button>
+      <div class="panel-header">
+        <div class="panel-header__eyebrow">Notifications Infrastructure</div>
+        <h2 class="panel-header__title">PWA / Web Push</h2>
+        <p class="panel-header__lead">Web Push の状態確認、VAPID 鍵の生成・取得・退避、購読の全体傾向をここで扱います。鍵を再生成すると既存購読は再登録が必要になります。</p>
+      </div>
+      <div class="panel-grid panel-grid--two">
+        <section class="card card--tint">
+          <div class="card__body">
+            <div class="panel-header__actions" style="margin-top:0;margin-bottom:1rem;">
+              <button class="btn btn-primary" id="btn-push-generate-apply" type="button">VAPID 鍵を生成して適用</button>
+              <button class="btn btn-secondary" id="btn-refresh-push" type="button">再読込</button>
+            </div>
+            <div class="pwa-callout"><strong>注意:</strong> 再生成は既存のブラウザ購読を無効化するため、店舗端末・スタッフ端末側で再登録が必要になります。</div>
+            <div id="posla-push-status" style="margin-top:1rem;"></div>
           </div>
-        </div>
+        </section>
+        <section class="card">
+          <div class="card__header">
+            <div>
+              <h3 class="section-title" style="margin-bottom:0;">鍵の取得 / 退避</h3>
+              <p class="card-intro">公開鍵・秘密鍵・退避用 bundle を必要なときだけ取得します。</p>
+            </div>
+          </div>
+          <div class="card__body">
+            <div class="push-secret-actions" style="margin-top:0;">
+              <button class="btn btn-secondary" id="btn-push-public-view" type="button">VAPID 公開鍵を取得</button>
+              <button class="btn btn-secondary" id="btn-push-private-view" type="button">秘密鍵を取得</button>
+              <button class="btn" id="btn-push-backup-view" type="button" style="border:1px solid var(--primary);color:var(--primary);">退避用 bundle を取得</button>
+            </div>
+            <div class="push-secret-output" id="posla-push-secret-output">
+              <div class="push-secret-output__head">
+                <div class="push-secret-output__title" id="posla-push-secret-label">VAPID 鍵</div>
+                <div class="settings-inline-actions" style="margin-top:0;">
+                  <button class="btn btn-secondary" id="btn-push-secret-copy" type="button">コピー</button>
+                  <button class="btn btn-secondary" id="btn-push-secret-download" type="button">ダウンロード</button>
+                </div>
+              </div>
+              <textarea id="posla-push-secret-value" readonly></textarea>
+              <div class="push-secret-output__note" id="posla-push-secret-note"></div>
+            </div>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card__header">
+            <div>
+              <h3 class="section-title" style="margin-bottom:0;">購読統計</h3>
+              <p class="card-intro">登録済み端末と有効購読数の分布を確認します。</p>
+            </div>
+          </div>
+          <div class="card__body">
+            <div id="posla-push-subs"></div>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card__header">
+            <div>
+              <h3 class="section-title" style="margin-bottom:0;">直近 24 時間 送信統計</h3>
+              <p class="card-intro">通知送信の成功率とエラー傾向を把握します。</p>
+            </div>
+          </div>
+          <div class="card__body">
+            <div id="posla-push-sendlog"></div>
+          </div>
+        </section>
       </div>
     </div>
 
-  </div>
+    <!-- POSLA 管理者ユーザー管理 -->
+    <div class="posla-tab-panel" id="posla-panel-admin-users">
+      <div class="panel-header">
+        <div class="panel-header__eyebrow">Admin Identity</div>
+        <h2 class="panel-header__title">POSLA 管理者ユーザー</h2>
+        <p class="panel-header__lead">POSLA運営アカウントの作成、権限、最終ログイン状況を扱います。テナント側ユーザーとは完全に別管理です。</p>
+      </div>
+      <div id="posla-admin-users-root"></div>
+    </div>
+
+    <!-- 顧客サポートビュー -->
+    <div class="posla-tab-panel" id="posla-panel-customer-support">
+      <div class="panel-header">
+        <div class="panel-header__eyebrow">Customer Assist</div>
+        <h2 class="panel-header__title">顧客サポート</h2>
+        <p class="panel-header__lead">顧客側セッションの状態を読み取り専用で確認する運用ビューです。店舗操作や注文送信の代行は行わず、現状把握に限定します。</p>
+      </div>
+      <div id="posla-customer-support-root"></div>
+    </div>
+
+    <!-- サポートセンター (HELPDESK-P2-NONAI-ALL-20260423、非AI) -->
+    <div class="posla-tab-panel" id="posla-panel-support">
+      <div class="panel-header">
+        <div class="panel-header__eyebrow">Support Knowledge</div>
+        <h2 class="panel-header__title">📚 サポートセンター</h2>
+        <p class="panel-header__lead">テナント問い合わせ時の一次回答と誘導先をまとめた運用ナレッジです。AI ではなく固定ナレッジベースとして扱います。</p>
+      </div>
+      <div id="posla-support-root"></div>
+    </div>
+
+    <!-- 運用補助センター (OPS-CENTER-P1-READONLY-20260423、非AI、read-only) -->
+    <div class="posla-tab-panel" id="posla-panel-ops">
+      <div class="panel-header">
+        <div class="panel-header__eyebrow">Ops Readonly</div>
+        <h2 class="panel-header__title">🛠️ 運用補助センター</h2>
+        <p class="panel-header__lead">障害切り分けや日次確認のための read-only 支援ビューです。本番修正や強制操作はここでは行いません。</p>
+      </div>
+      <div id="posla-ops-root"></div>
+    </div>
+
+      </div><!-- /.admin-content -->
+    </div><!-- /.admin-main -->
+  </div><!-- /.admin-layout -->
 
   <!-- テナント編集モーダル -->
   <div class="modal-overlay" id="tenant-modal-overlay">
-    <div class="modal" style="max-width:520px;">
+    <div class="modal" style="max-width:860px;">
       <div class="modal__header">
         <h3 class="modal__title" id="modal-tenant-title">テナント編集</h3>
         <button class="modal__close" id="modal-close-btn">&times;</button>
@@ -299,10 +1457,10 @@
           <div class="modal-section__title">プラン・状態</div>
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="modal-tenant-plan">レガシープラン（α-1 以降は意味なし）</label>
-              <input class="form-input" id="modal-tenant-plan" type="text" readonly
+              <label class="form-label" for="modal-tenant-plan-label">契約プラン</label>
+              <input class="form-input" id="modal-tenant-plan-label" type="text" readonly
                      style="background:#f0f0f0;cursor:not-allowed;"
-                     title="α-1 単一プラン構成（2026-04-09〜）では機能差別化は hq_menu_broadcast のみ。この値は影響しません。">
+                     title="α-1 単一プラン構成（2026-04-09〜）では機能差別化は hq_menu_broadcast のみです。">
             </div>
             <div class="form-group">
               <label class="form-label" for="modal-tenant-active">状態</label>
@@ -312,6 +1470,40 @@
               </select>
             </div>
           </div>
+          <div class="form-group">
+            <label class="form-label" for="modal-tenant-hq-broadcast">オプション</label>
+            <label class="tenant-option-row" for="modal-tenant-hq-broadcast">
+              <input type="checkbox" id="modal-tenant-hq-broadcast">
+              <span>
+                <strong>本部一括メニュー配信</strong>
+                <small>単一プラン運用で唯一の契約差分です。後から切り替えられます。</small>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section__title">運用サマリ</div>
+          <div id="modal-tenant-summary" class="tenant-modal-summary"></div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section__title">障害調査ビュー</div>
+          <div class="tenant-modal-note">直近異常の前後で、テナント設定変更と POSLA 共通設定変更を束ねて確認します。時刻差が短いものから確認してください。</div>
+          <div id="modal-tenant-investigation-summary"></div>
+          <div id="modal-tenant-investigation-changes" class="tenant-modal-timeline" style="margin-top:0.75rem;"></div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section__title">障害タイムライン</div>
+          <div class="tenant-modal-note">`monitor_events` の直近 14 日・最大 12 件です。未解決イベントを先頭に表示します。</div>
+          <div id="modal-tenant-incident-timeline" class="tenant-modal-timeline"></div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section__title">運用タイムライン</div>
+          <div class="tenant-modal-note">POSLA 管理画面からの変更履歴と監視イベントを時系列で束ねたビューです。直近 20 件を表示します。</div>
+          <div id="modal-tenant-ops-timeline" class="tenant-modal-timeline"></div>
         </div>
 
       </div>
@@ -326,8 +1518,8 @@
   <div id="posla-toast" style="position:fixed;bottom:1.5rem;right:1.5rem;background:#333;color:#fff;padding:0.75rem 1.25rem;border-radius:6px;font-size:0.875rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;"></div>
 
   <script src="../shared/js/utils.js"></script>
-  <script src="js/posla-api.js"></script>
-  <script src="js/posla-app.js?v=20260420-pwa2bext"></script>
+  <script src="js/posla-api.js?v=20260425-poslaui9"></script>
+  <script src="js/posla-app.js?v=20260425-poslaui9"></script>
 
   <!-- パスワード変更モーダル（P1-5） -->
   <div class="modal-overlay" id="password-change-overlay" style="display:none;opacity:1;visibility:visible;">
@@ -467,7 +1659,90 @@
   })();
   </script>
 
-  <script>window.POSLA_HELPDESK_MODE = 'helpdesk_internal';</script>
-  <script src="../shared/js/posla-helpdesk-fab.js?v=20260419-cb1c"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var toggleBtn = document.getElementById('admin-sidebar-toggle');
+    var closeBtn = document.getElementById('admin-sidebar-close');
+    var backdrop = document.getElementById('admin-sidebar-backdrop');
+    var sidebar = document.getElementById('admin-sidebar');
+    var menu = document.getElementById('admin-user-menu');
+    var menuTrigger = document.getElementById('admin-user-menu-trigger');
+    var userNameEl = document.getElementById('posla-header-user');
+    var avatarEl = document.getElementById('admin-user-menu-avatar');
+
+    function openSidebar() {
+      document.body.classList.add('sidebar-open');
+      if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeSidebar() {
+      document.body.classList.remove('sidebar-open');
+      if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    function syncAvatar() {
+      if (!userNameEl || !avatarEl) return;
+      var txt = (userNameEl.textContent || '').replace(/^\s+|\s+$/g, '');
+      avatarEl.textContent = txt ? txt.charAt(0).toUpperCase() : '–';
+    }
+
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', function () {
+        if (document.body.classList.contains('sidebar-open')) closeSidebar();
+        else openSidebar();
+      });
+    }
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+    if (backdrop) backdrop.addEventListener('click', closeSidebar);
+    if (sidebar) {
+      sidebar.addEventListener('click', function (e) {
+        if (window.innerWidth > 767) return;
+        var t = e.target;
+        while (t && t !== sidebar) {
+          if (t.classList && t.classList.contains('tab-nav__btn')) {
+            closeSidebar();
+            return;
+          }
+          t = t.parentNode;
+        }
+      });
+    }
+
+    if (menu && menuTrigger) {
+      menuTrigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var isOpen = menu.classList.toggle('open');
+        menuTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+      document.addEventListener('click', function (e) {
+        if (!menu.classList.contains('open')) return;
+        if (menu.contains(e.target)) return;
+        menu.classList.remove('open');
+        menuTrigger.setAttribute('aria-expanded', 'false');
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && menu.classList.contains('open')) {
+          menu.classList.remove('open');
+          menuTrigger.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    syncAvatar();
+    if (window.MutationObserver && userNameEl) {
+      (new MutationObserver(syncAvatar)).observe(userNameEl, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+    }
+  })();
+  </script>
+
+  <script src="js/posla-supportdesk.js?v=20260424-pathfix1"></script>
+  <script src="js/posla-support-console.js?v=20260424-admin-users1"></script>
+  <script src="../shared/js/posla-ops-center.js?v=20260424-pathfix1"></script>
 </body>
 </html>

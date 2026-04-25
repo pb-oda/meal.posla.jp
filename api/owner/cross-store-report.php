@@ -212,7 +212,7 @@ try {
     }
 } catch (Exception $e) {
     // cart_events テーブル未作成 — スキップ
-    error_log('[P1-12][api/owner/cross-store-report.php:212] load_hesitation: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][api/owner/cross-store-report.php:212] load_hesitation: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // ===== R1: 全店舗 満足度サマリー =====

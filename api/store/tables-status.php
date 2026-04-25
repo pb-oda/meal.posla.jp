@@ -28,7 +28,7 @@ try {
     $tables = $stmt->fetchAll();
 } catch (PDOException $e) {
     // H-14: browser 応答から PDO 内部メッセージを排除、詳細は error_log にのみ残す
-    error_log('[H-14][api/store/tables-status.php] db_error: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[H-14][api/store/tables-status.php] db_error: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('DB_ERROR', 'テーブル取得に失敗しました', 500);
 }
 
@@ -73,7 +73,7 @@ try {
     }
 } catch (PDOException $e) {
     // table_sessions 未作成時はスキップ
-    error_log('[P1-12][tables-status.php:63] fetch_session_map: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][tables-status.php:63] fetch_session_map: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // テーブルごとの未会計注文数・合計金額
@@ -95,7 +95,7 @@ try {
     }
 } catch (PDOException $e) {
     // skip
-    error_log('[P1-12][tables-status.php:84] fetch_order_map: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][tables-status.php:84] fetch_order_map: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // O-1: テーブルごとの品目ステータス集計（order_items テーブルが存在する場合）
@@ -125,7 +125,7 @@ try {
     }
 } catch (PDOException $e) {
     // order_items テーブル未作成時はスキップ
-    error_log('[P1-12][tables-status.php:113] fetch_item_status_map: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][tables-status.php:113] fetch_item_status_map: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 $now = time();
@@ -182,7 +182,7 @@ try {
     }
 } catch (PDOException $e) {
     // カラム未存在時はデフォルト値
-    error_log('[P1-12][tables-status.php:168] fetch_last_order_data: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][tables-status.php:168] fetch_last_order_data: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 json_response([

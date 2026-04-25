@@ -67,7 +67,7 @@ if ($expectedAmount <= 0) {
     json_error('NOT_FOUND', '対象の未会計注文が見つかりません', 404);
 }
 if ($amount !== $expectedAmount) {
-    error_log('[terminal-intent] amount_mismatch: client=' . $amount . ' server=' . $expectedAmount . ' store=' . $storeId, 3, '/home/odah/log/php_errors.log');
+    error_log('[terminal-intent] amount_mismatch: client=' . $amount . ' server=' . $expectedAmount . ' store=' . $storeId, 3, POSLA_PHP_ERROR_LOG);
     json_error('AMOUNT_MISMATCH', '金額がサーバー側計算値と一致しません', 400);
 }
 

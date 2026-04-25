@@ -16,7 +16,7 @@ require_once __DIR__ . '/../config/app.php';
 // セッション開始（auth.phpで保存したstateを読み取る）
 start_auth_session();
 
-$dashboardUrl = '/public/admin/owner-dashboard.html';
+$dashboardUrl = '/admin/owner-dashboard.html';
 
 // エラーチェック（スマレジ側でユーザーが拒否した場合など）
 if (isset($_GET['error'])) {

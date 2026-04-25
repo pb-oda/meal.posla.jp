@@ -87,7 +87,7 @@ try {
     }
 } catch (PDOException $e) {
     // satisfaction_ratings テーブルが存在しない場合
-    error_log('[P1-12][staff-report.php:87] fetch_rating_by_staff: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][staff-report.php:87] fetch_rating_by_staff: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // スタッフ別実績を統合

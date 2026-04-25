@@ -19,7 +19,7 @@ $method = require_method(['GET', 'PATCH']);
 if ($method === 'PATCH') {
     $user = require_role('manager');
 } else {
-    $user = require_auth();
+    $user = require_role('staff');
 }
 
 $pdo = get_db();

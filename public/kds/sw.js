@@ -66,10 +66,10 @@
     var title = (payload && payload.title) ? String(payload.title) : 'POSLA 通知';
     var options = {
       body: (payload && payload.body) ? String(payload.body) : '',
-      icon: (payload && payload.icon) ? String(payload.icon) : '/public/kds/icons/icon-192.png',
-      badge: (payload && payload.badge) ? String(payload.badge) : '/public/kds/icons/icon-192.png',
+      icon: (payload && payload.icon) ? String(payload.icon) : '/kds/icons/icon-192.png',
+      badge: (payload && payload.badge) ? String(payload.badge) : '/kds/icons/icon-192.png',
       tag: (payload && payload.tag) ? String(payload.tag) : 'posla-kds',
-      data: { url: (payload && payload.url) ? String(payload.url) : '/public/kds/index.html' },
+      data: { url: (payload && payload.url) ? String(payload.url) : '/kds/index.html' },
       requireInteraction: false
     };
     event.waitUntil(self.registration.showNotification(title, options));
@@ -78,12 +78,13 @@
   // ---- notificationclick: 同一origin かつ /public/kds/ 配下のみ許可 ----
   self.addEventListener('notificationclick', function (event) {
     event.notification.close();
-    var rawUrl = (event.notification.data && event.notification.data.url) || '/public/kds/index.html';
-    var targetUrl = '/public/kds/index.html';
+    var rawUrl = (event.notification.data && event.notification.data.url) || '/kds/index.html';
+    var targetUrl = '/kds/index.html';
     try {
       var u = new URL(rawUrl, self.location.origin);
       if (u.origin === self.location.origin
-          && u.pathname.indexOf('/public/kds/') === 0
+          && (u.pathname.indexOf('/kds/') === 0 || u.pathname.indexOf('/public/kds/') === 0)
+          && u.pathname.indexOf('/customer/') === -1
           && u.pathname.indexOf('/public/customer/') === -1) {
         targetUrl = u.pathname + u.search + u.hash;
       }
@@ -94,7 +95,7 @@
           var c = clientList[i];
           try {
             var cu = new URL(c.url);
-            if (cu.pathname.indexOf('/public/kds/') === 0) {
+            if (cu.pathname.indexOf('/kds/') === 0 || cu.pathname.indexOf('/public/kds/') === 0) {
               return c.focus().then(function (focused) {
                 if (focused && focused.navigate) focused.navigate(targetUrl);
                 return focused;

@@ -99,13 +99,11 @@ if (!$storeInfo) {
 $tenantId = $storeInfo['tenant_id'];
 
 // ── success_url / cancel_url を組み立て ──
-$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host = $_SERVER['HTTP_HOST'];
-$base = $scheme . '://' . $host;
-$successUrl = $base . '/public/customer/menu.html?store_id=' . urlencode($storeId)
+$base = app_url('/customer/menu.html');
+$successUrl = $base . '?store_id=' . urlencode($storeId)
     . '&table_id=' . urlencode($tableId)
     . '&checkout=success&stripe_session_id={CHECKOUT_SESSION_ID}';
-$cancelUrl = $base . '/public/customer/menu.html?store_id=' . urlencode($storeId)
+$cancelUrl = $base . '?store_id=' . urlencode($storeId)
     . '&table_id=' . urlencode($tableId)
     . '&checkout=cancel';
 

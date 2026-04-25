@@ -150,6 +150,18 @@ var HandyApp = (function () {
     els.panelTables  = document.getElementById('panel-tables');
     els.tblInfo      = document.getElementById('table-status-info');
     els.tblGrid      = document.getElementById('table-status-grid');
+    els.rsvNewName   = document.getElementById('rsv-new-name');
+    els.rsvNewPhone  = document.getElementById('rsv-new-phone');
+    els.rsvNewTime   = document.getElementById('rsv-new-time');
+    els.rsvNewParty  = document.getElementById('rsv-new-party');
+    els.rsvNewTable  = document.getElementById('rsv-new-table');
+    els.rsvNewMemo   = document.getElementById('rsv-new-memo');
+    els.rsvCreateBtn = document.getElementById('rsv-create-btn');
+    els.rsvCheckTime = document.getElementById('rsv-check-time');
+    els.rsvCheckParty = document.getElementById('rsv-check-party');
+    els.rsvAvailability = document.getElementById('rsv-availability');
+    els.rsvToggleCreate = document.getElementById('rsv-toggle-create');
+    els.rsvCreatePanel = document.getElementById('rsv-create-panel');
     els.editBanner   = document.getElementById('edit-banner');
     els.toast        = document.getElementById('toast');
     els.optOverlay   = document.getElementById('option-overlay');
@@ -548,9 +560,8 @@ var HandyApp = (function () {
       var totalInCart = _cart.reduce(function (s, c) { return s + (c.id === item.menuItemId ? c.qty : 0); }, 0);
       var soldClass = item.soldOut ? ' menu-item--sold-out' : '';
       var hasOpts = item.optionGroups && item.optionGroups.length > 0;
-      var imgHtml = item.imageUrl
-        ? '<img class="menu-item__img" src="../../' + Utils.escapeHtml(item.imageUrl) + '" alt="" loading="lazy">'
-        : '';
+      // 2026-04-23: ハンディは一覧速度優先。写真は出さない。
+      var imgHtml = '';
       var badgeHtml = totalInCart > 0 ? '<span class="menu-item__added">' + totalInCart + '</span>' : '';
       var soldBadge = item.soldOut ? '<span class="menu-item__sold">品切れ</span>' : '';
       var limitedBadge = item.source === 'local' ? '<span class="menu-item__badge-limited">限定</span>' : '';
@@ -678,11 +689,20 @@ var HandyApp = (function () {
   // ==== Table rendering ====
   function renderTables() {
     els.tableSel.innerHTML = '<option value="">テーブルを選択</option>';
+    if (els.rsvNewTable) {
+      els.rsvNewTable.innerHTML = '<option value="">テーブル未割当</option>';
+    }
     _tables.forEach(function (t) {
       var opt = document.createElement('option');
       opt.value = t.id;
       opt.textContent = t.table_code + (t.capacity ? ' (' + t.capacity + '名)' : '');
       els.tableSel.appendChild(opt);
+      if (els.rsvNewTable) {
+        var rsvOpt = document.createElement('option');
+        rsvOpt.value = t.id;
+        rsvOpt.textContent = t.table_code + (t.capacity ? ' (' + t.capacity + '名)' : '');
+        els.rsvNewTable.appendChild(rsvOpt);
+      }
     });
   }
 
@@ -1260,6 +1280,9 @@ var HandyApp = (function () {
   var _rsvData = null;
   var _rsvBoundOnce = false;
   var _todayReservationsByTable = {}; // テーブルバッジ用キャッシュ
+  var _rsvAvailabilityCache = {};
+  var _rsvAvailabilityTimer = null;
+  var _rsvAvailabilitySelected = null;
 
   function ymdLocal(d) {
     // S3-#17: ES5 互換 (padStart は古い WebView 非対応)
@@ -1271,19 +1294,61 @@ var HandyApp = (function () {
     if (!_rsvDate) _rsvDate = ymdLocal(new Date());
     var dateInput = document.getElementById('rsv-date');
     if (dateInput) dateInput.value = _rsvDate;
+    renderReservationFormDefaults();
+    setReservationCreateOpen(false);
     if (!_rsvBoundOnce) {
       document.getElementById('rsv-prev-day').addEventListener('click', function () {
-        var d = new Date(_rsvDate); d.setDate(d.getDate() - 1); _rsvDate = ymdLocal(d); document.getElementById('rsv-date').value = _rsvDate; loadReservations();
+        var d = new Date(_rsvDate); d.setDate(d.getDate() - 1); _rsvDate = ymdLocal(d); document.getElementById('rsv-date').value = _rsvDate; renderReservationFormDefaults(); loadReservations();
       });
       document.getElementById('rsv-next-day').addEventListener('click', function () {
-        var d = new Date(_rsvDate); d.setDate(d.getDate() + 1); _rsvDate = ymdLocal(d); document.getElementById('rsv-date').value = _rsvDate; loadReservations();
+        var d = new Date(_rsvDate); d.setDate(d.getDate() + 1); _rsvDate = ymdLocal(d); document.getElementById('rsv-date').value = _rsvDate; renderReservationFormDefaults(); loadReservations();
       });
       document.getElementById('rsv-today').addEventListener('click', function () {
-        _rsvDate = ymdLocal(new Date()); document.getElementById('rsv-date').value = _rsvDate; loadReservations();
+        _rsvDate = ymdLocal(new Date()); document.getElementById('rsv-date').value = _rsvDate; renderReservationFormDefaults(); loadReservations();
       });
       document.getElementById('rsv-date').addEventListener('change', function (e) {
-        _rsvDate = e.target.value; loadReservations();
+        _rsvDate = e.target.value; renderReservationFormDefaults(); loadReservations();
       });
+      if (els.rsvCheckTime) {
+        els.rsvCheckTime.addEventListener('change', function () {
+          syncReservationCheckToForm();
+          scheduleReservationAvailability();
+        });
+      }
+      if (els.rsvCheckParty) {
+        els.rsvCheckParty.addEventListener('input', function () {
+          syncReservationCheckToForm();
+          scheduleReservationAvailability();
+        });
+        els.rsvCheckParty.addEventListener('change', function () {
+          syncReservationCheckToForm();
+          scheduleReservationAvailability();
+        });
+      }
+      if (els.rsvToggleCreate) {
+        els.rsvToggleCreate.addEventListener('click', function () {
+          setReservationCreateOpen(!els.rsvCreatePanel || els.rsvCreatePanel.style.display === 'none');
+        });
+      }
+      if (els.rsvNewTime) {
+        els.rsvNewTime.addEventListener('change', function () {
+          syncReservationFormToCheck();
+          scheduleReservationAvailability();
+        });
+      }
+      if (els.rsvNewParty) {
+        els.rsvNewParty.addEventListener('input', function () {
+          syncReservationFormToCheck();
+          scheduleReservationAvailability();
+        });
+        els.rsvNewParty.addEventListener('change', function () {
+          syncReservationFormToCheck();
+          scheduleReservationAvailability();
+        });
+      }
+      if (els.rsvCreateBtn) {
+        els.rsvCreateBtn.addEventListener('click', createReservationFromHandy);
+      }
       // 予約カードクリック (delegation)
       document.getElementById('rsv-list').addEventListener('click', function (e) {
         var openBtn = e.target.closest('[data-rsv-open-table]');
@@ -1296,6 +1361,270 @@ var HandyApp = (function () {
       _rsvBoundOnce = true;
     }
     loadReservations();
+    scheduleReservationAvailability();
+  }
+
+  function _suggestReservationTime() {
+    var now = new Date();
+    var min = now.getMinutes();
+    var rounded = min <= 30 ? 30 : 60;
+    if (rounded === 60) {
+      now.setHours(now.getHours() + 1);
+      now.setMinutes(0);
+    } else {
+      now.setMinutes(30);
+    }
+    return ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+  }
+
+  function renderReservationFormDefaults() {
+    if (els.rsvCheckParty && !els.rsvCheckParty.value) els.rsvCheckParty.value = '2';
+    if (els.rsvCheckTime && !els.rsvCheckTime.value) els.rsvCheckTime.value = _suggestReservationTime();
+    if (els.rsvNewParty && !els.rsvNewParty.value) els.rsvNewParty.value = els.rsvCheckParty ? els.rsvCheckParty.value : '2';
+    if (els.rsvNewTable) els.rsvNewTable.value = '';
+    if (els.rsvNewTime && !els.rsvNewTime.value) {
+      els.rsvNewTime.value = els.rsvCheckTime ? els.rsvCheckTime.value : _suggestReservationTime();
+    }
+    syncReservationCheckToForm();
+    updateReservationCreateAvailability();
+  }
+
+  function setReservationCreateOpen(isOpen) {
+    if (els.rsvCreatePanel) {
+      els.rsvCreatePanel.style.display = isOpen ? 'block' : 'none';
+    }
+    if (els.rsvToggleCreate) {
+      els.rsvToggleCreate.textContent = isOpen ? '追加フォームを閉じる' : '電話予約を追加';
+    }
+    if (isOpen) {
+      syncReservationCheckToForm();
+      updateReservationCreateAvailability();
+    }
+  }
+
+  function syncReservationCheckToForm() {
+    if (els.rsvCheckTime && els.rsvNewTime) els.rsvNewTime.value = els.rsvCheckTime.value || els.rsvNewTime.value;
+    if (els.rsvCheckParty && els.rsvNewParty) els.rsvNewParty.value = els.rsvCheckParty.value || els.rsvNewParty.value;
+  }
+
+  function syncReservationFormToCheck() {
+    if (els.rsvNewTime && els.rsvCheckTime) els.rsvCheckTime.value = els.rsvNewTime.value || els.rsvCheckTime.value;
+    if (els.rsvNewParty && els.rsvCheckParty) els.rsvCheckParty.value = els.rsvNewParty.value || els.rsvCheckParty.value;
+  }
+
+  function _minutesFromTime(hhmm) {
+    var parts = String(hhmm || '').split(':');
+    if (parts.length !== 2) return -1;
+    return (parseInt(parts[0], 10) * 60) + parseInt(parts[1], 10);
+  }
+
+  function _findNearbyAvailableTimes(slots, selectedTime) {
+    var targetMin = _minutesFromTime(selectedTime);
+    var available = [];
+    var out = [];
+    var i;
+    for (i = 0; i < (slots || []).length; i++) {
+      if (slots[i].available) available.push(slots[i]);
+    }
+    available.sort(function (a, b) {
+      return Math.abs(_minutesFromTime(a.time) - targetMin) - Math.abs(_minutesFromTime(b.time) - targetMin);
+    });
+    for (i = 0; i < available.length && i < 4; i++) out.push(available[i]);
+    return out;
+  }
+
+  function _formatSuggestedTables(slot) {
+    var labels = [];
+    var i;
+    if (!slot || !slot.suggested_tables) return '';
+    for (i = 0; i < slot.suggested_tables.length; i++) {
+      labels.push(slot.suggested_tables[i].label || slot.suggested_tables[i].table_code || '?');
+    }
+    return labels.join(' + ');
+  }
+
+  function scheduleReservationAvailability() {
+    if (_rsvAvailabilityTimer) clearTimeout(_rsvAvailabilityTimer);
+    _rsvAvailabilityTimer = setTimeout(function () {
+      loadReservationAvailability();
+    }, 120);
+  }
+
+  function loadReservationAvailability() {
+    var partySize = els.rsvCheckParty ? parseInt(els.rsvCheckParty.value, 10) : 0;
+    var cacheKey;
+    if (!els.rsvAvailability) return;
+    if (!_storeId || !_rsvDate || !partySize || partySize < 1) {
+      _rsvAvailabilitySelected = null;
+      els.rsvAvailability.className = 'handy-rsv-check__status';
+      els.rsvAvailability.textContent = '日付・時間・人数を指定すると空席状況を表示します';
+      updateReservationCreateAvailability();
+      return;
+    }
+    cacheKey = _rsvDate + '_' + partySize;
+    if (_rsvAvailabilityCache[cacheKey]) {
+      renderReservationAvailability(_rsvAvailabilityCache[cacheKey]);
+      return;
+    }
+    els.rsvAvailability.className = 'handy-rsv-check__status';
+    els.rsvAvailability.textContent = '空席状況を確認中...';
+    apiFetch('/store/reservations.php?action=availability&store_id=' + encodeURIComponent(_storeId) + '&date=' + encodeURIComponent(_rsvDate) + '&party_size=' + partySize)
+      .then(function (j) {
+        if (!j.ok) {
+          _rsvAvailabilitySelected = null;
+          els.rsvAvailability.className = 'handy-rsv-check__status handy-rsv-check__status--error';
+          els.rsvAvailability.textContent = apiErrorMsg(j);
+          updateReservationCreateAvailability();
+          return;
+        }
+        _rsvAvailabilityCache[cacheKey] = j.data;
+        renderReservationAvailability(j.data);
+      })
+      .catch(function (e) {
+        _rsvAvailabilitySelected = null;
+        els.rsvAvailability.className = 'handy-rsv-check__status handy-rsv-check__status--error';
+        els.rsvAvailability.textContent = '空席確認に失敗しました: ' + e.message;
+        updateReservationCreateAvailability();
+      });
+  }
+
+  function renderReservationAvailability(data) {
+    var selectedTime = els.rsvCheckTime ? String(els.rsvCheckTime.value || '').trim() : '';
+    var slots = (data && data.slots) ? data.slots : [];
+    var selected = null;
+    var nearby;
+    var html = '';
+    var i;
+
+    _rsvAvailabilitySelected = null;
+    for (i = 0; i < slots.length; i++) {
+      if (slots[i].time === selectedTime) {
+        selected = slots[i];
+        break;
+      }
+    }
+
+    if (!selectedTime) {
+      els.rsvAvailability.className = 'handy-rsv-check__status';
+      els.rsvAvailability.textContent = '時間を選ぶと空席状況を表示します';
+      updateReservationCreateAvailability();
+      return;
+    }
+
+    if (selected && selected.available) {
+      _rsvAvailabilitySelected = selected;
+      els.rsvAvailability.className = 'handy-rsv-check__status handy-rsv-check__status--ok';
+      html = '<strong>' + Utils.escapeHtml(selected.time) + ' は予約可能です。</strong>';
+      html += ' 残席目安 ' + Utils.escapeHtml(String(selected.remaining_capacity || 0)) + '席';
+      if (_formatSuggestedTables(selected)) {
+        html += '<div class="handy-rsv-check__times"><span class="handy-rsv-check__chip">候補テーブル: ' + Utils.escapeHtml(_formatSuggestedTables(selected)) + '</span></div>';
+      }
+      els.rsvAvailability.innerHTML = html;
+      updateReservationCreateAvailability();
+      return;
+    }
+
+    nearby = _findNearbyAvailableTimes(slots, selectedTime);
+    if (selected) {
+      html = '<strong>' + Utils.escapeHtml(selected.time) + ' は現在満席です。</strong>';
+    } else {
+      html = '<strong>この時間は予約枠外です。</strong> 営業時間内の30分刻みで確認してください。';
+    }
+    if (nearby.length) {
+      html += '<div class="handy-rsv-check__times">';
+      for (i = 0; i < nearby.length; i++) {
+        html += '<span class="handy-rsv-check__chip">' + Utils.escapeHtml(nearby[i].time) + '</span>';
+      }
+      html += '</div>';
+    }
+    els.rsvAvailability.className = 'handy-rsv-check__status handy-rsv-check__status--warn';
+    els.rsvAvailability.innerHTML = html;
+    updateReservationCreateAvailability();
+  }
+
+  function updateReservationCreateAvailability() {
+    if (!els.rsvCreateBtn) return;
+    if (els.rsvCreateBtn.getAttribute('data-busy') === '1') return;
+    if (_rsvAvailabilitySelected && _rsvAvailabilitySelected.available) {
+      els.rsvCreateBtn.disabled = false;
+      els.rsvCreateBtn.textContent = 'この日付で予約登録';
+      return;
+    }
+    els.rsvCreateBtn.disabled = true;
+    els.rsvCreateBtn.textContent = '空席条件を確認してください';
+  }
+
+  function resetReservationForm() {
+    if (els.rsvNewName) els.rsvNewName.value = '';
+    if (els.rsvNewPhone) els.rsvNewPhone.value = '';
+    if (els.rsvNewMemo) els.rsvNewMemo.value = '';
+    if (els.rsvCheckParty) els.rsvCheckParty.value = '2';
+    if (els.rsvNewParty) els.rsvNewParty.value = '2';
+    if (els.rsvNewTable) els.rsvNewTable.value = '';
+    if (els.rsvCheckTime) els.rsvCheckTime.value = _suggestReservationTime();
+    if (els.rsvNewTime) els.rsvNewTime.value = els.rsvCheckTime ? els.rsvCheckTime.value : _suggestReservationTime();
+    scheduleReservationAvailability();
+  }
+
+  function createReservationFromHandy() {
+    var name = els.rsvNewName ? String(els.rsvNewName.value || '').trim() : '';
+    var phone = els.rsvNewPhone ? String(els.rsvNewPhone.value || '').trim() : '';
+    var time = els.rsvNewTime ? String(els.rsvNewTime.value || '').trim() : '';
+    var memo = els.rsvNewMemo ? String(els.rsvNewMemo.value || '').trim() : '';
+    var tableId = els.rsvNewTable ? String(els.rsvNewTable.value || '').trim() : '';
+    var partySize = els.rsvNewParty ? parseInt(els.rsvNewParty.value, 10) : 0;
+    var reservedAt;
+    var body;
+
+    if (_guardOfflineOrStale()) return;
+    syncReservationFormToCheck();
+    if (!_rsvAvailabilitySelected || !_rsvAvailabilitySelected.available) { toast('先に空席を確認してください', 'error'); return; }
+    if (!name) { toast('お客様名を入力してください', 'error'); return; }
+    if (!phone) { toast('電話番号を入力してください', 'error'); return; }
+    if (!time) { toast('予約時間を入力してください', 'error'); return; }
+    if (!partySize || partySize < 1) { toast('人数を入力してください', 'error'); return; }
+
+    reservedAt = _rsvDate + ' ' + time + ':00';
+    body = {
+      store_id: _storeId,
+      customer_name: name,
+      customer_phone: phone,
+      party_size: partySize,
+      reserved_at: reservedAt,
+      source: 'phone',
+      status: 'confirmed',
+      memo: memo || null
+    };
+    if (tableId) body.assigned_table_ids = [tableId];
+
+    if (els.rsvCreateBtn) {
+      els.rsvCreateBtn.setAttribute('data-busy', '1');
+      els.rsvCreateBtn.disabled = true;
+      els.rsvCreateBtn.textContent = '登録中...';
+    }
+
+    apiPost('/store/reservations.php', body)
+      .then(function (j) {
+        if (!j.ok) {
+          toast(apiErrorMsg(j), 'error');
+          return;
+        }
+        toast('電話予約を登録しました', 'success');
+        _rsvAvailabilityCache = {};
+        resetReservationForm();
+        setReservationCreateOpen(false);
+        loadReservations();
+        loadTableStatus();
+      })
+      .catch(function (e) {
+        toast('通信エラー: ' + e.message, 'error');
+      })
+      .then(function () {
+        if (els.rsvCreateBtn) {
+          els.rsvCreateBtn.setAttribute('data-busy', '0');
+        }
+        updateReservationCreateAvailability();
+      });
   }
 
   function loadReservations() {
@@ -1304,8 +1633,10 @@ var HandyApp = (function () {
     apiFetch('/store/reservations.php?store_id=' + encodeURIComponent(_storeId) + '&date=' + encodeURIComponent(_rsvDate))
       .then(function (j) {
         if (!j.ok) { listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#c62828;">' + Utils.escapeHtml(apiErrorMsg(j)) + '</div>'; return; }
+        _rsvAvailabilityCache = {};
         _rsvData = j.data;
         renderReservations();
+        scheduleReservationAvailability();
         // 当日ぶんはテーブルバッジ用にも保存
         if (_rsvDate === ymdLocal(new Date())) {
           _todayReservationsByTable = {};

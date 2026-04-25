@@ -21,6 +21,7 @@ if (php_sapi_name() !== 'cli') {
     }
 }
 
+require_once __DIR__ . '/../config/app.php'; // REL-HOTFIX-20260423-SERVER-READY: POSLA_PHP_ERROR_LOG 定数を確実にロード
 require_once __DIR__ . '/../lib/db.php';
 $pdo = get_db();
 
@@ -31,7 +32,7 @@ try {
     $stmt->execute();
     $result['holds_purged'] = $stmt->rowCount();
 } catch (PDOException $e) {
-    error_log('[L-9][cleanup] purge_holds: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[L-9][cleanup] purge_holds: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 try {
@@ -46,7 +47,7 @@ try {
     $stmt->execute();
     $result['auto_no_show'] = $stmt->rowCount();
 } catch (PDOException $e) {
-    error_log('[L-9][cleanup] auto_no_show: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[L-9][cleanup] auto_no_show: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 if (php_sapi_name() === 'cli') {

@@ -124,11 +124,8 @@ $pdo->prepare(
      VALUES (?, ?, ?, ?, ?, ?, NOW())'
 )->execute([$subId, $sessionId, $storeId, $tableId, $subToken, $label]);
 
-// QR URL を生成
-$baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
-    . '://' . $_SERVER['HTTP_HOST'];
-$pathBase = preg_replace('#/api/.*$#', '', $_SERVER['REQUEST_URI']);
-$qrUrl = $baseUrl . $pathBase . '/public/customer/menu.html?store_id=' . urlencode($storeId)
+// 擬似本番では canonical URL を返す
+$qrUrl = app_url('/customer/menu.html') . '?store_id=' . urlencode($storeId)
     . '&table_id=' . urlencode($tableId) . '&sub_token=' . urlencode($subToken);
 
 json_response([

@@ -67,7 +67,7 @@ try {
     }
 } catch (PDOException $e) {
     // user_sessions テーブル未作成時はスキップ
-    error_log('[P1-12][api/auth/change-password.php:68] password_change_invalidate_others: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][api/auth/change-password.php:68] password_change_invalidate_others: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // 監査ログ記録

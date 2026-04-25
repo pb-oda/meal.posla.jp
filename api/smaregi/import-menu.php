@@ -197,7 +197,7 @@ if ($imported > 0) {
     try {
         $autoTranslate = translate_menu_core($pdo, $tenantId, $storeId, ['en'], false);
     } catch (\Exception $e) {
-        error_log('[P1-20][api/smaregi/import-menu.php] auto_translate_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-20][api/smaregi/import-menu.php] auto_translate_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         $autoTranslate = ['ok' => false, 'warning' => 'auto_translate_failed'];
     }
 }

@@ -30,7 +30,7 @@ try {
     }
 } catch (PDOException $e) {
     // カラム未存在時はスキップ
-    error_log('[P1-12][api/connect/status.php:31] check_tenant_stripe: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][api/connect/status.php:31] check_tenant_stripe: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // テナントの Connect 情報取得

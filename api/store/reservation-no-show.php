@@ -45,7 +45,7 @@ if ((int)$r['deposit_required'] === 1 && $r['deposit_payment_intent_id'] && $r['
         $pdo->prepare("UPDATE reservations SET deposit_status = 'captured' WHERE id = ?")->execute([$resId]);
     } else {
         $captureError = $cap['error'];
-        error_log('[L-9][no-show] capture_failed res=' . $resId . ' err=' . $cap['error'], 3, '/home/odah/log/php_errors.log');
+        error_log('[L-9][no-show] capture_failed res=' . $resId . ' err=' . $cap['error'], 3, POSLA_PHP_ERROR_LOG);
     }
 }
 

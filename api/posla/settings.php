@@ -12,6 +12,7 @@
  */
 
 require_once __DIR__ . '/auth-helper.php';
+require_once __DIR__ . '/admin-audit-helper.php';
 
 $admin = require_posla_admin();
 $method = require_method(['GET', 'PATCH']);
@@ -24,7 +25,7 @@ $pdo = get_db();
  *   - allowlist に明示列挙したキーのみ実値を返す（GET レスポンスに `*_value` を出力）
  *   - allowlist 漏れ = 機密扱い（{set, masked} のみ返却）= 安全側
  *   - 文字列推測（_secret/_key/_token サフィックス判定）は誤判定が起きるため廃止
- *     例: slack_webhook_url はどのサフィックスにも該当せず実値が漏れていた
+ *     例: google_chat_webhook_url / slack_webhook_url はどのサフィックスにも該当せず実値が漏れていた
  *
  * 各キー分類根拠:
  *   - stripe_price_*           : Stripe Price ID。UI で価格選択のため可視化必要
@@ -34,7 +35,7 @@ $pdo = get_db();
  *   - ops_notify_email         : 通知先メール（機密ではない運用設定）
  *   - gemini_temperature_*     : LLM パラメータ（数値、機密ではない）
  *
- * これ以外（slack_webhook_url, *_secret, *_key, *_token, monitor_cron_secret 等）
+ * これ以外（google_chat_webhook_url, slack_webhook_url, *_secret, *_key, *_token, monitor_cron_secret 等）
  * はすべて機密扱い。
  */
 function _public_setting_keys() {
@@ -89,18 +90,332 @@ function mask_api_key($key) {
     return '********';
 }
 
+function _setting_label_map() {
+    return [
+        'gemini_api_key' => 'Gemini APIキー',
+        'google_places_api_key' => 'Google Places APIキー',
+        'stripe_secret_key' => 'Stripe Secret Key',
+        'stripe_publishable_key' => 'Stripe Publishable Key',
+        'stripe_webhook_secret' => 'Stripe Webhook Secret',
+        'stripe_price_base' => 'Price ID: 基本料金',
+        'stripe_price_additional_store' => 'Price ID: 追加店舗',
+        'stripe_price_hq_broadcast' => 'Price ID: 本部一括配信',
+        'connect_application_fee_percent' => 'Application Fee (%)',
+        'smaregi_client_id' => 'スマレジ Client ID',
+        'smaregi_client_secret' => 'スマレジ Client Secret',
+        'google_chat_webhook_url' => 'Google Chat Webhook URL',
+        'ops_notify_email' => '運用通知メール',
+    ];
+}
+
+function _setting_label($key) {
+    $labels = _setting_label_map();
+    return $labels[$key] ?? $key;
+}
+
+function _build_audit_setting_value($key, $value) {
+    $isSet = !($value === null || $value === '');
+    $display = '未設定';
+
+    if ($isSet) {
+        if (_is_public_key($key)) {
+            $display = (string)$value;
+        } else {
+            $display = mask_api_key((string)$value) ?: '設定済み';
+        }
+    }
+
+    return [
+        'key' => $key,
+        'label' => _setting_label($key),
+        'is_secret' => _is_secret_key($key),
+        'is_set' => $isSet,
+        'display' => $display,
+    ];
+}
+
+function _fetch_current_settings_map(PDO $pdo): array {
+    $stmt = $pdo->prepare('SELECT setting_key, setting_value FROM posla_settings');
+    $stmt->execute();
+    $rows = $stmt->fetchAll();
+    $map = [];
+    $i = 0;
+
+    for ($i = 0; $i < count($rows); $i++) {
+        $map[$rows[$i]['setting_key']] = $rows[$i]['setting_value'];
+    }
+
+    return $map;
+}
+
+function _setting_is_present(array $settingsMap, string $key): bool {
+    return array_key_exists($key, $settingsMap) && $settingsMap[$key] !== null && $settingsMap[$key] !== '';
+}
+
+function _setting_value(array $settingsMap, string $key): string {
+    if (!_setting_is_present($settingsMap, $key)) {
+        return '';
+    }
+
+    return (string)$settingsMap[$key];
+}
+
+function _build_config_check(string $id, string $label, string $tone, string $summary, array $details): array {
+    return [
+        'id' => $id,
+        'label' => $label,
+        'tone' => $tone,
+        'summary' => $summary,
+        'details' => $details,
+    ];
+}
+
+function _detect_stripe_mode(string $secretKey, string $publishableKey): string {
+    $secretMode = '';
+    $publishableMode = '';
+
+    if (strpos($secretKey, 'sk_live_') === 0) {
+        $secretMode = 'live';
+    } elseif (strpos($secretKey, 'sk_test_') === 0) {
+        $secretMode = 'test';
+    }
+
+    if (strpos($publishableKey, 'pk_live_') === 0) {
+        $publishableMode = 'live';
+    } elseif (strpos($publishableKey, 'pk_test_') === 0) {
+        $publishableMode = 'test';
+    }
+
+    if ($secretMode !== '' && $publishableMode !== '' && $secretMode !== $publishableMode) {
+        return 'mismatch';
+    }
+
+    if ($secretMode !== '') {
+        return $secretMode;
+    }
+    if ($publishableMode !== '') {
+        return $publishableMode;
+    }
+
+    return '';
+}
+
+function _build_config_health(array $settingsMap): array {
+    $checks = [];
+    $overall = [
+        'ok_count' => 0,
+        'warn_count' => 0,
+        'danger_count' => 0,
+        'total_count' => 0,
+    ];
+
+    $geminiSet = _setting_is_present($settingsMap, 'gemini_api_key');
+    $placesSet = _setting_is_present($settingsMap, 'google_places_api_key');
+    $aiReadyCount = ($geminiSet ? 1 : 0) + ($placesSet ? 1 : 0);
+    $checks[] = _build_config_check(
+        'ai_maps',
+        'Gemini / Places',
+        ($aiReadyCount === 2 ? 'ok' : 'warn'),
+        $aiReadyCount . '/2 設定済み',
+        [
+            'Gemini APIキー: ' . ($geminiSet ? '設定済み' : '未設定'),
+            'Google Places APIキー: ' . ($placesSet ? '設定済み' : '未設定'),
+        ]
+    );
+
+    $stripeSecretSet = _setting_is_present($settingsMap, 'stripe_secret_key');
+    $stripePublishableSet = _setting_is_present($settingsMap, 'stripe_publishable_key');
+    $stripeWebhookSet = _setting_is_present($settingsMap, 'stripe_webhook_secret');
+    $stripePriceBaseSet = _setting_is_present($settingsMap, 'stripe_price_base');
+    $stripePriceAddSet = _setting_is_present($settingsMap, 'stripe_price_additional_store');
+    $stripePriceHqSet = _setting_is_present($settingsMap, 'stripe_price_hq_broadcast');
+    $connectFeeSet = _setting_is_present($settingsMap, 'connect_application_fee_percent');
+    $stripeReadyCount = ($stripeSecretSet ? 1 : 0) + ($stripePublishableSet ? 1 : 0) + ($stripeWebhookSet ? 1 : 0)
+        + ($stripePriceBaseSet ? 1 : 0) + ($stripePriceAddSet ? 1 : 0) + ($stripePriceHqSet ? 1 : 0) + ($connectFeeSet ? 1 : 0);
+    $stripeMode = _detect_stripe_mode(
+        _setting_value($settingsMap, 'stripe_secret_key'),
+        _setting_value($settingsMap, 'stripe_publishable_key')
+    );
+    $stripeTone = 'ok';
+    $stripeSummary = $stripeReadyCount . '/7 設定済み';
+
+    if ($stripeMode === 'mismatch') {
+        $stripeTone = 'danger';
+        $stripeSummary = 'test/live 不一致';
+    } elseif ($stripeReadyCount < 7) {
+        $stripeTone = 'warn';
+    }
+
+    $checks[] = _build_config_check(
+        'stripe_billing',
+        'Stripe Billing',
+        $stripeTone,
+        $stripeSummary,
+        [
+            'Secret Key: ' . ($stripeSecretSet ? '設定済み' : '未設定'),
+            'Publishable Key: ' . ($stripePublishableSet ? '設定済み' : '未設定'),
+            'Webhook Secret: ' . ($stripeWebhookSet ? '設定済み' : '未設定'),
+            'Price ID: ' . (($stripePriceBaseSet && $stripePriceAddSet && $stripePriceHqSet) ? '3/3 設定済み' : (($stripePriceBaseSet ? 1 : 0) + ($stripePriceAddSet ? 1 : 0) + ($stripePriceHqSet ? 1 : 0)) . '/3 設定済み'),
+            'Application Fee: ' . ($connectFeeSet ? '設定済み' : '未設定'),
+            'モード判定: ' . ($stripeMode === 'mismatch' ? '不一致' : ($stripeMode !== '' ? $stripeMode : '未判定')),
+        ]
+    );
+
+    $smaregiIdSet = _setting_is_present($settingsMap, 'smaregi_client_id');
+    $smaregiSecretSet = _setting_is_present($settingsMap, 'smaregi_client_secret');
+    $smaregiReadyCount = ($smaregiIdSet ? 1 : 0) + ($smaregiSecretSet ? 1 : 0);
+    $checks[] = _build_config_check(
+        'smaregi',
+        'スマレジ OAuth',
+        ($smaregiReadyCount === 2 ? 'ok' : 'warn'),
+        $smaregiReadyCount . '/2 設定済み',
+        [
+            'Client ID: ' . ($smaregiIdSet ? '設定済み' : '未設定'),
+            'Client Secret: ' . ($smaregiSecretSet ? '設定済み' : '未設定'),
+        ]
+    );
+
+    $googleChatSet = _setting_is_present($settingsMap, 'google_chat_webhook_url');
+    $opsMailSet = _setting_is_present($settingsMap, 'ops_notify_email');
+    $monitorSecretSet = _setting_is_present($settingsMap, 'monitor_cron_secret');
+    $heartbeat = _setting_value($settingsMap, 'monitor_last_heartbeat');
+    $heartbeatState = '未到達';
+    $monitorTone = 'ok';
+
+    if ($heartbeat !== '') {
+        $lag = time() - strtotime($heartbeat);
+        if ($lag > 900) {
+            $heartbeatState = '遅延 (' . (int)floor($lag / 60) . '分)';
+            $monitorTone = 'warn';
+        } else {
+            $heartbeatState = '正常';
+        }
+    } else {
+        $monitorTone = 'warn';
+    }
+
+    if (!$googleChatSet || !$opsMailSet || !$monitorSecretSet) {
+        $monitorTone = 'warn';
+    }
+
+    $checks[] = _build_config_check(
+        'monitoring',
+        '運用監視 / Google Chat',
+        $monitorTone,
+        (($googleChatSet ? 1 : 0) + ($opsMailSet ? 1 : 0) + ($monitorSecretSet ? 1 : 0)) . '/3 設定済み',
+        [
+            'Google Chat Webhook: ' . ($googleChatSet ? '設定済み' : '未設定'),
+            '運用通知メール: ' . ($opsMailSet ? '設定済み' : '未設定'),
+            'DB共有秘密: ' . ($monitorSecretSet ? '設定済み' : '未設定'),
+            'heartbeat: ' . $heartbeatState,
+        ]
+    );
+
+    $vapidPublicSet = _setting_is_present($settingsMap, 'web_push_vapid_public');
+    $vapidPrivateSet = _setting_is_present($settingsMap, 'web_push_vapid_private_pem');
+    $pwaReadyCount = ($vapidPublicSet ? 1 : 0) + ($vapidPrivateSet ? 1 : 0);
+    $checks[] = _build_config_check(
+        'pwa_push',
+        'PWA / Web Push',
+        ($pwaReadyCount === 2 ? 'ok' : 'warn'),
+        $pwaReadyCount . '/2 設定済み',
+        [
+            'VAPID 公開鍵: ' . ($vapidPublicSet ? '設定済み' : '未設定'),
+            'VAPID 秘密鍵: ' . ($vapidPrivateSet ? '設定済み' : '未設定'),
+        ]
+    );
+
+    $i = 0;
+    for ($i = 0; $i < count($checks); $i++) {
+        $overall['total_count']++;
+        if ($checks[$i]['tone'] === 'ok') {
+            $overall['ok_count']++;
+        } elseif ($checks[$i]['tone'] === 'danger') {
+            $overall['danger_count']++;
+        } else {
+            $overall['warn_count']++;
+        }
+    }
+
+    return [
+        'overall' => $overall,
+        'checks' => $checks,
+    ];
+}
+
+function _count_rows_or_default(PDO $pdo, string $sql, array $params = [], $default = 0)
+{
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return $default;
+    }
+}
+
+function _build_notification_center(PDO $pdo, array $settingsMap): array
+{
+    $googleChatSet = _setting_is_present($settingsMap, 'google_chat_webhook_url');
+    $slackSet = _setting_is_present($settingsMap, 'slack_webhook_url');
+    $opsMail = _setting_value($settingsMap, 'ops_notify_email');
+    $mailTransport = function_exists('mb_send_mail') ? 'mb_send_mail' : (function_exists('mail') ? 'mail' : 'none');
+    $vapidReady = _setting_is_present($settingsMap, 'web_push_vapid_public') && _setting_is_present($settingsMap, 'web_push_vapid_private_pem');
+    $pushEnabledCount = (int)_count_rows_or_default(
+        $pdo,
+        'SELECT COUNT(*) FROM push_subscriptions WHERE enabled = 1',
+        [],
+        0
+    );
+    $pushTest24h = (int)_count_rows_or_default(
+        $pdo,
+        "SELECT COUNT(*) FROM push_send_log WHERE type = 'push_test' AND sent_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)",
+        [],
+        0
+    );
+    $pushLastTestAt = _count_rows_or_default(
+        $pdo,
+        "SELECT MAX(sent_at) FROM push_send_log WHERE type = 'push_test'",
+        [],
+        null
+    );
+
+    return [
+        'google_chat' => [
+            'route' => $googleChatSet ? 'google_chat' : ($slackSet ? 'slack_legacy' : 'none'),
+            'available' => $googleChatSet || $slackSet,
+            'detail' => $googleChatSet ? 'Google Chat webhook を正系で使用' : ($slackSet ? 'Slack fallback を使用' : '通知先未設定'),
+        ],
+        'ops_mail' => [
+            'recipient' => $opsMail,
+            'transport' => $mailTransport,
+            'available' => ($opsMail !== '' && $mailTransport !== 'none'),
+        ],
+        'web_push' => [
+            'available' => $vapidReady,
+            'enabled_subscriptions' => $pushEnabledCount,
+            'push_test_24h' => $pushTest24h,
+            'last_push_test_at' => $pushLastTestAt,
+        ],
+        'monitor' => [
+            'heartbeat' => _setting_value($settingsMap, 'monitor_last_heartbeat'),
+        ],
+    ];
+}
+
 // ============================================================
 // GET — 設定取得
 // ============================================================
 if ($method === 'GET') {
-    $stmt = $pdo->prepare('SELECT setting_key, setting_value FROM posla_settings');
-    $stmt->execute();
-    $rows = $stmt->fetchAll();
+    $rows = [];
+    $settingsMap = _fetch_current_settings_map($pdo);
+    $keys = array_keys($settingsMap);
+    $i = 0;
 
     $settings = [];
-    foreach ($rows as $row) {
-        $key = $row['setting_key'];
-        $val = $row['setting_value'];
+    for ($i = 0; $i < count($keys); $i++) {
+        $key = $keys[$i];
+        $val = $settingsMap[$key];
         $isSet = ($val !== null && $val !== '');
 
         if (_is_public_key($key)) {
@@ -122,7 +437,18 @@ if ($method === 'GET') {
         }
     }
 
-    json_response(['settings' => $settings]);
+    $recentChanges = posla_admin_fetch_recent_audit_log($pdo, 20, 'posla_setting');
+    $auditSummary = posla_admin_build_audit_summary($recentChanges);
+    $configHealth = _build_config_health($settingsMap);
+    $notificationCenter = _build_notification_center($pdo, $settingsMap);
+
+    json_response([
+        'settings' => $settings,
+        'recent_changes' => $recentChanges,
+        'audit_summary' => $auditSummary,
+        'config_health' => $configHealth,
+        'notification_center' => $notificationCenter,
+    ]);
 }
 
 // ============================================================
@@ -132,8 +458,11 @@ if ($method === 'PATCH') {
     $input = get_json_body();
     // P1-35: α-1 化で stripe_price_standard/pro/enterprise → base/additional_store/hq_broadcast
     // 旧キーは posla_settings の row として温存（rollback 用）。allowedKeys からは削除して UI 編集経路を閉じる
-    $allowedKeys = ['gemini_api_key', 'google_places_api_key', 'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret', 'stripe_price_base', 'stripe_price_additional_store', 'stripe_price_hq_broadcast', 'connect_application_fee_percent', 'smaregi_client_id', 'smaregi_client_secret'];
+    $allowedKeys = ['gemini_api_key', 'google_places_api_key', 'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret', 'stripe_price_base', 'stripe_price_additional_store', 'stripe_price_hq_broadcast', 'connect_application_fee_percent', 'smaregi_client_id', 'smaregi_client_secret', 'google_chat_webhook_url', 'ops_notify_email'];
     $updated = 0;
+    $updatedKeys = [];
+    $currentSettings = _fetch_current_settings_map($pdo);
+    $batchId = generate_uuid();
 
     foreach ($allowedKeys as $key) {
         if (!array_key_exists($key, $input)) continue;
@@ -146,24 +475,50 @@ if ($method === 'PATCH') {
             continue;
         }
 
-        if ($val === null || $val === '') {
-            // 明示的な null（削除）または非機密項目の空文字（クリア）
-            $stmt = $pdo->prepare(
-                'UPDATE posla_settings SET setting_value = NULL WHERE setting_key = ?'
-            );
-            $stmt->execute([$key]);
-        } else {
-            $stmt = $pdo->prepare(
-                'UPDATE posla_settings SET setting_value = ? WHERE setting_key = ?'
-            );
-            $stmt->execute([$val, $key]);
+        // zero-tenant restore 後の current DB では posla_settings の行自体が欠落している
+        // ケースがあるため、UPDATE ではなく UPSERT で確実に保存する。
+        $currentVal = array_key_exists($key, $currentSettings) ? $currentSettings[$key] : null;
+        $storeVal = ($val === null || $val === '') ? null : $val;
+        if ((string)($currentVal ?? '') === (string)($storeVal ?? '')) {
+            continue;
         }
+        $stmt = $pdo->prepare(
+            'INSERT INTO posla_settings (setting_key, setting_value)
+             VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = CURRENT_TIMESTAMP'
+        );
+        $stmt->execute([$key, $storeVal]);
+
+        $action = 'settings_update';
+        if (($currentVal === null || $currentVal === '') && $storeVal !== null) {
+            $action = 'settings_create';
+        } elseif ($storeVal === null) {
+            $action = 'settings_clear';
+        }
+
+        posla_admin_write_audit_log(
+            $pdo,
+            $admin,
+            $action,
+            'posla_setting',
+            $key,
+            _build_audit_setting_value($key, $currentVal),
+            _build_audit_setting_value($key, $storeVal),
+            null,
+            $batchId
+        );
+
         $updated++;
+        $updatedKeys[] = $key;
     }
 
     if ($updated === 0) {
         json_error('NO_CHANGES', '更新項目がありません', 400);
     }
 
-    json_response(['message' => '設定を更新しました']);
+    json_response([
+        'message' => '設定を更新しました',
+        'updated_keys' => $updatedKeys,
+        'batch_id' => $batchId,
+    ]);
 }

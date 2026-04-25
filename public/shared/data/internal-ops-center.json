@@ -1,0 +1,207 @@
+{
+  "version": "2026-04-23",
+  "audience": "posla-admin",
+  "purpose": "non-AI read-only 運用補助センター (OPS-CENTER-P1-READONLY-20260423)",
+  "health_cards": [
+    {
+      "id": "hc-ping",
+      "title": "POSLA 稼働状態 (ping)",
+      "description": "`/api/monitor/ping.php` から ok / db 状態 / cron 最終 heartbeat / cron lag を読み取り。DB 接続失敗 or cron 15 分以上停止で ok:false",
+      "source": "api/monitor/ping.php"
+    },
+    {
+      "id": "hc-cron-threshold",
+      "title": "cron 遅延閾値",
+      "description": "cron_lag_sec > 900 (15 分) で警告。通常運用では 5 分 cron なので 600 秒前後で推移するのが正常。1500 秒超は要調査",
+      "source": "api/monitor/ping.php"
+    },
+    {
+      "id": "hc-db-status",
+      "title": "DB 接続",
+      "description": "ping が ok でも db が ng ならアプリ側のクエリは全滅。まず credentials rotation 直後かどうか確認 (§5.3.6 沈黙事故の典型)",
+      "source": "api/monitor/ping.php"
+    }
+  ],
+  "error_codes": [
+    {
+      "code": "SESSION_REVOKED",
+      "title": "POSLA管理者セッション失効",
+      "message": "posla_admin_sessions に該当 session_id が無い or is_active=0",
+      "action": "再ログイン。パスワード変更や他端末 logout 直後は正常。想定外なら posla_admin_sessions を DB 直叩きで確認",
+      "doc_link": "/docs-internal/internal/05-operations.html"
+    },
+    {
+      "code": "RATE_LIMITED",
+      "title": "リクエスト過多",
+      "message": "POSLA 管理者ログインは 10回/5分 の failure-only 制限",
+      "action": "5 分程度待機で自動解除。緊急時は `/tmp/posla_rate_limit/*.json` を削除",
+      "doc_link": "/docs-internal/internal/05-operations.html"
+    },
+    {
+      "code": "AI_NOT_CONFIGURED",
+      "title": "Gemini APIキー未設定",
+      "message": "posla_settings.gemini_api_key が空",
+      "action": "POSLA管理画面 > API設定タブで入力。影響は AIウェイター / 予約AI解析 / AIキッチン / SNS生成 / 翻訳 など現場 AI のみ",
+      "doc_link": "/docs-internal/internal/01-posla-admin.html"
+    },
+    {
+      "code": "FORBIDDEN_ORIGIN",
+      "title": "Origin / Host 検証失敗",
+      "message": "許可されていないドメインや Host からのリクエスト",
+      "action": "`POSLA_ALLOWED_ORIGINS` / `POSLA_ALLOWED_HOSTS` を現在の環境に合わせて確認",
+      "doc_link": "/docs-internal/internal/10-server-migration.html"
+    },
+    {
+      "code": "PIN_INVALID",
+      "title": "スタッフ PIN 不正",
+      "message": "会計操作の担当スタッフ PIN 認証失敗。5 回連続失敗で 10 分ロック",
+      "action": "正しい PIN を再入力 / マネージャーに PIN 再発行依頼。ロック中は `/tmp/posla_rate_limit/pin-*.json` 削除で即解除",
+      "doc_link": "/docs-tenant/tenant/08-cashier.html"
+    },
+    {
+      "code": "UNAUTHORIZED",
+      "title": "認証必須",
+      "message": "ログインが必要な API を未認証で呼び出した",
+      "action": "再ログイン。セッション timeout (30 分アイドル) や session_regenerate_id 直後のタイミング衝突も原因",
+      "doc_link": "/docs-internal/internal/05-operations.html"
+    }
+  ],
+  "flows": [
+    {
+      "id": "opf-login-failed",
+      "title": "テナントユーザーがログインできない",
+      "steps": [
+        "エラーメッセージ / コード (E3xxx or RATE_LIMITED) を確認",
+        "POSLA管理画面 > テナント管理で該当 tenant の is_active を確認",
+        "tenants.status = active / POSLA 側に is_active=1 ユーザーがいるか",
+        "5 分以内に 10 回失敗で RATE_LIMITED ロック (sandbox は /tmp/posla_rate_limit/*.json 削除で即解除)",
+        "パスワードリセットはテナント側 owner/manager から行ってもらう (POSLA 運営は直接 reset しない方針)"
+      ],
+      "doc_link": "/docs-internal/internal/06-troubleshoot.html"
+    },
+    {
+      "id": "opf-payment-failed",
+      "title": "決済できない (カード / 現金 / Stripe Terminal)",
+      "steps": [
+        "エラーコード (E6xxx) を確認",
+        "Stripe Dashboard で直近 charge attempt を検索",
+        "テナントの stripe_secret_key が live key か (test key なら live 不可)",
+        "Connect パターン (A/B/C) なら connect_onboarding_complete=1 と charges_enabled=true を確認",
+        "Stripe Terminal なら端末接続ランプ + PaymentIntent 作成ログ (api/store/terminal-intent.php)",
+        "解決不能なら Stripe 側の incident (status.stripe.com) を確認"
+      ],
+      "doc_link": "/docs-internal/internal/04-payment.html"
+    },
+    {
+      "id": "opf-cron-silent",
+      "title": "cron が動かない / silent に止まっている",
+      "steps": [
+        "ping で cron_lag_sec を確認 (>900 なら警告)",
+        "posla_settings.monitor_last_heartbeat の値を DB で直接確認",
+        "`tail -n 200 $POSLA_PHP_ERROR_LOG` で cron 側エラー有無",
+        "crontab の実行 user で `env | grep POSLA_` — `.htaccess` は CLI 読まれない (§5.3.5)",
+        "credentials rotation 直後なら web + cron 両 env の同時更新忘れ (§5.3.6 沈黙事故)",
+        "systemd EnvironmentFile / Sakura「環境変数一覧」側の設定確認"
+      ],
+      "doc_link": "/docs-internal/internal/05-operations.html"
+    },
+    {
+      "id": "opf-reservation-notify",
+      "title": "予約通知メールが届かない",
+      "steps": [
+        "reservations テーブルで該当予約の status / deposit_status を確認",
+        "reservation_notifications テーブルで送信ログ (sent_at / status / error_message)",
+        "mb_send_mail エラーを POSLA_PHP_ERROR_LOG で検索",
+        "LINE 通知も併用している場合は tenants.line_channel_access_token 有効期限切れを確認",
+        "SPF/DKIM が新ドメインで有効か (メールサービス側で確認)",
+        "手動再送: reservation-notify.php endpoint を owner dashboard から発火"
+      ],
+      "doc_link": "/docs-internal/internal/05-operations.html"
+    },
+    {
+      "id": "opf-migration-precheck",
+      "title": "新サーバ移行前の最終チェック",
+      "steps": [
+        "production-api-checklist §9-0 cutover 8 step overview を確認",
+        "env 13 種を `.htaccess` + cron env 両方で明示設定 (fallback 依存禁止)",
+        "§5.3.8 SQL 実行確認リストで schema health + 直近 migration 11 項目 + posla_settings 19 キー完全性",
+        "HTTPS 証明書 / X-Forwarded-Proto / SPF DKIM / uploads/menu 永続化 / /tmp 書込 の 5 項目",
+        "smoke test: /api/monitor/ping.php + /api/auth/me.php + /api/posla/me.php",
+        "DNS / SSL / Stripe webhook URL / smaregi redirect_uri を切替"
+      ],
+      "doc_link": "/docs-internal/internal/production-api-checklist.html"
+    }
+  ],
+  "doc_links": [
+    {
+      "id": "dl-operations",
+      "title": "internal/05-operations — 運用全般",
+      "summary": "技術スタック / サーバ構成 / APIキー管理 / env 管理 / 沈黙事故記録 / SEC-REL-HOTFIX 運用インパクト / SQL migration 実行確認",
+      "url": "/docs-internal/internal/05-operations.html"
+    },
+    {
+      "id": "dl-troubleshoot",
+      "title": "internal/06-troubleshoot — トラブル対応",
+      "summary": "テナント問い合わせ対応 / エラー番号引き / Webhook 障害 / DB 関連 / デプロイ後の真っ白画面 / Q&A 10 項目",
+      "url": "/docs-internal/internal/06-troubleshoot.html"
+    },
+    {
+      "id": "dl-error-catalog",
+      "title": "tenant/99-error-catalog — エラー全カタログ (263 件)",
+      "summary": "tenant 側にも公開している E コード全カタログ。POSLA 運営からも直引き可",
+      "url": "/docs-tenant/tenant/99-error-catalog.html"
+    },
+    {
+      "id": "dl-checklist",
+      "title": "production-api-checklist — 本番切替 canonical",
+      "summary": "§9-0 env canonical + cutover 8 step overview / §9-1〜9-4 手順 / スマレジ/Stripe/Gemini 設定チェック",
+      "url": "/docs-internal/internal/production-api-checklist.html"
+    },
+    {
+      "id": "dl-internal-index",
+      "title": "internal docs トップ",
+      "summary": "全 internal 章の入口。hero に新サーバ移行チェック導線あり",
+      "url": "/docs-internal/"
+    },
+    {
+      "id": "dl-posla-admin",
+      "title": "internal/01-posla-admin — POSLA管理画面リファレンス",
+      "summary": "POSLA管理者機能の全部。サポートセンター / 運用補助センター / API設定 / PWA/Push / テナント管理",
+      "url": "/docs-internal/internal/01-posla-admin.html"
+    }
+  ],
+  "checklist": [
+    {
+      "id": "cl-prep-incident",
+      "title": "対応前チェックリスト (テナントから問い合わせが来た時)",
+      "items": [
+        "テナント名 / スラッグ",
+        "該当店舗名 (複数店舗なら)",
+        "操作していたユーザー名 (role: owner / manager / staff / device)",
+        "発生時刻 (日時、できれば秒単位)",
+        "開いていた画面 / 押したボタン",
+        "表示されたエラーメッセージ (Exxxx コード)",
+        "画面キャプチャ / スクショ",
+        "再現性 (毎回 / 特定条件 / 1 回のみ)",
+        "影響範囲 (この 1 ユーザー / 店舗全体 / テナント全体)",
+        "rollback 要否の判断 (デプロイ直後か / 長期稼働中か)"
+      ]
+    },
+    {
+      "id": "cl-prep-migration",
+      "title": "対応前チェックリスト (本番切替前)",
+      "items": [
+        "env 13 種を .htaccess + cron env 両方に設定済",
+        "HTTPS 証明書が新ドメインで有効 (Let's Encrypt or 商用)",
+        "DB dump restore 済 + 直近 migration 11 項目適用済 (§5.3.8)",
+        "posla_settings 19 必須キー完全性確認 (§5.3.8 ③)",
+        "Stripe Webhook URL 新ドメイン対応 (signup / billing / reservation-deposit)",
+        "smaregi OAuth redirect_uri 新ドメイン登録",
+        "/tmp/posla_rate_limit/ が書込可",
+        "uploads/menu/ 永続化 volume 確保",
+        "mb_send_mail / SMTP 動作確認 (SPF/DKIM 含む)",
+        "smoke test 3 endpoint 200/401"
+      ]
+    }
+  ]
+}

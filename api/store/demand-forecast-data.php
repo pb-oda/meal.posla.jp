@@ -37,7 +37,7 @@ try {
         $drinkNames[$dr['name']] = true;
     }
 } catch (PDOException $e) {
-    error_log('[P1-12][demand-forecast-data.php:39] fetch_drink_names: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][demand-forecast-data.php:39] fetch_drink_names: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // ===== A: 直近7日間の品目別日別売上（ドリンク除外） =====
@@ -142,7 +142,7 @@ try {
         ];
     }
 } catch (PDOException $e) {
-    error_log('[P1-12][demand-forecast-data.php:142] fetch_inventory: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][demand-forecast-data.php:142] fetch_inventory: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // ===== D: レシピ（BOM）情報（try-catch: テーブル不存在対応） =====
@@ -169,7 +169,7 @@ try {
         ];
     }
 } catch (PDOException $e) {
-    error_log('[P1-12][demand-forecast-data.php:167] fetch_recipes: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][demand-forecast-data.php:167] fetch_recipes: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // ===== E: 本日の情報 =====
@@ -190,7 +190,7 @@ try {
     $storeRow = $stmt->fetch();
     $storeName = $storeRow ? ($storeRow['receipt_store_name'] ?: '') : '';
 } catch (PDOException $e) {
-    error_log('[P1-12][demand-forecast-data.php:186] fetch_store_name: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][demand-forecast-data.php:186] fetch_store_name: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 json_response([

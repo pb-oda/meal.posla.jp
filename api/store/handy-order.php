@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
             $pid = $tStmt->fetchColumn();
             if ($pid) { $patchIsPlan = true; $patchPlanId = $pid; }
         } catch (Exception $e) {
-            error_log('[S3#4][handy-order PATCH] plan_check: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            error_log('[S3#4][handy-order PATCH] plan_check: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
         $validated = validate_and_recompute_items($pdo, $storeId, $data['items'], $patchIsPlan, $patchPlanId);
         $fields[] = 'items = ?';
@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         $pdo->prepare('UPDATE orders SET ' . implode(', ', $fields) . ' WHERE id = ?')->execute($params);
     } catch (PDOException $e) {
         // S3 #11: 内部エラーメッセージはログのみ、レスポンスは固定文言
-        error_log('[handy-order PATCH] db_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[handy-order PATCH] db_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         json_error('DB_ERROR', '処理に失敗しました。時間を置いて再試行してください。', 500);
     }
 
@@ -170,7 +170,7 @@ if (!empty($itemIds)) {
         }
     } catch (PDOException $e) {
         // テーブル未作成時はスキップ
-        error_log('[P1-12][api/store/handy-order.php:153] check_template_soldout: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-12][api/store/handy-order.php:153] check_template_soldout: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 
     // 店舗限定メニューの品切れチェック
@@ -186,7 +186,7 @@ if (!empty($itemIds)) {
         }
     } catch (PDOException $e) {
         // テーブル未作成時はスキップ
-        error_log('[P1-12][api/store/handy-order.php:168] check_local_item_soldout: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-12][api/store/handy-order.php:168] check_local_item_soldout: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 
     if (!empty($soldOutNames)) {
@@ -211,7 +211,7 @@ if ($tableId) {
         $pid = $stmt->fetchColumn();
         if ($pid) { $isPlanSession = true; $activePlanId = $pid; }
     } catch (Exception $e) {
-        error_log('[S3#4][handy-order POST] plan_check: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[S3#4][handy-order POST] plan_check: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 }
 
@@ -247,7 +247,7 @@ try {
     ]);
 } catch (PDOException $e) {
     // S3 #11: 内部エラーメッセージはログのみ、レスポンスは固定文言
-    error_log('[handy-order POST] db_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[handy-order POST] db_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('DB_ERROR', '処理に失敗しました。時間を置いて再試行してください。', 500);
 }
 

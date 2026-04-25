@@ -39,6 +39,7 @@
 
   // ── 初期化 ──
   function init() {
+    if (window.__posla_support_preview && window.__posla_support_preview()) return;
     // URLからstore_id取得
     var params = new URLSearchParams(window.location.search);
     _storeId = params.get('store_id') || params.get('store');

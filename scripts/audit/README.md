@@ -20,6 +20,7 @@
 | `03-customer-surface.sh` | QR / PIN / session token rotation / HSTS | 低 |
 | `04-rate-limit.sh` | 各 endpoint の rate limit 発動確認 | 高（意図的に burst、本番注意） |
 | `05-static-scan.sh` | C-01/C-02/C-03 / php -l / 禁則 grep / hardcoded secret | 低（静的のみ） |
+| `06-pseudo-prod-release.sh` | 擬似本番 Docker (`127.0.0.1:8081`) のリリース前スモーク | 低 |
 
 ## 使い方
 
@@ -31,6 +32,7 @@ cd /Users/odahiroki/Desktop/matsunoya-mt/meal.posla.jp\(正\)/scripts/audit
 ./03-customer-surface.sh    # 顧客系（read-only）
 ./02-money-path.sh          # 金銭（DB SELECT 含む）
 ./04-rate-limit.sh          # rate-limit（本番に burst 注意）
+./06-pseudo-prod-release.sh # 擬似本番ローカルの出荷前確認
 ```
 
 ### CI 用

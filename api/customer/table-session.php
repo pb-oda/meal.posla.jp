@@ -67,7 +67,7 @@ try {
                     $autoSeated = $newSid;
                 } catch (Exception $e) {
                     $pdo->rollBack();
-                    error_log('[L-9][table-session] staff_open_seat_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+                    error_log('[L-9][table-session] staff_open_seat_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
                 }
             }
         } catch (PDOException $e) {
@@ -98,7 +98,7 @@ try {
                         $autoSeated = $newSid;
                     } catch (Exception $e) {
                         $pdo->rollBack();
-                        error_log('[L-9][table-session] reservation_match_seat_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+                        error_log('[L-9][table-session] reservation_match_seat_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
                     }
                 }
             } catch (PDOException $e) {
@@ -215,7 +215,7 @@ try {
     }
 } catch (Exception $e) {
     // table_sessions テーブルが未作成の場合はスキップ
-    error_log('[P1-12][customer/table-session.php:107] fetch_plan_data: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][customer/table-session.php:107] fetch_plan_data: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // アクティブなコースセッションを検索
@@ -287,7 +287,7 @@ try {
     }
 } catch (Exception $e) {
     // カラム未存在時（マイグレーション未適用）はスキップ
-    error_log('[P1-12][customer/table-session.php:178] fetch_welcome_message: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][customer/table-session.php:178] fetch_welcome_message: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // 平均提供時間（過去1時間）
@@ -307,7 +307,7 @@ try {
     }
 } catch (Exception $e) {
     // スキップ
-    error_log('[P1-12][customer/table-session.php:197] fetch_avg_wait_minutes: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][customer/table-session.php:197] fetch_avg_wait_minutes: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // F-QR1: サブセッション（個別QR）対応

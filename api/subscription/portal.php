@@ -35,9 +35,7 @@ if (!$tenant || !$tenant['stripe_customer_id']) {
 }
 
 // return URL構築
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host = $_SERVER['HTTP_HOST'];
-$returnUrl = $protocol . '://' . $host . '/public/admin/owner-dashboard.html';
+$returnUrl = app_url('/admin/owner-dashboard.html');
 
 // Portal Session 作成
 $portalResult = create_portal_session($secretKey, $tenant['stripe_customer_id'], $returnUrl);

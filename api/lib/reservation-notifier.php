@@ -74,7 +74,7 @@ if (!function_exists('_l9_log_notification')) {
                 $status === 'sent' ? date('Y-m-d H:i:s') : null,
             ));
         } catch (PDOException $e) {
-            error_log('[L-9][notifier] log_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            error_log('[L-9][notifier] log_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
     }
 }
@@ -340,7 +340,7 @@ if (!function_exists('send_reservation_notification')) {
             try {
                 _l9_send_reservation_line($pdo, $reservation, $type, $store, $tpl);
             } catch (Exception $e) {
-                error_log('[L-17 line_send] ' . $type . ': ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+                error_log('[L-17 line_send] ' . $type . ': ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
             }
         }
 
@@ -379,7 +379,7 @@ if (!function_exists('send_reservation_notification')) {
             try {
                 _l9_send_reservation_line($pdo, $reservation, $type, $store, $tpl);
             } catch (Exception $e) {
-                error_log('[L-17 line_send] ' . $type . ': ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+                error_log('[L-17 line_send] ' . $type . ': ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
             }
         }
 

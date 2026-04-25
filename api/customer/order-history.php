@@ -39,9 +39,21 @@ if ($tokenRow['session_token_expires_at'] && strtotime($tokenRow['session_token_
     json_error('INVALID_SESSION', 'このQRコードは無効です。スタッフにお声がけください。', 403);
 }
 
+// SELF-P1-4: guest_alias カラム存在チェック (migration-self-p1-4-guest-alias.sql)
+$hasGuestAliasCol = false;
+try {
+    $pdo->query('SELECT guest_alias FROM orders LIMIT 0');
+    $hasGuestAliasCol = true;
+} catch (PDOException $e) {}
+
+$selectCols = 'id, items, total_amount, created_at, status';
+if ($hasGuestAliasCol) {
+    $selectCols .= ', guest_alias';
+}
+
 // 同一セッションの注文を取得
 $stmt = $pdo->prepare(
-    "SELECT id, items, total_amount, created_at, status
+    "SELECT " . $selectCols . "
      FROM orders
      WHERE table_id = ? AND session_token = ? AND store_id = ?
        AND status != 'cancelled'
@@ -60,6 +72,8 @@ foreach ($rows as $row) {
         'total_amount' => (int) $row['total_amount'],
         'created_at'   => $row['created_at'],
         'status'       => $row['status'],
+        // SELF-P1-4: guest_alias (任意ゲスト名) — migration 未適用時は null
+        'guest_alias'  => $hasGuestAliasCol ? ($row['guest_alias'] ?? null) : null,
     ];
 }
 

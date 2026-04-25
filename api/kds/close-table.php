@@ -73,7 +73,7 @@ if ($tableId) {
         }
     } catch (PDOException $e) {
         // table_sessions/time_limit_plans 未作成時はスキップ
-        error_log('[P1-12][api/kds/close-table.php:74] fetch_session_plan: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-12][api/kds/close-table.php:74] fetch_session_plan: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 }
 
@@ -118,7 +118,7 @@ try {
             )->execute([$storeId, $tableId]);
         } catch (PDOException $e) {
             // table_sessions 未作成時はスキップ
-            error_log('[P1-12][api/kds/close-table.php:118] kds_close_mark_paid: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            error_log('[P1-12][api/kds/close-table.php:118] kds_close_mark_paid: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
     }
 
@@ -135,7 +135,7 @@ try {
 } catch (Exception $e) {
     $pdo->rollBack();
     // H-14: browser 応答から内部メッセージを排除、詳細は error_log にのみ残す
-    error_log('[H-14][api/kds/close-table.php] db_error: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[H-14][api/kds/close-table.php] db_error: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('DB_ERROR', '会計処理に失敗しました', 500);
 }
 

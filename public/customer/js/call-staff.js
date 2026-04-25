@@ -62,6 +62,7 @@ var CallStaff = (function () {
 
   // ── 初期化 ──
   function init() {
+    if (window.__posla_support_preview && window.__posla_support_preview()) return;
     var params = _getParams();
     _storeId = params.store_id || params.store || null;
     _tableId = params.table_id || params.table || null;

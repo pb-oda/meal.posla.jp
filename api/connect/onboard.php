@@ -43,10 +43,8 @@ $stateToken = bin2hex(random_bytes(16));
 $_SESSION['connect_state_' . $tenantId] = $stateToken;
 
 // URL構築
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host = $_SERVER['HTTP_HOST'];
-$refreshUrl = $protocol . '://' . $host . '/public/admin/owner-dashboard.html?connect=refresh';
-$returnUrl = $protocol . '://' . $host . '/api/connect/callback.php?tenant_id=' . urlencode($tenantId)
+$refreshUrl = app_url('/admin/owner-dashboard.html') . '?connect=refresh';
+$returnUrl = app_url('/api/connect/callback.php') . '?tenant_id=' . urlencode($tenantId)
     . '&state=' . urlencode($stateToken);
 
 if ($accountId) {

@@ -61,4 +61,10 @@ RUN { \
 # DocumentRoot は apache-vhost.conf でマウント上書きする（compose の volumes 参照）
 WORKDIR /var/www/html
 
+COPY cron-loop.sh /usr/local/bin/posla-cron-loop.sh
+COPY startup.sh /usr/local/bin/posla-startup.sh
+RUN chmod +x /usr/local/bin/posla-cron-loop.sh /usr/local/bin/posla-startup.sh
+
 EXPOSE 80
+
+CMD ["/usr/local/bin/posla-startup.sh"]

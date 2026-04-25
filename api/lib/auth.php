@@ -15,6 +15,26 @@
 require_once __DIR__ . '/response.php';
 
 /**
+ * SEC-HOTFIX-20260423-B: 現リクエストが HTTPS 経由か判定
+ * 本番は HTTPS のため true、localhost http 開発は false。
+ * 直接 TLS 終端 (HTTPS=on) と、リバースプロキシ (X-Forwarded-Proto=https) の両方に対応。
+ */
+function _is_https_request(): bool
+{
+    if (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') {
+        return true;
+    }
+    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])
+        && strtolower((string)$_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') {
+        return true;
+    }
+    if (!empty($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443) {
+        return true;
+    }
+    return false;
+}
+
+/**
  * セッション開始
  */
 function start_auth_session(): void
@@ -23,6 +43,7 @@ function start_auth_session(): void
         session_set_cookie_params([
             'lifetime' => 28800, // 8時間
             'path'     => '/',
+            'secure'   => _is_https_request(), // SEC-HOTFIX-20260423-B: HTTPS 時のみ secure 付与
             'httponly'  => true,
             'samesite' => 'Lax',
         ]);
@@ -216,7 +237,7 @@ function _check_session_validity(): void
         }
     } catch (Exception $e) {
         // DB接続エラー等は認証自体を阻害しない
-        error_log('[P1-12][api/lib/auth.php:216] session_last_active_update: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-12][api/lib/auth.php:216] session_last_active_update: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 }
 
@@ -324,7 +345,9 @@ function get_plan_features($pdo, $tenantId) {
  */
 function verify_origin(): void
 {
-    $allowedHosts = ['eat.posla.jp', 'meal.posla.jp'];
+    require_once __DIR__ . '/../config/app.php';
+
+    $allowedHosts = app_allowed_hosts();
 
     $origin  = $_SERVER['HTTP_ORIGIN']  ?? '';
     $referer = $_SERVER['HTTP_REFERER'] ?? '';

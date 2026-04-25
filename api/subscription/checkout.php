@@ -88,9 +88,7 @@ if (!$customerId) {
 }
 
 // success/cancel URL構築
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host = $_SERVER['HTTP_HOST'];
-$baseUrl = $protocol . '://' . $host . '/public/admin/owner-dashboard.html';
+$baseUrl = app_url('/admin/owner-dashboard.html');
 $successUrl = $baseUrl . '?subscription=success';
 $cancelUrl = $baseUrl . '?subscription=cancel';
 

@@ -105,7 +105,7 @@ if ($method === 'PATCH') {
         }
     } catch (PDOException $e) {
         // type カラムが無い場合は従来通り
-        error_log('[P1-12][api/kds/call-alerts.php:104] fetch_alert_info: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-12][api/kds/call-alerts.php:104] fetch_alert_info: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 
     try {
@@ -154,7 +154,7 @@ if ($method === 'PATCH') {
             }
         } catch (PDOException $e) {
             // order_items テーブル未作成時はスキップ
-            error_log('[P1-12][api/kds/call-alerts.php:152] kds_item_served_sync: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            error_log('[P1-12][api/kds/call-alerts.php:152] kds_item_served_sync: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
     }
 
@@ -192,7 +192,7 @@ if ($method === 'POST') {
         push_send_to_store($pdo, $storeId, 'call_alert', [
             'title' => 'キッチンから呼び出し',
             'body'  => $reason,
-            'url'   => '/public/handy/index.html',
+            'url'   => '/handy/index.html',
             'tag'   => 'kitchen_call_' . $alertId,
         ]);
     } catch (\Throwable $e) {

@@ -117,7 +117,7 @@ if ($orderItemId) {
         }
     } catch (PDOException $e) {
         // テーブル未作成 → INSERT で失敗する（下記 catch で処理）
-        error_log('[P1-12][api/customer/satisfaction-rating.php:65] check_existing_rating: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-12][api/customer/satisfaction-rating.php:65] check_existing_rating: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 }
 
@@ -198,7 +198,7 @@ function _notify_low_rating_if_needed($pdo, $rating, $storeId, $itemName, $reaso
         push_send_to_roles($pdo, $storeId, ['manager', 'owner'], 'low_rating', [
             'title' => '満足度: 低評価',
             'body'  => $body,
-            'url'   => '/public/admin/dashboard.html',
+            'url'   => '/admin/dashboard.html',
             'tag'   => 'low_rating_' . $ratingId,
         ]);
     } catch (\Throwable $e) {

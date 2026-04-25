@@ -16,6 +16,7 @@ require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/reservation-availability.php';
 require_once __DIR__ . '/../lib/reservation-notifier.php';
 require_once __DIR__ . '/../lib/reservation-deposit.php';
+require_once __DIR__ . '/../config/app.php';
 
 $method = require_method(['GET', 'POST', 'PATCH', 'DELETE']);
 $user = require_role('staff');
@@ -39,7 +40,27 @@ function _l9_validate_datetime($s) {
     return date('Y-m-d H:i:s', $ts);
 }
 function _l9_load_reservation($pdo, $resId, $storeId) {
-    $stmt = $pdo->prepare('SELECT * FROM reservations WHERE id = ? AND store_id = ?');
+    // RSV-P1-1: 予約詳細で顧客要約カードを出すため reservation_customers を LEFT JOIN。
+    // customer_id が null の予約は全カラム null になるだけで既存動作を壊さない (additive)
+    // hotfix: 同一 store / 同一 tenant の顧客だけマッチするよう JOIN 条件を seal
+    //   (reservation_customers schema: tenant_id / store_id 両 NOT NULL)
+    $stmt = $pdo->prepare(
+        'SELECT r.*,
+                rc.is_vip           AS c_is_vip,
+                rc.is_blacklisted   AS c_is_blacklisted,
+                rc.blacklist_reason AS c_blacklist_reason,
+                rc.allergies        AS c_allergies,
+                rc.preferences      AS c_preferences,
+                rc.internal_memo    AS c_internal_memo,
+                rc.tags             AS c_tags,
+                rc.visit_count      AS c_visit_count
+         FROM reservations r
+         LEFT JOIN reservation_customers rc
+                ON rc.id = r.customer_id
+               AND rc.store_id = r.store_id
+               AND rc.tenant_id = r.tenant_id
+         WHERE r.id = ? AND r.store_id = ?'
+    );
     $stmt->execute([$resId, $storeId]);
     $r = $stmt->fetch();
     if (!$r) json_error('RESERVATION_NOT_FOUND', '予約が見つかりません', 404);
@@ -83,6 +104,7 @@ function _l9_upsert_customer($pdo, $tenantId, $storeId, $name, $phone, $email) {
     return $cid;
 }
 function _l9_serialize_reservation($r) {
+    // RSV-P1-1: 顧客要約フィールドを additive に追加 (LEFT JOIN の結果、customer_id 未設定なら全て null)
     return [
         'id' => $r['id'],
         'tenant_id' => $r['tenant_id'],
@@ -113,6 +135,15 @@ function _l9_serialize_reservation($r) {
         'confirmed_at' => $r['confirmed_at'],
         'seated_at' => $r['seated_at'],
         'cancelled_at' => $r['cancelled_at'],
+        // RSV-P1-1: 顧客要約 (reservation_customers から LEFT JOIN、未 JOIN 時は全て null)
+        'customer_is_vip'           => array_key_exists('c_is_vip', $r) && $r['c_is_vip'] !== null ? (int)$r['c_is_vip'] : null,
+        'customer_is_blacklisted'   => array_key_exists('c_is_blacklisted', $r) && $r['c_is_blacklisted'] !== null ? (int)$r['c_is_blacklisted'] : null,
+        'customer_blacklist_reason' => array_key_exists('c_blacklist_reason', $r) ? $r['c_blacklist_reason'] : null,
+        'customer_allergies'        => array_key_exists('c_allergies', $r) ? $r['c_allergies'] : null,
+        'customer_preferences'      => array_key_exists('c_preferences', $r) ? $r['c_preferences'] : null,
+        'customer_internal_memo'    => array_key_exists('c_internal_memo', $r) ? $r['c_internal_memo'] : null,
+        'customer_tags'             => array_key_exists('c_tags', $r) ? $r['c_tags'] : null,
+        'customer_visit_count'      => array_key_exists('c_visit_count', $r) && $r['c_visit_count'] !== null ? (int)$r['c_visit_count'] : null,
     ];
 }
 
@@ -121,6 +152,34 @@ if ($method === 'GET') {
     $storeId = isset($_GET['store_id']) ? trim($_GET['store_id']) : '';
     if (!$storeId) json_error('MISSING_STORE', 'store_id が必要です', 400);
     require_store_access($storeId);
+
+    if (isset($_GET['action']) && $_GET['action'] === 'availability') {
+        $date = isset($_GET['date']) ? trim((string)$_GET['date']) : date('Y-m-d');
+        $partySize = isset($_GET['party_size']) ? max(1, (int)$_GET['party_size']) : 2;
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            json_error('INVALID_DATE', '日付形式が不正です', 400);
+        }
+
+        $settings = get_reservation_settings($pdo, $storeId);
+        if ($partySize < (int)$settings['min_party_size']) json_error('INVALID_PARTY_SIZE', '人数が下限未満です', 400);
+        if ($partySize > (int)$settings['max_party_size']) json_error('INVALID_PARTY_SIZE', '人数が上限超過です', 400);
+
+        purge_expired_holds($pdo, $storeId);
+        $slots = compute_slot_availability($pdo, $storeId, $date, $partySize);
+        json_response([
+            'date' => $date,
+            'party_size' => $partySize,
+            'slots' => $slots,
+            'settings' => [
+                'open_time' => substr($settings['open_time'], 0, 5),
+                'close_time' => substr($settings['close_time'], 0, 5),
+                'slot_interval_min' => (int)$settings['slot_interval_min'],
+                'default_duration_min' => (int)$settings['default_duration_min'],
+                'min_party_size' => (int)$settings['min_party_size'],
+                'max_party_size' => (int)$settings['max_party_size'],
+            ],
+        ]);
+    }
 
     // 単一取得
     if (!empty($_GET['id'])) {
@@ -136,10 +195,26 @@ if ($method === 'GET') {
     $fromDt = $from . ' 00:00:00';
     $toDt = date('Y-m-d 23:59:59', strtotime($to));
 
+    // RSV-P1-1: 顧客要約フィールドを additive に取得 (LEFT JOIN、customer_id 未設定は null)
+    // hotfix: JOIN 条件に store_id / tenant_id を追加してマルチテナント境界を seal
     $stmt = $pdo->prepare(
-        "SELECT * FROM reservations WHERE store_id = ?
-         AND reserved_at >= ? AND reserved_at <= ?
-         ORDER BY reserved_at ASC"
+        "SELECT r.*,
+                rc.is_vip           AS c_is_vip,
+                rc.is_blacklisted   AS c_is_blacklisted,
+                rc.blacklist_reason AS c_blacklist_reason,
+                rc.allergies        AS c_allergies,
+                rc.preferences      AS c_preferences,
+                rc.internal_memo    AS c_internal_memo,
+                rc.tags             AS c_tags,
+                rc.visit_count      AS c_visit_count
+         FROM reservations r
+         LEFT JOIN reservation_customers rc
+                ON rc.id = r.customer_id
+               AND rc.store_id = r.store_id
+               AND rc.tenant_id = r.tenant_id
+         WHERE r.store_id = ?
+           AND r.reserved_at >= ? AND r.reserved_at <= ?
+         ORDER BY r.reserved_at ASC"
     );
     $stmt->execute([$storeId, $fromDt, $toDt]);
     $list = [];
@@ -153,14 +228,32 @@ if ($method === 'GET') {
     // 設定
     $settings = get_reservation_settings($pdo, $storeId);
 
-    // サマリー
-    $summary = ['total' => count($list), 'confirmed' => 0, 'seated' => 0, 'no_show' => 0, 'cancelled_today' => 0, 'walk_in' => 0, 'guests' => 0];
+    // サマリー (RSV-P1-2: waitlisted 集計を追加 / RSV-P1-1: 注目客集計を追加)
+    $summary = [
+        'total' => count($list), 'confirmed' => 0, 'seated' => 0, 'no_show' => 0,
+        'cancelled_today' => 0, 'walk_in' => 0, 'waitlisted' => 0, 'guests' => 0,
+        // RSV-P1-1: 今日の注目客 (attention = VIP or blacklist or allergies or internal_memo)
+        'attention_total' => 0, 'vip' => 0, 'blacklist' => 0, 'allergy' => 0, 'memo' => 0,
+    ];
     foreach ($list as $r) {
         if ($r['status'] === 'confirmed' || $r['status'] === 'pending') $summary['confirmed']++;
         if ($r['status'] === 'seated') $summary['seated']++;
         if ($r['status'] === 'no_show') $summary['no_show']++;
+        if ($r['status'] === 'waitlisted') $summary['waitlisted']++;
         if ($r['source'] === 'walk_in') $summary['walk_in']++;
         if ($r['status'] !== 'cancelled' && $r['status'] !== 'no_show') $summary['guests'] += $r['party_size'];
+        // RSV-P1-1: 注目客フラグ集計 (cancel/no_show は除外)
+        if ($r['status'] !== 'cancelled' && $r['status'] !== 'no_show') {
+            $isVip       = (int)($r['customer_is_vip'] ?? 0) === 1;
+            $isBlack     = (int)($r['customer_is_blacklisted'] ?? 0) === 1;
+            $hasAllergy  = !empty($r['customer_allergies']);
+            $hasMemo     = !empty($r['customer_internal_memo']);
+            if ($isVip) $summary['vip']++;
+            if ($isBlack) $summary['blacklist']++;
+            if ($hasAllergy) $summary['allergy']++;
+            if ($hasMemo) $summary['memo']++;
+            if ($isVip || $isBlack || $hasAllergy || $hasMemo) $summary['attention_total']++;
+        }
     }
 
     json_response([
@@ -220,7 +313,8 @@ if ($method === 'POST') {
     $memo = isset($body['memo']) ? (string)$body['memo'] : null;
     $tags = isset($body['tags']) ? (string)$body['tags'] : null;
     $language = isset($body['language']) ? (string)$body['language'] : 'ja';
-    $status = isset($body['status']) && in_array($body['status'], ['pending','confirmed','seated','no_show','cancelled','completed'], true) ? $body['status'] : 'confirmed';
+    // RSV-P1-2: 'waitlisted' を追加 (受付待ち客用)
+    $status = isset($body['status']) && in_array($body['status'], ['pending','confirmed','seated','no_show','cancelled','completed','waitlisted'], true) ? $body['status'] : 'confirmed';
 
     // 顧客台帳更新
     $customerId = _l9_upsert_customer($pdo, $store['tenant_id'], $storeId, $name, $phone, $email);
@@ -269,7 +363,7 @@ if ($method === 'POST') {
 
     // 通知 (メールがあれば確認メール送信)
     if ($r['customer_email']) {
-        $editUrl = 'https://eat.posla.jp/public/customer/reserve-detail.html?id=' . urlencode($resId) . '&t=' . urlencode($editToken);
+        $editUrl = app_url('/customer/reserve-detail.html') . '?id=' . urlencode($resId) . '&t=' . urlencode($editToken);
         send_reservation_notification($pdo, $r, 'confirm', ['edit_url' => $editUrl]);
     }
 
@@ -320,10 +414,12 @@ if ($method === 'PATCH') {
         if ($tids) _l9_assert_table_ids_capacity($pdo, $storeId, $tids, $checkPS);
         $sets[] = 'assigned_table_ids = ?'; $params[] = $tids ? json_encode($tids, JSON_UNESCAPED_UNICODE) : null;
     }
-    if (isset($body['status']) && in_array($body['status'], ['pending','confirmed','seated','no_show','cancelled','completed'], true)) {
+    // RSV-P1-2: 'waitlisted' を追加 (受付待ち客用)。waitlisted → seated 変換時は seated_at も埋める
+    if (isset($body['status']) && in_array($body['status'], ['pending','confirmed','seated','no_show','cancelled','completed','waitlisted'], true)) {
         $sets[] = 'status = ?'; $params[] = $body['status'];
         if ($body['status'] === 'cancelled') { $sets[] = 'cancelled_at = NOW()'; }
         if ($body['status'] === 'completed') { /* completed_at もあれば追加 */ }
+        if ($body['status'] === 'seated') { $sets[] = 'seated_at = COALESCE(seated_at, NOW())'; }
     }
 
     if (empty($sets)) json_error('NO_FIELDS', '変更する項目がありません', 400);

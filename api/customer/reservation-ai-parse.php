@@ -39,7 +39,7 @@ try {
     $row = $kStmt->fetch();
     if ($row) $key = $row['setting_value'];
 } catch (PDOException $e) {
-    error_log('[L-9][ai] key_load_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[L-9][ai] key_load_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 if (!$key) json_error('AI_NOT_CONFIGURED', 'AI機能が設定されていません', 503);
 
@@ -66,7 +66,7 @@ $err = curl_error($ch);
 curl_close($ch);
 
 if ($err || $code >= 400) {
-    error_log('[L-9][ai] gemini_error code=' . $code . ' err=' . $err . ' body=' . substr((string)$resp, 0, 300), 3, '/home/odah/log/php_errors.log');
+    error_log('[L-9][ai] gemini_error code=' . $code . ' err=' . $err . ' body=' . substr((string)$resp, 0, 300), 3, POSLA_PHP_ERROR_LOG);
     json_error('AI_FAILED', 'AIの応答に失敗しました', 503);
 }
 $data = json_decode($resp, true);

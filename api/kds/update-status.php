@@ -122,7 +122,7 @@ if (in_array($oiStatus, ['pending', 'preparing', 'ready', 'served', 'cancelled']
                 }
             } catch (PDOException $e) {
                 // call_alerts に type カラムがない場合は無視
-                error_log('[P1-12][api/kds/update-status.php:123] kds_product_ready_notify: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+                error_log('[P1-12][api/kds/update-status.php:123] kds_product_ready_notify: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
             }
         }
     } catch (PDOException $e) {

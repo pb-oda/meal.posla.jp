@@ -61,11 +61,8 @@ $pdo->prepare(
     $expiresHours
 ]);
 
-// セットアップURL生成
-$baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
-    . '://' . $_SERVER['HTTP_HOST'];
-$pathBase = preg_replace('#/api/.*$#', '', $_SERVER['REQUEST_URI']);
-$setupUrl = $baseUrl . $pathBase . '/public/admin/device-setup.html?token=' . urlencode($plainToken);
+// 擬似本番では canonical URL を返す
+$setupUrl = app_url('/admin/device-setup.html') . '?token=' . urlencode($plainToken);
 
 json_response([
     'token'       => $plainToken,

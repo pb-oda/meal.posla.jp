@@ -76,9 +76,17 @@
       MenuTemplateEditor.init(document.getElementById('hq-menu-template-list'));
     }
 
-    // デフォルトタブ表示
-    activateTab('cross-store');
-    var firstBtn = document.querySelector('.tab-nav__btn[data-tab="cross-store"]');
+    // UI-P1-2d: localStorage で最後に開いていたタブを復元 (manager dashboard と同じ挙動)
+    var OWNER_LAST_TAB_KEY = 'posla_owner_last_tab';
+    var VALID_TABS = ['cross-store','abc-analytics','shift-overview','hq-menu','stores','users','ai-assistant','subscription','payment','external-pos'];
+    var savedTab = 'cross-store';
+    try {
+      var v = localStorage.getItem(OWNER_LAST_TAB_KEY);
+      if (v && VALID_TABS.indexOf(v) !== -1) savedTab = v;
+    } catch (e) { /* localStorage 無効環境はデフォルト */ }
+
+    activateTab(savedTab);
+    var firstBtn = document.querySelector('.tab-nav__btn[data-tab="' + savedTab + '"]');
     if (firstBtn) firstBtn.classList.add('active');
 
     // イベント委譲・ボタン設定
@@ -91,6 +99,7 @@
       showToast('契約が完了しました', 'success');
       history.replaceState(null, '', window.location.pathname);
       activateTab('subscription');
+      try { localStorage.setItem('posla_owner_last_tab', 'subscription'); } catch (e3) {}
       var subBtn = document.querySelector('.tab-nav__btn[data-tab="subscription"]');
       if (subBtn) {
         tabNav.querySelectorAll('.tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
@@ -107,6 +116,7 @@
       showToast('Stripe Connectの登録が完了しました', 'success');
       history.replaceState(null, '', window.location.pathname);
       activateTab('payment');
+      try { localStorage.setItem('posla_owner_last_tab', 'payment'); } catch (e4) {}
       var payBtn = document.querySelector('.tab-nav__btn[data-tab="payment"]');
       if (payBtn) {
         tabNav.querySelectorAll('.tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
@@ -126,6 +136,7 @@
       showToast('スマレジ連携が完了しました', 'success');
       history.replaceState(null, '', window.location.pathname);
       activateTab('external-pos');
+      try { localStorage.setItem('posla_owner_last_tab', 'external-pos'); } catch (e5) {}
       var epBtn = document.querySelector('.tab-nav__btn[data-tab="external-pos"]');
       if (epBtn) {
         tabNav.querySelectorAll('.tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
@@ -136,6 +147,7 @@
       showToast(smaregiMsg, 'error');
       history.replaceState(null, '', window.location.pathname);
       activateTab('external-pos');
+      try { localStorage.setItem('posla_owner_last_tab', 'external-pos'); } catch (e6) {}
       var epBtn2 = document.querySelector('.tab-nav__btn[data-tab="external-pos"]');
       if (epBtn2) {
         tabNav.querySelectorAll('.tab-nav__btn').forEach(function (b) { b.classList.remove('active'); });
@@ -178,6 +190,8 @@
       });
       btn.classList.add('active');
       activateTab(btn.dataset.tab);
+      // UI-P1-2d: リロード時に同じタブを復元するため localStorage に保存
+      try { localStorage.setItem('posla_owner_last_tab', btn.dataset.tab); } catch (e2) { /* noop */ }
     });
   }
 
@@ -443,8 +457,8 @@
       ' / 承認 ' + (helpSummary.total_approved || 0) + '</span>' +
       '</div>';
 
-    // 店舗カード
-    html += '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:1.5rem;">';
+    // 店舗カード (UI-P1-2d: flex → grid に変更。全カード均等幅で並ぶ)
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px;margin-bottom:1.5rem;">';
     var maxCost = 0;
     for (var m = 0; m < stores.length; m++) {
       if (stores[m].labor_cost_total > maxCost) maxCost = stores[m].labor_cost_total;
@@ -454,7 +468,7 @@
       var s = stores[i];
       var helpCount = s.help_sent_pending + s.help_received_pending;
       html += '<div class="card unified-store-card" data-store-id="' + _escHtml(s.store_id) + '" ' +
-        'style="flex:1;min-width:220px;max-width:320px;padding:16px;cursor:pointer;border:1px solid #ddd;border-radius:8px;">' +
+        'style="padding:16px;cursor:pointer;border:1px solid #e0e3eb;border-radius:8px;background:#fff;">' +
         '<h4 style="margin:0 0 8px;font-size:1rem;">' + _escHtml(s.store_name) + '</h4>' +
         '<div style="font-size:0.85rem;color:#555;">' +
         '<div>出勤: <strong>' + s.total_staff_count + '人</strong> / ' + s.total_hours + 'h</div>' +
@@ -494,20 +508,22 @@
       html += '</tbody></table>';
     }
 
-    // 人件費比較バー
+    // 人件費比較バー (UI-P1-2d 視覚強化: card 化 + 余白整理)
     if (stores.length > 0 && maxCost > 0) {
-      html += '<h4 style="margin:0 0 0.5rem;">人件費比較</h4>';
+      html += '<div class="card" style="padding:16px 20px;margin-bottom:1.5rem;border:1px solid #e0e3eb;border-radius:8px;background:#fff;max-width:900px;">';
+      html += '<h4 style="margin:0 0 0.75rem;font-size:0.95rem;color:#37474f;">人件費比較</h4>';
       for (var b = 0; b < stores.length; b++) {
         var sb = stores[b];
         var barWidth = maxCost > 0 ? Math.round((sb.labor_cost_total / maxCost) * 100) : 0;
-        html += '<div style="margin-bottom:6px;display:flex;align-items:center;gap:8px;">' +
-          '<span style="width:100px;font-size:0.85rem;flex-shrink:0;">' + _escHtml(sb.store_name) + '</span>' +
-          '<div style="flex:1;background:#eee;border-radius:4px;height:20px;overflow:hidden;">' +
-          '<div style="width:' + barWidth + '%;background:#1565c0;height:100%;border-radius:4px;"></div>' +
+        html += '<div style="margin-bottom:8px;display:flex;align-items:center;gap:12px;">' +
+          '<span style="width:130px;font-size:0.82rem;color:#455a64;flex-shrink:0;">' + _escHtml(sb.store_name) + '</span>' +
+          '<div style="flex:1;background:#eef2f7;border-radius:4px;height:14px;overflow:hidden;min-width:0;">' +
+          '<div style="width:' + barWidth + '%;background:linear-gradient(90deg,#3f51b5,#1976d2);height:100%;border-radius:4px;"></div>' +
           '</div>' +
-          '<span style="font-size:0.85rem;min-width:80px;text-align:right;">¥' + (sb.labor_cost_total || 0).toLocaleString() + '</span>' +
+          '<span style="font-size:0.85rem;min-width:90px;text-align:right;font-weight:600;color:#263238;">¥' + (sb.labor_cost_total || 0).toLocaleString() + '</span>' +
           '</div>';
       }
+      html += '</div>';
     }
 
     html += '</div>';
@@ -983,7 +999,9 @@
         + '<span style="color:#e65100;font-weight:600;">&#9888; オンボーディング未完了です</span><br>'
         + '<span style="font-size:0.85rem;color:#555;">Stripeへの情報登録を完了してください。</span>'
         + '</div>'
-        + '<button class="btn btn-primary" id="btn-connect-resume" style="margin-top:0.5rem;">オンボーディングを再開</button>';
+        + '<button class="btn btn-primary" id="btn-connect-resume" style="margin-top:0.5rem;">オンボーディングを再開</button>'
+        + '<button class="btn btn-secondary" id="connect-disconnect-btn" style="margin-top:0.5rem;margin-left:0.5rem;">Stripe Connectを解除</button>'
+        + '<div style="font-size:0.75rem;color:#888;margin-top:0.25rem;">登録途中でも Stripe Connect の連携情報を破棄できます。Stripeダッシュボード上のアカウント自体は残るため、再接続も可能です。</div>';
     } else {
       // パターンA: 未登録
       if (hasOwnGateway) {

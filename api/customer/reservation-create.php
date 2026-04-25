@@ -22,6 +22,7 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
 require_once __DIR__ . '/../lib/reservation-availability.php';
 require_once __DIR__ . '/../lib/reservation-deposit.php';
+require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../lib/reservation-notifier.php';
 
 require_method(['POST']);
@@ -210,14 +211,14 @@ try {
     if ($pdo->inTransaction()) $pdo->rollBack();
     // S3 #7: 複合 UNIQUE 制約 (store_id, reserved_at, customer_phone) 衝突は SLOT_FULL で返す
     if ($e->getCode() === '23000') {
-        error_log('[S3#7][reservation-create] duplicate_unique store=' . $storeId . ' phone=' . $phone . ' at=' . $reservedAt, 3, '/home/odah/log/php_errors.log');
+        error_log('[S3#7][reservation-create] duplicate_unique store=' . $storeId . ' phone=' . $phone . ' at=' . $reservedAt, 3, POSLA_PHP_ERROR_LOG);
         json_error('SLOT_FULL', 'お選びの時間は同一の予約が既に登録されています', 409);
     }
-    error_log('[S3#7][reservation-create] tx_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[S3#7][reservation-create] tx_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('DB_ERROR', '予約の登録に失敗しました', 500);
 } catch (Exception $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    error_log('[S3#7][reservation-create] tx_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[S3#7][reservation-create] tx_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('DB_ERROR', '予約の登録に失敗しました', 500);
 }
 
@@ -231,12 +232,12 @@ $response = [
     'status' => $status,
     'deposit_required' => $depositRequired,
     'deposit_amount' => $depositAmount,
-    'edit_url' => 'https://eat.posla.jp/public/customer/reserve-detail.html?id=' . urlencode($resId) . '&t=' . urlencode($editToken),
+    'edit_url' => app_url('/customer/reserve-detail.html') . '?id=' . urlencode($resId) . '&t=' . urlencode($editToken),
 ];
 
 // デポジット必要なら Checkout URL を生成
 if ($depositRequired === 1) {
-    $base = 'https://eat.posla.jp/public/customer/reserve-detail.html';
+    $base = app_url('/customer/reserve-detail.html');
     $successUrl = $base . '?id=' . urlencode($resId) . '&t=' . urlencode($editToken) . '&deposit=success';
     $cancelUrl = $base . '?id=' . urlencode($resId) . '&t=' . urlencode($editToken) . '&deposit=cancel';
     $checkout = reservation_deposit_create_checkout($pdo, $r, $store, $depositAmount, $successUrl, $cancelUrl);

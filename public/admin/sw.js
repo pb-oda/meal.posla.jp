@@ -71,10 +71,10 @@
     var title = (payload && payload.title) ? String(payload.title) : 'POSLA 通知';
     var options = {
       body: (payload && payload.body) ? String(payload.body) : '',
-      icon: (payload && payload.icon) ? String(payload.icon) : '/public/admin/icons/icon-192.png',
-      badge: (payload && payload.badge) ? String(payload.badge) : '/public/admin/icons/icon-192.png',
+      icon: (payload && payload.icon) ? String(payload.icon) : '/admin/icons/icon-192.png',
+      badge: (payload && payload.badge) ? String(payload.badge) : '/admin/icons/icon-192.png',
       tag: (payload && payload.tag) ? String(payload.tag) : 'posla-admin',
-      data: { url: (payload && payload.url) ? String(payload.url) : '/public/admin/dashboard.html' },
+      data: { url: (payload && payload.url) ? String(payload.url) : '/admin/dashboard.html' },
       requireInteraction: false
     };
     event.waitUntil(self.registration.showNotification(title, options));
@@ -84,12 +84,13 @@
   //   data.url は同一 origin かつ /public/admin/ 配下のみ許可 (customer や外部 URL に飛ばない)
   self.addEventListener('notificationclick', function (event) {
     event.notification.close();
-    var rawUrl = (event.notification.data && event.notification.data.url) || '/public/admin/dashboard.html';
-    var targetUrl = '/public/admin/dashboard.html';
+    var rawUrl = (event.notification.data && event.notification.data.url) || '/admin/dashboard.html';
+    var targetUrl = '/admin/dashboard.html';
     try {
       var u = new URL(rawUrl, self.location.origin);
       if (u.origin === self.location.origin
-          && u.pathname.indexOf('/public/admin/') === 0
+          && (u.pathname.indexOf('/admin/') === 0 || u.pathname.indexOf('/public/admin/') === 0)
+          && u.pathname.indexOf('/customer/') === -1
           && u.pathname.indexOf('/public/customer/') === -1) {
         targetUrl = u.pathname + u.search + u.hash;
       }
@@ -101,7 +102,7 @@
           var c = clientList[i];
           try {
             var cu = new URL(c.url);
-            if (cu.pathname.indexOf('/public/admin/') === 0) {
+            if (cu.pathname.indexOf('/admin/') === 0 || cu.pathname.indexOf('/public/admin/') === 0) {
               return c.focus().then(function (focused) {
                 if (focused && focused.navigate) focused.navigate(targetUrl);
                 return focused;

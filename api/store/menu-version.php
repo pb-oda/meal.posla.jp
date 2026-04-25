@@ -35,7 +35,7 @@ try {
     }
 } catch (Exception $e) {
     // テーブル未存在時はスキップ
-    error_log('[P1-12][api/store/menu-version.php:36] fetch_overrides_version: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][api/store/menu-version.php:36] fetch_overrides_version: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 try {
@@ -49,7 +49,7 @@ try {
     }
 } catch (Exception $e) {
     // テーブル未存在時はスキップ
-    error_log('[P1-12][api/store/menu-version.php:49] fetch_local_items_version: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[P1-12][api/store/menu-version.php:49] fetch_local_items_version: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 json_response(['version' => $version]);

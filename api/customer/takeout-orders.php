@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         } catch (PDOException $e) {
             // マイグレーション未適用時はデフォルト値のまま
-            error_log('[P1-12][customer/takeout-orders.php:56] fetch_takeout_settings: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            error_log('[P1-12][customer/takeout-orders.php:56] fetch_takeout_settings: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
 
         // オンライン決済可否判定 (S3-strict): payment_gateway=stripe + 実キーが揃っている場合のみ true
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     }
                 }
             } catch (PDOException $e) {
-                error_log('[P1-12][customer/takeout-orders.php:72] check_payment_gateway: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+                error_log('[P1-12][customer/takeout-orders.php:72] check_payment_gateway: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
             }
         }
 
@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $minPrep = (int)($ssRow['takeout_min_prep_minutes'] ?: 30);
             }
         } catch (PDOException $e) {
-            error_log('[P1-12][customer/takeout-orders.php:115] fetch_slot_settings: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            error_log('[P1-12][customer/takeout-orders.php:115] fetch_slot_settings: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
 
         // 各スロットの既存注文数を一括取得
@@ -204,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $pStmt->execute(['%' . $orderId . '%']);
                 if ($pStmt->fetch()) $paymentStatus = 'paid';
             } catch (PDOException $e) {
-                error_log('[P1-12][customer/takeout-orders.php:190] check_payment_status: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+                error_log('[P1-12][customer/takeout-orders.php:190] check_payment_status: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
             }
         }
 
@@ -284,7 +284,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ss = $ssStmt->fetch();
         if ($ss) $takeoutEnabled = (int)$ss['takeout_enabled'];
     } catch (PDOException $e) {
-        error_log('[P1-12][customer/takeout-orders.php:245] check_takeout_enabled: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-12][customer/takeout-orders.php:245] check_takeout_enabled: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
     if (!$takeoutEnabled) json_error('TAKEOUT_DISABLED', '現在テイクアウトは受け付けていません', 400);
 
@@ -336,7 +336,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $maxAmount = (int)($limRow['max_amount_per_order'] ?: 30000);
         }
     } catch (PDOException $e) {
-        error_log('[P1-12][customer/takeout-orders.php:294] fetch_max_limits: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[P1-12][customer/takeout-orders.php:294] fetch_max_limits: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 
     // P0 #1+#2: サーバー側で価格・商品存在・数量を強制再検証
@@ -412,7 +412,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 json_response(['order_id' => $existing['id'], 'status' => 'pending', 'duplicate' => true]);
             }
         }
-        error_log('[S3#8][takeout-orders] insert_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[S3#8][takeout-orders] insert_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         json_error('DB_ERROR', '注文作成に失敗しました', 500);
     }
 
@@ -421,15 +421,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // オンライン決済の場合: チェックアウトURL生成
     if ($paymentMethod === 'online') {
-        // 2026-04-21: success/cancel URL を本番 docroot (/public/customer/) 配下に合わせて固定。
+        // 2026-04-21: success/cancel URL を本番 docroot (/customer/) 配下に合わせて固定。
         // 旧実装は dirname(dirname($_SERVER['SCRIPT_NAME'])) で /api/customer/ からの相対計算を
-        // していたが、本番の実配置では takeout.html は /public/customer/takeout.html で配信される
+        // していたが、本番の実配置では takeout.html は /customer/takeout.html で配信される
         // ため、decision 成功後の Stripe success redirect が 404 になり、takeout.html onload 経由で
         // 呼ばれる takeout-payment.php のチェーンが動かず payments 行が作られない問題があった。
-        // checkout-session.php:101 と同じく /public/customer/... を明示する。
-        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
-                 . '://' . $_SERVER['HTTP_HOST'];
-        $takeoutPageUrl = $baseUrl . '/public/customer/takeout.html';
+        // checkout-session.php:101 と同じく /customer/... を明示する。
+        $takeoutPageUrl = app_url('/customer/takeout.html');
         $successUrl = $takeoutPageUrl . '?store_id=' . urlencode($storeId)
                     . '&order_id=' . urlencode($orderId)
                     . '&payment_status=success'
@@ -470,19 +468,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $pdo->prepare("UPDATE orders SET memo = CONCAT(COALESCE(memo,''), '\n[stripe_session:', ?, ']') WHERE id = ?")
                                 ->execute([$result['session_id'], $orderId]);
                         } catch (PDOException $e) {
-                            error_log('[P1-12][api/customer/takeout-orders.php:373] stripe_connect_session_link: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+                            error_log('[P1-12][api/customer/takeout-orders.php:373] stripe_connect_session_link: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
                         }
                         json_response(['order_id' => $orderId, 'status' => 'pending_payment', 'checkout_url' => $result['checkout_url']]);
                     }
                     // Connect決済URL生成失敗 → 注文をキャンセルしてエラー返却 (S3: 店頭払い廃止)
                     $pdo->prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?")->execute([$orderId]);
-                    error_log('[S3][takeout-orders.php] connect_checkout_failed: ' . ($result['error'] ?? 'unknown'), 3, '/home/odah/log/php_errors.log');
+                    error_log('[S3][takeout-orders.php] connect_checkout_failed: ' . ($result['error'] ?? 'unknown'), 3, POSLA_PHP_ERROR_LOG);
                     json_error('PAYMENT_NOT_AVAILABLE', '決済処理に失敗しました。お手数ですが店舗にお問い合わせください', 503);
                 }
             }
         } catch (Exception $e) {
             // stripe-connect.php 未存在やカラム未存在時はスキップ（C-3にフォールスルー）
-            error_log('[P1-12][api/customer/takeout-orders.php:381] stripe_connect_fallthrough: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            error_log('[P1-12][api/customer/takeout-orders.php:381] stripe_connect_fallthrough: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
 
         // C-3 / P1-2: 従来の直接決済（Stripe のみ）
@@ -490,7 +488,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$gwConfig || $gwConfig['gateway'] !== 'stripe') {
             // 決済未設定 → 注文キャンセル + エラー返却 (S3: 店頭払い廃止)
             $pdo->prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?")->execute([$orderId]);
-            error_log('[S3][takeout-orders.php] gateway_not_configured store=' . $storeId, 3, '/home/odah/log/php_errors.log');
+            error_log('[S3][takeout-orders.php] gateway_not_configured store=' . $storeId, 3, POSLA_PHP_ERROR_LOG);
             json_error('PAYMENT_NOT_AVAILABLE', 'この店舗ではオンライン決済が設定されていません', 503);
         }
 
@@ -504,13 +502,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare("UPDATE orders SET memo = CONCAT(COALESCE(memo,''), '\n[stripe_session:', ?, ']') WHERE id = ?")
                     ->execute([$result['session_id'], $orderId]);
             } catch (PDOException $e) {
-                error_log('[P1-12][api/customer/takeout-orders.php:401] stripe_direct_session_link: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+                error_log('[P1-12][api/customer/takeout-orders.php:401] stripe_direct_session_link: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
             }
             json_response(['order_id' => $orderId, 'status' => 'pending_payment', 'checkout_url' => $result['checkout_url']]);
         }
         // 決済URL生成失敗 → 注文をキャンセルしてエラー返却 (S3: 店頭払い廃止)
         $pdo->prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?")->execute([$orderId]);
-        error_log('[S3][takeout-orders.php] direct_checkout_failed: ' . ($result['error'] ?? 'unknown'), 3, '/home/odah/log/php_errors.log');
+        error_log('[S3][takeout-orders.php] direct_checkout_failed: ' . ($result['error'] ?? 'unknown'), 3, POSLA_PHP_ERROR_LOG);
         json_error('PAYMENT_NOT_AVAILABLE', '決済処理に失敗しました。お手数ですが店舗にお問い合わせください', 503);
     }
 

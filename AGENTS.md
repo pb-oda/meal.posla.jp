@@ -1,4 +1,77 @@
-# AGENTS.md — POSLA
+# AGENTS.md — 【擬似本番環境】meal.posla.jp
+
+## この環境の位置付け
+
+このフォルダは POSLA の **擬似本番環境** です。
+**Docker Compose で `127.0.0.1:8081` に起動し**、本番移行前の vendor-neutral 検証・本番デプロイ前の dry-run・運用支援基盤（`【AI運用支援】codex-ops-platform`）の接続先として使います。
+
+- **配信先 URL**: `http://127.0.0.1:8081`（ローカル Docker のみ、外部公開しない）
+- **起動方法**: このフォルダで `docker compose up -d`
+- **DB**: Docker 内 MySQL 5.7（ホスト公開ポート `3306`、`host.docker.internal:3306`）
+- **ファイル配信**: `./public`, `./api`, `./docs`, `./scripts` を bind mount
+
+## ドキュメント表記ルール（重要）
+
+- **本番 URL は `<production-domain>` などのプレースホルダで記述する**（vendor-neutral 化を維持）
+- **`eat.posla.jp` は「現行 sandbox の参考情報」としてのみ残してよい**（今は【デモ環境】が配信中のため）
+- 本番インフラが確定したら、プレースホルダを一括で実値に置換するだけで本番マニュアルが完成する状態を保つ
+- 具体的には以下のトークンを使う:
+  - `<production-domain>` — 本番ドメイン
+  - `<ssh-user>@<host>` — 本番 SSH 接続先
+  - `<production-db-host>` — 本番 DB ホスト
+  - `<deploy-root>` — 本番デプロイルート
+
+## 【デモ環境】との役割分担（厳守）
+
+| 項目 | 【擬似本番環境】（このフォルダ） | 【デモ環境】 |
+|---|---|---|
+| 目的 | 本番移行前の vendor-neutral 検証 | 営業デモ・社内レビュー |
+| 配信先 | Docker `127.0.0.1:8081` | `eat.posla.jp`（sandbox） |
+| ドキュメント URL | `<production-domain>` プレースホルダ | `eat.posla.jp` 明示 |
+| DB | Docker 内 MySQL 5.7 (host:3306) | さくら mysql80（共有 sandbox） |
+| デプロイ | `docker compose up` のみ | `scp`/`ssh` で sandbox に配布 |
+
+- **両環境間で `rsync --delete` してはならない。** 2026-04-24 のインシデント以降、両 tree は完全独立運用。
+- このフォルダのコード/ドキュメントは **【デモ環境】とは別の実体**として編集する。両者の乖離を恐れない。
+
+## 起動・停止手順
+
+```bash
+# 起動
+docker compose up -d
+
+# 状態確認
+docker compose ps
+curl -sf http://127.0.0.1:8081/api/monitor/ping.php
+
+# VitePress 再ビルド後の反映
+cd docs/manual && npm run build:all
+# → public/docs-internal/ が差し替わり、即座に Docker 経由で配信される（bind mount）
+
+# 停止
+docker compose down
+```
+
+## 【AI運用支援】codex-ops-platform から接続される
+
+`/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【AI運用支援】codex-ops-platform` は、この擬似本番環境に対して **read-only で疎通確認**する外部スキャフォールドです。
+
+- App ping URL: `http://host.docker.internal:8081/api/monitor/ping.php`
+- DB: `host.docker.internal:3306`（read-only アカウントで接続）
+
+このフォルダの Docker を落とすと、AI運用支援側の bootstrap も失敗する。
+
+## チェックリスト（このフォルダで作業する時）
+
+- [ ] 自分が今いるフォルダが **`【擬似本番環境】meal.posla.jp`** であることを `pwd` で確認
+- [ ] ドキュメントに `eat.posla.jp` を書こうとしていないか確認（`<production-domain>` を優先）
+- [ ] 変更後は **Docker Compose で確認**する（sandbox には配布しない）
+- [ ] 【デモ環境】のファイルは触らない
+- [ ] 【デモ環境】側で同じ修正を適用する必要があるなら、**手動で** Edit する（rsync 禁止）
+
+---
+
+# 以下は POSLA 共通ルール（全環境共通）
 
 ## Identity（役割）
 
@@ -170,35 +243,65 @@
 <claude-mem-context>
 # Memory Context
 
-# [matsunoya-mt] recent context, 2026-04-19 5:15pm GMT+9
+# [【擬似本番環境】meal.posla.jp] recent context, 2026-04-25 10:19pm GMT+9
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 20 obs (4,732t read) | 1,498,741t work | 100% savings
+Stats: 50 obs (11,211t read) | 898,180t work | 99% savings
 
-### Apr 19, 2026
-451 2:32p 🔵 matsunoya-mt プロジェクト構成の全体確認
-452 2:36p 🔵 matsunoya-mt: docs/manual の3系統構成を確認
-455 " 🔵 matsunoya-mt: 3系統マニュアルの章・セクション構造を詳細確認
-456 2:39p 🔵 マニュアルと実コードの差分確認 — APIエンドポイント8件が実ファイルなし
-457 " 🔵 テナントマニュアル内の壊れたMarkdownリンク7件を確認
-458 " 🔵 α-1プラン移行後のデッドコード確認 — tenants.planとplan_featuresは機能制限に未使用
-459 " 🔵 GPS認証の実装確認 — KDSはクライアント側haversine・勤怠はサーバー側・/api/store/gps-check.phpは実在しない
-460 " 🔵 AIヘルプデスクknowledge base確認 — helpdesk-prompt-*.txtが生成済みで最新状態
-477 2:54p 🔵 matsunoya-mt git status — 大規模変更の全体像確認
-482 2:55p 🔵 matsunoya-mt マニュアル構成の確定ファイル一覧
-483 " 🔵 マニュアル参照API vs 実在APIの差分 — 許容範囲内の3件のみ
-484 " 🔵 CP1 担当スタッフPIN — process-payment.php と refund-payment.php の実装確認
-486 2:57p 🔴 docs/manual/tenant/15-owner.md — 未実装API /api/owner/categories-csv.php の記述を削除
-487 " 🔴 docs/manual/internal/06-troubleshoot.md — PIN_INVALID ログ例のAPIパスを実装に合わせて修正
-488 " 🔵 マニュアル全APIリスト整合性チェック完了 — 残存する意図的な欠如は foo.php のみ
-490 2:59p 🔴 docs/manual/internal/05-operations.md — バックアップ例示のプレースホルダー foo.php を実在ファイルに修正
-491 3:07p 🔵 matsunoya-mt 新セッション — 静的コードレビュー（バグ報告専従）開始
-492 3:08p 🔵 matsunoya-mt PHP全ファイル構文チェック — 全155ファイルでエラーゼロを確認
-493 " 🔵 matsunoya-mt APIセキュリティパターン — 認証・テナント境界の一貫した実装を確認
-494 " 🔵 matsunoya-mt エラーコードカタログ — E1xxx〜E9xxxの9系統233件が実装済み
+### Apr 25, 2026
+1454 8:41p 🟣 schema_migrations テーブルが擬似本番 DB に適用済み確認 — cell migration ledger 稼働
+1455 " 🟣 cells/example/cell.env.example 追加 — cell ごとのホストポート分離設定を整備
+1456 8:44p 🟣 cell.sh に build/deploy コマンドと POSLA_PHP_IMAGE 対応を追加 — CI イメージ artifact フロー整備
+1458 " 🟣 cell.sh に migrate コマンドを追加 — cell 単位の SQL migration 適用が可能に
+1461 8:45p 🔵 posla_php_cell:dev イメージが未ビルド — cell 起動前に build コマンドが必要
+1462 8:49p 🟣 POSLA cell-local Docker イメージビルド開始 — posla_php_cell:dev 初回ビルド実行
+1464 8:50p 🟣 posla_php_cell:dev Docker イメージビルド成功 — 10ステップ構成の PHP+Apache イメージ完成
+1465 " 🟣 POSLA cell-local コンテナ起動成功 — db + php の2コンテナ構成で cell-local が稼働
+1466 8:52p 🔵 POSLA cell-local 動作確認 — DB接続・Apache稼働・curl疎通の3状態判明
+1467 " 🔵 cell-local cron 起動時競合 — monitor-health.php が DB 準備完了前に実行され Connection Refused
+1470 8:53p 🔵 cell-local Apache アクセスログ・エラーログが空 — curl タイムアウトはネットワーク層での問題と確定
+1476 8:55p 🔴 api/.htaccess の SetEnv が cell isolation を破壊していた — HTTP リクエスト時に本番 Sakura DB 認証情報が注入される問題を修正
+1477 " 🟣 POSLA cell-local ping 疎通確認成功 — HTTP 200 + db:ok + cron_lag_sec:6 を確認
+1478 " 🔴 cell.sh deploy の ping 確認を wait_ping() 関数でリトライ付きに改良
+1479 8:58p 🔵 2つの独立 cell が同一ホストで同時稼働確認 — port 8081 と 18081 が完全分離
+1480 " 🟣 cell.sh deploy の wait_ping リトライが正常動作 — exit code 0 で ping JSON を出力して完了
+1481 " 🟣 docs/manual/internal/11-cell-deployment.md 新規作成 — Cell配備運用マニュアルを社内ドキュメントに追加
+1485 8:59p 🟣 VitePress build:internal で 11-cell-deployment.md を含む社内マニュアルのビルド成功
+1486 " ✅ POSLA cell architecture 実装完了 — 今セッションの未コミット変更全量確認
+1492 " 🔵 Docker コンテナ最終状態確認 — cell-local 停止済み・擬似本番継続稼働・invoice stack 影響なし
+1497 9:13p 🔵 POSLA cell.sh — 全コマンド構成と cells/README.md 運用手順の確認
+1499 " ⚖️ POSLA cell architecture — 完成までの残タスク計画確定
+1500 " 🔵 POSLA sql/ ディレクトリ — migration ファイル全量確認（80本以上）
+1501 9:16p 🟣 P1-41: posla_cell_registry / posla_cell_deployments テーブル追加
+1505 9:17p 🟣 cell.sh — init / registry コマンド追加・migrate に ledger 記録を統合
+1507 9:19p 🟣 cell.sh register-db コマンド追加 — posla_cell_registry への cell metadata Upsert
+1508 " 🟣 cell.sh init / registry / migrate / register-db — cell-regtest でフル動作確認完了
+1510 9:21p 🟣 cell architecture — init/migrate/register-db/重複防止 の全フロー DB レベル検証完了
+1512 9:24p ✅ 擬似本番 DB — P1-41 cell registry テーブル追加・pseudo-prod-local 行登録
+1513 " ✅ cell architecture ドキュメント — init/register-db/P1-41 対応に更新
+1514 9:26p 🟣 POSLA cell architecture 完成 — P1-41 registry まで全タスク完了
+1517 " ⚖️ POSLA cell architecture 次フェーズ — deploy 時 backup と posla_cell_deployments 履歴記録の実装計画
+1522 9:28p 🟣 cell.sh — backup コマンド・deploy 前自動 backup・posla_cell_deployments 記録・rollback ヒント追加
+1560 9:55p 🔵 cell.sh env-load bug — POSLA_CELL_HTTP_PORT override is a no-op self-assignment
+1561 9:57p ✅ cell-smoketest 検証環境の完全撤去 — Docker volume・cells ディレクトリ・registry.tsv 削除
+1562 " 🔵 POSLA signup/auth フロー全量確認 — A5 申込 → Stripe Checkout → Webhook → activate の構造
+1567 9:58p ⚖️ POSLA cell.sh — 次スライス: cell別 tenant onboarding コマンド追加
+1569 " 🟣 cell.sh — onboard-tenant コマンド実装
+1571 9:59p 🔴 cell.sh — onboard-tenant の引数渡しを shift 2 + "$@" に修正
+1573 10:00p 🟣 cell-onboardtest — onboard-tenant コマンドのフル検証完了
+1574 " ✅ POSLA cell onboard-tenant — cells/README・11-cell-deployment・ADR ドキュメント更新
+1578 10:01p 🟣 docker/db/cell-init/ — cell DB 初期化スクリプトをローカル開発用 init から分離
+1580 10:02p 🔵 cell-onboardtest — PHP起動直後 DB 接続拒否エラー (cron health check)
+1582 " 🔴 docker/db/cell-init/01-schema.sh — 実行権限 (chmod +x) を付与
+1584 10:04p 🔵 cell-onboardtest DB に torimaru デモテナントが混入 — migration-p1-27 が原因
+1585 " 🔴 docker/db/cell-init/01-schema.sh — デモデータ migration を明示的にスキップ
+1587 10:06p 🟣 cell-onboardtest — cell-init デモデータ除外修正の再検証完了
+1590 10:08p 🟣 onboard-tenant → login API エンドツーエンド検証完了
+1596 " 🔵 api/config/database.php — DB認証情報は環境変数のみ。フォールバックは空文字列 (H-01 Phase 4)
+1597 10:10p 🟣 docker/php/Dockerfile.cell — アプリコードを image に焼き込む cell artifact Dockerfile を新設
 
-Access 1499k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 898k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

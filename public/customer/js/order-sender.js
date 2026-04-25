@@ -13,7 +13,9 @@ var OrderSender = (function () {
     return Array.from(arr, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
   }
 
-  function send(baseApi, storeId, tableId, cartItems, sessionToken, removedItems, retries, idempotencyKey, memo, allergens) {
+  // SELF-P1-4: guestAlias を末尾 positional パラメータとして追加。
+  // 既存 caller (memo, allergens までしか渡さない) は undefined 扱いで無影響
+  function send(baseApi, storeId, tableId, cartItems, sessionToken, removedItems, retries, idempotencyKey, memo, allergens, guestAlias) {
     retries = retries || 0;
     var key = idempotencyKey || generateIdempotencyKey();
     var inPlanMode = CartManager && CartManager.isPlanMode && CartManager.isPlanMode();
@@ -48,6 +50,10 @@ var OrderSender = (function () {
     if (_subSessionId) {
       body.sub_session_id = _subSessionId;
     }
+    // SELF-P1-4: 任意ゲスト名 (空文字は送らない)
+    if (guestAlias && String(guestAlias).length > 0) {
+      body.guest_alias = String(guestAlias);
+    }
 
     return fetch(baseApi + '/customer/orders.php', {
       method: 'POST',
@@ -79,13 +85,13 @@ var OrderSender = (function () {
       if (canRetry && retries < 2) {
         return new Promise(function (resolve) {
           setTimeout(function () {
-            resolve(send(baseApi, storeId, tableId, cartItems, sessionToken, removedItems, retries + 1, key, memo, allergens));
+            resolve(send(baseApi, storeId, tableId, cartItems, sessionToken, removedItems, retries + 1, key, memo, allergens, guestAlias));
           }, 2000);
         });
       }
       // U-3: リトライ全失敗 → localStorage に一時保存
       if (canRetry) {
-        _savePendingOrder(baseApi, storeId, tableId, cartItems, sessionToken, removedItems, key, memo, allergens);
+        _savePendingOrder(baseApi, storeId, tableId, cartItems, sessionToken, removedItems, key, memo, allergens, guestAlias);
       }
       if (!(err instanceof Error)) {
         throw new Error(err.message || '注文の送信に失敗しました');
@@ -98,7 +104,7 @@ var OrderSender = (function () {
 
   var PENDING_KEY = 'mt_pending_orders';
 
-  function _savePendingOrder(baseApi, storeId, tableId, cartItems, sessionToken, removedItems, idempotencyKey, memo, allergens) {
+  function _savePendingOrder(baseApi, storeId, tableId, cartItems, sessionToken, removedItems, idempotencyKey, memo, allergens, guestAlias) {
     try {
       var pending = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
       pending.push({
@@ -111,6 +117,8 @@ var OrderSender = (function () {
         idempotencyKey: idempotencyKey,
         memo: memo || null,
         allergens: allergens || [],
+        // SELF-P1-4: 再送時にゲスト名も復元できるよう保存
+        guestAlias: guestAlias || null,
         timestamp: Date.now()
       });
       localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
@@ -146,7 +154,7 @@ var OrderSender = (function () {
         return;
       }
       var p = remaining[index];
-      send(p.baseApi, p.storeId, p.tableId, p.items, p.sessionToken, p.removedItems, 0, p.idempotencyKey, p.memo, p.allergens)
+      send(p.baseApi, p.storeId, p.tableId, p.items, p.sessionToken, p.removedItems, 0, p.idempotencyKey, p.memo, p.allergens, p.guestAlias)
         .then(function () {
           sendNext(index + 1);
         })

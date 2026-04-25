@@ -189,7 +189,7 @@ function translate_menu_core(PDO $pdo, $tenantId, $storeId, array $langs, $force
             }
         } catch (PDOException $e) {
             // テーブル未作成の場合は全て翻訳
-            error_log('[P1-12][api/store/translate-menu.php] load_existing_translations: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+            error_log('[P1-12][api/store/translate-menu.php] load_existing_translations: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
     }
 

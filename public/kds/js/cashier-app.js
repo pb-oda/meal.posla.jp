@@ -1427,6 +1427,7 @@
    */
   function _submitPaymentWithPin(group, isPartial, calc, pin) {
     var isMerged = _mergeMode && _mergedGroupKeys.length >= 2;
+    var isManualNonCash = false;
 
     var body = {
       store_id: _storeId,
@@ -1455,6 +1456,18 @@
 
     if (_paymentMethod === 'cash') {
       body.received_amount = parseInt(_receivedInput, 10) || 0;
+    } else if (_paymentMethod === 'qr') {
+      body.payment_entry_mode = 'manual';
+      isManualNonCash = true;
+    } else if (_paymentMethod === 'card' && !(_terminal && _terminalConnected)) {
+      if (!confirm('カードリーダーが未接続です。\n外部カード端末で決済済みの取引として手動記録しますか？')) {
+        _isSubmitting = false;
+        _startPolling();
+        _renderRegister();
+        return;
+      }
+      body.payment_entry_mode = 'manual';
+      isManualNonCash = true;
     }
 
     // 個別会計 or 割引ありの場合は selected_items + total_override
@@ -1482,7 +1495,7 @@
     _renderRegister();
 
     // L-13: Stripe Terminal 経由（Connect + 物理カードリーダー）
-    if (_terminal && _terminalConnected && _paymentMethod !== 'cash') {
+    if (_terminal && _terminalConnected && _paymentMethod === 'card') {
       _processTerminalPayment(body, calc);
       return;
     }
@@ -1495,8 +1508,8 @@
       gwOverlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;';
       gwOverlay.innerHTML = '<div style="background:#fff;padding:2rem 3rem;border-radius:12px;text-align:center;">'
         + '<div style="font-size:2rem;margin-bottom:0.5rem;">&#128179;</div>'
-        + '<div style="font-size:1.1rem;font-weight:600;color:#333;">決済処理中...</div>'
-        + '<div style="font-size:0.85rem;color:#888;margin-top:0.5rem;">しばらくお待ちください</div>'
+        + '<div style="font-size:1.1rem;font-weight:600;color:#333;">' + (isManualNonCash ? '会計記録中...' : '決済処理中...') + '</div>'
+        + '<div style="font-size:0.85rem;color:#888;margin-top:0.5rem;">' + (isManualNonCash ? '外部決済完了後の記録を保存しています' : 'しばらくお待ちください') + '</div>'
         + '</div>';
       document.body.appendChild(gwOverlay);
     }
@@ -1684,6 +1697,7 @@
       // Phase 4d-5c-ba: voided 判定
       var isVoided = (p.void_status === 'voided');
       var canRefund = gatewayName && !isRefunded && !isVoided && method !== 'cash';
+      var canVoidByRole = (_userRole === 'manager' || _userRole === 'owner');
       // Phase 4d-5c-bb-A / 4d-5c-bb-C: 会計取消ボタンは以下をすべて満たす行にのみ表示する
       //   - 返金されていない
       //   - まだ取消していない
@@ -1695,7 +1709,7 @@
       // をチェックして 409 を返すので、UI のボタンは以上に絞り込んで出す。
       // 4d-5c-bb-C: POS cashier 経由で会計された takeout (status='paid' cash) は取消可能。
       // online 決済 takeout (status='served' 等) は API 側の status ガードで弾かれる。
-      var canVoid = !isRefunded && !isVoided && !gatewayName && !isPartial;
+      var canVoid = canVoidByRole && !isRefunded && !isVoided && !gatewayName && !isPartial;
 
       var rowClass = 'ca-journal__item';
       if (isRefunded) rowClass += ' ca-journal__item--refunded';
@@ -1775,6 +1789,10 @@
   }
 
   function _executeNormalVoid(paymentId, amount, reason) {
+    if (!(_userRole === 'manager' || _userRole === 'owner')) {
+      _showToast('会計取消は manager / owner のみ実行できます', 'error');
+      return;
+    }
     _voidingPayment = true;
     fetch('../../api/store/payment-void.php', {
       method: 'POST',

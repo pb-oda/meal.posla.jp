@@ -219,8 +219,9 @@
     "category": "認証・認可",
     "http_status": 400,
     "message": "Webhook署名の検証に失敗しました",
-    "occurrences": 1,
+    "occurrences": 2,
     "files": [
+      "api/line/webhook.php",
       "api/subscription/webhook.php"
     ]
   },
@@ -327,10 +328,11 @@
     "errorNo": "E3028",
     "category": "認証・認可",
     "http_status": 401,
-    "message": "セッションが無効化されました。再ログインしてください。",
-    "occurrences": 1,
+    "message": "POSLA管理者セッションが無効化されました。再ログインしてください。",
+    "occurrences": 2,
     "files": [
-      "api/lib/auth.php"
+      "api/lib/auth.php",
+      "api/posla/auth-helper.php"
     ]
   },
   "SESSION_TIMEOUT": {
@@ -551,9 +553,10 @@
     "category": "システム / インフラ",
     "http_status": 400,
     "message": "リクエストボディが空です",
-    "occurrences": 2,
+    "occurrences": 3,
     "files": [
       "api/lib/response.php",
+      "api/line/webhook.php",
       "api/subscription/webhook.php"
     ]
   },
@@ -617,7 +620,7 @@
     "errorNo": "E1013",
     "category": "システム / インフラ",
     "http_status": 500,
-    "message": "'領収書の作成に失敗しました: ' . $e->getMessage()",
+    "message": "領収書の作成に失敗しました",
     "occurrences": 1,
     "files": [
       "api/store/receipt.php"
@@ -627,7 +630,7 @@
     "errorNo": "E1014",
     "category": "システム / インフラ",
     "http_status": 500,
-    "message": "'インポートに失敗しました: ' . $e->getMessage()",
+    "message": "インポートに失敗しました",
     "occurrences": 8,
     "files": [
       "api/owner/ingredients-csv.php",
@@ -743,10 +746,11 @@
     "errorNo": "E1021",
     "category": "システム / インフラ",
     "http_status": 429,
-    "message": "リクエスト回数の上限に達しました。しばらくしてからお試しください。",
-    "occurrences": 1,
+    "message": "ログイン試行回数の上限に達しました。5分後に再度お試しください。",
+    "occurrences": 2,
     "files": [
-      "api/lib/rate-limiter.php"
+      "api/lib/rate-limiter.php",
+      "api/posla/login.php"
     ]
   },
   "SAVE_FAILED": {
@@ -764,7 +768,7 @@
     "errorNo": "E1023",
     "category": "システム / インフラ",
     "http_status": 500,
-    "message": "'着席処理に失敗しました: ' . $e->getMessage()",
+    "message": "着席処理に失敗しました",
     "occurrences": 1,
     "files": [
       "api/store/reservation-seat.php"
@@ -848,9 +852,10 @@
     "errorNo": "E4003",
     "category": "リソース未発見",
     "http_status": 404,
-    "message": "顧客が見つかりません",
-    "occurrences": 1,
+    "message": "該当の顧客が見つかりません (reservation_customer_id または store_id + customer_phone を確認してください)",
+    "occurrences": 2,
     "files": [
+      "api/owner/line-link-tokens.php",
       "api/store/reservation-customers.php"
     ]
   },
@@ -870,7 +875,7 @@
     "category": "リソース未発見",
     "http_status": 404,
     "message": "メニューが見つかりません",
-    "occurrences": 77,
+    "occurrences": 81,
     "files": [
       "api/connect/disconnect.php",
       "api/customer/menu.php",
@@ -879,11 +884,15 @@
       "api/customer/reservation-detail.php",
       "api/customer/reservation-precheckin.php",
       "api/customer/reservation-update.php",
+      "api/customer/takeout-line-token.php",
       "api/customer/takeout-orders.php",
       "api/customer/takeout-payment.php",
       "api/kds/close-table.php",
+      "api/line/webhook.php",
       "api/owner/categories.php",
       "api/owner/ingredients.php",
+      "api/owner/line-customer-links.php",
+      "api/owner/line-settings.php",
       "api/owner/menu-templates.php",
       "api/owner/option-groups.php",
       "api/owner/recipes.php",
@@ -971,7 +980,7 @@
     "category": "リソース未発見",
     "http_status": 404,
     "message": "プランが見つかりません",
-    "occurrences": 1,
+    "occurrences": 2,
     "files": [
       "api/store/table-sessions.php"
     ]
@@ -1169,132 +1178,6 @@
     "files": [
       "api/customer/ai-waiter.php",
       "api/kds/ai-kitchen.php"
-    ]
-  },
-  "KNOWLEDGE_BASE_MISSING": {
-    "errorNo": "E9011",
-    "category": "顧客・予約・テイクアウト・AI・外部連携",
-    "http_status": 503,
-    "message": "ヘルプデスク knowledge base が未生成です。POSLA運営に連絡してください",
-    "occurrences": 1,
-    "files": [
-      "api/store/ai-generate.php"
-    ]
-  },
-  "LEAD_TIME_VIOLATION": {
-    "errorNo": "E9012",
-    "category": "顧客・予約・テイクアウト・AI・外部連携",
-    "http_status": 400,
-    "message": "予約締切時刻を過ぎています",
-    "occurrences": 2,
-    "files": [
-      "api/customer/reservation-create.php",
-      "api/customer/reservation-update.php"
-    ]
-  },
-  "NOT_AVAILABLE": {
-    "errorNo": "E9013",
-    "category": "顧客・予約・テイクアウト・AI・外部連携",
-    "http_status": 400,
-    "message": "事前チェックインできない状態です",
-    "occurrences": 1,
-    "files": [
-      "api/customer/reservation-precheckin.php"
-    ]
-  },
-  "PICKUP_TOO_EARLY": {
-    "errorNo": "E9014",
-    "category": "顧客・予約・テイクアウト・AI・外部連携",
-    "http_status": 400,
-    "message": "受取時間は現在から' . $minPrepMinutes . '分以降を指定してください",
-    "occurrences": 1,
-    "files": [
-      "api/customer/takeout-orders.php"
-    ]
-  },
-  "RESERVATION_DISABLED": {
-    "errorNo": "E9015",
-    "category": "顧客・予約・テイクアウト・AI・外部連携",
-    "http_status": 403,
-    "message": "オンライン予約は受け付けていません",
-    "occurrences": 3,
-    "files": [
-      "api/customer/reservation-ai-parse.php",
-      "api/customer/reservation-availability.php",
-      "api/customer/reservation-create.php"
-    ]
-  },
-  "SAME_STORE": {
-    "errorNo": "E9016",
-    "category": "顧客・予約・テイクアウト・AI・外部連携",
-    "http_status": 400,
-    "message": "自店舗には要請できません",
-    "occurrences": 1,
-    "files": [
-      "api/store/shift/help-requests.php"
-    ]
-  },
-  "SELF_CHECKOUT_DISABLED": {
-    "errorNo": "E9017",
-    "category": "顧客・予約・テイクアウト・AI・外部連携",
-    "http_status": 403,
-    "message": "セルフレジは有効になっていません",
-    "occurrences": 1,
-    "files": [
-      "api/customer/checkout-session.php"
-    ]
-  },
-  "SLOT_FULL": {
-    "errorNo": "E9018",
-    "category": "顧客・予約・テイクアウト・AI・外部連携",
-    "http_status": 409,
-    "message": "この時間枠は満席です。別の時間を選択してください",
-    "occurrences": 4,
-    "files": [
-      "api/customer/reservation-create.php",
-      "api/customer/takeout-orders.php"
-    ]
-  },
-  "SLOT_UNAVAILABLE": {
-    "errorNo": "E9019",
-    "category": "顧客・予約・テイクアウト・AI・外部連携",
-    "http_status": 409,
-    "message": "お選びの時間は満席です。別の時間をお試しください",
-    "occurrences": 2,
-    "files": [
-      "api/customer/reservation-create.php",
-      "api/customer/reservation-update.php"
-    ]
-  },
-  "SMAREGI_API_ERROR": {
-    "errorNo": "E9020",
-    "category": "顧客・予約・テイクアウト・AI・外部連携",
-    "http_status": 502,
-    "message": "$errMsg . ' (HTTP=' . $result['status'] . ' detail=' . $detail . ')'",
-    "occurrences": 2,
-    "files": [
-      "api/smaregi/import-menu.php",
-      "api/smaregi/stores.php"
-    ]
-  },
-  "SMAREGI_NOT_CONFIGURED": {
-    "errorNo": "E9021",
-    "category": "顧客・予約・テイクアウト・AI・外部連携",
-    "http_status": 500,
-    "message": "スマレジ Client ID が未設定です。POSLA管理者に連絡してください。",
-    "occurrences": 1,
-    "files": [
-      "api/smaregi/auth.php"
-    ]
-  },
-  "TAKEOUT_DISABLED": {
-    "errorNo": "E9022",
-    "category": "顧客・予約・テイクアウト・AI・外部連携",
-    "http_status": 400,
-    "message": "現在テイクアウトは受け付けていません",
-    "occurrences": 1,
-    "files": [
-      "api/customer/takeout-orders.php"
     ]
   },
   "ALREADY_CLOCKED_IN": {
@@ -1927,8 +1810,8 @@
     "errorNo": "E2008",
     "category": "入力検証",
     "http_status": 400,
-    "message": "start_date, end_date を YYYY-MM-DD 形式で指定してください",
-    "occurrences": 19,
+    "message": "日付形式が不正です",
+    "occurrences": 20,
     "files": [
       "api/customer/reservation-availability.php",
       "api/customer/takeout-orders.php",
@@ -1998,8 +1881,9 @@
     "category": "入力検証",
     "http_status": 400,
     "message": "mappings 配列が必要です",
-    "occurrences": 10,
+    "occurrences": 11,
     "files": [
+      "api/owner/line-settings.php",
       "api/smaregi/store-mapping.php",
       "api/store/shift/apply-ai-suggestions.php"
     ]
@@ -2009,9 +1893,10 @@
     "category": "入力検証",
     "http_status": 400,
     "message": "リクエストのJSONが不正です",
-    "occurrences": 1,
+    "occurrences": 2,
     "files": [
-      "api/lib/response.php"
+      "api/lib/response.php",
+      "api/line/webhook.php"
     ]
   },
   "INVALID_KIND": {
@@ -2040,7 +1925,7 @@
     "category": "入力検証",
     "http_status": 400,
     "message": "人数が範囲外です",
-    "occurrences": 5,
+    "occurrences": 7,
     "files": [
       "api/customer/reservation-availability.php",
       "api/customer/reservation-create.php",
@@ -2312,11 +2197,13 @@
     "category": "入力検証",
     "http_status": 400,
     "message": "idが必要です",
-    "occurrences": 39,
+    "occurrences": 41,
     "files": [
       "api/customer/reservation-detail.php",
       "api/owner/categories.php",
       "api/owner/ingredients.php",
+      "api/owner/line-customer-links.php",
+      "api/owner/line-link-tokens.php",
       "api/owner/menu-templates.php",
       "api/owner/option-groups.php",
       "api/owner/recipes.php",
@@ -2369,8 +2256,9 @@
     "category": "入力検証",
     "http_status": 400,
     "message": "order_idが必要です",
-    "occurrences": 3,
+    "occurrences": 4,
     "files": [
+      "api/customer/takeout-line-token.php",
       "api/customer/takeout-orders.php",
       "api/customer/takeout-payment.php",
       "api/store/takeout-management.php"
@@ -2450,8 +2338,9 @@
     "category": "入力検証",
     "http_status": 400,
     "message": "電話番号が必要です",
-    "occurrences": 2,
+    "occurrences": 3,
     "files": [
+      "api/customer/takeout-line-token.php",
       "api/customer/takeout-orders.php"
     ]
   },
@@ -2605,9 +2494,10 @@
     "category": "入力検証",
     "http_status": 400,
     "message": "更新項目がありません",
-    "occurrences": 3,
+    "occurrences": 4,
     "files": [
       "api/customer/reservation-update.php",
+      "api/owner/line-settings.php",
       "api/posla/settings.php",
       "api/posla/tenants.php"
     ]
@@ -2974,6 +2864,26 @@
       "api/store/process-payment.php"
     ]
   },
+  "RATE_LIMIT": {
+    "errorNo": "E1029",
+    "category": "システム / インフラ",
+    "http_status": 429,
+    "message": "しばらく時間をおいて再度お試しください",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-line-token.php"
+    ]
+  },
+  "MISSING_TENANT": {
+    "errorNo": "E2079",
+    "category": "入力検証",
+    "http_status": 400,
+    "message": "tenant は必須です",
+    "occurrences": 1,
+    "files": [
+      "api/line/webhook.php"
+    ]
+  },
   "FORBIDDEN_FIELD": {
     "errorNo": "E3040",
     "category": "認証・認可",
@@ -2992,6 +2902,257 @@
     "occurrences": 1,
     "files": [
       "api/push/subscribe.php"
+    ]
+  },
+  "FORBIDDEN_ORIGIN": {
+    "errorNo": "E3042",
+    "category": "認証・認可",
+    "http_status": 403,
+    "message": "リクエスト元が許可されていません",
+    "occurrences": 2,
+    "files": [
+      "api/lib/auth.php"
+    ]
+  },
+  "PIN_RATE_LIMITED": {
+    "errorNo": "E3043",
+    "category": "認証・認可",
+    "http_status": 429,
+    "message": "PIN の試行回数が上限に達しました。10分後に再度お試しください。",
+    "occurrences": 1,
+    "files": [
+      "api/store/process-payment.php"
+    ]
+  },
+  "SESSION_CLOSED": {
+    "errorNo": "E5018",
+    "category": "注文・KDS・テーブル",
+    "http_status": 409,
+    "message": "このセッションは既に終了しています",
+    "occurrences": 1,
+    "files": [
+      "api/store/table-sessions.php"
+    ]
+  },
+  "PLAN_ALREADY_SET": {
+    "errorNo": "E5019",
+    "category": "注文・KDS・テーブル",
+    "http_status": 409,
+    "message": "このセッションには既にプランが設定されています",
+    "occurrences": 1,
+    "files": [
+      "api/store/table-sessions.php"
+    ]
+  },
+  "COURSE_SET": {
+    "errorNo": "E5020",
+    "category": "注文・KDS・テーブル",
+    "http_status": 409,
+    "message": "コースセッションにはプランを後付けできません",
+    "occurrences": 1,
+    "files": [
+      "api/store/table-sessions.php"
+    ]
+  },
+  "LEAD_TIME_VIOLATION": {
+    "errorNo": "E9012",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "予約締切時刻を過ぎています",
+    "occurrences": 2,
+    "files": [
+      "api/customer/reservation-create.php",
+      "api/customer/reservation-update.php"
+    ]
+  },
+  "NOT_AVAILABLE": {
+    "errorNo": "E9013",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "事前チェックインできない状態です",
+    "occurrences": 1,
+    "files": [
+      "api/customer/reservation-precheckin.php"
+    ]
+  },
+  "PICKUP_TOO_EARLY": {
+    "errorNo": "E9014",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "受取時間は現在から' . $minPrepMinutes . '分以降を指定してください",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-orders.php"
+    ]
+  },
+  "RESERVATION_DISABLED": {
+    "errorNo": "E9015",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 403,
+    "message": "オンライン予約は受け付けていません",
+    "occurrences": 3,
+    "files": [
+      "api/customer/reservation-ai-parse.php",
+      "api/customer/reservation-availability.php",
+      "api/customer/reservation-create.php"
+    ]
+  },
+  "SAME_STORE": {
+    "errorNo": "E9016",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "自店舗には要請できません",
+    "occurrences": 1,
+    "files": [
+      "api/store/shift/help-requests.php"
+    ]
+  },
+  "SELF_CHECKOUT_DISABLED": {
+    "errorNo": "E9017",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 403,
+    "message": "セルフレジは有効になっていません",
+    "occurrences": 1,
+    "files": [
+      "api/customer/checkout-session.php"
+    ]
+  },
+  "SLOT_FULL": {
+    "errorNo": "E9018",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 409,
+    "message": "この時間枠は満席です。別の時間を選択してください",
+    "occurrences": 4,
+    "files": [
+      "api/customer/reservation-create.php",
+      "api/customer/takeout-orders.php"
+    ]
+  },
+  "SLOT_UNAVAILABLE": {
+    "errorNo": "E9019",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 409,
+    "message": "お選びの時間は満席です。別の時間をお試しください",
+    "occurrences": 2,
+    "files": [
+      "api/customer/reservation-create.php",
+      "api/customer/reservation-update.php"
+    ]
+  },
+  "SMAREGI_API_ERROR": {
+    "errorNo": "E9020",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 502,
+    "message": "$errMsg . ' (HTTP=' . $result['status'] . ' detail=' . $detail . ')'",
+    "occurrences": 2,
+    "files": [
+      "api/smaregi/import-menu.php",
+      "api/smaregi/stores.php"
+    ]
+  },
+  "SMAREGI_NOT_CONFIGURED": {
+    "errorNo": "E9021",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 500,
+    "message": "スマレジ Client ID が未設定です。POSLA管理者に連絡してください。",
+    "occurrences": 1,
+    "files": [
+      "api/smaregi/auth.php"
+    ]
+  },
+  "TAKEOUT_DISABLED": {
+    "errorNo": "E9022",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "現在テイクアウトは受け付けていません",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-orders.php"
+    ]
+  },
+  "LINE_NOT_CONFIGURED": {
+    "errorNo": "E9023",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "この店舗では LINE 連携が有効化されていません",
+    "occurrences": 2,
+    "files": [
+      "api/customer/takeout-line-token.php"
+    ]
+  },
+  "NOT_CONFIGURED": {
+    "errorNo": "E9024",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 503,
+    "message": "LINE ひも付けトークン用マイグレーション (Phase 2A-2) が未適用です",
+    "occurrences": 7,
+    "files": [
+      "api/customer/takeout-line-token.php",
+      "api/line/webhook.php",
+      "api/owner/line-customer-links.php",
+      "api/owner/line-link-tokens.php",
+      "api/owner/line-settings.php"
+    ]
+  },
+  "ORDER_TERMINAL": {
+    "errorNo": "E9025",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "この注文はすでに完了しているため、LINE連携は利用できません",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-line-token.php"
+    ]
+  },
+  "TAKEOUT_READY_DISABLED": {
+    "errorNo": "E9026",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 400,
+    "message": "この店舗では準備完了 LINE 通知が有効化されていません",
+    "occurrences": 1,
+    "files": [
+      "api/customer/takeout-line-token.php"
+    ]
+  },
+  "TOKEN_ISSUE_FAILED": {
+    "errorNo": "E9027",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 500,
+    "message": "トークン発行に失敗しました",
+    "occurrences": 4,
+    "files": [
+      "api/customer/takeout-line-token.php",
+      "api/owner/line-link-tokens.php"
+    ]
+  },
+  "REVOKE_FAILED": {
+    "errorNo": "E9028",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 404,
+    "message": "失効できませんでした (既使用 / 既失効 / 存在しない可能性)",
+    "occurrences": 1,
+    "files": [
+      "api/owner/line-link-tokens.php"
+    ]
+  },
+  "ALREADY_UNLINKED": {
+    "errorNo": "E9029",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 409,
+    "message": "この link は既に解除済です",
+    "occurrences": 1,
+    "files": [
+      "api/owner/line-customer-links.php"
+    ]
+  },
+  "UNLINK_FAILED": {
+    "errorNo": "E9030",
+    "category": "顧客・予約・テイクアウト・AI・外部連携",
+    "http_status": 500,
+    "message": "解除に失敗しました",
+    "occurrences": 1,
+    "files": [
+      "api/owner/line-customer-links.php"
     ]
   }
 }

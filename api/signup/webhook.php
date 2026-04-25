@@ -10,13 +10,14 @@
  *   - ログイン案内メール送信
  *
  * Stripe ダッシュボードで設定する URL:
- *   https://eat.posla.jp/public/api/signup/webhook.php
+ *   https://meal.posla.jp/api/signup/webhook.php
  *
  * 購読イベント: checkout.session.completed
  */
 
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
+require_once __DIR__ . '/../config/app.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -37,12 +38,12 @@ try {
         if ($r['setting_value']) $secret = $r['setting_value']; // 後勝ち OK
     }
 } catch (PDOException $e) {
-    error_log('[A5][webhook] secret_load_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[A5][webhook] secret_load_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // S3 #2: secret 未設定時は fail-close (偽 webhook で勝手にテナントを開通されるのを防ぐ)
 if (!$secret) {
-    error_log('[A5][webhook] FAIL_CLOSE: stripe_webhook_secret_signup not configured — request rejected', 3, '/home/odah/log/php_errors.log');
+    error_log('[A5][webhook] FAIL_CLOSE: stripe_webhook_secret_signup not configured — request rejected', 3, POSLA_PHP_ERROR_LOG);
     http_response_code(503); echo '{"ok":false,"error":"webhook_secret_not_configured"}'; exit;
 }
 if (!_a5_verify_stripe_sig($payload, $sig, $secret)) {
@@ -81,7 +82,7 @@ if ($type === 'checkout.session.completed') {
         $pdo->commit();
     } catch (Exception $e) {
         $pdo->rollBack();
-        error_log('[A5][webhook] activation_failed tenant=' . $tenantId . ' err=' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+        error_log('[A5][webhook] activation_failed tenant=' . $tenantId . ' err=' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         http_response_code(200); echo '{"ok":true,"note":"activation_retry_needed"}'; exit;
     }
 
@@ -114,7 +115,7 @@ function _a5_verify_stripe_sig($payload, $header, $secret) {
     if (!$timestamp || empty($sigs)) return false;
     // S3 #16: Stripe 推奨の 5 分タイムスタンプ許容 (replay 攻撃対策)
     if (abs(time() - (int)$timestamp) > 300) {
-        error_log('[S3#16][a5-webhook] timestamp_out_of_tolerance t=' . $timestamp . ' now=' . time(), 3, '/home/odah/log/php_errors.log');
+        error_log('[S3#16][a5-webhook] timestamp_out_of_tolerance t=' . $timestamp . ' now=' . time(), 3, POSLA_PHP_ERROR_LOG);
         return false;
     }
     $signed = $timestamp . '.' . $payload;
@@ -131,7 +132,7 @@ function _a5_send_welcome_mail($to, $displayName, $username, $storeName) {
         mb_internal_encoding('UTF-8');
     }
     $subject = '【POSLA】ご登録ありがとうございます — ログイン情報のご案内';
-    $loginUrl = 'https://eat.posla.jp/public/admin/index.html';
+    $loginUrl = app_url('/admin/index.html');
     $body = "{$displayName} 様\n\n"
           . "POSLA にご登録いただきありがとうございます。\n"
           . "以下のログイン情報でサービスをご利用いただけます。\n\n"
@@ -140,10 +141,10 @@ function _a5_send_welcome_mail($to, $displayName, $username, $storeName) {
           . "■ ユーザー名: {$username}\n"
           . "■ パスワード: ご登録時に設定されたもの\n\n"
           . "★ 30日間無料トライアル中です。期間内のキャンセルで請求は発生しません。\n\n"
-          . "ご不明な点は info@posla.jp までお気軽にお問い合わせください。\n\n"
+          . "ご不明な点は " . APP_SUPPORT_EMAIL . " までお気軽にお問い合わせください。\n\n"
           . "--\nPOSLA 運営チーム";
     $fromName = 'POSLA';
-    $fromEmail = 'noreply@eat.posla.jp';
+    $fromEmail = APP_FROM_EMAIL;
     $fromHeader = '=?UTF-8?B?' . base64_encode($fromName) . '?= <' . $fromEmail . '>';
     $headers = "From: " . $fromHeader . "\r\n"
              . "MIME-Version: 1.0\r\n"

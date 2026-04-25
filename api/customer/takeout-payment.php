@@ -142,28 +142,28 @@ $amountTotal = isset($verifyResult['amount_total']) ? (int)$verifyResult['amount
 $verifiedCurrency = isset($verifyResult['currency']) ? strtolower((string)$verifyResult['currency']) : '';
 
 if ($mdTenant === '' || $mdStore === '' || $mdExpAmt < 0 || $mdExpCur === '' || $mdOrderIds === '') {
-    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH metadata_missing session=' . $sessionId, 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH metadata_missing session=' . $sessionId, 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (metadata 不足)', 403);
 }
 if ($mdTenant !== (string)$order['tenant_id'] || $mdStore !== (string)$order['store_id']) {
-    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH context tenant_md=' . $mdTenant . ' store_md=' . $mdStore, 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH context tenant_md=' . $mdTenant . ' store_md=' . $mdStore, 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (テナント/店舗)', 403);
 }
 if ($mdPurpose !== 'takeout') {
-    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH purpose=' . $mdPurpose, 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH purpose=' . $mdPurpose, 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (用途)', 403);
 }
 if ($mdExpCur !== 'jpy' || $verifiedCurrency !== 'jpy') {
-    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH currency md=' . $mdExpCur . ' stripe=' . $verifiedCurrency, 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH currency md=' . $mdExpCur . ' stripe=' . $verifiedCurrency, 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (通貨)', 403);
 }
 if ($mdExpAmt !== $amountTotal || $mdExpAmt !== (int)$order['total_amount']) {
-    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH amount db=' . (int)$order['total_amount'] . ' md=' . $mdExpAmt . ' stripe=' . $amountTotal, 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH amount db=' . (int)$order['total_amount'] . ' md=' . $mdExpAmt . ' stripe=' . $amountTotal, 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (金額)', 403);
 }
 $mdOrderIdList = array_filter(array_map('trim', explode(',', $mdOrderIds)), 'strlen');
 if (!in_array($orderId, $mdOrderIdList, true)) {
-    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH order_id_not_in_md md=' . $mdOrderIds . ' req=' . $orderId, 3, '/home/odah/log/php_errors.log');
+    error_log('[P0#5][takeout-payment] STRIPE_MISMATCH order_id_not_in_md md=' . $mdOrderIds . ' req=' . $orderId, 3, POSLA_PHP_ERROR_LOG);
     json_error('STRIPE_MISMATCH', '決済情報が一致しません (注文ID)', 403);
 }
 
@@ -236,7 +236,7 @@ try {
         . ' gw=' . $gatewayName
         . ' err=' . $e->getMessage(),
         3,
-        '/home/odah/log/php_errors.log'
+        POSLA_PHP_ERROR_LOG
     );
     json_error(
         'PAYMENT_RECORD_FAILED',

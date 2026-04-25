@@ -17,6 +17,7 @@
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/reservation-notifier.php';
+require_once __DIR__ . '/../config/app.php';
 
 // Webhook 専用エンドポイント。応答は最小化 (Stripe は 2xx を期待)
 header('Content-Type: application/json; charset=utf-8');
@@ -38,12 +39,12 @@ try {
     $row = $stmt->fetch();
     if ($row) $secret = $row['setting_value'];
 } catch (PDOException $e) {
-    error_log('[L-9][webhook] secret_load_failed: ' . $e->getMessage(), 3, '/home/odah/log/php_errors.log');
+    error_log('[L-9][webhook] secret_load_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // S2 P1 #10: secret 未設定時は fail-close (偽 webhook で予約状態を改ざんされるのを防ぐ)
 if (!$secret) {
-    error_log('[L-9][webhook] FAIL_CLOSE: stripe_webhook_secret_reservation not configured — request rejected', 3, '/home/odah/log/php_errors.log');
+    error_log('[L-9][webhook] FAIL_CLOSE: stripe_webhook_secret_reservation not configured — request rejected', 3, POSLA_PHP_ERROR_LOG);
     http_response_code(503); echo '{"ok":false,"error":"webhook_secret_not_configured"}'; exit;
 }
 if (!_l9_verify_stripe_sig($payload, $sig, $secret)) {
@@ -75,7 +76,7 @@ if (!$reservationId) {
     }
 }
 if (!$reservationId) {
-    error_log('[L-9][webhook] no_reservation_match type=' . $type, 3, '/home/odah/log/php_errors.log');
+    error_log('[L-9][webhook] no_reservation_match type=' . $type, 3, POSLA_PHP_ERROR_LOG);
     http_response_code(200); echo '{"ok":true,"note":"no_match"}'; exit;
 }
 
@@ -112,23 +113,23 @@ $objCur = isset($obj['currency']) ? strtolower((string)$obj['currency']) : '';
 $mismatchEvents = array('checkout.session.completed', 'payment_intent.succeeded');
 if (in_array($type, $mismatchEvents, true)) {
     if ($mdResId === '' || $mdStoreId === '' || $mdTenantId === '' || $mdExpAmt < 0 || $mdExpCur === '') {
-        error_log('[P0#5][reserve-deposit-webhook] STRIPE_MISMATCH metadata_missing type=' . $type . ' res=' . $reservationId, 3, '/home/odah/log/php_errors.log');
+        error_log('[P0#5][reserve-deposit-webhook] STRIPE_MISMATCH metadata_missing type=' . $type . ' res=' . $reservationId, 3, POSLA_PHP_ERROR_LOG);
         http_response_code(403); echo '{"ok":false,"error":"STRIPE_MISMATCH","note":"metadata_missing"}'; exit;
     }
     if ($mdResId !== (string)$reservationId || $mdStoreId !== $expectedStore || $mdTenantId !== $expectedTenant) {
-        error_log('[P0#5][reserve-deposit-webhook] STRIPE_MISMATCH context md_res=' . $mdResId . ' md_store=' . $mdStoreId . ' md_tenant=' . $mdTenantId . ' / db_res=' . $reservationId . ' db_store=' . $expectedStore . ' db_tenant=' . $expectedTenant, 3, '/home/odah/log/php_errors.log');
+        error_log('[P0#5][reserve-deposit-webhook] STRIPE_MISMATCH context md_res=' . $mdResId . ' md_store=' . $mdStoreId . ' md_tenant=' . $mdTenantId . ' / db_res=' . $reservationId . ' db_store=' . $expectedStore . ' db_tenant=' . $expectedTenant, 3, POSLA_PHP_ERROR_LOG);
         http_response_code(403); echo '{"ok":false,"error":"STRIPE_MISMATCH","note":"context"}'; exit;
     }
     if ($mdPurpose !== 'reservation_deposit') {
-        error_log('[P0#5][reserve-deposit-webhook] STRIPE_MISMATCH purpose=' . $mdPurpose, 3, '/home/odah/log/php_errors.log');
+        error_log('[P0#5][reserve-deposit-webhook] STRIPE_MISMATCH purpose=' . $mdPurpose, 3, POSLA_PHP_ERROR_LOG);
         http_response_code(403); echo '{"ok":false,"error":"STRIPE_MISMATCH","note":"purpose"}'; exit;
     }
     if ($mdExpCur !== 'jpy' || $objCur !== 'jpy') {
-        error_log('[P0#5][reserve-deposit-webhook] STRIPE_MISMATCH currency md=' . $mdExpCur . ' stripe=' . $objCur, 3, '/home/odah/log/php_errors.log');
+        error_log('[P0#5][reserve-deposit-webhook] STRIPE_MISMATCH currency md=' . $mdExpCur . ' stripe=' . $objCur, 3, POSLA_PHP_ERROR_LOG);
         http_response_code(403); echo '{"ok":false,"error":"STRIPE_MISMATCH","note":"currency"}'; exit;
     }
     if ($objAmount === null || $mdExpAmt !== $objAmount || $mdExpAmt !== (int)$r['deposit_amount']) {
-        error_log('[P0#5][reserve-deposit-webhook] STRIPE_MISMATCH amount db=' . (int)$r['deposit_amount'] . ' md=' . $mdExpAmt . ' stripe=' . (int)$objAmount, 3, '/home/odah/log/php_errors.log');
+        error_log('[P0#5][reserve-deposit-webhook] STRIPE_MISMATCH amount db=' . (int)$r['deposit_amount'] . ' md=' . $mdExpAmt . ' stripe=' . (int)$objAmount, 3, POSLA_PHP_ERROR_LOG);
         http_response_code(403); echo '{"ok":false,"error":"STRIPE_MISMATCH","note":"amount"}'; exit;
     }
 }
@@ -141,7 +142,7 @@ if ($type === 'checkout.session.completed') {
     $r2->execute([$reservationId]);
     $rr = $r2->fetch();
     if ($rr['customer_email']) {
-        $editUrl = 'https://eat.posla.jp/public/customer/reserve-detail.html?id=' . urlencode($reservationId) . '&t=' . urlencode($rr['edit_token']);
+        $editUrl = app_url('/customer/reserve-detail.html') . '?id=' . urlencode($reservationId) . '&t=' . urlencode($rr['edit_token']);
         send_reservation_notification($pdo, $rr, 'deposit_captured');
         send_reservation_notification($pdo, $rr, 'confirm', ['edit_url' => $editUrl]);
     }
@@ -173,7 +174,7 @@ function _l9_verify_stripe_sig($payload, $header, $secret) {
     if (!$timestamp || empty($sigs)) return false;
     // S3 #16: Stripe 推奨の 5 分タイムスタンプ許容 (replay 攻撃対策)
     if (abs(time() - (int)$timestamp) > 300) {
-        error_log('[S3#16][l9-webhook] timestamp_out_of_tolerance t=' . $timestamp . ' now=' . time(), 3, '/home/odah/log/php_errors.log');
+        error_log('[S3#16][l9-webhook] timestamp_out_of_tolerance t=' . $timestamp . ' now=' . time(), 3, POSLA_PHP_ERROR_LOG);
         return false;
     }
     $signed = $timestamp . '.' . $payload;
