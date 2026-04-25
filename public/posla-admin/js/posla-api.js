@@ -57,6 +57,13 @@ var PoslaApi = (function() {
     createTenant: function(data) {
       return request('POST', '/tenants.php', data);
     },
+    getFeatureFlags: function(tenantId) {
+      var query = tenantId ? ('?tenant_id=' + encodeURIComponent(tenantId)) : '';
+      return request('GET', '/feature-flags.php' + query);
+    },
+    updateFeatureFlag: function(data) {
+      return request('PATCH', '/feature-flags.php', data);
+    },
     getSettings: function() {
       return request('GET', '/settings.php');
     },

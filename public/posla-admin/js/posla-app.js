@@ -78,6 +78,21 @@
     var createBtn = document.getElementById('btn-create-tenant');
     if (createBtn) createBtn.addEventListener('click', createTenant);
 
+    var refreshFeatureFlagsBtn = document.getElementById('btn-refresh-feature-flags');
+    if (refreshFeatureFlagsBtn) refreshFeatureFlagsBtn.addEventListener('click', loadFeatureFlags);
+
+    var featureFlagTenantSelect = document.getElementById('ff-tenant-select');
+    if (featureFlagTenantSelect) featureFlagTenantSelect.addEventListener('change', loadFeatureFlags);
+
+    var featureFlagScopeSelect = document.getElementById('ff-scope-type');
+    if (featureFlagScopeSelect) featureFlagScopeSelect.addEventListener('change', updateFeatureFlagScopeHint);
+
+    var saveFeatureFlagBtn = document.getElementById('btn-save-feature-flag');
+    if (saveFeatureFlagBtn) saveFeatureFlagBtn.addEventListener('click', saveFeatureFlagOverride);
+
+    var clearFeatureFlagBtn = document.getElementById('btn-clear-feature-flag');
+    if (clearFeatureFlagBtn) clearFeatureFlagBtn.addEventListener('click', clearFeatureFlagOverride);
+
     // テナント一覧クリック委譲
     var tenantsList = document.getElementById('tenants-list');
     if (tenantsList) {
@@ -169,12 +184,233 @@
     // データ読み込み
     if (tabId === 'overview') loadDashboard();
     if (tabId === 'tenants') loadTenants();
+    if (tabId === 'feature-flags') loadFeatureFlags();
     if (tabId === 'api-settings') loadApiStatus();
     if (tabId === 'pwa-push') loadPushStatus();
     if (tabId === 'admin-users') loadAdminUsers();
     if (tabId === 'customer-support') loadCustomerSupport();
     if (tabId === 'support') loadSupport();
     if (tabId === 'ops') loadOpsCenter();
+  }
+
+  // ── Feature Flags ──
+  var _featureFlagState = {
+    tenants: [],
+    tenantsLoaded: false,
+    flags: [],
+    cellId: ''
+  };
+
+  function loadFeatureFlagTenants() {
+    if (_featureFlagState.tenantsLoaded) {
+      return Promise.resolve(_featureFlagState.tenants);
+    }
+
+    return PoslaApi.getTenants().then(function(data) {
+      _featureFlagState.tenants = data.tenants || [];
+      _featureFlagState.tenantsLoaded = true;
+      renderFeatureFlagTenantOptions();
+      return _featureFlagState.tenants;
+    });
+  }
+
+  function renderFeatureFlagTenantOptions() {
+    var select = document.getElementById('ff-tenant-select');
+    if (!select) return;
+
+    var currentValue = select.value || '';
+    var html = '<option value="">tenant 未選択（global / cell のみ）</option>';
+    var i;
+    for (i = 0; i < _featureFlagState.tenants.length; i++) {
+      var tenant = _featureFlagState.tenants[i];
+      html += '<option value="' + Utils.escapeHtml(tenant.id) + '">' +
+        Utils.escapeHtml(tenant.name || tenant.slug || tenant.id) +
+        ' / ' + Utils.escapeHtml(tenant.slug || '-') +
+        '</option>';
+    }
+    select.innerHTML = html;
+    select.value = currentValue;
+  }
+
+  function loadFeatureFlags() {
+    var selectedTenantId = getSelectedFeatureFlagTenantId();
+    var listEl = document.getElementById('feature-flags-list');
+    if (listEl) {
+      listEl.innerHTML = '<div style="padding:1rem;color:var(--text-muted);">読み込み中...</div>';
+    }
+
+    loadFeatureFlagTenants().then(function() {
+      return PoslaApi.getFeatureFlags(selectedTenantId);
+    }).then(function(data) {
+      _featureFlagState.flags = data.flags || [];
+      _featureFlagState.cellId = data.cell_id || '';
+      renderFeatureFlags(data);
+      updateFeatureFlagScopeHint();
+    }).catch(function(err) {
+      if (listEl) {
+        listEl.innerHTML = '<div style="padding:1rem;color:#c62828;">Feature Flags の読み込みに失敗しました: ' + Utils.escapeHtml(err.message) + '</div>';
+      }
+      showToast('Feature Flags の読み込みに失敗しました: ' + err.message);
+    });
+  }
+
+  function renderFeatureFlags(data) {
+    var listEl = document.getElementById('feature-flags-list');
+    var keySelect = document.getElementById('ff-feature-key');
+    var flags = data.flags || [];
+    var i;
+    var html;
+
+    if (keySelect) {
+      var currentKey = keySelect.value || '';
+      var optionHtml = '';
+      for (i = 0; i < flags.length; i++) {
+        optionHtml += '<option value="' + Utils.escapeHtml(flags[i].feature_key) + '">' +
+          Utils.escapeHtml(flags[i].feature_key) +
+          '</option>';
+      }
+      keySelect.innerHTML = optionHtml;
+      if (currentKey) keySelect.value = currentKey;
+    }
+
+    if (!listEl) return;
+
+    if (!data.available) {
+      listEl.innerHTML = '<div style="padding:1rem;color:#c62828;">Feature Flag テーブルが未作成です。migration-p1-42 を適用してください。</div>';
+      return;
+    }
+
+    html = '<div class="data-table-wrap"><table class="data-table"><thead><tr>' +
+      '<th>Feature</th><th>Default</th><th>Global</th><th>Cell</th><th>Tenant</th><th>Resolved</th><th>Source</th>' +
+      '</tr></thead><tbody>';
+
+    if (flags.length === 0) {
+      html += '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Feature Flag がありません</td></tr>';
+    } else {
+      for (i = 0; i < flags.length; i++) {
+        html += buildFeatureFlagRowHtml(flags[i]);
+      }
+    }
+
+    html += '</tbody></table></div>';
+    listEl.innerHTML = html;
+  }
+
+  function buildFeatureFlagRowHtml(flag) {
+    var resolvedTone = parseInt(flag.resolved_enabled, 10) ? 'active' : 'inactive';
+    var resolvedLabel = parseInt(flag.resolved_enabled, 10) ? 'ON' : 'OFF';
+    return '<tr>' +
+      '<td><strong>' + Utils.escapeHtml(flag.label || flag.feature_key) + '</strong><br><code>' + Utils.escapeHtml(flag.feature_key) + '</code></td>' +
+      '<td>' + buildFeatureFlagBadge(flag.default_enabled) + '</td>' +
+      '<td>' + buildFeatureFlagOverrideHtml(flag, 'global') + '</td>' +
+      '<td>' + buildFeatureFlagOverrideHtml(flag, 'cell') + '</td>' +
+      '<td>' + buildFeatureFlagOverrideHtml(flag, 'tenant') + '</td>' +
+      '<td><span class="badge badge--' + resolvedTone + '">' + resolvedLabel + '</span></td>' +
+      '<td>' + Utils.escapeHtml(flag.resolved_source || '-') + '</td>' +
+      '</tr>';
+  }
+
+  function buildFeatureFlagBadge(value) {
+    var on = parseInt(value, 10) === 1;
+    return '<span class="badge badge--' + (on ? 'active' : 'inactive') + '">' + (on ? 'ON' : 'OFF') + '</span>';
+  }
+
+  function buildFeatureFlagOverrideHtml(flag, scopeType) {
+    var overrides = flag.overrides || {};
+    var override = overrides[scopeType];
+    if (!override) {
+      return '<span style="color:var(--text-muted);">-</span>';
+    }
+
+    var reason = override.reason ? '<br><small>' + Utils.escapeHtml(override.reason) + '</small>' : '';
+    return buildFeatureFlagBadge(override.enabled) + reason;
+  }
+
+  function getSelectedFeatureFlagTenantId() {
+    var select = document.getElementById('ff-tenant-select');
+    return select ? select.value : '';
+  }
+
+  function buildFeatureFlagPayload(clear) {
+    var keyEl = document.getElementById('ff-feature-key');
+    var scopeEl = document.getElementById('ff-scope-type');
+    var enabledEl = document.getElementById('ff-enabled');
+    var reasonEl = document.getElementById('ff-reason');
+    var featureKey = keyEl ? keyEl.value : '';
+    var scopeType = scopeEl ? scopeEl.value : '';
+    var tenantId = getSelectedFeatureFlagTenantId();
+    var payload;
+
+    if (!featureKey) {
+      showToast('Feature を選択してください');
+      return null;
+    }
+    if (scopeType === 'tenant' && !tenantId) {
+      showToast('tenant scope では Tenant を選択してください');
+      return null;
+    }
+
+    payload = {
+      feature_key: featureKey,
+      scope_type: scopeType,
+      scope_id: scopeType === 'tenant' ? tenantId : '',
+      reason: reasonEl ? reasonEl.value.trim() : ''
+    };
+
+    if (clear) {
+      payload.clear = true;
+    } else {
+      payload.enabled = enabledEl ? enabledEl.value : '0';
+    }
+
+    return payload;
+  }
+
+  function saveFeatureFlagOverride() {
+    var btn = document.getElementById('btn-save-feature-flag');
+    var payload = buildFeatureFlagPayload(false);
+    if (!payload) return;
+
+    if (btn) btn.disabled = true;
+    PoslaApi.updateFeatureFlag(payload).then(function() {
+      showToast('Feature Flag を更新しました');
+      loadFeatureFlags();
+    }).catch(function(err) {
+      showToast('Feature Flag の更新に失敗しました: ' + err.message);
+    }).then(function() {
+      if (btn) btn.disabled = false;
+    });
+  }
+
+  function clearFeatureFlagOverride() {
+    var btn = document.getElementById('btn-clear-feature-flag');
+    var payload = buildFeatureFlagPayload(true);
+    if (!payload) return;
+
+    if (btn) btn.disabled = true;
+    PoslaApi.updateFeatureFlag(payload).then(function() {
+      showToast('Feature Flag override を解除しました');
+      loadFeatureFlags();
+    }).catch(function(err) {
+      showToast('Feature Flag override の解除に失敗しました: ' + err.message);
+    }).then(function() {
+      if (btn) btn.disabled = false;
+    });
+  }
+
+  function updateFeatureFlagScopeHint() {
+    var scopeEl = document.getElementById('ff-scope-type');
+    var hintEl = document.getElementById('ff-scope-hint');
+    var scopeType = scopeEl ? scopeEl.value : '';
+    if (!hintEl) return;
+
+    if (scopeType === 'global') {
+      hintEl.textContent = 'global scope は全 cell の既定上書きです。MVPでは慎重に使います。';
+    } else if (scopeType === 'tenant') {
+      hintEl.textContent = 'tenant scope は選択中の tenant にだけ適用します。';
+    } else {
+      hintEl.textContent = 'cell scope は現在の cell_id (' + (_featureFlagState.cellId || 'unknown') + ') に保存します。';
+    }
   }
 
   // ── POSLA 管理者ユーザー管理 ──

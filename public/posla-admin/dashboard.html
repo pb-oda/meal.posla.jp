@@ -971,6 +971,7 @@
         <button class="tab-nav__btn" data-tab="overview">ダッシュボード</button>
         <button class="tab-nav__btn" data-tab="tenants">テナント管理</button>
         <button class="tab-nav__btn" data-tab="create-tenant">テナント作成</button>
+        <button class="tab-nav__btn" data-tab="feature-flags">Feature Flags</button>
         <button class="tab-nav__btn" data-tab="api-settings">API設定</button>
         <button class="tab-nav__btn" data-tab="pwa-push">PWA / Web Push</button>
         <button class="tab-nav__btn" data-tab="admin-users">管理者ユーザー</button>
@@ -1152,6 +1153,70 @@
               <li>作成直後は Stripe・Connect・Google Chat・PWA などの外部連携は未設定でも構いません。</li>
               <li>契約差分は `hq_menu_broadcast` オプションだけです。旧 `plan` は表示互換のためだけに保持しています。</li>
             </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature Flags -->
+    <div class="posla-tab-panel" id="posla-panel-feature-flags">
+      <div class="panel-header">
+        <div class="panel-header__eyebrow">Rollout Control</div>
+        <h2 class="panel-header__title">Feature Flags</h2>
+        <p class="panel-header__lead">global / cell / tenant 単位で運用機能の表示・書き込み許可を切り替えます。契約アドオンの `hq_menu_broadcast` とは分離して扱います。</p>
+      </div>
+
+      <div class="panel-grid panel-grid--two">
+        <div class="card table-card">
+          <div class="card__header">
+            <div>
+              <h3 class="section-title" style="margin-bottom:0;">解決状態</h3>
+              <p class="card-intro">選択 tenant に対して default → global → cell → tenant の順で解決した結果です。</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-feature-flags" type="button">再読込</button>
+          </div>
+          <div class="card__body">
+            <div class="form-group">
+              <label class="form-label" for="ff-tenant-select">Tenant scope preview</label>
+              <select class="form-select" id="ff-tenant-select">
+                <option value="">tenant 未選択（global / cell のみ）</option>
+              </select>
+            </div>
+            <div id="feature-flags-list"></div>
+          </div>
+        </div>
+
+        <div class="card card--tint panel-shell panel-shell--narrow">
+          <div class="card__body">
+            <h3 class="section-title">Override</h3>
+            <div class="form-group">
+              <label class="form-label" for="ff-feature-key">Feature</label>
+              <select class="form-select" id="ff-feature-key"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ff-scope-type">Scope</label>
+              <select class="form-select" id="ff-scope-type">
+                <option value="cell">この cell</option>
+                <option value="tenant">選択 tenant</option>
+                <option value="global">global</option>
+              </select>
+              <span class="form-hint" id="ff-scope-hint">cell scope は現在の cell_id に保存します。</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ff-enabled">Enabled</label>
+              <select class="form-select" id="ff-enabled">
+                <option value="1">ON</option>
+                <option value="0">OFF</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ff-reason">Reason</label>
+              <input class="form-input" type="text" id="ff-reason" maxlength="255" placeholder="変更理由">
+            </div>
+            <div class="panel-header__actions">
+              <button class="btn btn-primary" id="btn-save-feature-flag" type="button">保存</button>
+              <button class="btn btn-secondary" id="btn-clear-feature-flag" type="button">Override解除</button>
+            </div>
           </div>
         </div>
       </div>

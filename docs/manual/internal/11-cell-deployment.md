@@ -295,7 +295,43 @@ POSLA_CELL_RESTORE_CONFIRM=acme-prod scripts/cell/cell.sh acme-prod rollback lat
 - restore 後は `posla_cell_deployments` に `rolled_back` を記録する
 - all-in-one `rollback` は env restore -> DB restore -> deploy の順に実行する
 
-## 11.10 codex-ops-platform 接続
+## 11.10 Feature Flag
+
+Feature Flag は契約機能ではなく、運用上の rollout / write 許可 / preview 制御に使います。`hq_menu_broadcast` のような契約アドオンは引き続き `tenants` と billing 側で管理し、Feature Flag には混ぜません。
+
+DB:
+
+- `posla_feature_flags`: flag 定義。MVP の初期値はすべて default OFF。
+- `posla_feature_flag_overrides`: `global` / `cell` / `tenant` scope の上書き。
+
+解決順:
+
+```text
+default
+  -> global override
+  -> cell override
+  -> tenant override
+```
+
+POSLA管理画面の `Feature Flags` タブから、対象 tenant を選んで解決結果を確認し、`cell` または `tenant` scope で override します。MVP では緊急修正や先行検証は `tenant` または `cell` scope を優先し、`global` は全 cell へ影響するため最後に使います。
+
+初期 flag:
+
+| feature_key | 用途 |
+|---|---|
+| `support_console_v2` | POSLA管理画面サポート導線の段階展開 |
+| `codex_ops_write` | codex-ops-platform からの write/deploy 系アクション許可 |
+| `tenant_preview_release` | 特定 tenant/cell への先行検証導線 |
+
+適用 migration:
+
+```bash
+scripts/cell/cell.sh acme-prod migrate sql/migration-p1-42-feature-flags.sql
+```
+
+rollback では、まず対象 tenant / cell の override を OFF または解除します。コードを戻す前に flag だけで影響を止められる場合は、DB restore より flag rollback を優先します。
+
+## 11.11 codex-ops-platform 接続
 
 `【AI運用支援】codex-ops-platform` は、MVP では次の read-only 接続から始めます。
 
@@ -305,7 +341,9 @@ POSLA_CELL_RESTORE_CONFIRM=acme-prod scripts/cell/cell.sh acme-prod rollback lat
 
 コード修正は codex-ops-platform から直接コンテナへ入って行いません。正本 repo で修正し、build artifact を作り、承認された deploy コマンドで対象 cell へ反映します。
 
-## 11.11 Git 管理名
+write/deploy 系アクションを codex-ops-platform へ渡す場合は、対象 cell / tenant の `codex_ops_write` flag を明示的に ON にしてから実行します。flag が OFF の cell は read-only bootstrap と監視だけを許可します。
+
+## 11.12 Git 管理名
 
 この擬似本番環境の commit / push は、GitLab などの正本 remote が確定するまで `meal.posla.jp` を作業識別名として扱います。
 
@@ -319,7 +357,7 @@ git push origin meal.posla.jp/cell-architecture
 
 remote alias は実際の GitLab URL が確定してから追加します。未確定の URL に対して `git remote add` しません。
 
-## 11.12 重要な禁止事項
+## 11.13 重要な禁止事項
 
 - `api/.htaccess` に `POSLA_DB_*` や URL 値を固定しない。
 - 全 cell に対して一括 migration しない。
