@@ -32,6 +32,16 @@ _backup_*/
 # Internal credentials / 社外秘
 docs/internal/
 
+# Local-only operational credentials / account notes
+擬似本番アカウント.txt
+\*no_deploy/docs_sensitive/
+\*no_deploy/root_misc/sshkey.txt
+\*no_deploy/**/*.pem
+\*no_deploy/**/*credential*
+\*no_deploy/**/*secret*
+\*no_deploy/**/*ログイン*
+\*no_deploy/**/*アカウント*
+
 # Node
 node_modules/
 
