@@ -1,0 +1,845 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/58z25kb6",
+    "id": "58z25kb6",
+    "slide": 7,
+    "layoutId": "/ppt/slideLayouts/slideLayout2.xml",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout2.xml",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9cvixcze",
+      "id": "1",
+      "name": "background",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "#151311",
+      "lineColor": "#151311",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ylc7u54z",
+      "id": "2",
+      "name": "labor-ghost",
+      "bbox": [
+        1180,
+        720,
+        430,
+        86
+      ],
+      "geometry": "rect",
+      "text": "接客に戻す",
+      "textPreview": "接客に戻す",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "接客に戻す"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "接客に戻す",
+          "runs": [
+            {
+              "index": 1,
+              "text": "接客に戻す",
+              "fontSize": 86,
+              "color": "#4A2C22",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/r65wjudg",
+      "id": "3",
+      "name": "slide-6-eyebrow",
+      "bbox": [
+        92,
+        74,
+        126,
+        18
+      ],
+      "geometry": "rect",
+      "text": "Cost and labor",
+      "textPreview": "Cost and labor",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Cost and"
+          },
+          {
+            "index": 2,
+            "text": "labor"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Cost and labor",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Cost and labor",
+              "fontSize": 18,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/g3ex0nux",
+      "id": "4",
+      "name": "slide-6-rule",
+      "bbox": [
+        92,
+        106,
+        120,
+        4
+      ],
+      "geometry": "rect",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5o7qpg3e",
+      "id": "5",
+      "name": "slide-6-title",
+      "bbox": [
+        92,
+        124,
+        448,
+        128
+      ],
+      "geometry": "rect",
+      "text": "人手不足でも\n回しやすい店へ",
+      "textPreview": "人手不足でも | 回しやすい店へ",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "人手不足でも"
+          },
+          {
+            "index": 2,
+            "text": "回しやすい店へ"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "人手不足でも",
+          "runs": [
+            {
+              "index": 1,
+              "text": "人手不足でも",
+              "fontSize": 64,
+              "color": "#FBF7F2",
+              "bold": true
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "回しやすい店へ",
+          "runs": [
+            {
+              "index": 1,
+              "text": "回しやすい店へ",
+              "fontSize": 64,
+              "color": "#FBF7F2",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/yxobm58z",
+      "id": "6",
+      "name": "slide-6-subtitle",
+      "bbox": [
+        92,
+        266,
+        776,
+        28
+      ],
+      "geometry": "rect",
+      "text": "ホールの仕事を減らすのではなく、作業を減らして接客に戻す。",
+      "textPreview": "ホールの仕事を減らすのではなく、作業を減らして接客に戻す。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "ホールの仕事を減らすのではなく、作業を減らして接客に戻す"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "ホールの仕事を減らすのではなく、作業を減らして接客に戻す。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "ホールの仕事を減らすのではなく、作業を減らして接客に戻す。",
+              "fontSize": 27,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nih4byhg",
+      "id": "7",
+      "name": "labor-1-lead",
+      "bbox": [
+        92,
+        328,
+        192,
+        28
+      ],
+      "geometry": "rect",
+      "text": "セルフオーダー",
+      "textPreview": "セルフオーダー",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "セルフオーダー"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "セルフオーダー",
+          "runs": [
+            {
+              "index": 1,
+              "text": "セルフオーダー",
+              "fontSize": 28,
+              "color": "#FBF7F2",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/g7adsji5",
+      "id": "8",
+      "name": "labor-1-detail",
+      "bbox": [
+        92,
+        362,
+        518,
+        20
+      ],
+      "geometry": "rect",
+      "text": "注文取りの往復を減らし、ピーク時でも回しやすくする。",
+      "textPreview": "注文取りの往復を減らし、ピーク時でも回しやすくする。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "注文取りの往復を減らし、ピーク時でも回しやすくする。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "注文取りの往復を減らし、ピーク時でも回しやすくする。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "注文取りの往復を減らし、ピーク時でも回しやすくする。",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9s36hcrm",
+      "id": "9",
+      "name": "labor-2-lead",
+      "bbox": [
+        976,
+        328,
+        60,
+        56
+      ],
+      "geometry": "rect",
+      "text": "KDS",
+      "textPreview": "KDS",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "KDS"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "KDS",
+          "runs": [
+            {
+              "index": 1,
+              "text": "KDS",
+              "fontSize": 28,
+              "color": "#FBF7F2",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8v6psfi",
+      "id": "10",
+      "name": "labor-2-detail",
+      "bbox": [
+        976,
+        390,
+        558,
+        40
+      ],
+      "geometry": "rect",
+      "text": "厨房とホールの伝達ミスを減らし、進行共有をそろえやすくする。",
+      "textPreview": "厨房とホールの伝達ミスを減らし、進行共有をそろえやすくする。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "厨房とホールの伝達ミスを減らし、進行共有をそろえやすくす"
+          },
+          {
+            "index": 2,
+            "text": "る。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "厨房とホールの伝達ミスを減らし、進行共有をそろえやすくする。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "厨房とホールの伝達ミスを減らし、進行共有をそろえやすくする。",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/onyd0z61",
+      "id": "11",
+      "name": "labor-3-lead",
+      "bbox": [
+        92,
+        458,
+        138,
+        28
+      ],
+      "geometry": "rect",
+      "text": "セルフ会計",
+      "textPreview": "セルフ会計",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "セルフ会計"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "セルフ会計",
+          "runs": [
+            {
+              "index": 1,
+              "text": "セルフ会計",
+              "fontSize": 28,
+              "color": "#FBF7F2",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/z25kb6xk",
+      "id": "12",
+      "name": "labor-3-detail",
+      "bbox": [
+        92,
+        492,
+        498,
+        20
+      ],
+      "geometry": "rect",
+      "text": "レジ待ちを分散し、会計対応の偏りを抑えやすくする。",
+      "textPreview": "レジ待ちを分散し、会計対応の偏りを抑えやすくする。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "レジ待ちを分散し、会計対応の偏りを抑えやすくする"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "レジ待ちを分散し、会計対応の偏りを抑えやすくする。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "レジ待ちを分散し、会計対応の偏りを抑えやすくする。",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6hcrmhk3",
+      "id": "13",
+      "name": "labor-4-lead",
+      "bbox": [
+        976,
+        458,
+        250,
+        28
+      ],
+      "geometry": "rect",
+      "text": "予約変更のセルフ化",
+      "textPreview": "予約変更のセルフ化",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "予約変更のセルフ化"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "予約変更のセルフ化",
+          "runs": [
+            {
+              "index": 1,
+              "text": "予約変更のセルフ化",
+              "fontSize": 28,
+              "color": "#FBF7F2",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dg7adsji",
+      "id": "14",
+      "name": "labor-4-detail",
+      "bbox": [
+        976,
+        492,
+        540,
+        20
+      ],
+      "geometry": "rect",
+      "text": "電話確認を減らし、営業中の割り込みを減らしやすくする。",
+      "textPreview": "電話確認を減らし、営業中の割り込みを減らしやすくする。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "電話確認を減らし、営業中の割り込みを減らしやすくする。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "電話確認を減らし、営業中の割り込みを減らしやすくする。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "電話確認を減らし、営業中の割り込みを減らしやすくする。",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ovahoza1",
+      "id": "15",
+      "name": "labor-divider",
+      "bbox": [
+        92,
+        540,
+        1736,
+        1
+      ],
+      "geometry": "rect",
+      "fillColor": "#5A463B",
+      "lineColor": "#5A463B",
+      "lineWidth": 0
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vahoza1g",
+      "id": "16",
+      "name": "labor-takeaway",
+      "bbox": [
+        92,
+        568,
+        912,
+        24
+      ],
+      "geometry": "rect",
+      "text": "少人数でも回しやすい導線をつくることが、採用コスト増への現実的な対策になる。",
+      "textPreview": "少人数でも回しやすい導線をつくることが、採用コスト増への現実的な対策になる。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "少人数でも回しやすい導線をつくることが、採用コスト増への現実的な対策になる。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "少人数でも回しやすい導線をつくることが、採用コスト増への現実的な対策になる。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "少人数でも回しやすい導線をつくることが、採用コスト増への現実的な対策になる。",
+              "fontSize": 24,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6tovahoz",
+      "id": "17",
+      "name": "footer-source-6",
+      "bbox": [
+        92,
+        982,
+        362,
+        24
+      ],
+      "geometry": "rect",
+      "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "textPreview": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+              "fontSize": 11,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dsji5sne",
+      "id": "18",
+      "name": "footer-page-6",
+      "bbox": [
+        1796,
+        982,
+        32,
+        24
+      ],
+      "geometry": "rect",
+      "text": "6 / 11",
+      "textPreview": "6 / 11",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "6 / 11"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "6 / 11",
+          "runs": [
+            {
+              "index": 1,
+              "text": "6 / 11",
+              "fontSize": 12,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

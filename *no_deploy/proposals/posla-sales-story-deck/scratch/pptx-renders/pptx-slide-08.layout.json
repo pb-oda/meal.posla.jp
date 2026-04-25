@@ -1,0 +1,1036 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/fu18jqh0",
+    "id": "fu18jqh0",
+    "slide": 9,
+    "layoutId": "/ppt/slideLayouts/slideLayout2.xml",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout2.xml",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1032lszq",
+      "id": "1",
+      "name": "background",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "#FBF7F2",
+      "lineColor": "#FBF7F2",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u9knih4b",
+      "id": "2",
+      "name": "slide-8-eyebrow",
+      "bbox": [
+        92,
+        74,
+        210,
+        36
+      ],
+      "geometry": "rect",
+      "text": "Reservation and takeout",
+      "textPreview": "Reservation and takeout",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Reservation and"
+          },
+          {
+            "index": 2,
+            "text": "takeout"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Reservation and takeout",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Reservation and takeout",
+              "fontSize": 18,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/judg7ads",
+      "id": "3",
+      "name": "slide-8-rule",
+      "bbox": [
+        92,
+        124,
+        120,
+        4
+      ],
+      "geometry": "rect",
+      "fillColor": "#C46A2E",
+      "lineColor": "#C46A2E",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/c7u54zid",
+      "id": "4",
+      "name": "slide-8-title",
+      "bbox": [
+        92,
+        142,
+        724,
+        156
+      ],
+      "geometry": "rect",
+      "text": "予約も\nテイクアウトも取りこぼさない",
+      "textPreview": "予約も | テイクアウトも取りこぼさない",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "予約も"
+          },
+          {
+            "index": 2,
+            "text": "テイクアウトも取りこぼさない"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "予約も",
+          "runs": [
+            {
+              "index": 1,
+              "text": "予約も",
+              "fontSize": 52,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "テイクアウトも取りこぼさない",
+          "runs": [
+            {
+              "index": 1,
+              "text": "テイクアウトも取りこぼさない",
+              "fontSize": 52,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1orytsvu",
+      "id": "5",
+      "name": "slide-8-subtitle",
+      "bbox": [
+        92,
+        312,
+        914,
+        54
+      ],
+      "geometry": "rect",
+      "text": "売上機会を増やしたいのに、確認作業で現場が止まる。その矛盾を減らす。",
+      "textPreview": "売上機会を増やしたいのに、確認作業で現場が止まる。その矛盾を減らす。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "売上機会を増やしたいのに、確認作業で現場が止まる。その矛盾を減らす"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "売上機会を増やしたいのに、確認作業で現場が止まる。その矛盾を減らす。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "売上機会を増やしたいのに、確認作業で現場が止まる。その矛盾を減らす。",
+              "fontSize": 27,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u18jqh0f",
+      "id": "6",
+      "name": "reservation-lane-title",
+      "bbox": [
+        92,
+        400,
+        840,
+        34
+      ],
+      "geometry": "rect",
+      "text": "予約",
+      "textPreview": "予約",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "予約"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "予約",
+          "runs": [
+            {
+              "index": 1,
+              "text": "予約",
+              "fontSize": 34,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jm1cfa9w",
+      "id": "7",
+      "name": "reservation-lane-1",
+      "bbox": [
+        92,
+        450,
+        840,
+        24
+      ],
+      "geometry": "rect",
+      "text": "受付",
+      "textPreview": "受付",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "受付"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "受付",
+          "runs": [
+            {
+              "index": 1,
+              "text": "受付",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cvixczed",
+      "id": "8",
+      "name": "reservation-lane-2",
+      "bbox": [
+        92,
+        490,
+        840,
+        24
+      ],
+      "geometry": "rect",
+      "text": "自己変更 / キャンセル",
+      "textPreview": "自己変更 / キャンセル",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "自己変更 / キャンセル"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "自己変更 / キャンセル",
+          "runs": [
+            {
+              "index": 1,
+              "text": "自己変更 / キャンセル",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5gbq1ory",
+      "id": "9",
+      "name": "reservation-lane-3",
+      "bbox": [
+        92,
+        530,
+        840,
+        24
+      ],
+      "geometry": "rect",
+      "text": "予約金",
+      "textPreview": "予約金",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "予約金"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "予約金",
+          "runs": [
+            {
+              "index": 1,
+              "text": "予約金",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/18jqh0fe",
+      "id": "10",
+      "name": "reservation-lane-4",
+      "bbox": [
+        92,
+        570,
+        840,
+        24
+      ],
+      "geometry": "rect",
+      "text": "予約台帳",
+      "textPreview": "予約台帳",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "予約台帳"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "予約台帳",
+          "runs": [
+            {
+              "index": 1,
+              "text": "予約台帳",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8nqxs72x",
+      "id": "11",
+      "name": "reservation-lane-5",
+      "bbox": [
+        92,
+        610,
+        840,
+        24
+      ],
+      "geometry": "rect",
+      "text": "LINE連携",
+      "textPreview": "LINE連携",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "LINE連携"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "LINE連携",
+          "runs": [
+            {
+              "index": 1,
+              "text": "LINE連携",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/j2t83itg",
+      "id": "12",
+      "name": "reservation-lane-detail",
+      "bbox": [
+        92,
+        650,
+        460,
+        40
+      ],
+      "geometry": "rect",
+      "text": "来店前後の問い合わせを、店舗だけで抱え込みにくくする。",
+      "textPreview": "来店前後の問い合わせを、店舗だけで抱え込みにくくする。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "来店前後の問い合わせを、店舗だけで抱え込みにく"
+          },
+          {
+            "index": 2,
+            "text": "くする。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "来店前後の問い合わせを、店舗だけで抱え込みにくくする。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "来店前後の問い合わせを、店舗だけで抱え込みにくくする。",
+              "fontSize": 20,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qh0fepkz",
+      "id": "13",
+      "name": "rt-vrule",
+      "bbox": [
+        960,
+        400,
+        2,
+        548
+      ],
+      "geometry": "rect",
+      "fillColor": "#D5C2AE",
+      "lineColor": "#D5C2AE",
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1w7mp0bi",
+      "id": "14",
+      "name": "takeout-lane-title",
+      "bbox": [
+        990,
+        400,
+        840,
+        34
+      ],
+      "geometry": "rect",
+      "text": "テイクアウト",
+      "textPreview": "テイクアウト",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "テイクアウト"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "テイクアウト",
+          "runs": [
+            {
+              "index": 1,
+              "text": "テイクアウト",
+              "fontSize": 34,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8bat47y1",
+      "id": "15",
+      "name": "takeout-lane-1",
+      "bbox": [
+        990,
+        450,
+        840,
+        24
+      ],
+      "geometry": "rect",
+      "text": "受取枠管理",
+      "textPreview": "受取枠管理",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "受取枠管理"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "受取枠管理",
+          "runs": [
+            {
+              "index": 1,
+              "text": "受取枠管理",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jqh0fepk",
+      "id": "16",
+      "name": "takeout-lane-2",
+      "bbox": [
+        990,
+        490,
+        840,
+        24
+      ],
+      "geometry": "rect",
+      "text": "事前注文",
+      "textPreview": "事前注文",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "事前注文"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "事前注文",
+          "runs": [
+            {
+              "index": 1,
+              "text": "事前注文",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/q5o7qpg3",
+      "id": "17",
+      "name": "takeout-lane-3",
+      "bbox": [
+        990,
+        530,
+        840,
+        24
+      ],
+      "geometry": "rect",
+      "text": "注文ステータス",
+      "textPreview": "注文ステータス",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "注文ステータス"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "注文ステータス",
+          "runs": [
+            {
+              "index": 1,
+              "text": "注文ステータス",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1kre1w7m",
+      "id": "18",
+      "name": "takeout-lane-4",
+      "bbox": [
+        990,
+        570,
+        840,
+        24
+      ],
+      "geometry": "rect",
+      "text": "ピーク分散",
+      "textPreview": "ピーク分散",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "ピーク分散"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "ピーク分散",
+          "runs": [
+            {
+              "index": 1,
+              "text": "ピーク分散",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/c3ylc7u5",
+      "id": "19",
+      "name": "takeout-lane-5",
+      "bbox": [
+        990,
+        610,
+        840,
+        24
+      ],
+      "geometry": "rect",
+      "text": "店内運用と同じ基盤",
+      "textPreview": "店内運用と同じ基盤",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "店内運用と同じ基盤"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "店内運用と同じ基盤",
+          "runs": [
+            {
+              "index": 1,
+              "text": "店内運用と同じ基盤",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/orytsvu9",
+      "id": "20",
+      "name": "takeout-lane-detail",
+      "bbox": [
+        990,
+        650,
+        458,
+        40
+      ],
+      "geometry": "rect",
+      "text": "売上機会を増やしながら、受取タイミングを整えやすくする。",
+      "textPreview": "売上機会を増やしながら、受取タイミングを整えやすくする。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "売上機会を増やしながら、受取タイミングを整え"
+          },
+          {
+            "index": 2,
+            "text": "やすくする。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "売上機会を増やしながら、受取タイミングを整えやすくする。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "売上機会を増やしながら、受取タイミングを整えやすくする。",
+              "fontSize": 20,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hcrmhk3q",
+      "id": "21",
+      "name": "footer-source-8",
+      "bbox": [
+        92,
+        982,
+        362,
+        24
+      ],
+      "geometry": "rect",
+      "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "textPreview": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+              "fontSize": 11,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/al87ed8b",
+      "id": "22",
+      "name": "footer-page-8",
+      "bbox": [
+        1796,
+        982,
+        32,
+        24
+      ],
+      "geometry": "rect",
+      "text": "8 / 11",
+      "textPreview": "8 / 11",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "8 / 11"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "8 / 11",
+          "runs": [
+            {
+              "index": 1,
+              "text": "8 / 11",
+              "fontSize": 12,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

@@ -1,0 +1,2820 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/y5e4ss",
+    "id": "y5e4ss",
+    "slide": 5,
+    "layoutId": "fc8614bb-557e-4e3a-9afb-6c4bdd7a29a5",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "52342e28-6700-4ce1-847f-ce0e7fbb4774",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "fc8614bb-557e-4e3a-9afb-6c4bdd7a29a5",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "52342e28-6700-4ce1-847f-ce0e7fbb4774",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "52342e28-6700-4ce1-847f-ce0e7fbb4774",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8bat47y",
+      "id": "1",
+      "name": "background",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "fillColor": "#FBF7F2",
+      "lineColor": "#FBF7F2",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2lszqtcj",
+      "id": "2",
+      "name": "revenue-orb",
+      "bbox": [
+        1384,
+        544,
+        704,
+        704
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0"
+      },
+      "geometry": "ellipse",
+      "fillColor": "#F2D7BE",
+      "lineColor": "#F2D7BE",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/v6psfil0",
+      "id": "3",
+      "name": "slide-5-eyebrow",
+      "bbox": [
+        92,
+        74,
+        138,
+        18
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.0.0"
+      },
+      "geometry": "rect",
+      "text": "Revenue upside",
+      "textPreview": "Revenue upside",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Revenue upside"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Revenue upside",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Revenue upside",
+              "fontSize": 18,
+              "color": "#C46A2E",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kf6dcbul",
+      "id": "4",
+      "name": "slide-5-rule",
+      "bbox": [
+        92,
+        106,
+        120,
+        4
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.0.1"
+      },
+      "geometry": "rect",
+      "fillColor": "#C46A2E",
+      "lineColor": "#C46A2E",
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d0z61032",
+      "id": "5",
+      "name": "slide-5-title",
+      "bbox": [
+        92,
+        124,
+        702,
+        192
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.0.2"
+      },
+      "geometry": "rect",
+      "text": "売上増に効くのは\n売れる導線をつくること",
+      "textPreview": "売上増に効くのは | 売れる導線をつくること",
+      "resolvedFontSize": 64,
+      "resolvedTextStyle": {
+        "fontSize": 64,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "売上増に効くのは"
+          },
+          {
+            "index": 2,
+            "text": "売れる導線をつくること"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "売上増に効くのは",
+          "runs": [
+            {
+              "index": 1,
+              "text": "売上増に効くのは",
+              "fontSize": 64,
+              "color": "#151311",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "売れる導線をつくること",
+          "runs": [
+            {
+              "index": 1,
+              "text": "売れる導線をつくること",
+              "fontSize": 64,
+              "color": "#151311",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/29gr2p8n",
+      "id": "6",
+      "name": "slide-5-subtitle",
+      "bbox": [
+        92,
+        330,
+        1030,
+        54
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.0.3"
+      },
+      "geometry": "rect",
+      "text": "POSLAは注文を受けるだけでなく、見せ方と提案の精度を上げる基盤として使える。",
+      "textPreview": "POSLAは注文を受けるだけでなく、見せ方と提案の精度を上げる基盤として使える。",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "fontSize": 27,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "POSLAは注文を受けるだけでなく、見せ方と提案の精度を上げる基盤として使える。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "POSLAは注文を受けるだけでなく、見せ方と提案の精度を上げる基盤として使える。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "POSLAは注文を受けるだけでなく、見せ方と提案の精度を上げる基盤として使える。",
+              "fontSize": 27,
+              "color": "#6D6258",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vu9knih4",
+      "id": "7",
+      "name": "revenue-word-1",
+      "bbox": [
+        92,
+        418,
+        262,
+        44
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.0.0"
+      },
+      "geometry": "rect",
+      "text": "おすすめ表示",
+      "textPreview": "おすすめ表示",
+      "resolvedFontSize": 44,
+      "resolvedTextStyle": {
+        "fontSize": 44,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "おすすめ表"
+          },
+          {
+            "index": 2,
+            "text": "示"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "おすすめ表示",
+          "runs": [
+            {
+              "index": 1,
+              "text": "おすすめ表示",
+              "fontSize": 44,
+              "color": "#C46A2E",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/k3q5o7qp",
+      "id": "8",
+      "name": "revenue-word-2",
+      "bbox": [
+        92,
+        486,
+        260,
+        88
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.0.1"
+      },
+      "geometry": "rect",
+      "text": "AIウェイター",
+      "textPreview": "AIウェイター",
+      "resolvedFontSize": 44,
+      "resolvedTextStyle": {
+        "fontSize": 44,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AIウェイター"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AIウェイター",
+          "runs": [
+            {
+              "index": 1,
+              "text": "AIウェイター",
+              "fontSize": 44,
+              "color": "#B4573C",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/donyd0z6",
+      "id": "9",
+      "name": "revenue-word-3",
+      "bbox": [
+        92,
+        598,
+        176,
+        44
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.0.2"
+      },
+      "geometry": "rect",
+      "text": "併売分析",
+      "textPreview": "併売分析",
+      "resolvedFontSize": 44,
+      "resolvedTextStyle": {
+        "fontSize": 44,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "併売分析"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "併売分析",
+          "runs": [
+            {
+              "index": 1,
+              "text": "併売分析",
+              "fontSize": 44,
+              "color": "#5F6C4C",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/p0bi9s36",
+      "id": "10",
+      "name": "revenue-word-4",
+      "bbox": [
+        92,
+        666,
+        264,
+        44
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.0.3"
+      },
+      "geometry": "rect",
+      "text": "レビュー導線",
+      "textPreview": "レビュー導線",
+      "resolvedFontSize": 44,
+      "resolvedTextStyle": {
+        "fontSize": 44,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "レビュー導線"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "レビュー導線",
+          "runs": [
+            {
+              "index": 1,
+              "text": "レビュー導線",
+              "fontSize": 44,
+              "color": "#C46A2E",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0fepkzup",
+      "id": "11",
+      "name": "revenue-1-lead",
+      "bbox": [
+        978,
+        418,
+        392,
+        56
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.1.0.0"
+      },
+      "geometry": "rect",
+      "text": "今日売りたい商品を目立たせる",
+      "textPreview": "今日売りたい商品を目立たせる",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "fontSize": 28,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "今日売りたい商品を目立たせる"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "今日売りたい商品を目立たせる",
+          "runs": [
+            {
+              "index": 1,
+              "text": "今日売りたい商品を目立たせる",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bulwval8",
+      "id": "12",
+      "name": "revenue-1-detail",
+      "bbox": [
+        978,
+        480,
+        480,
+        40
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.1.0.1"
+      },
+      "geometry": "rect",
+      "text": "おすすめ / 人気 / 限定のバッジで、見せたい商品に視線を集めやすい。",
+      "textPreview": "おすすめ / 人気 / 限定のバッジで、見せたい商品に視線を集めやすい。",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "おすすめ / 人気 /"
+          },
+          {
+            "index": 2,
+            "text": "限定のバッジで、見せたい商品に視線を集めやすい。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "おすすめ / 人気 / 限定のバッジで、見せたい商品に視線を集めやすい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "おすすめ / 人気 / 限定のバッジで、見せたい商品に視線を集めやすい。",
+              "fontSize": 20,
+              "color": "#6D6258",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/i9s36hcr",
+      "id": "13",
+      "name": "revenue-rule-1",
+      "bbox": [
+        978,
+        538,
+        850,
+        1
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.1.1"
+      },
+      "geometry": "rect",
+      "fillColor": "#D5C2AE",
+      "lineColor": "#D5C2AE",
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tovahoza",
+      "id": "14",
+      "name": "revenue-2-lead",
+      "bbox": [
+        978,
+        558,
+        364,
+        28
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.1.2.0"
+      },
+      "geometry": "rect",
+      "text": "迷いを減らし、提案を増やす",
+      "textPreview": "迷いを減らし、提案を増やす",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "fontSize": 28,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "迷いを減らし、提案を増やす"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "迷いを減らし、提案を増やす",
+          "runs": [
+            {
+              "index": 1,
+              "text": "迷いを減らし、提案を増やす",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/032lszqt",
+      "id": "15",
+      "name": "revenue-2-detail",
+      "bbox": [
+        978,
+        592,
+        514,
+        20
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.1.2.1"
+      },
+      "geometry": "rect",
+      "text": "AIウェイターがメニュー案内やおすすめ提案を支援する。",
+      "textPreview": "AIウェイターがメニュー案内やおすすめ提案を支援する。",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AIウェイターがメニュー案内やおすすめ提案を支援する"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AIウェイターがメニュー案内やおすすめ提案を支援する。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "AIウェイターがメニュー案内やおすすめ提案を支援する。",
+              "fontSize": 20,
+              "color": "#6D6258",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bi9s36hc",
+      "id": "16",
+      "name": "revenue-rule-2",
+      "bbox": [
+        978,
+        630,
+        850,
+        1
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.1.3"
+      },
+      "geometry": "rect",
+      "fillColor": "#D5C2AE",
+      "lineColor": "#D5C2AE",
+      "lineWidth": 0
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ixczed8v",
+      "id": "17",
+      "name": "revenue-3-lead",
+      "bbox": [
+        978,
+        648,
+        448,
+        56
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.1.4.0"
+      },
+      "geometry": "rect",
+      "text": "一緒に売れる組み合わせを見つける",
+      "textPreview": "一緒に売れる組み合わせを見つける",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "fontSize": 28,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "一緒に売れる組み合わせを見つける"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "一緒に売れる組み合わせを見つける",
+          "runs": [
+            {
+              "index": 1,
+              "text": "一緒に売れる組み合わせを見つける",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tcj6tova",
+      "id": "18",
+      "name": "revenue-3-detail",
+      "bbox": [
+        978,
+        710,
+        558,
+        40
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.1.4.1"
+      },
+      "geometry": "rect",
+      "text": "バスケット分析で、セット提案や客単価アップのヒントを得られる。",
+      "textPreview": "バスケット分析で、セット提案や客単価アップのヒントを得られる。",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "バスケット分析で、セット提案や客単価アップのヒントを得ら"
+          },
+          {
+            "index": 2,
+            "text": "れる。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "バスケット分析で、セット提案や客単価アップのヒントを得られる。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "バスケット分析で、セット提案や客単価アップのヒントを得られる。",
+              "fontSize": 20,
+              "color": "#6D6258",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0rqd4vmt",
+      "id": "19",
+      "name": "revenue-rule-3",
+      "bbox": [
+        978,
+        768,
+        850,
+        1
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.1.5"
+      },
+      "geometry": "rect",
+      "fillColor": "#D5C2AE",
+      "lineColor": "#D5C2AE",
+      "lineWidth": 0
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gfmlkjm1",
+      "id": "20",
+      "name": "revenue-4-lead",
+      "bbox": [
+        978,
+        788,
+        364,
+        28
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.1.6.0"
+      },
+      "geometry": "rect",
+      "text": "高満足のお客様を次の集客へ",
+      "textPreview": "高満足のお客様を次の集客へ",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "fontSize": 28,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "高満足のお客様を次の集客へ"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "高満足のお客様を次の集客へ",
+          "runs": [
+            {
+              "index": 1,
+              "text": "高満足のお客様を次の集客へ",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/90je9cvi",
+      "id": "21",
+      "name": "revenue-4-detail",
+      "bbox": [
+        978,
+        822,
+        544,
+        40
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.1.1.6.1"
+      },
+      "geometry": "rect",
+      "text": "満足度評価とGoogleレビュー導線で、自然な口コミ獲得につなげやすい。",
+      "textPreview": "満足度評価とGoogleレビュー導線で、自然な口コミ獲得につなげやすい。",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "満足度評価とGoogleレビュー導線で、自然な口コミ獲得につ"
+          },
+          {
+            "index": 2,
+            "text": "なげやすい。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "満足度評価とGoogleレビュー導線で、自然な口コミ獲得につなげやすい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "満足度評価とGoogleレビュー導線で、自然な口コミ獲得につなげやすい。",
+              "fontSize": 20,
+              "color": "#6D6258",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/yd0z6103",
+      "id": "22",
+      "name": "footer-source-5",
+      "bbox": [
+        92,
+        982,
+        362,
+        24
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.2.0"
+      },
+      "geometry": "rect",
+      "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "textPreview": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "fontSize": 11,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+              "fontSize": 11,
+              "color": "#6D6258",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 23,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rytsvu9k",
+      "id": "23",
+      "name": "footer-page-5",
+      "bbox": [
+        1796,
+        982,
+        32,
+        24
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0.2.1"
+      },
+      "geometry": "rect",
+      "text": "5 / 11",
+      "textPreview": "5 / 11",
+      "resolvedFontSize": 12,
+      "resolvedTextStyle": {
+        "fontSize": 12,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "right"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "5 / 11"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "5 / 11",
+          "runs": [
+            {
+              "index": 1,
+              "text": "5 / 11",
+              "fontSize": 12,
+              "color": "#C46A2E",
+              "bold": true,
+              "alignment": "right"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": [
+    {
+      "index": 1,
+      "frame": {
+        "left": 0,
+        "top": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "name": "background",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 0,
+          "top": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "snappedFrame": {
+          "left": 0,
+          "top": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "children": [],
+        "geometry": "rect",
+        "element": {
+          "aid": "sh/d8bat47y",
+          "id": "1",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 2,
+      "frame": {
+        "left": 1380,
+        "top": 540,
+        "width": 700,
+        "height": 700
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "name": "revenue-orb",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 1380,
+          "top": 540,
+          "width": 700,
+          "height": 700
+        },
+        "snappedFrame": {
+          "left": 1384,
+          "top": 544,
+          "width": 704,
+          "height": 704
+        },
+        "children": [],
+        "geometry": "ellipse",
+        "element": {
+          "aid": "sh/2lszqtcj",
+          "id": "2",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "frame": {
+        "left": 0,
+        "top": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "grid",
+        "name": "shell-5",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 184,
+          "height": 447
+        },
+        "frame": {
+          "left": 0,
+          "top": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "children": [
+          {
+            "path": "0.0",
+            "kind": "column",
+            "name": "slide-5-stack",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 1029.79,
+              "height": 219
+            },
+            "frame": {
+              "left": 92,
+              "top": 74,
+              "width": 1736,
+              "height": 310
+            },
+            "children": [
+              {
+                "path": "0.0.0",
+                "kind": "text",
+                "name": "slide-5-eyebrow",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 900
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 137.02,
+                  "height": 18
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 74,
+                  "width": 137.02,
+                  "height": 18
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 74,
+                  "width": 138,
+                  "height": 18
+                },
+                "children": [],
+                "text": "Revenue upside",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/v6psfil0",
+                  "id": "3",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.0.1",
+                "kind": "rule",
+                "name": "slide-5-rule",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fixed",
+                    "value": 120
+                  },
+                  "height": {
+                    "mode": "fixed",
+                    "value": 4
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 120,
+                  "height": 4
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 106,
+                  "width": 120,
+                  "height": 4
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 106,
+                  "width": 120,
+                  "height": 4
+                },
+                "children": [],
+                "weight": 4,
+                "element": {
+                  "aid": "sh/kf6dcbul",
+                  "id": "4",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.0.2",
+                "kind": "text",
+                "name": "slide-5-title",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 1280
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 701.44,
+                  "height": 128
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 124,
+                  "width": 701.44,
+                  "height": 192
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 124,
+                  "width": 702,
+                  "height": 192
+                },
+                "children": [],
+                "text": "売上増に効くのは\n売れる導線をつくること",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/d0z61032",
+                  "id": "5",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.0.3",
+                "kind": "text",
+                "name": "slide-5-subtitle",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 1150
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 1029.79,
+                  "height": 27
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 330,
+                  "width": 1029.79,
+                  "height": 54
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 330,
+                  "width": 1030,
+                  "height": 54
+                },
+                "children": [],
+                "text": "POSLAは注文を受けるだけでなく、見せ方と提案の精度を上げる基盤として使える。",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/29gr2p8n",
+                  "id": "6",
+                  "kind": "shape"
+                }
+              }
+            ],
+            "padding": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "gap": 14,
+            "effectiveGap": 14,
+            "justifyOffset": 0,
+            "align": "start",
+            "justify": "start",
+            "contentFrame": {
+              "left": 92,
+              "top": 74,
+              "width": 1736,
+              "height": 310
+            },
+            "items": [
+              {
+                "path": "0.0.0",
+                "frame": {
+                  "left": 92,
+                  "top": 74,
+                  "width": 137.02,
+                  "height": 18
+                }
+              },
+              {
+                "path": "0.0.1",
+                "frame": {
+                  "left": 92,
+                  "top": 106,
+                  "width": 120,
+                  "height": 4
+                }
+              },
+              {
+                "path": "0.0.2",
+                "frame": {
+                  "left": 92,
+                  "top": 124,
+                  "width": 701.44,
+                  "height": 192
+                }
+              },
+              {
+                "path": "0.0.3",
+                "frame": {
+                  "left": 92,
+                  "top": 330,
+                  "width": 1029.79,
+                  "height": 54
+                }
+              }
+            ]
+          },
+          {
+            "path": "0.1",
+            "kind": "grid",
+            "name": "revenue-grid",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "fill",
+                "value": 1
+              }
+            },
+            "intrinsicSize": {
+              "width": 36,
+              "height": 387
+            },
+            "frame": {
+              "left": 92,
+              "top": 418,
+              "width": 1736,
+              "height": 530
+            },
+            "children": [
+              {
+                "path": "0.1.0",
+                "kind": "column",
+                "name": "revenue-words",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fill",
+                    "value": 1
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 264,
+                  "height": 248
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 418,
+                  "width": 850,
+                  "height": 530
+                },
+                "children": [
+                  {
+                    "path": "0.1.0.0",
+                    "kind": "text",
+                    "name": "revenue-word-1",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 420
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 262.68,
+                      "height": 44
+                    },
+                    "frame": {
+                      "left": 92,
+                      "top": 418,
+                      "width": 262.68,
+                      "height": 44
+                    },
+                    "snappedFrame": {
+                      "left": 92,
+                      "top": 418,
+                      "width": 262,
+                      "height": 44
+                    },
+                    "children": [],
+                    "text": "おすすめ表示",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/vu9knih4",
+                      "id": "7",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.0.1",
+                    "kind": "text",
+                    "name": "revenue-word-2",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 420
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 259.16,
+                      "height": 44
+                    },
+                    "frame": {
+                      "left": 92,
+                      "top": 486,
+                      "width": 259.16,
+                      "height": 88
+                    },
+                    "snappedFrame": {
+                      "left": 92,
+                      "top": 486,
+                      "width": 260,
+                      "height": 88
+                    },
+                    "children": [],
+                    "text": "AIウェイター",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/k3q5o7qp",
+                      "id": "8",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.0.2",
+                    "kind": "text",
+                    "name": "revenue-word-3",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 420
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 176,
+                      "height": 44
+                    },
+                    "frame": {
+                      "left": 92,
+                      "top": 598,
+                      "width": 176,
+                      "height": 44
+                    },
+                    "snappedFrame": {
+                      "left": 92,
+                      "top": 598,
+                      "width": 176,
+                      "height": 44
+                    },
+                    "children": [],
+                    "text": "併売分析",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/donyd0z6",
+                      "id": "9",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.0.3",
+                    "kind": "text",
+                    "name": "revenue-word-4",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 420
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 264,
+                      "height": 44
+                    },
+                    "frame": {
+                      "left": 92,
+                      "top": 666,
+                      "width": 264,
+                      "height": 44
+                    },
+                    "snappedFrame": {
+                      "left": 92,
+                      "top": 666,
+                      "width": 264,
+                      "height": 44
+                    },
+                    "children": [],
+                    "text": "レビュー導線",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/p0bi9s36",
+                      "id": "10",
+                      "kind": "shape"
+                    }
+                  }
+                ],
+                "padding": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "gap": 24,
+                "effectiveGap": 24,
+                "justifyOffset": 0,
+                "align": "start",
+                "justify": "start",
+                "contentFrame": {
+                  "left": 92,
+                  "top": 418,
+                  "width": 850,
+                  "height": 530
+                },
+                "items": [
+                  {
+                    "path": "0.1.0.0",
+                    "frame": {
+                      "left": 92,
+                      "top": 418,
+                      "width": 262.68,
+                      "height": 44
+                    }
+                  },
+                  {
+                    "path": "0.1.0.1",
+                    "frame": {
+                      "left": 92,
+                      "top": 486,
+                      "width": 259.16,
+                      "height": 88
+                    }
+                  },
+                  {
+                    "path": "0.1.0.2",
+                    "frame": {
+                      "left": 92,
+                      "top": 598,
+                      "width": 176,
+                      "height": 44
+                    }
+                  },
+                  {
+                    "path": "0.1.0.3",
+                    "frame": {
+                      "left": 92,
+                      "top": 666,
+                      "width": 264,
+                      "height": 44
+                    }
+                  }
+                ]
+              },
+              {
+                "path": "0.1.1",
+                "kind": "column",
+                "name": "revenue-explain",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fill",
+                    "value": 1
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 0,
+                  "height": 387
+                },
+                "frame": {
+                  "left": 978,
+                  "top": 418,
+                  "width": 850,
+                  "height": 530
+                },
+                "children": [
+                  {
+                    "path": "0.1.1.0",
+                    "kind": "column",
+                    "name": "revenue-1-item",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "fill",
+                        "value": 1
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 479,
+                      "height": 74
+                    },
+                    "frame": {
+                      "left": 978,
+                      "top": 418,
+                      "width": 850,
+                      "height": 102
+                    },
+                    "children": [
+                      {
+                        "path": "0.1.1.0.0",
+                        "kind": "text",
+                        "name": "revenue-1-lead",
+                        "requestedSize": {
+                          "width": {
+                            "mode": "wrap",
+                            "max": 560
+                          },
+                          "height": {
+                            "mode": "hug"
+                          }
+                        },
+                        "intrinsicSize": {
+                          "width": 391.16,
+                          "height": 28
+                        },
+                        "frame": {
+                          "left": 978,
+                          "top": 418,
+                          "width": 391.16,
+                          "height": 56
+                        },
+                        "snappedFrame": {
+                          "left": 978,
+                          "top": 418,
+                          "width": 392,
+                          "height": 56
+                        },
+                        "children": [],
+                        "text": "今日売りたい商品を目立たせる",
+                        "transform": "none",
+                        "element": {
+                          "aid": "sh/0fepkzup",
+                          "id": "11",
+                          "kind": "shape"
+                        }
+                      },
+                      {
+                        "path": "0.1.1.0.1",
+                        "kind": "text",
+                        "name": "revenue-1-detail",
+                        "requestedSize": {
+                          "width": {
+                            "mode": "wrap",
+                            "max": 560
+                          },
+                          "height": {
+                            "mode": "hug"
+                          }
+                        },
+                        "intrinsicSize": {
+                          "width": 479,
+                          "height": 40
+                        },
+                        "frame": {
+                          "left": 978,
+                          "top": 480,
+                          "width": 479,
+                          "height": 40
+                        },
+                        "snappedFrame": {
+                          "left": 978,
+                          "top": 480,
+                          "width": 480,
+                          "height": 40
+                        },
+                        "children": [],
+                        "text": "おすすめ / 人気 / 限定のバッジで、見せたい商品に視線を集めやすい。",
+                        "transform": "none",
+                        "element": {
+                          "aid": "sh/bulwval8",
+                          "id": "12",
+                          "kind": "shape"
+                        }
+                      }
+                    ],
+                    "padding": {
+                      "top": 0,
+                      "right": 0,
+                      "bottom": 0,
+                      "left": 0
+                    },
+                    "gap": 6,
+                    "effectiveGap": 6,
+                    "justifyOffset": 0,
+                    "align": "start",
+                    "justify": "start",
+                    "contentFrame": {
+                      "left": 978,
+                      "top": 418,
+                      "width": 850,
+                      "height": 102
+                    },
+                    "items": [
+                      {
+                        "path": "0.1.1.0.0",
+                        "frame": {
+                          "left": 978,
+                          "top": 418,
+                          "width": 391.16,
+                          "height": 56
+                        }
+                      },
+                      {
+                        "path": "0.1.1.0.1",
+                        "frame": {
+                          "left": 978,
+                          "top": 480,
+                          "width": 479,
+                          "height": 40
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "path": "0.1.1.1",
+                    "kind": "rule",
+                    "name": "revenue-rule-1",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "fill",
+                        "value": 1
+                      },
+                      "height": {
+                        "mode": "fixed",
+                        "value": 1
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 0,
+                      "height": 1
+                    },
+                    "frame": {
+                      "left": 978,
+                      "top": 538,
+                      "width": 850,
+                      "height": 1
+                    },
+                    "snappedFrame": {
+                      "left": 978,
+                      "top": 538,
+                      "width": 850,
+                      "height": 1
+                    },
+                    "children": [],
+                    "weight": 1,
+                    "element": {
+                      "aid": "sh/i9s36hcr",
+                      "id": "13",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.1.2",
+                    "kind": "column",
+                    "name": "revenue-2-item",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "fill",
+                        "value": 1
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 514.34,
+                      "height": 54
+                    },
+                    "frame": {
+                      "left": 978,
+                      "top": 557,
+                      "width": 850,
+                      "height": 54
+                    },
+                    "children": [
+                      {
+                        "path": "0.1.1.2.0",
+                        "kind": "text",
+                        "name": "revenue-2-lead",
+                        "requestedSize": {
+                          "width": {
+                            "mode": "wrap",
+                            "max": 560
+                          },
+                          "height": {
+                            "mode": "hug"
+                          }
+                        },
+                        "intrinsicSize": {
+                          "width": 364,
+                          "height": 28
+                        },
+                        "frame": {
+                          "left": 978,
+                          "top": 557,
+                          "width": 364,
+                          "height": 28
+                        },
+                        "snappedFrame": {
+                          "left": 978,
+                          "top": 558,
+                          "width": 364,
+                          "height": 28
+                        },
+                        "children": [],
+                        "text": "迷いを減らし、提案を増やす",
+                        "transform": "none",
+                        "element": {
+                          "aid": "sh/tovahoza",
+                          "id": "14",
+                          "kind": "shape"
+                        }
+                      },
+                      {
+                        "path": "0.1.1.2.1",
+                        "kind": "text",
+                        "name": "revenue-2-detail",
+                        "requestedSize": {
+                          "width": {
+                            "mode": "wrap",
+                            "max": 560
+                          },
+                          "height": {
+                            "mode": "hug"
+                          }
+                        },
+                        "intrinsicSize": {
+                          "width": 514.34,
+                          "height": 20
+                        },
+                        "frame": {
+                          "left": 978,
+                          "top": 591,
+                          "width": 514.34,
+                          "height": 20
+                        },
+                        "snappedFrame": {
+                          "left": 978,
+                          "top": 592,
+                          "width": 514,
+                          "height": 20
+                        },
+                        "children": [],
+                        "text": "AIウェイターがメニュー案内やおすすめ提案を支援する。",
+                        "transform": "none",
+                        "element": {
+                          "aid": "sh/032lszqt",
+                          "id": "15",
+                          "kind": "shape"
+                        }
+                      }
+                    ],
+                    "padding": {
+                      "top": 0,
+                      "right": 0,
+                      "bottom": 0,
+                      "left": 0
+                    },
+                    "gap": 6,
+                    "effectiveGap": 6,
+                    "justifyOffset": 0,
+                    "align": "start",
+                    "justify": "start",
+                    "contentFrame": {
+                      "left": 978,
+                      "top": 557,
+                      "width": 850,
+                      "height": 54
+                    },
+                    "items": [
+                      {
+                        "path": "0.1.1.2.0",
+                        "frame": {
+                          "left": 978,
+                          "top": 557,
+                          "width": 364,
+                          "height": 28
+                        }
+                      },
+                      {
+                        "path": "0.1.1.2.1",
+                        "frame": {
+                          "left": 978,
+                          "top": 591,
+                          "width": 514.34,
+                          "height": 20
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "path": "0.1.1.3",
+                    "kind": "rule",
+                    "name": "revenue-rule-2",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "fill",
+                        "value": 1
+                      },
+                      "height": {
+                        "mode": "fixed",
+                        "value": 1
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 0,
+                      "height": 1
+                    },
+                    "frame": {
+                      "left": 978,
+                      "top": 629,
+                      "width": 850,
+                      "height": 1
+                    },
+                    "snappedFrame": {
+                      "left": 978,
+                      "top": 630,
+                      "width": 850,
+                      "height": 1
+                    },
+                    "children": [],
+                    "weight": 1,
+                    "element": {
+                      "aid": "sh/bi9s36hc",
+                      "id": "16",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.1.4",
+                    "kind": "column",
+                    "name": "revenue-3-item",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "fill",
+                        "value": 1
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 557,
+                      "height": 74
+                    },
+                    "frame": {
+                      "left": 978,
+                      "top": 648,
+                      "width": 850,
+                      "height": 102
+                    },
+                    "children": [
+                      {
+                        "path": "0.1.1.4.0",
+                        "kind": "text",
+                        "name": "revenue-3-lead",
+                        "requestedSize": {
+                          "width": {
+                            "mode": "wrap",
+                            "max": 560
+                          },
+                          "height": {
+                            "mode": "hug"
+                          }
+                        },
+                        "intrinsicSize": {
+                          "width": 447.16,
+                          "height": 28
+                        },
+                        "frame": {
+                          "left": 978,
+                          "top": 648,
+                          "width": 447.16,
+                          "height": 56
+                        },
+                        "snappedFrame": {
+                          "left": 978,
+                          "top": 648,
+                          "width": 448,
+                          "height": 56
+                        },
+                        "children": [],
+                        "text": "一緒に売れる組み合わせを見つける",
+                        "transform": "none",
+                        "element": {
+                          "aid": "sh/ixczed8v",
+                          "id": "17",
+                          "kind": "shape"
+                        }
+                      },
+                      {
+                        "path": "0.1.1.4.1",
+                        "kind": "text",
+                        "name": "revenue-3-detail",
+                        "requestedSize": {
+                          "width": {
+                            "mode": "wrap",
+                            "max": 560
+                          },
+                          "height": {
+                            "mode": "hug"
+                          }
+                        },
+                        "intrinsicSize": {
+                          "width": 557,
+                          "height": 40
+                        },
+                        "frame": {
+                          "left": 978,
+                          "top": 710,
+                          "width": 557,
+                          "height": 40
+                        },
+                        "snappedFrame": {
+                          "left": 978,
+                          "top": 710,
+                          "width": 558,
+                          "height": 40
+                        },
+                        "children": [],
+                        "text": "バスケット分析で、セット提案や客単価アップのヒントを得られる。",
+                        "transform": "none",
+                        "element": {
+                          "aid": "sh/tcj6tova",
+                          "id": "18",
+                          "kind": "shape"
+                        }
+                      }
+                    ],
+                    "padding": {
+                      "top": 0,
+                      "right": 0,
+                      "bottom": 0,
+                      "left": 0
+                    },
+                    "gap": 6,
+                    "effectiveGap": 6,
+                    "justifyOffset": 0,
+                    "align": "start",
+                    "justify": "start",
+                    "contentFrame": {
+                      "left": 978,
+                      "top": 648,
+                      "width": 850,
+                      "height": 102
+                    },
+                    "items": [
+                      {
+                        "path": "0.1.1.4.0",
+                        "frame": {
+                          "left": 978,
+                          "top": 648,
+                          "width": 447.16,
+                          "height": 56
+                        }
+                      },
+                      {
+                        "path": "0.1.1.4.1",
+                        "frame": {
+                          "left": 978,
+                          "top": 710,
+                          "width": 557,
+                          "height": 40
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "path": "0.1.1.5",
+                    "kind": "rule",
+                    "name": "revenue-rule-3",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "fill",
+                        "value": 1
+                      },
+                      "height": {
+                        "mode": "fixed",
+                        "value": 1
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 0,
+                      "height": 1
+                    },
+                    "frame": {
+                      "left": 978,
+                      "top": 768,
+                      "width": 850,
+                      "height": 1
+                    },
+                    "snappedFrame": {
+                      "left": 978,
+                      "top": 768,
+                      "width": 850,
+                      "height": 1
+                    },
+                    "children": [],
+                    "weight": 1,
+                    "element": {
+                      "aid": "sh/0rqd4vmt",
+                      "id": "19",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.1.6",
+                    "kind": "column",
+                    "name": "revenue-4-item",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "fill",
+                        "value": 1
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 543.8,
+                      "height": 74
+                    },
+                    "frame": {
+                      "left": 978,
+                      "top": 787,
+                      "width": 850,
+                      "height": 74
+                    },
+                    "children": [
+                      {
+                        "path": "0.1.1.6.0",
+                        "kind": "text",
+                        "name": "revenue-4-lead",
+                        "requestedSize": {
+                          "width": {
+                            "mode": "wrap",
+                            "max": 560
+                          },
+                          "height": {
+                            "mode": "hug"
+                          }
+                        },
+                        "intrinsicSize": {
+                          "width": 364,
+                          "height": 28
+                        },
+                        "frame": {
+                          "left": 978,
+                          "top": 787,
+                          "width": 364,
+                          "height": 28
+                        },
+                        "snappedFrame": {
+                          "left": 978,
+                          "top": 788,
+                          "width": 364,
+                          "height": 28
+                        },
+                        "children": [],
+                        "text": "高満足のお客様を次の集客へ",
+                        "transform": "none",
+                        "element": {
+                          "aid": "sh/gfmlkjm1",
+                          "id": "20",
+                          "kind": "shape"
+                        }
+                      },
+                      {
+                        "path": "0.1.1.6.1",
+                        "kind": "text",
+                        "name": "revenue-4-detail",
+                        "requestedSize": {
+                          "width": {
+                            "mode": "wrap",
+                            "max": 560
+                          },
+                          "height": {
+                            "mode": "hug"
+                          }
+                        },
+                        "intrinsicSize": {
+                          "width": 543.8,
+                          "height": 40
+                        },
+                        "frame": {
+                          "left": 978,
+                          "top": 821,
+                          "width": 543.8,
+                          "height": 40
+                        },
+                        "snappedFrame": {
+                          "left": 978,
+                          "top": 822,
+                          "width": 544,
+                          "height": 40
+                        },
+                        "children": [],
+                        "text": "満足度評価とGoogleレビュー導線で、自然な口コミ獲得につなげやすい。",
+                        "transform": "none",
+                        "element": {
+                          "aid": "sh/90je9cvi",
+                          "id": "21",
+                          "kind": "shape"
+                        }
+                      }
+                    ],
+                    "padding": {
+                      "top": 0,
+                      "right": 0,
+                      "bottom": 0,
+                      "left": 0
+                    },
+                    "gap": 6,
+                    "effectiveGap": 6,
+                    "justifyOffset": 0,
+                    "align": "start",
+                    "justify": "start",
+                    "contentFrame": {
+                      "left": 978,
+                      "top": 787,
+                      "width": 850,
+                      "height": 74
+                    },
+                    "items": [
+                      {
+                        "path": "0.1.1.6.0",
+                        "frame": {
+                          "left": 978,
+                          "top": 787,
+                          "width": 364,
+                          "height": 28
+                        }
+                      },
+                      {
+                        "path": "0.1.1.6.1",
+                        "frame": {
+                          "left": 978,
+                          "top": 821,
+                          "width": 543.8,
+                          "height": 40
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "padding": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "gap": 18,
+                "effectiveGap": 18,
+                "justifyOffset": 0,
+                "align": "start",
+                "justify": "start",
+                "contentFrame": {
+                  "left": 978,
+                  "top": 418,
+                  "width": 850,
+                  "height": 530
+                },
+                "items": [
+                  {
+                    "path": "0.1.1.0",
+                    "frame": {
+                      "left": 978,
+                      "top": 418,
+                      "width": 850,
+                      "height": 102
+                    }
+                  },
+                  {
+                    "path": "0.1.1.1",
+                    "frame": {
+                      "left": 978,
+                      "top": 538,
+                      "width": 850,
+                      "height": 1
+                    }
+                  },
+                  {
+                    "path": "0.1.1.2",
+                    "frame": {
+                      "left": 978,
+                      "top": 557,
+                      "width": 850,
+                      "height": 54
+                    }
+                  },
+                  {
+                    "path": "0.1.1.3",
+                    "frame": {
+                      "left": 978,
+                      "top": 629,
+                      "width": 850,
+                      "height": 1
+                    }
+                  },
+                  {
+                    "path": "0.1.1.4",
+                    "frame": {
+                      "left": 978,
+                      "top": 648,
+                      "width": 850,
+                      "height": 102
+                    }
+                  },
+                  {
+                    "path": "0.1.1.5",
+                    "frame": {
+                      "left": 978,
+                      "top": 768,
+                      "width": 850,
+                      "height": 1
+                    }
+                  },
+                  {
+                    "path": "0.1.1.6",
+                    "frame": {
+                      "left": 978,
+                      "top": 787,
+                      "width": 850,
+                      "height": 74
+                    }
+                  }
+                ]
+              }
+            ],
+            "padding": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "columnGap": 36,
+            "rowGap": 0,
+            "alignItems": "stretch",
+            "justifyItems": "stretch",
+            "contentFrame": {
+              "left": 92,
+              "top": 418,
+              "width": 1736,
+              "height": 530
+            },
+            "columns": [
+              {
+                "mode": "fr",
+                "value": 1
+              },
+              {
+                "mode": "fr",
+                "value": 1
+              }
+            ],
+            "autoRows": "auto",
+            "resolvedRows": [
+              "auto"
+            ],
+            "columnSizes": [
+              850,
+              850
+            ],
+            "rowSizes": [
+              530
+            ],
+            "cells": [
+              {
+                "path": "0.1.0",
+                "column": 0,
+                "row": 0,
+                "columnSpan": 1,
+                "rowSpan": 1,
+                "cellFrame": {
+                  "left": 92,
+                  "top": 418,
+                  "width": 850,
+                  "height": 530
+                }
+              },
+              {
+                "path": "0.1.1",
+                "column": 1,
+                "row": 0,
+                "columnSpan": 1,
+                "rowSpan": 1,
+                "cellFrame": {
+                  "left": 978,
+                  "top": 418,
+                  "width": 850,
+                  "height": 530
+                }
+              }
+            ]
+          },
+          {
+            "path": "0.2",
+            "kind": "row",
+            "name": "footer-row-5",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 392.23,
+              "height": 12
+            },
+            "frame": {
+              "left": 92,
+              "top": 982,
+              "width": 1736,
+              "height": 24
+            },
+            "children": [
+              {
+                "path": "0.2.0",
+                "kind": "text",
+                "name": "footer-source-5",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 1100
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 361.09,
+                  "height": 11
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 982,
+                  "width": 361.09,
+                  "height": 24
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 982,
+                  "width": 362,
+                  "height": 24
+                },
+                "children": [],
+                "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/yd0z6103",
+                  "id": "22",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.2.1",
+                "kind": "text",
+                "name": "footer-page-5",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 120
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 31.14,
+                  "height": 12
+                },
+                "frame": {
+                  "left": 1796.86,
+                  "top": 982,
+                  "width": 31.14,
+                  "height": 24
+                },
+                "snappedFrame": {
+                  "left": 1796,
+                  "top": 982,
+                  "width": 32,
+                  "height": 24
+                },
+                "children": [],
+                "text": "5 / 11",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/rytsvu9k",
+                  "id": "23",
+                  "kind": "shape"
+                }
+              }
+            ],
+            "padding": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "gap": 0,
+            "effectiveGap": 1343.77,
+            "justifyOffset": 0,
+            "align": "center",
+            "justify": "between",
+            "contentFrame": {
+              "left": 92,
+              "top": 982,
+              "width": 1736,
+              "height": 24
+            },
+            "items": [
+              {
+                "path": "0.2.0",
+                "frame": {
+                  "left": 92,
+                  "top": 982,
+                  "width": 361.09,
+                  "height": 24
+                }
+              },
+              {
+                "path": "0.2.1",
+                "frame": {
+                  "left": 1796.86,
+                  "top": 982,
+                  "width": 31.14,
+                  "height": 24
+                }
+              }
+            ]
+          }
+        ],
+        "padding": {
+          "top": 74,
+          "right": 92,
+          "bottom": 74,
+          "left": 92
+        },
+        "columnGap": 0,
+        "rowGap": 34,
+        "alignItems": "stretch",
+        "justifyItems": "stretch",
+        "contentFrame": {
+          "left": 92,
+          "top": 74,
+          "width": 1736,
+          "height": 932
+        },
+        "columns": [
+          {
+            "mode": "fr",
+            "value": 1
+          }
+        ],
+        "rows": [
+          "auto",
+          {
+            "mode": "fr",
+            "value": 1
+          },
+          "auto"
+        ],
+        "autoRows": "auto",
+        "resolvedRows": [
+          "auto",
+          {
+            "mode": "fr",
+            "value": 1
+          },
+          "auto"
+        ],
+        "columnSizes": [
+          1736
+        ],
+        "rowSizes": [
+          310,
+          530,
+          24
+        ],
+        "cells": [
+          {
+            "path": "0.0",
+            "column": 0,
+            "row": 0,
+            "columnSpan": 1,
+            "rowSpan": 1,
+            "cellFrame": {
+              "left": 92,
+              "top": 74,
+              "width": 1736,
+              "height": 310
+            }
+          },
+          {
+            "path": "0.1",
+            "column": 0,
+            "row": 1,
+            "columnSpan": 1,
+            "rowSpan": 1,
+            "cellFrame": {
+              "left": 92,
+              "top": 418,
+              "width": 1736,
+              "height": 530
+            }
+          },
+          {
+            "path": "0.2",
+            "column": 0,
+            "row": 2,
+            "columnSpan": 1,
+            "rowSpan": 1,
+            "cellFrame": {
+              "left": 92,
+              "top": 982,
+              "width": 1736,
+              "height": 24
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,1091 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/val87ed8",
+    "id": "val87ed8",
+    "slide": 5,
+    "layoutId": "/ppt/slideLayouts/slideLayout2.xml",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout2.xml",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1gvy90je",
+      "id": "1",
+      "name": "background",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "#F7F0E8",
+      "lineColor": "#F7F0E8",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qtcj6tov",
+      "id": "2",
+      "name": "slide-4-eyebrow",
+      "bbox": [
+        92,
+        74,
+        172,
+        18
+      ],
+      "geometry": "rect",
+      "text": "One day in the store",
+      "textPreview": "One day in the store",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "One day in the"
+          },
+          {
+            "index": 2,
+            "text": "store"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "One day in the store",
+          "runs": [
+            {
+              "index": 1,
+              "text": "One day in the store",
+              "fontSize": 18,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/je9cvixc",
+      "id": "3",
+      "name": "slide-4-rule",
+      "bbox": [
+        92,
+        106,
+        120,
+        4
+      ],
+      "geometry": "rect",
+      "fillColor": "#C46A2E",
+      "lineColor": "#C46A2E",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/87ed8bat",
+      "id": "4",
+      "name": "slide-4-title",
+      "bbox": [
+        92,
+        124,
+        356,
+        128
+      ],
+      "geometry": "rect",
+      "text": "店舗の1日で\nどう効くか",
+      "textPreview": "店舗の1日で | どう効くか",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "店舗の1日で"
+          },
+          {
+            "index": 2,
+            "text": "どう効くか"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "店舗の1日で",
+          "runs": [
+            {
+              "index": 1,
+              "text": "店舗の1日で",
+              "fontSize": 64,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "どう効くか",
+          "runs": [
+            {
+              "index": 1,
+              "text": "どう効くか",
+              "fontSize": 64,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xs72x4na",
+      "id": "5",
+      "name": "slide-4-subtitle",
+      "bbox": [
+        92,
+        266,
+        1054,
+        28
+      ],
+      "geometry": "rect",
+      "text": "導入効果が出るのは、営業中だけでなく、開店前と営業後までデータがつながるから。",
+      "textPreview": "導入効果が出るのは、営業中だけでなく、開店前と営業後までデータがつながるから。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "導入効果が出るのは、営業中だけでなく、開店前と営業後までデータがつながるから。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "導入効果が出るのは、営業中だけでなく、開店前と営業後までデータがつながるから。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "導入効果が出るのは、営業中だけでなく、開店前と営業後までデータがつながるから。",
+              "fontSize": 27,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/q1orytsv",
+      "id": "6",
+      "name": "dayflow-open-title",
+      "bbox": [
+        92,
+        328,
+        554,
+        34
+      ],
+      "geometry": "rect",
+      "text": "開店前",
+      "textPreview": "開店前",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "開店前"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "開店前",
+          "runs": [
+            {
+              "index": 1,
+              "text": "開店前",
+              "fontSize": 34,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fmlkjm1c",
+      "id": "7",
+      "name": "dayflow-open-1",
+      "bbox": [
+        92,
+        378,
+        554,
+        24
+      ],
+      "geometry": "rect",
+      "text": "予約確認",
+      "textPreview": "予約確認",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "予約確認"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "予約確認",
+          "runs": [
+            {
+              "index": 1,
+              "text": "予約確認",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8jqh0fep",
+      "id": "8",
+      "name": "dayflow-open-2",
+      "bbox": [
+        92,
+        418,
+        554,
+        24
+      ],
+      "geometry": "rect",
+      "text": "シフト確認",
+      "textPreview": "シフト確認",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "シフト確認"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "シフト確認",
+          "runs": [
+            {
+              "index": 1,
+              "text": "シフト確認",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/x4nap4r6",
+      "id": "9",
+      "name": "dayflow-open-3",
+      "bbox": [
+        92,
+        458,
+        554,
+        24
+      ],
+      "geometry": "rect",
+      "text": "今日のおすすめ設定",
+      "textPreview": "今日のおすすめ設定",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "今日のおすすめ設定"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "今日のおすすめ設定",
+          "runs": [
+            {
+              "index": 1,
+              "text": "今日のおすすめ設定",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1w7mp0bi",
+      "id": "10",
+      "name": "dayflow-open-4",
+      "bbox": [
+        92,
+        498,
+        554,
+        24
+      ],
+      "geometry": "rect",
+      "text": "需要予測を見て仕込み判断",
+      "textPreview": "需要予測を見て仕込み判断",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "需要予測を見て仕込み判断"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "需要予測を見て仕込み判断",
+          "runs": [
+            {
+              "index": 1,
+              "text": "需要予測を見て仕込み判断",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8bat47y1",
+      "id": "11",
+      "name": "dayflow-vrule-1",
+      "bbox": [
+        664,
+        328,
+        2,
+        622
+      ],
+      "geometry": "rect",
+      "fillColor": "#D5C2AE",
+      "lineColor": "#D5C2AE",
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jqh0fepk",
+      "id": "12",
+      "name": "dayflow-service-title",
+      "bbox": [
+        684,
+        328,
+        554,
+        34
+      ],
+      "geometry": "rect",
+      "text": "営業中",
+      "textPreview": "営業中",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "営業中"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "営業中",
+          "runs": [
+            {
+              "index": 1,
+              "text": "営業中",
+              "fontSize": 34,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/q5o7qpg3",
+      "id": "13",
+      "name": "dayflow-service-1",
+      "bbox": [
+        684,
+        378,
+        554,
+        24
+      ],
+      "geometry": "rect",
+      "text": "顧客はスマホで注文",
+      "textPreview": "顧客はスマホで注文",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "顧客はスマホで注文"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "顧客はスマホで注文",
+          "runs": [
+            {
+              "index": 1,
+              "text": "顧客はスマホで注文",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/18jqh0fe",
+      "id": "14",
+      "name": "dayflow-service-2",
+      "bbox": [
+        684,
+        418,
+        554,
+        24
+      ],
+      "geometry": "rect",
+      "text": "スタッフはハンディで補助",
+      "textPreview": "スタッフはハンディで補助",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "スタッフはハンディで補助"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "スタッフはハンディで補助",
+          "runs": [
+            {
+              "index": 1,
+              "text": "スタッフはハンディで補助",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8nqxs72x",
+      "id": "15",
+      "name": "dayflow-service-3",
+      "bbox": [
+        684,
+        458,
+        554,
+        24
+      ],
+      "geometry": "rect",
+      "text": "厨房はKDSで進行確認",
+      "textPreview": "厨房はKDSで進行確認",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "厨房はKDSで進行確認"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "厨房はKDSで進行確認",
+          "runs": [
+            {
+              "index": 1,
+              "text": "厨房はKDSで進行確認",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/j2t83itg",
+      "id": "16",
+      "name": "dayflow-service-4",
+      "bbox": [
+        684,
+        498,
+        554,
+        24
+      ],
+      "geometry": "rect",
+      "text": "会計はレジまたはセルフ会計",
+      "textPreview": "会計はレジまたはセルフ会計",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "会計はレジまたはセルフ会計"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "会計はレジまたはセルフ会計",
+          "runs": [
+            {
+              "index": 1,
+              "text": "会計はレジまたはセルフ会計",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qh0fepkz",
+      "id": "17",
+      "name": "dayflow-vrule-2",
+      "bbox": [
+        1254,
+        328,
+        2,
+        622
+      ],
+      "geometry": "rect",
+      "fillColor": "#D5C2AE",
+      "lineColor": "#D5C2AE",
+      "lineWidth": 0
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1cfa9w3m",
+      "id": "18",
+      "name": "dayflow-close-title",
+      "bbox": [
+        1274,
+        328,
+        554,
+        34
+      ],
+      "geometry": "rect",
+      "text": "営業後",
+      "textPreview": "営業後",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "営業後"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "営業後",
+          "runs": [
+            {
+              "index": 1,
+              "text": "営業後",
+              "fontSize": 34,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/crmhk3q5",
+      "id": "19",
+      "name": "dayflow-close-1",
+      "bbox": [
+        1274,
+        378,
+        554,
+        24
+      ],
+      "geometry": "rect",
+      "text": "売上と客数を確認",
+      "textPreview": "売上と客数を確認",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "売上と客数を確認"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "売上と客数を確認",
+          "runs": [
+            {
+              "index": 1,
+              "text": "売上と客数を確認",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sfil0rqd",
+      "id": "20",
+      "name": "dayflow-close-2",
+      "bbox": [
+        1274,
+        418,
+        554,
+        24
+      ],
+      "geometry": "rect",
+      "text": "回転率と満足度を振り返る",
+      "textPreview": "回転率と満足度を振り返る",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "回転率と満足度を振り返る"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "回転率と満足度を振り返る",
+          "runs": [
+            {
+              "index": 1,
+              "text": "回転率と満足度を振り返る",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/h0fepkzu",
+      "id": "21",
+      "name": "dayflow-close-3",
+      "bbox": [
+        1274,
+        458,
+        554,
+        24
+      ],
+      "geometry": "rect",
+      "text": "併売傾向を確認する",
+      "textPreview": "併売傾向を確認する",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "併売傾向を確認する"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "併売傾向を確認する",
+          "runs": [
+            {
+              "index": 1,
+              "text": "併売傾向を確認する",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a9w3m94f",
+      "id": "22",
+      "name": "dayflow-close-4",
+      "bbox": [
+        1274,
+        498,
+        554,
+        24
+      ],
+      "geometry": "rect",
+      "text": "明日の仕込みと配置を見直す",
+      "textPreview": "明日の仕込みと配置を見直す",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "明日の仕込みと配置を見直す"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "明日の仕込みと配置を見直す",
+          "runs": [
+            {
+              "index": 1,
+              "text": "明日の仕込みと配置を見直す",
+              "fontSize": 24,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 23,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zupwb2hw",
+      "id": "23",
+      "name": "footer-source-4",
+      "bbox": [
+        92,
+        982,
+        362,
+        24
+      ],
+      "geometry": "rect",
+      "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "textPreview": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+              "fontSize": 11,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 24,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/orytsvu9",
+      "id": "24",
+      "name": "footer-page-4",
+      "bbox": [
+        1796,
+        982,
+        32,
+        24
+      ],
+      "geometry": "rect",
+      "text": "4 / 11",
+      "textPreview": "4 / 11",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "4 / 11"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "4 / 11",
+          "runs": [
+            {
+              "index": 1,
+              "text": "4 / 11",
+              "fontSize": 12,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

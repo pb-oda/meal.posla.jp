@@ -1,0 +1,864 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/re1w7mp0",
+    "id": "re1w7mp0",
+    "slide": 12,
+    "layoutId": "/ppt/slideLayouts/slideLayout2.xml",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout2.xml",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dg7adsji",
+      "id": "1",
+      "name": "background",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "#3B241A",
+      "lineColor": "#3B241A",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6tovahoz",
+      "id": "2",
+      "name": "close-top-line",
+      "bbox": [
+        0,
+        0,
+        1920,
+        16
+      ],
+      "geometry": "rect",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vahoza1g",
+      "id": "3",
+      "name": "slide-11-eyebrow",
+      "bbox": [
+        92,
+        74,
+        148,
+        36
+      ],
+      "geometry": "rect",
+      "text": "Closing message",
+      "textPreview": "Closing message",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Closing message"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Closing message",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Closing message",
+              "fontSize": 18,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/onyd0z61",
+      "id": "4",
+      "name": "slide-11-rule",
+      "bbox": [
+        92,
+        124,
+        120,
+        4
+      ],
+      "geometry": "rect",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8v6psfi",
+      "id": "5",
+      "name": "slide-11-title",
+      "bbox": [
+        92,
+        142,
+        778,
+        216
+      ],
+      "geometry": "rect",
+      "text": "POSLAは\nセルフオーダーではなく\n店舗運営基盤です",
+      "textPreview": "POSLAは | セルフオーダーではなく | 店舗運営基盤です",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "POSLAは"
+          },
+          {
+            "index": 2,
+            "text": "セルフオーダーではなく"
+          },
+          {
+            "index": 3,
+            "text": "店舗運営基盤です"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "POSLAは",
+          "runs": [
+            {
+              "index": 1,
+              "text": "POSLAは",
+              "fontSize": 72,
+              "color": "#FBF7F2",
+              "bold": true
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "セルフオーダーではなく",
+          "runs": [
+            {
+              "index": 1,
+              "text": "セルフオーダーではなく",
+              "fontSize": 72,
+              "color": "#FBF7F2",
+              "bold": true
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "text": "店舗運営基盤です",
+          "runs": [
+            {
+              "index": 1,
+              "text": "店舗運営基盤です",
+              "fontSize": 72,
+              "color": "#FBF7F2",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6hcrmhk3",
+      "id": "6",
+      "name": "slide-11-subtitle",
+      "bbox": [
+        92,
+        372,
+        1038,
+        54
+      ],
+      "geometry": "rect",
+      "text": "売上増、コスト削減、改善速度の3つを同時に前進させるための基盤として提案する。",
+      "textPreview": "売上増、コスト削減、改善速度の3つを同時に前進させるための基盤として提案する。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "売上増、コスト削減、改善速度の3つを同時に前進させるための基盤として提案する"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "売上増、コスト削減、改善速度の3つを同時に前進させるための基盤として提案する。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "売上増、コスト削減、改善速度の3つを同時に前進させるための基盤として提案する。",
+              "fontSize": 27,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/z25kb6xk",
+      "id": "7",
+      "name": "close-word-1",
+      "bbox": [
+        92,
+        460,
+        132,
+        44
+      ],
+      "geometry": "rect",
+      "text": "売上増",
+      "textPreview": "売上増",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "売上増"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "売上増",
+          "runs": [
+            {
+              "index": 1,
+              "text": "売上増",
+              "fontSize": 44,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/oj2t83it",
+      "id": "8",
+      "name": "close-word-1-detail",
+      "bbox": [
+        92,
+        522,
+        414,
+        44
+      ],
+      "geometry": "rect",
+      "text": "おすすめ表示、AIウェイター、レビュー導線で売れる導線をつくる。",
+      "textPreview": "おすすめ表示、AIウェイター、レビュー導線で売れる導線をつくる。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "おすすめ表示、AIウェイター、レビュー導"
+          },
+          {
+            "index": 2,
+            "text": "線で売れる導線をつくる。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "おすすめ表示、AIウェイター、レビュー導線で売れる導線をつくる。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "おすすめ表示、AIウェイター、レビュー導線で売れる導線をつくる。",
+              "fontSize": 22,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d4vmtwra",
+      "id": "9",
+      "name": "close-word-2",
+      "bbox": [
+        92,
+        584,
+        220,
+        44
+      ],
+      "geometry": "rect",
+      "text": "コスト削減",
+      "textPreview": "コスト削減",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "コスト削減"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "コスト削減",
+          "runs": [
+            {
+              "index": 1,
+              "text": "コスト削減",
+              "fontSize": 44,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/h4byhgn2",
+      "id": "10",
+      "name": "close-word-2-detail",
+      "bbox": [
+        92,
+        646,
+        418,
+        44
+      ],
+      "geometry": "rect",
+      "text": "注文、伝達、会計、電話対応のムダを減らしやすくする。",
+      "textPreview": "注文、伝達、会計、電話対応のムダを減らしやすくする。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "注文、伝達、会計、電話対応のムダを減ら"
+          },
+          {
+            "index": 2,
+            "text": "しやすくする。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "注文、伝達、会計、電話対応のムダを減らしやすくする。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "注文、伝達、会計、電話対応のムダを減らしやすくする。",
+              "fontSize": 22,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sji5snel",
+      "id": "11",
+      "name": "close-word-3",
+      "bbox": [
+        92,
+        708,
+        176,
+        44
+      ],
+      "geometry": "rect",
+      "text": "改善速度",
+      "textPreview": "改善速度",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "改善速度"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "改善速度",
+          "runs": [
+            {
+              "index": 1,
+              "text": "改善速度",
+              "fontSize": 44,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3ylc7u54",
+      "id": "12",
+      "name": "close-word-3-detail",
+      "bbox": [
+        92,
+        770,
+        418,
+        44
+      ],
+      "geometry": "rect",
+      "text": "在庫、回転率、満足度、併売傾向を次の打ち手につなげる。",
+      "textPreview": "在庫、回転率、満足度、併売傾向を次の打ち手につなげる。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "在庫、回転率、満足度、併売傾向を次の打"
+          },
+          {
+            "index": 2,
+            "text": "ち手につなげる。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "在庫、回転率、満足度、併売傾向を次の打ち手につなげる。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "在庫、回転率、満足度、併売傾向を次の打ち手につなげる。",
+              "fontSize": 22,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/adsji5sn",
+      "id": "13",
+      "name": "close-next-title",
+      "bbox": [
+        960,
+        460,
+        868,
+        30
+      ],
+      "geometry": "rect",
+      "text": "次に詰めるべきこと",
+      "textPreview": "次に詰めるべきこと",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "次に詰めるべきこと"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "次に詰めるべきこと",
+          "runs": [
+            {
+              "index": 1,
+              "text": "次に詰めるべきこと",
+              "fontSize": 30,
+              "color": "#FBF7F2",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lszqtcj6",
+      "id": "14",
+      "name": "close-next-1",
+      "bbox": [
+        960,
+        510,
+        868,
+        24
+      ],
+      "geometry": "rect",
+      "text": "1. 業態別の見せ方に分ける",
+      "textPreview": "1. 業態別の見せ方に分ける",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1. 業態別の見せ方に分ける"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "1. 業態別の見せ方に分ける",
+          "runs": [
+            {
+              "index": 1,
+              "text": "1. 業態別の見せ方に分ける",
+              "fontSize": 24,
+              "color": "#D5C2AE",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/s72x4nap",
+      "id": "15",
+      "name": "close-next-2",
+      "bbox": [
+        960,
+        554,
+        868,
+        24
+      ],
+      "geometry": "rect",
+      "text": "2. 導入後の1日を図解する",
+      "textPreview": "2. 導入後の1日を図解する",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "2. 導入後の1日を図解する"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "2. 導入後の1日を図解する",
+          "runs": [
+            {
+              "index": 1,
+              "text": "2. 導入後の1日を図解する",
+              "fontSize": 24,
+              "color": "#D5C2AE",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3m94fu18",
+      "id": "16",
+      "name": "close-next-3",
+      "bbox": [
+        960,
+        598,
+        868,
+        24
+      ],
+      "geometry": "rect",
+      "text": "3. 価格や導入ステップを別紙で補う",
+      "textPreview": "3. 価格や導入ステップを別紙で補う",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "3. 価格や導入ステップを別紙で補う"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "3. 価格や導入ステップを別紙で補う",
+          "runs": [
+            {
+              "index": 1,
+              "text": "3. 価格や導入ステップを別紙で補う",
+              "fontSize": 24,
+              "color": "#D5C2AE",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a5gbq1or",
+      "id": "17",
+      "name": "footer-source-11",
+      "bbox": [
+        92,
+        982,
+        362,
+        24
+      ],
+      "geometry": "rect",
+      "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "textPreview": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+              "fontSize": 11,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hoza1gvy",
+      "id": "18",
+      "name": "footer-page-11",
+      "bbox": [
+        1790,
+        982,
+        38,
+        24
+      ],
+      "geometry": "rect",
+      "text": "11 / 11",
+      "textPreview": "11 / 11",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "11 / 11"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "11 / 11",
+          "runs": [
+            {
+              "index": 1,
+              "text": "11 / 11",
+              "fontSize": 12,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

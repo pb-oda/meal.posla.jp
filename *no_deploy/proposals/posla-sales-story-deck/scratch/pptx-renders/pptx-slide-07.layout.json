@@ -1,0 +1,984 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/0z61032l",
+    "id": "0z61032l",
+    "slide": 8,
+    "layoutId": "/ppt/slideLayouts/slideLayout2.xml",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout2.xml",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qd4vmtwr",
+      "id": "1",
+      "name": "background",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "#F7F0E8",
+      "lineColor": "#F7F0E8",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/x4nap4r6",
+      "id": "2",
+      "name": "slide-7-eyebrow",
+      "bbox": [
+        92,
+        74,
+        162,
+        36
+      ],
+      "geometry": "rect",
+      "text": "Inventory and prep",
+      "textPreview": "Inventory and prep",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Inventory and prep"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Inventory and prep",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Inventory and prep",
+              "fontSize": 18,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8jqh0fep",
+      "id": "3",
+      "name": "slide-7-rule",
+      "bbox": [
+        92,
+        124,
+        120,
+        4
+      ],
+      "geometry": "rect",
+      "fillColor": "#C46A2E",
+      "lineColor": "#C46A2E",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fa9w3m94",
+      "id": "4",
+      "name": "slide-7-title",
+      "bbox": [
+        92,
+        142,
+        448,
+        128
+      ],
+      "geometry": "rect",
+      "text": "在庫と仕込みを\n勘だけにしない",
+      "textPreview": "在庫と仕込みを | 勘だけにしない",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "在庫と仕込みを"
+          },
+          {
+            "index": 2,
+            "text": "勘だけにしない"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "在庫と仕込みを",
+          "runs": [
+            {
+              "index": 1,
+              "text": "在庫と仕込みを",
+              "fontSize": 64,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "勘だけにしない",
+          "runs": [
+            {
+              "index": 1,
+              "text": "勘だけにしない",
+              "fontSize": 64,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qpg3ex0n",
+      "id": "5",
+      "name": "slide-7-subtitle",
+      "bbox": [
+        92,
+        284,
+        916,
+        54
+      ],
+      "geometry": "rect",
+      "text": "売れた後にまとめて在庫を見るのではなく、売上と在庫を同じ流れで扱う。",
+      "textPreview": "売れた後にまとめて在庫を見るのではなく、売上と在庫を同じ流れで扱う。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "売れた後にまとめて在庫を見るのではなく、売上と在庫を同じ流れで扱う。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "売れた後にまとめて在庫を見るのではなく、売上と在庫を同じ流れで扱う。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "売れた後にまとめて在庫を見るのではなく、売上と在庫を同じ流れで扱う。",
+              "fontSize": 27,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xczed8v6",
+      "id": "6",
+      "name": "inventory-flow-1",
+      "bbox": [
+        92,
+        452,
+        176,
+        44
+      ],
+      "geometry": "rect",
+      "text": "会計完了",
+      "textPreview": "会計完了",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "会計完了"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "会計完了",
+          "runs": [
+            {
+              "index": 1,
+              "text": "会計完了",
+              "fontSize": 44,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8v6psfil",
+      "id": "7",
+      "name": "inventory-arrow-1",
+      "bbox": [
+        362,
+        452,
+        40,
+        44
+      ],
+      "geometry": "rect",
+      "text": "→",
+      "textPreview": "→",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "→"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "→",
+          "runs": [
+            {
+              "index": 1,
+              "text": "→",
+              "fontSize": 42,
+              "color": "#6D6258",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/je9cvixc",
+      "id": "8",
+      "name": "inventory-flow-2",
+      "bbox": [
+        496,
+        452,
+        264,
+        44
+      ],
+      "geometry": "rect",
+      "text": "在庫自動減算",
+      "textPreview": "在庫自動減算",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "在庫自動減算"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "在庫自動減算",
+          "runs": [
+            {
+              "index": 1,
+              "text": "在庫自動減算",
+              "fontSize": 44,
+              "color": "#B4573C",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qtcj6tov",
+      "id": "9",
+      "name": "inventory-arrow-2",
+      "bbox": [
+        854,
+        452,
+        40,
+        44
+      ],
+      "geometry": "rect",
+      "text": "→",
+      "textPreview": "→",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "→"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "→",
+          "runs": [
+            {
+              "index": 1,
+              "text": "→",
+              "fontSize": 42,
+              "color": "#6D6258",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/svu9knih",
+      "id": "10",
+      "name": "inventory-flow-3",
+      "bbox": [
+        988,
+        452,
+        220,
+        44
+      ],
+      "geometry": "rect",
+      "text": "品切れ連動",
+      "textPreview": "品切れ連動",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "品切れ連動"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "品切れ連動",
+          "runs": [
+            {
+              "index": 1,
+              "text": "品切れ連動",
+              "fontSize": 44,
+              "color": "#5F6C4C",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hgn29gr2",
+      "id": "11",
+      "name": "inventory-arrow-3",
+      "bbox": [
+        1302,
+        452,
+        40,
+        44
+      ],
+      "geometry": "rect",
+      "text": "→",
+      "textPreview": "→",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "→"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "→",
+          "runs": [
+            {
+              "index": 1,
+              "text": "→",
+              "fontSize": 42,
+              "color": "#6D6258",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ap4r65wj",
+      "id": "12",
+      "name": "inventory-flow-4",
+      "bbox": [
+        1436,
+        430,
+        392,
+        88
+      ],
+      "geometry": "rect",
+      "text": "需要予測 / 発注提案",
+      "textPreview": "需要予測 / 発注提案",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "需要予測 /"
+          },
+          {
+            "index": 2,
+            "text": "発注提案"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "需要予測 / 発注提案",
+          "runs": [
+            {
+              "index": 1,
+              "text": "需要予測 / 発注提案",
+              "fontSize": 44,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/za1gvy90",
+      "id": "13",
+      "name": "inventory-divider",
+      "bbox": [
+        92,
+        604,
+        1736,
+        1
+      ],
+      "geometry": "rect",
+      "fillColor": "#D5C2AE",
+      "lineColor": "#D5C2AE",
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/s36hcrmh",
+      "id": "14",
+      "name": "inventory-outcome-1-lead",
+      "bbox": [
+        92,
+        750,
+        252,
+        28
+      ],
+      "geometry": "rect",
+      "text": "欠品を減らしやすい",
+      "textPreview": "欠品を減らしやすい",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "欠品を減らしやすい"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "欠品を減らしやすい",
+          "runs": [
+            {
+              "index": 1,
+              "text": "欠品を減らしやすい",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hoza1gvy",
+      "id": "15",
+      "name": "inventory-outcome-1-detail",
+      "bbox": [
+        92,
+        784,
+        560,
+        40
+      ],
+      "geometry": "rect",
+      "text": "品切れ判断を売上データとつなげることで、気づきが早くなる。",
+      "textPreview": "品切れ判断を売上データとつなげることで、気づきが早くなる。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "品切れ判断を売上データとつなげることで、気づきが早くなる"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "品切れ判断を売上データとつなげることで、気づきが早くなる。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "品切れ判断を売上データとつなげることで、気づきが早くなる。",
+              "fontSize": 20,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a1gvy90j",
+      "id": "16",
+      "name": "inventory-outcome-2-lead",
+      "bbox": [
+        670,
+        750,
+        306,
+        56
+      ],
+      "geometry": "rect",
+      "text": "仕込み過多を抑えやすい",
+      "textPreview": "仕込み過多を抑えやすい",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "仕込み過多を抑えやすい"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "仕込み過多を抑えやすい",
+          "runs": [
+            {
+              "index": 1,
+              "text": "仕込み過多を抑えやすい",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zidonyd0",
+      "id": "17",
+      "name": "inventory-outcome-2-detail",
+      "bbox": [
+        670,
+        812,
+        400,
+        20
+      ],
+      "geometry": "rect",
+      "text": "需要予測を仕込み量の見直しに使いやすい。",
+      "textPreview": "需要予測を仕込み量の見直しに使いやすい。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "需要予測を仕込み量の見直しに使いやすい。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "需要予測を仕込み量の見直しに使いやすい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "需要予測を仕込み量の見直しに使いやすい。",
+              "fontSize": 20,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/s72x4nap",
+      "id": "18",
+      "name": "inventory-outcome-3-lead",
+      "bbox": [
+        1250,
+        750,
+        252,
+        28
+      ],
+      "geometry": "rect",
+      "text": "発注判断が早くなる",
+      "textPreview": "発注判断が早くなる",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "発注判断が早くなる"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "発注判断が早くなる",
+          "runs": [
+            {
+              "index": 1,
+              "text": "発注判断が早くなる",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lszqtcj6",
+      "id": "19",
+      "name": "inventory-outcome-3-detail",
+      "bbox": [
+        1250,
+        784,
+        464,
+        40
+      ],
+      "geometry": "rect",
+      "text": "レシピBOMと在庫を前提に、必要量を考えやすい。",
+      "textPreview": "レシピBOMと在庫を前提に、必要量を考えやすい。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "レシピBOMと在庫を前提に、必要量を考えやすい"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "レシピBOMと在庫を前提に、必要量を考えやすい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "レシピBOMと在庫を前提に、必要量を考えやすい。",
+              "fontSize": 20,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pg3ex0nu",
+      "id": "20",
+      "name": "footer-source-7",
+      "bbox": [
+        92,
+        982,
+        362,
+        24
+      ],
+      "geometry": "rect",
+      "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "textPreview": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+              "fontSize": 11,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wval87ed",
+      "id": "21",
+      "name": "footer-page-7",
+      "bbox": [
+        1796,
+        982,
+        32,
+        24
+      ],
+      "geometry": "rect",
+      "text": "7 / 11",
+      "textPreview": "7 / 11",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "7 / 11"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "7 / 11",
+          "runs": [
+            {
+              "index": 1,
+              "text": "7 / 11",
+              "fontSize": 12,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

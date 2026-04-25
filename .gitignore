@@ -41,6 +41,10 @@ docs/internal/
 \*no_deploy/**/*secret*
 \*no_deploy/**/*ログイン*
 \*no_deploy/**/*アカウント*
+\*no_deploy/junk/
+\*no_deploy/docs_misc/
+\*no_deploy/docs_reference/demo-facilitator-runbook.md
+\*no_deploy/retired_ai_helpdesk/scripts/output/
 
 # Node
 node_modules/

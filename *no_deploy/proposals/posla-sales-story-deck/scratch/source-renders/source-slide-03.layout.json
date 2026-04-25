@@ -1,0 +1,2896 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/a6alng",
+    "id": "a6alng",
+    "slide": 3,
+    "layoutId": "fc8614bb-557e-4e3a-9afb-6c4bdd7a29a5",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "52342e28-6700-4ce1-847f-ce0e7fbb4774",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "fc8614bb-557e-4e3a-9afb-6c4bdd7a29a5",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "52342e28-6700-4ce1-847f-ce0e7fbb4774",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "52342e28-6700-4ce1-847f-ce0e7fbb4774",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/p0bi9s36",
+      "id": "1",
+      "name": "background",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "fillColor": "#151311",
+      "lineColor": "#151311",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/i9s36hcr",
+      "id": "2",
+      "name": "slide-3-eyebrow",
+      "bbox": [
+        92,
+        74,
+        194,
+        36
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.0.0"
+      },
+      "geometry": "rect",
+      "text": "What POSLA connects",
+      "textPreview": "What POSLA connects",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "What POSLA"
+          },
+          {
+            "index": 2,
+            "text": "connects"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "What POSLA connects",
+          "runs": [
+            {
+              "index": 1,
+              "text": "What POSLA connects",
+              "fontSize": 18,
+              "color": "#E2A65B",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bulwval8",
+      "id": "3",
+      "name": "slide-3-rule",
+      "bbox": [
+        92,
+        124,
+        120,
+        4
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.0.1"
+      },
+      "geometry": "rect",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/032lszqt",
+      "id": "4",
+      "name": "slide-3-title",
+      "bbox": [
+        92,
+        142,
+        512,
+        128
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.0.2"
+      },
+      "geometry": "rect",
+      "text": "POSLAは\n業務を分断しない",
+      "textPreview": "POSLAは | 業務を分断しない",
+      "resolvedFontSize": 64,
+      "resolvedTextStyle": {
+        "fontSize": 64,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "POSLAは"
+          },
+          {
+            "index": 2,
+            "text": "業務を分断しない"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "POSLAは",
+          "runs": [
+            {
+              "index": 1,
+              "text": "POSLAは",
+              "fontSize": 64,
+              "color": "#FBF7F2",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "業務を分断しない",
+          "runs": [
+            {
+              "index": 1,
+              "text": "業務を分断しない",
+              "fontSize": 64,
+              "color": "#FBF7F2",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tovahoza",
+      "id": "5",
+      "name": "slide-3-subtitle",
+      "bbox": [
+        92,
+        284,
+        1050,
+        28
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.0.3"
+      },
+      "geometry": "rect",
+      "text": "顧客接点だけ強くしても、店舗運営は変わらない。注文から改善までを一つにつなぐ。",
+      "textPreview": "顧客接点だけ強くしても、店舗運営は変わらない。注文から改善までを一つにつなぐ。",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "fontSize": 27,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "顧客接点だけ強くしても、店舗運営は変わらない。注文から改善までを一つにつなぐ"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "顧客接点だけ強くしても、店舗運営は変わらない。注文から改善までを一つにつなぐ。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "顧客接点だけ強くしても、店舗運営は変わらない。注文から改善までを一つにつなぐ。",
+              "fontSize": 27,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ixczed8v",
+      "id": "6",
+      "name": "connection-customer-title",
+      "bbox": [
+        92,
+        346,
+        332,
+        34
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.0.0"
+      },
+      "geometry": "rect",
+      "text": "顧客",
+      "textPreview": "顧客",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "fontSize": 34,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "顧客"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "顧客",
+          "runs": [
+            {
+              "index": 1,
+              "text": "顧客",
+              "fontSize": 34,
+              "color": "#E2A65B",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bi9s36hc",
+      "id": "7",
+      "name": "connection-customer-body",
+      "bbox": [
+        92,
+        390,
+        136,
+        80
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.0.1"
+      },
+      "geometry": "rect",
+      "text": "セルフオーダー\n予約\nテイクアウト",
+      "textPreview": "セルフオーダー | 予約 | テイクアウト",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "セルフオーダ"
+          },
+          {
+            "index": 2,
+            "text": "ー"
+          },
+          {
+            "index": 3,
+            "text": "予約"
+          },
+          {
+            "index": 4,
+            "text": "テイクアウト"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "セルフオーダー",
+          "runs": [
+            {
+              "index": 1,
+              "text": "セルフオーダー",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "予約",
+          "runs": [
+            {
+              "index": 1,
+              "text": "予約",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "text": "テイクアウト",
+          "runs": [
+            {
+              "index": 1,
+              "text": "テイクアウト",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0rqd4vmt",
+      "id": "8",
+      "name": "connection-floor-title",
+      "bbox": [
+        442,
+        346,
+        332,
+        34
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.1.0"
+      },
+      "geometry": "rect",
+      "text": "ホール",
+      "textPreview": "ホール",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "fontSize": 34,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "ホール"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "ホール",
+          "runs": [
+            {
+              "index": 1,
+              "text": "ホール",
+              "fontSize": 34,
+              "color": "#E2A65B",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tcj6tova",
+      "id": "9",
+      "name": "connection-floor-body",
+      "bbox": [
+        442,
+        390,
+        118,
+        60
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.1.1"
+      },
+      "geometry": "rect",
+      "text": "ハンディ\nテーブル運用\n接客補助",
+      "textPreview": "ハンディ | テーブル運用 | 接客補助",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "ハンディ"
+          },
+          {
+            "index": 2,
+            "text": "テーブル運用"
+          },
+          {
+            "index": 3,
+            "text": "接客補助"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "ハンディ",
+          "runs": [
+            {
+              "index": 1,
+              "text": "ハンディ",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "テーブル運用",
+          "runs": [
+            {
+              "index": 1,
+              "text": "テーブル運用",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "text": "接客補助",
+          "runs": [
+            {
+              "index": 1,
+              "text": "接客補助",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hwfyxobm",
+      "id": "10",
+      "name": "connection-kitchen-title",
+      "bbox": [
+        794,
+        346,
+        332,
+        34
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.2.0"
+      },
+      "geometry": "rect",
+      "text": "厨房",
+      "textPreview": "厨房",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "fontSize": 34,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "厨房"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "厨房",
+          "runs": [
+            {
+              "index": 1,
+              "text": "厨房",
+              "fontSize": 34,
+              "color": "#E2A65B",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/obm58z25",
+      "id": "11",
+      "name": "connection-kitchen-body",
+      "bbox": [
+        794,
+        390,
+        80,
+        60
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.2.1"
+      },
+      "geometry": "rect",
+      "text": "KDS\n優先順位\n提供状況",
+      "textPreview": "KDS | 優先順位 | 提供状況",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "KDS"
+          },
+          {
+            "index": 2,
+            "text": "優先順位"
+          },
+          {
+            "index": 3,
+            "text": "提供状況"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "KDS",
+          "runs": [
+            {
+              "index": 1,
+              "text": "KDS",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "優先順位",
+          "runs": [
+            {
+              "index": 1,
+              "text": "優先順位",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "text": "提供状況",
+          "runs": [
+            {
+              "index": 1,
+              "text": "提供状況",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zqtcj6to",
+      "id": "12",
+      "name": "connection-payment-title",
+      "bbox": [
+        1144,
+        346,
+        332,
+        34
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.3.0"
+      },
+      "geometry": "rect",
+      "text": "会計",
+      "textPreview": "会計",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "fontSize": 34,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "会計"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "会計",
+          "runs": [
+            {
+              "index": 1,
+              "text": "会計",
+              "fontSize": 34,
+              "color": "#E2A65B",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/65wjudg7",
+      "id": "13",
+      "name": "connection-payment-body",
+      "bbox": [
+        1144,
+        390,
+        120,
+        60
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.3.1"
+      },
+      "geometry": "rect",
+      "text": "レジ\nセルフ会計\n分割合流会計",
+      "textPreview": "レジ | セルフ会計 | 分割合流会計",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "レジ"
+          },
+          {
+            "index": 2,
+            "text": "セルフ会計"
+          },
+          {
+            "index": 3,
+            "text": "分割合流会計"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "レジ",
+          "runs": [
+            {
+              "index": 1,
+              "text": "レジ",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "セルフ会計",
+          "runs": [
+            {
+              "index": 1,
+              "text": "セルフ会計",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "text": "分割合流会計",
+          "runs": [
+            {
+              "index": 1,
+              "text": "分割合流会計",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hk3q5o7q",
+      "id": "14",
+      "name": "connection-insight-title",
+      "bbox": [
+        1496,
+        346,
+        332,
+        34
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.4.0"
+      },
+      "geometry": "rect",
+      "text": "改善",
+      "textPreview": "改善",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "fontSize": 34,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "改善"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "改善",
+          "runs": [
+            {
+              "index": 1,
+              "text": "改善",
+              "fontSize": 34,
+              "color": "#E2A65B",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/oza1gvy9",
+      "id": "15",
+      "name": "connection-insight-body",
+      "bbox": [
+        1496,
+        390,
+        80,
+        60
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.4.1"
+      },
+      "geometry": "rect",
+      "text": "在庫\n分析\n本部管理",
+      "textPreview": "在庫 | 分析 | 本部管理",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "在庫"
+          },
+          {
+            "index": 2,
+            "text": "分析"
+          },
+          {
+            "index": 3,
+            "text": "本部管理"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "在庫",
+          "runs": [
+            {
+              "index": 1,
+              "text": "在庫",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "分析",
+          "runs": [
+            {
+              "index": 1,
+              "text": "分析",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "text": "本部管理",
+          "runs": [
+            {
+              "index": 1,
+              "text": "本部管理",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zed8v6ps",
+      "id": "16",
+      "name": "footer-source-3",
+      "bbox": [
+        92,
+        982,
+        362,
+        24
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.2.0"
+      },
+      "geometry": "rect",
+      "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "textPreview": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "fontSize": 11,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+              "fontSize": 11,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6xkf6dcb",
+      "id": "17",
+      "name": "footer-page-3",
+      "bbox": [
+        1796,
+        982,
+        32,
+        24
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.2.1"
+      },
+      "geometry": "rect",
+      "text": "3 / 11",
+      "textPreview": "3 / 11",
+      "resolvedFontSize": 12,
+      "resolvedTextStyle": {
+        "fontSize": 12,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "right"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "3 / 11"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "3 / 11",
+          "runs": [
+            {
+              "index": 1,
+              "text": "3 / 11",
+              "fontSize": 12,
+              "color": "#E2A65B",
+              "bold": true,
+              "alignment": "right"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hcrmhk3q",
+      "id": "18",
+      "name": "connection-line",
+      "bbox": [
+        164,
+        638,
+        1592,
+        3
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "fillColor": "#B4573C",
+      "lineColor": "#B4573C",
+      "lineWidth": 0
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/orytsvu9",
+      "id": "19",
+      "name": "connection-dot-1",
+      "bbox": [
+        204,
+        628,
+        20,
+        20
+      ],
+      "composeSource": {
+        "run": 4,
+        "path": "0"
+      },
+      "geometry": "ellipse",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ovahoza1",
+      "id": "20",
+      "name": "connection-dot-2",
+      "bbox": [
+        536,
+        628,
+        20,
+        20
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0"
+      },
+      "geometry": "ellipse",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dg7adsji",
+      "id": "21",
+      "name": "connection-dot-3",
+      "bbox": [
+        864,
+        628,
+        20,
+        20
+      ],
+      "composeSource": {
+        "run": 6,
+        "path": "0"
+      },
+      "geometry": "ellipse",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6tovahoz",
+      "id": "22",
+      "name": "connection-dot-4",
+      "bbox": [
+        1196,
+        628,
+        20,
+        20
+      ],
+      "composeSource": {
+        "run": 7,
+        "path": "0"
+      },
+      "geometry": "ellipse",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 23,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vahoza1g",
+      "id": "23",
+      "name": "connection-dot-5",
+      "bbox": [
+        1524,
+        628,
+        20,
+        20
+      ],
+      "composeSource": {
+        "run": 8,
+        "path": "0"
+      },
+      "geometry": "ellipse",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": [
+    {
+      "index": 1,
+      "frame": {
+        "left": 0,
+        "top": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "name": "background",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 0,
+          "top": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "snappedFrame": {
+          "left": 0,
+          "top": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "children": [],
+        "geometry": "rect",
+        "element": {
+          "aid": "sh/p0bi9s36",
+          "id": "1",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 2,
+      "frame": {
+        "left": 0,
+        "top": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "grid",
+        "name": "shell-3",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 184,
+          "height": 447
+        },
+        "frame": {
+          "left": 0,
+          "top": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "children": [
+          {
+            "path": "0.0",
+            "kind": "column",
+            "name": "slide-3-stack",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 1050.3,
+              "height": 219
+            },
+            "frame": {
+              "left": 92,
+              "top": 74,
+              "width": 1736,
+              "height": 237
+            },
+            "children": [
+              {
+                "path": "0.0.0",
+                "kind": "text",
+                "name": "slide-3-eyebrow",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 900
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 194.41,
+                  "height": 18
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 74,
+                  "width": 194.41,
+                  "height": 36
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 74,
+                  "width": 194,
+                  "height": 36
+                },
+                "children": [],
+                "text": "What POSLA connects",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/i9s36hcr",
+                  "id": "2",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.0.1",
+                "kind": "rule",
+                "name": "slide-3-rule",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fixed",
+                    "value": 120
+                  },
+                  "height": {
+                    "mode": "fixed",
+                    "value": 4
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 120,
+                  "height": 4
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 124,
+                  "width": 120,
+                  "height": 4
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 124,
+                  "width": 120,
+                  "height": 4
+                },
+                "children": [],
+                "weight": 4,
+                "element": {
+                  "aid": "sh/bulwval8",
+                  "id": "3",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.0.2",
+                "kind": "text",
+                "name": "slide-3-title",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 1280
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 512,
+                  "height": 128
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 142,
+                  "width": 512,
+                  "height": 128
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 142,
+                  "width": 512,
+                  "height": 128
+                },
+                "children": [],
+                "text": "POSLAは\n業務を分断しない",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/032lszqt",
+                  "id": "4",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.0.3",
+                "kind": "text",
+                "name": "slide-3-subtitle",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 1150
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 1050.3,
+                  "height": 27
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 284,
+                  "width": 1050.3,
+                  "height": 27
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 284,
+                  "width": 1050,
+                  "height": 28
+                },
+                "children": [],
+                "text": "顧客接点だけ強くしても、店舗運営は変わらない。注文から改善までを一つにつなぐ。",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/tovahoza",
+                  "id": "5",
+                  "kind": "shape"
+                }
+              }
+            ],
+            "padding": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "gap": 14,
+            "effectiveGap": 14,
+            "justifyOffset": 0,
+            "align": "start",
+            "justify": "start",
+            "contentFrame": {
+              "left": 92,
+              "top": 74,
+              "width": 1736,
+              "height": 237
+            },
+            "items": [
+              {
+                "path": "0.0.0",
+                "frame": {
+                  "left": 92,
+                  "top": 74,
+                  "width": 194.41,
+                  "height": 36
+                }
+              },
+              {
+                "path": "0.0.1",
+                "frame": {
+                  "left": 92,
+                  "top": 124,
+                  "width": 120,
+                  "height": 4
+                }
+              },
+              {
+                "path": "0.0.2",
+                "frame": {
+                  "left": 92,
+                  "top": 142,
+                  "width": 512,
+                  "height": 128
+                }
+              },
+              {
+                "path": "0.0.3",
+                "frame": {
+                  "left": 92,
+                  "top": 284,
+                  "width": 1050.3,
+                  "height": 27
+                }
+              }
+            ]
+          },
+          {
+            "path": "0.1",
+            "kind": "grid",
+            "name": "connection-grid",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "fill",
+                "value": 1
+              }
+            },
+            "intrinsicSize": {
+              "width": 72,
+              "height": 104
+            },
+            "frame": {
+              "left": 92,
+              "top": 345,
+              "width": 1736,
+              "height": 603
+            },
+            "children": [
+              {
+                "path": "0.1.0",
+                "kind": "column",
+                "name": "connection-customer",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fill",
+                    "value": 1
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 136.6,
+                  "height": 104
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                },
+                "children": [
+                  {
+                    "path": "0.1.0.0",
+                    "kind": "text",
+                    "name": "connection-customer-title",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "fill",
+                        "value": 1
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 0,
+                      "height": 34
+                    },
+                    "frame": {
+                      "left": 92,
+                      "top": 345,
+                      "width": 332.8,
+                      "height": 34
+                    },
+                    "snappedFrame": {
+                      "left": 92,
+                      "top": 346,
+                      "width": 332,
+                      "height": 34
+                    },
+                    "children": [],
+                    "text": "顧客",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/ixczed8v",
+                      "id": "6",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.0.1",
+                    "kind": "text",
+                    "name": "connection-customer-body",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 240
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 136.6,
+                      "height": 60
+                    },
+                    "frame": {
+                      "left": 92,
+                      "top": 389,
+                      "width": 136.6,
+                      "height": 80
+                    },
+                    "snappedFrame": {
+                      "left": 92,
+                      "top": 390,
+                      "width": 136,
+                      "height": 80
+                    },
+                    "children": [],
+                    "text": "セルフオーダー\n予約\nテイクアウト",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/bi9s36hc",
+                      "id": "7",
+                      "kind": "shape"
+                    }
+                  }
+                ],
+                "padding": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "gap": 10,
+                "effectiveGap": 10,
+                "justifyOffset": 0,
+                "align": "start",
+                "justify": "start",
+                "contentFrame": {
+                  "left": 92,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                },
+                "items": [
+                  {
+                    "path": "0.1.0.0",
+                    "frame": {
+                      "left": 92,
+                      "top": 345,
+                      "width": 332.8,
+                      "height": 34
+                    }
+                  },
+                  {
+                    "path": "0.1.0.1",
+                    "frame": {
+                      "left": 92,
+                      "top": 389,
+                      "width": 136.6,
+                      "height": 80
+                    }
+                  }
+                ]
+              },
+              {
+                "path": "0.1.1",
+                "kind": "column",
+                "name": "connection-floor",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fill",
+                    "value": 1
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 117.6,
+                  "height": 104
+                },
+                "frame": {
+                  "left": 442.8,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                },
+                "children": [
+                  {
+                    "path": "0.1.1.0",
+                    "kind": "text",
+                    "name": "connection-floor-title",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "fill",
+                        "value": 1
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 0,
+                      "height": 34
+                    },
+                    "frame": {
+                      "left": 442.8,
+                      "top": 345,
+                      "width": 332.8,
+                      "height": 34
+                    },
+                    "snappedFrame": {
+                      "left": 442,
+                      "top": 346,
+                      "width": 332,
+                      "height": 34
+                    },
+                    "children": [],
+                    "text": "ホール",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/0rqd4vmt",
+                      "id": "8",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.1.1",
+                    "kind": "text",
+                    "name": "connection-floor-body",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 240
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 117.6,
+                      "height": 60
+                    },
+                    "frame": {
+                      "left": 442.8,
+                      "top": 389,
+                      "width": 117.6,
+                      "height": 60
+                    },
+                    "snappedFrame": {
+                      "left": 442,
+                      "top": 390,
+                      "width": 118,
+                      "height": 60
+                    },
+                    "children": [],
+                    "text": "ハンディ\nテーブル運用\n接客補助",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/tcj6tova",
+                      "id": "9",
+                      "kind": "shape"
+                    }
+                  }
+                ],
+                "padding": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "gap": 10,
+                "effectiveGap": 10,
+                "justifyOffset": 0,
+                "align": "start",
+                "justify": "start",
+                "contentFrame": {
+                  "left": 442.8,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                },
+                "items": [
+                  {
+                    "path": "0.1.1.0",
+                    "frame": {
+                      "left": 442.8,
+                      "top": 345,
+                      "width": 332.8,
+                      "height": 34
+                    }
+                  },
+                  {
+                    "path": "0.1.1.1",
+                    "frame": {
+                      "left": 442.8,
+                      "top": 389,
+                      "width": 117.6,
+                      "height": 60
+                    }
+                  }
+                ]
+              },
+              {
+                "path": "0.1.2",
+                "kind": "column",
+                "name": "connection-kitchen",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fill",
+                    "value": 1
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 80,
+                  "height": 104
+                },
+                "frame": {
+                  "left": 793.6,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                },
+                "children": [
+                  {
+                    "path": "0.1.2.0",
+                    "kind": "text",
+                    "name": "connection-kitchen-title",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "fill",
+                        "value": 1
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 0,
+                      "height": 34
+                    },
+                    "frame": {
+                      "left": 793.6,
+                      "top": 345,
+                      "width": 332.8,
+                      "height": 34
+                    },
+                    "snappedFrame": {
+                      "left": 794,
+                      "top": 346,
+                      "width": 332,
+                      "height": 34
+                    },
+                    "children": [],
+                    "text": "厨房",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/hwfyxobm",
+                      "id": "10",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.2.1",
+                    "kind": "text",
+                    "name": "connection-kitchen-body",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 240
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 80,
+                      "height": 60
+                    },
+                    "frame": {
+                      "left": 793.6,
+                      "top": 389,
+                      "width": 80,
+                      "height": 60
+                    },
+                    "snappedFrame": {
+                      "left": 794,
+                      "top": 390,
+                      "width": 80,
+                      "height": 60
+                    },
+                    "children": [],
+                    "text": "KDS\n優先順位\n提供状況",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/obm58z25",
+                      "id": "11",
+                      "kind": "shape"
+                    }
+                  }
+                ],
+                "padding": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "gap": 10,
+                "effectiveGap": 10,
+                "justifyOffset": 0,
+                "align": "start",
+                "justify": "start",
+                "contentFrame": {
+                  "left": 793.6,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                },
+                "items": [
+                  {
+                    "path": "0.1.2.0",
+                    "frame": {
+                      "left": 793.6,
+                      "top": 345,
+                      "width": 332.8,
+                      "height": 34
+                    }
+                  },
+                  {
+                    "path": "0.1.2.1",
+                    "frame": {
+                      "left": 793.6,
+                      "top": 389,
+                      "width": 80,
+                      "height": 60
+                    }
+                  }
+                ]
+              },
+              {
+                "path": "0.1.3",
+                "kind": "column",
+                "name": "connection-payment",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fill",
+                    "value": 1
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 120,
+                  "height": 104
+                },
+                "frame": {
+                  "left": 1144.4,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                },
+                "children": [
+                  {
+                    "path": "0.1.3.0",
+                    "kind": "text",
+                    "name": "connection-payment-title",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "fill",
+                        "value": 1
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 0,
+                      "height": 34
+                    },
+                    "frame": {
+                      "left": 1144.4,
+                      "top": 345,
+                      "width": 332.8,
+                      "height": 34
+                    },
+                    "snappedFrame": {
+                      "left": 1144,
+                      "top": 346,
+                      "width": 332,
+                      "height": 34
+                    },
+                    "children": [],
+                    "text": "会計",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/zqtcj6to",
+                      "id": "12",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.3.1",
+                    "kind": "text",
+                    "name": "connection-payment-body",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 240
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 120,
+                      "height": 60
+                    },
+                    "frame": {
+                      "left": 1144.4,
+                      "top": 389,
+                      "width": 120,
+                      "height": 60
+                    },
+                    "snappedFrame": {
+                      "left": 1144,
+                      "top": 390,
+                      "width": 120,
+                      "height": 60
+                    },
+                    "children": [],
+                    "text": "レジ\nセルフ会計\n分割合流会計",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/65wjudg7",
+                      "id": "13",
+                      "kind": "shape"
+                    }
+                  }
+                ],
+                "padding": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "gap": 10,
+                "effectiveGap": 10,
+                "justifyOffset": 0,
+                "align": "start",
+                "justify": "start",
+                "contentFrame": {
+                  "left": 1144.4,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                },
+                "items": [
+                  {
+                    "path": "0.1.3.0",
+                    "frame": {
+                      "left": 1144.4,
+                      "top": 345,
+                      "width": 332.8,
+                      "height": 34
+                    }
+                  },
+                  {
+                    "path": "0.1.3.1",
+                    "frame": {
+                      "left": 1144.4,
+                      "top": 389,
+                      "width": 120,
+                      "height": 60
+                    }
+                  }
+                ]
+              },
+              {
+                "path": "0.1.4",
+                "kind": "column",
+                "name": "connection-insight",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fill",
+                    "value": 1
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 80,
+                  "height": 104
+                },
+                "frame": {
+                  "left": 1495.2,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                },
+                "children": [
+                  {
+                    "path": "0.1.4.0",
+                    "kind": "text",
+                    "name": "connection-insight-title",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "fill",
+                        "value": 1
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 0,
+                      "height": 34
+                    },
+                    "frame": {
+                      "left": 1495.2,
+                      "top": 345,
+                      "width": 332.8,
+                      "height": 34
+                    },
+                    "snappedFrame": {
+                      "left": 1496,
+                      "top": 346,
+                      "width": 332,
+                      "height": 34
+                    },
+                    "children": [],
+                    "text": "改善",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/hk3q5o7q",
+                      "id": "14",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.4.1",
+                    "kind": "text",
+                    "name": "connection-insight-body",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 240
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 80,
+                      "height": 60
+                    },
+                    "frame": {
+                      "left": 1495.2,
+                      "top": 389,
+                      "width": 80,
+                      "height": 60
+                    },
+                    "snappedFrame": {
+                      "left": 1496,
+                      "top": 390,
+                      "width": 80,
+                      "height": 60
+                    },
+                    "children": [],
+                    "text": "在庫\n分析\n本部管理",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/oza1gvy9",
+                      "id": "15",
+                      "kind": "shape"
+                    }
+                  }
+                ],
+                "padding": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "gap": 10,
+                "effectiveGap": 10,
+                "justifyOffset": 0,
+                "align": "start",
+                "justify": "start",
+                "contentFrame": {
+                  "left": 1495.2,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                },
+                "items": [
+                  {
+                    "path": "0.1.4.0",
+                    "frame": {
+                      "left": 1495.2,
+                      "top": 345,
+                      "width": 332.8,
+                      "height": 34
+                    }
+                  },
+                  {
+                    "path": "0.1.4.1",
+                    "frame": {
+                      "left": 1495.2,
+                      "top": 389,
+                      "width": 80,
+                      "height": 60
+                    }
+                  }
+                ]
+              }
+            ],
+            "padding": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "columnGap": 18,
+            "rowGap": 0,
+            "alignItems": "stretch",
+            "justifyItems": "stretch",
+            "contentFrame": {
+              "left": 92,
+              "top": 345,
+              "width": 1736,
+              "height": 603
+            },
+            "columns": [
+              {
+                "mode": "fr",
+                "value": 1
+              },
+              {
+                "mode": "fr",
+                "value": 1
+              },
+              {
+                "mode": "fr",
+                "value": 1
+              },
+              {
+                "mode": "fr",
+                "value": 1
+              },
+              {
+                "mode": "fr",
+                "value": 1
+              }
+            ],
+            "autoRows": "auto",
+            "resolvedRows": [
+              "auto"
+            ],
+            "columnSizes": [
+              332.8,
+              332.8,
+              332.8,
+              332.8,
+              332.8
+            ],
+            "rowSizes": [
+              603
+            ],
+            "cells": [
+              {
+                "path": "0.1.0",
+                "column": 0,
+                "row": 0,
+                "columnSpan": 1,
+                "rowSpan": 1,
+                "cellFrame": {
+                  "left": 92,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                }
+              },
+              {
+                "path": "0.1.1",
+                "column": 1,
+                "row": 0,
+                "columnSpan": 1,
+                "rowSpan": 1,
+                "cellFrame": {
+                  "left": 442.8,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                }
+              },
+              {
+                "path": "0.1.2",
+                "column": 2,
+                "row": 0,
+                "columnSpan": 1,
+                "rowSpan": 1,
+                "cellFrame": {
+                  "left": 793.6,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                }
+              },
+              {
+                "path": "0.1.3",
+                "column": 3,
+                "row": 0,
+                "columnSpan": 1,
+                "rowSpan": 1,
+                "cellFrame": {
+                  "left": 1144.4,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                }
+              },
+              {
+                "path": "0.1.4",
+                "column": 4,
+                "row": 0,
+                "columnSpan": 1,
+                "rowSpan": 1,
+                "cellFrame": {
+                  "left": 1495.2,
+                  "top": 345,
+                  "width": 332.8,
+                  "height": 603
+                }
+              }
+            ]
+          },
+          {
+            "path": "0.2",
+            "kind": "row",
+            "name": "footer-row-3",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 392.23,
+              "height": 12
+            },
+            "frame": {
+              "left": 92,
+              "top": 982,
+              "width": 1736,
+              "height": 24
+            },
+            "children": [
+              {
+                "path": "0.2.0",
+                "kind": "text",
+                "name": "footer-source-3",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 1100
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 361.09,
+                  "height": 11
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 982,
+                  "width": 361.09,
+                  "height": 24
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 982,
+                  "width": 362,
+                  "height": 24
+                },
+                "children": [],
+                "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/zed8v6ps",
+                  "id": "16",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.2.1",
+                "kind": "text",
+                "name": "footer-page-3",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 120
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 31.14,
+                  "height": 12
+                },
+                "frame": {
+                  "left": 1796.86,
+                  "top": 982,
+                  "width": 31.14,
+                  "height": 24
+                },
+                "snappedFrame": {
+                  "left": 1796,
+                  "top": 982,
+                  "width": 32,
+                  "height": 24
+                },
+                "children": [],
+                "text": "3 / 11",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/6xkf6dcb",
+                  "id": "17",
+                  "kind": "shape"
+                }
+              }
+            ],
+            "padding": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "gap": 0,
+            "effectiveGap": 1343.77,
+            "justifyOffset": 0,
+            "align": "center",
+            "justify": "between",
+            "contentFrame": {
+              "left": 92,
+              "top": 982,
+              "width": 1736,
+              "height": 24
+            },
+            "items": [
+              {
+                "path": "0.2.0",
+                "frame": {
+                  "left": 92,
+                  "top": 982,
+                  "width": 361.09,
+                  "height": 24
+                }
+              },
+              {
+                "path": "0.2.1",
+                "frame": {
+                  "left": 1796.86,
+                  "top": 982,
+                  "width": 31.14,
+                  "height": 24
+                }
+              }
+            ]
+          }
+        ],
+        "padding": {
+          "top": 74,
+          "right": 92,
+          "bottom": 74,
+          "left": 92
+        },
+        "columnGap": 0,
+        "rowGap": 34,
+        "alignItems": "stretch",
+        "justifyItems": "stretch",
+        "contentFrame": {
+          "left": 92,
+          "top": 74,
+          "width": 1736,
+          "height": 932
+        },
+        "columns": [
+          {
+            "mode": "fr",
+            "value": 1
+          }
+        ],
+        "rows": [
+          "auto",
+          {
+            "mode": "fr",
+            "value": 1
+          },
+          "auto"
+        ],
+        "autoRows": "auto",
+        "resolvedRows": [
+          "auto",
+          {
+            "mode": "fr",
+            "value": 1
+          },
+          "auto"
+        ],
+        "columnSizes": [
+          1736
+        ],
+        "rowSizes": [
+          237,
+          603,
+          24
+        ],
+        "cells": [
+          {
+            "path": "0.0",
+            "column": 0,
+            "row": 0,
+            "columnSpan": 1,
+            "rowSpan": 1,
+            "cellFrame": {
+              "left": 92,
+              "top": 74,
+              "width": 1736,
+              "height": 237
+            }
+          },
+          {
+            "path": "0.1",
+            "column": 0,
+            "row": 1,
+            "columnSpan": 1,
+            "rowSpan": 1,
+            "cellFrame": {
+              "left": 92,
+              "top": 345,
+              "width": 1736,
+              "height": 603
+            }
+          },
+          {
+            "path": "0.2",
+            "column": 0,
+            "row": 2,
+            "columnSpan": 1,
+            "rowSpan": 1,
+            "cellFrame": {
+              "left": 92,
+              "top": 982,
+              "width": 1736,
+              "height": 24
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 3,
+      "frame": {
+        "left": 164,
+        "top": 638,
+        "width": 1592,
+        "height": 3
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "rule",
+        "name": "connection-line",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fixed",
+            "value": 3
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 3
+        },
+        "frame": {
+          "left": 164,
+          "top": 638,
+          "width": 1592,
+          "height": 3
+        },
+        "snappedFrame": {
+          "left": 164,
+          "top": 638,
+          "width": 1592,
+          "height": 3
+        },
+        "children": [],
+        "weight": 3,
+        "element": {
+          "aid": "sh/hcrmhk3q",
+          "id": "18",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 4,
+      "frame": {
+        "left": 205,
+        "top": 626,
+        "width": 20,
+        "height": 20
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "name": "connection-dot-1",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 205,
+          "top": 626,
+          "width": 20,
+          "height": 20
+        },
+        "snappedFrame": {
+          "left": 204,
+          "top": 628,
+          "width": 20,
+          "height": 20
+        },
+        "children": [],
+        "geometry": "ellipse",
+        "element": {
+          "aid": "sh/orytsvu9",
+          "id": "19",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 5,
+      "frame": {
+        "left": 534,
+        "top": 626,
+        "width": 20,
+        "height": 20
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "name": "connection-dot-2",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 534,
+          "top": 626,
+          "width": 20,
+          "height": 20
+        },
+        "snappedFrame": {
+          "left": 536,
+          "top": 628,
+          "width": 20,
+          "height": 20
+        },
+        "children": [],
+        "geometry": "ellipse",
+        "element": {
+          "aid": "sh/ovahoza1",
+          "id": "20",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 6,
+      "frame": {
+        "left": 865,
+        "top": 626,
+        "width": 20,
+        "height": 20
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "name": "connection-dot-3",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 865,
+          "top": 626,
+          "width": 20,
+          "height": 20
+        },
+        "snappedFrame": {
+          "left": 864,
+          "top": 628,
+          "width": 20,
+          "height": 20
+        },
+        "children": [],
+        "geometry": "ellipse",
+        "element": {
+          "aid": "sh/dg7adsji",
+          "id": "21",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 7,
+      "frame": {
+        "left": 1194,
+        "top": 626,
+        "width": 20,
+        "height": 20
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "name": "connection-dot-4",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 1194,
+          "top": 626,
+          "width": 20,
+          "height": 20
+        },
+        "snappedFrame": {
+          "left": 1196,
+          "top": 628,
+          "width": 20,
+          "height": 20
+        },
+        "children": [],
+        "geometry": "ellipse",
+        "element": {
+          "aid": "sh/6tovahoz",
+          "id": "22",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 8,
+      "frame": {
+        "left": 1525,
+        "top": 626,
+        "width": 20,
+        "height": 20
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "name": "connection-dot-5",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 1525,
+          "top": 626,
+          "width": 20,
+          "height": 20
+        },
+        "snappedFrame": {
+          "left": 1524,
+          "top": 628,
+          "width": 20,
+          "height": 20
+        },
+        "children": [],
+        "geometry": "ellipse",
+        "element": {
+          "aid": "sh/vahoza1g",
+          "id": "23",
+          "kind": "shape"
+        }
+      }
+    }
+  ]
+}

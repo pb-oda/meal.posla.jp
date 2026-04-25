@@ -1,0 +1,2083 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/xy1ohn",
+    "id": "xy1ohn",
+    "slide": 1,
+    "layoutId": "fc8614bb-557e-4e3a-9afb-6c4bdd7a29a5",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "52342e28-6700-4ce1-847f-ce0e7fbb4774",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "fc8614bb-557e-4e3a-9afb-6c4bdd7a29a5",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "52342e28-6700-4ce1-847f-ce0e7fbb4774",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "52342e28-6700-4ce1-847f-ce0e7fbb4774",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8v6psfi",
+      "id": "1",
+      "name": "background",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "fillColor": "#151311",
+      "lineColor": "#151311",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6hcrmhk3",
+      "id": "2",
+      "name": "cover-left-band",
+      "bbox": [
+        0,
+        0,
+        32,
+        1080
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "fillColor": "#C46A2E",
+      "lineColor": "#C46A2E",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/z25kb6xk",
+      "id": "3",
+      "name": "cover-bottom-band",
+      "bbox": [
+        0,
+        928,
+        1920,
+        152
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "fillColor": "#3B241A",
+      "lineColor": "#3B241A",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ovahoza1",
+      "id": "4",
+      "name": "cover-ghost",
+      "bbox": [
+        980,
+        90,
+        1012,
+        300
+      ],
+      "composeSource": {
+        "run": 4,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "POSLA",
+      "textPreview": "POSLA",
+      "resolvedFontSize": 300,
+      "resolvedTextStyle": {
+        "fontSize": 300,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "POSLA"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "POSLA",
+          "runs": [
+            {
+              "index": 1,
+              "text": "POSLA",
+              "fontSize": 4,
+              "color": "#4B2D22",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dg7adsji",
+      "id": "5",
+      "name": "slide-1-eyebrow",
+      "bbox": [
+        92,
+        74,
+        186,
+        36
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0.0.0"
+      },
+      "geometry": "rect",
+      "text": "POSLA proposal draft",
+      "textPreview": "POSLA proposal draft",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "POSLA proposal"
+          },
+          {
+            "index": 2,
+            "text": "draft"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "POSLA proposal draft",
+          "runs": [
+            {
+              "index": 1,
+              "text": "POSLA proposal draft",
+              "fontSize": 18,
+              "color": "#E2A65B",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6tovahoz",
+      "id": "6",
+      "name": "slide-1-rule",
+      "bbox": [
+        92,
+        124,
+        120,
+        4
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0.0.1"
+      },
+      "geometry": "rect",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vahoza1g",
+      "id": "7",
+      "name": "slide-1-title",
+      "bbox": [
+        92,
+        142,
+        468,
+        234
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0.0.2"
+      },
+      "geometry": "rect",
+      "text": "売上増と\n現場効率化を\n同時に進める",
+      "textPreview": "売上増と | 現場効率化を | 同時に進める",
+      "resolvedFontSize": 78,
+      "resolvedTextStyle": {
+        "fontSize": 78,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "売上増と"
+          },
+          {
+            "index": 2,
+            "text": "現場効率化を"
+          },
+          {
+            "index": 3,
+            "text": "同時に進める"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "売上増と",
+          "runs": [
+            {
+              "index": 1,
+              "text": "売上増と",
+              "fontSize": 78,
+              "color": "#FBF7F2",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "現場効率化を",
+          "runs": [
+            {
+              "index": 1,
+              "text": "現場効率化を",
+              "fontSize": 78,
+              "color": "#FBF7F2",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "text": "同時に進める",
+          "runs": [
+            {
+              "index": 1,
+              "text": "同時に進める",
+              "fontSize": 78,
+              "color": "#FBF7F2",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/o7qpg3ex",
+      "id": "8",
+      "name": "slide-1-subtitle",
+      "bbox": [
+        92,
+        390,
+        734,
+        54
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0.0.3"
+      },
+      "geometry": "rect",
+      "text": "POSLAは注文システムではなく、予約・厨房・会計・在庫・分析までつなぐ店舗運営基盤です。",
+      "textPreview": "POSLAは注文システムではなく、予約・厨房・会計・在庫・分析までつなぐ店舗運営基盤です。",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "fontSize": 27,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "POSLAは注文システムではなく、予約・厨房・会計・在庫・"
+          },
+          {
+            "index": 2,
+            "text": "分析までつなぐ店舗運営基盤です。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "POSLAは注文システムではなく、予約・厨房・会計・在庫・分析までつなぐ店舗運営基盤です。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "POSLAは注文システムではなく、予約・厨房・会計・在庫・分析までつなぐ店舗運営基盤です。",
+              "fontSize": 27,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dsji5sne",
+      "id": "9",
+      "name": "cover-proof",
+      "bbox": [
+        92,
+        478,
+        516,
+        24
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0.1.0.0"
+      },
+      "geometry": "rect",
+      "text": "単機能ではなく、店舗の1日をまとめて変える。",
+      "textPreview": "単機能ではなく、店舗の1日をまとめて変える。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "単機能ではなく、店舗の1日をまとめて変える。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "単機能ではなく、店舗の1日をまとめて変える。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "単機能ではなく、店舗の1日をまとめて変える。",
+              "fontSize": 24,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pwb2hwfy",
+      "id": "10",
+      "name": "cover-word-1",
+      "bbox": [
+        972,
+        478,
+        262,
+        44
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0.1.1.0"
+      },
+      "geometry": "rect",
+      "text": "客単価アップ",
+      "textPreview": "客単価アップ",
+      "resolvedFontSize": 44,
+      "resolvedTextStyle": {
+        "fontSize": 44,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "客単価アップ"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "客単価アップ",
+          "runs": [
+            {
+              "index": 1,
+              "text": "客単価アップ",
+              "fontSize": 44,
+              "color": "#E2A65B",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0bi9s36h",
+      "id": "11",
+      "name": "cover-word-1-detail",
+      "bbox": [
+        972,
+        542,
+        456,
+        40
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0.1.1.1"
+      },
+      "geometry": "rect",
+      "text": "おすすめ表示、AIウェイター、併売分析で売れる導線をつくる。",
+      "textPreview": "おすすめ表示、AIウェイター、併売分析で売れる導線をつくる。",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "おすすめ表示、AIウェイター、併売分析で売れる導"
+          },
+          {
+            "index": 2,
+            "text": "線をつくる。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "おすすめ表示、AIウェイター、併売分析で売れる導線をつくる。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "おすすめ表示、AIウェイター、併売分析で売れる導線をつくる。",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7qpg3ex0",
+      "id": "12",
+      "name": "cover-word-2",
+      "bbox": [
+        972,
+        602,
+        264,
+        44
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0.1.1.2"
+      },
+      "geometry": "rect",
+      "text": "電話対応削減",
+      "textPreview": "電話対応削減",
+      "resolvedFontSize": 44,
+      "resolvedTextStyle": {
+        "fontSize": 44,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "電話対応削減"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "電話対応削減",
+          "runs": [
+            {
+              "index": 1,
+              "text": "電話対応削減",
+              "fontSize": 44,
+              "color": "#E2A65B",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/i5sneloj",
+      "id": "13",
+      "name": "cover-word-2-detail",
+      "bbox": [
+        972,
+        666,
+        440,
+        20
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0.1.1.3"
+      },
+      "geometry": "rect",
+      "text": "予約変更や受取調整を店舗だけで抱え込まない。",
+      "textPreview": "予約変更や受取調整を店舗だけで抱え込まない。",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "予約変更や受取調整を店舗だけで抱え込まない。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "予約変更や受取調整を店舗だけで抱え込まない。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "予約変更や受取調整を店舗だけで抱え込まない。",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/p4r65wju",
+      "id": "14",
+      "name": "cover-word-3",
+      "bbox": [
+        972,
+        706,
+        264,
+        44
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0.1.1.4"
+      },
+      "geometry": "rect",
+      "text": "発注精度向上",
+      "textPreview": "発注精度向上",
+      "resolvedFontSize": 44,
+      "resolvedTextStyle": {
+        "fontSize": 44,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "発注精度向上"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "発注精度向上",
+          "runs": [
+            {
+              "index": 1,
+              "text": "発注精度向上",
+              "fontSize": 44,
+              "color": "#E2A65B",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wjudg7ad",
+      "id": "15",
+      "name": "cover-word-3-detail",
+      "bbox": [
+        972,
+        770,
+        458,
+        40
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0.1.1.5"
+      },
+      "geometry": "rect",
+      "text": "在庫と売上をつなげ、仕込みや欠品のムダを減らしやすくする。",
+      "textPreview": "在庫と売上をつなげ、仕込みや欠品のムダを減らしやすくする。",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "在庫と売上をつなげ、仕込みや欠品のムダを減らし"
+          },
+          {
+            "index": 2,
+            "text": "やすくする。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "在庫と売上をつなげ、仕込みや欠品のムダを減らしやすくする。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "在庫と売上をつなげ、仕込みや欠品のムダを減らしやすくする。",
+              "fontSize": 20,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7y1kre1w",
+      "id": "16",
+      "name": "footer-source-1",
+      "bbox": [
+        92,
+        982,
+        362,
+        24
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0.2.0"
+      },
+      "geometry": "rect",
+      "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "textPreview": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "fontSize": 11,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+              "fontSize": 11,
+              "color": "#D5C2AE",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ed8v6psf",
+      "id": "17",
+      "name": "footer-page-1",
+      "bbox": [
+        1796,
+        982,
+        32,
+        24
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0.2.1"
+      },
+      "geometry": "rect",
+      "text": "1 / 11",
+      "textPreview": "1 / 11",
+      "resolvedFontSize": 12,
+      "resolvedTextStyle": {
+        "fontSize": 12,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "right"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1 / 11"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "1 / 11",
+          "runs": [
+            {
+              "index": 1,
+              "text": "1 / 11",
+              "fontSize": 12,
+              "color": "#E2A65B",
+              "bold": true,
+              "alignment": "right"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": [
+    {
+      "index": 1,
+      "frame": {
+        "left": 0,
+        "top": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "name": "background",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 0,
+          "top": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "snappedFrame": {
+          "left": 0,
+          "top": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "children": [],
+        "geometry": "rect",
+        "element": {
+          "aid": "sh/d8v6psfi",
+          "id": "1",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 2,
+      "frame": {
+        "left": 0,
+        "top": 0,
+        "width": 28,
+        "height": 1080
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "name": "cover-left-band",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 0,
+          "top": 0,
+          "width": 28,
+          "height": 1080
+        },
+        "snappedFrame": {
+          "left": 0,
+          "top": 0,
+          "width": 32,
+          "height": 1080
+        },
+        "children": [],
+        "geometry": "rect",
+        "element": {
+          "aid": "sh/6hcrmhk3",
+          "id": "2",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "frame": {
+        "left": 0,
+        "top": 930,
+        "width": 1920,
+        "height": 150
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "name": "cover-bottom-band",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 0,
+          "top": 930,
+          "width": 1920,
+          "height": 150
+        },
+        "snappedFrame": {
+          "left": 0,
+          "top": 928,
+          "width": 1920,
+          "height": 152
+        },
+        "children": [],
+        "geometry": "rect",
+        "element": {
+          "aid": "sh/z25kb6xk",
+          "id": "3",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 4,
+      "frame": {
+        "left": 980,
+        "top": 90,
+        "width": 820,
+        "height": 320
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "cover-ghost",
+        "requestedSize": {
+          "width": {
+            "mode": "wrap",
+            "max": 1200
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 1011.6,
+          "height": 300
+        },
+        "frame": {
+          "left": 980,
+          "top": 90,
+          "width": 1011.6,
+          "height": 300
+        },
+        "snappedFrame": {
+          "left": 980,
+          "top": 90,
+          "width": 1012,
+          "height": 300
+        },
+        "children": [],
+        "text": "POSLA",
+        "transform": "none",
+        "element": {
+          "aid": "sh/ovahoza1",
+          "id": "4",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 5,
+      "frame": {
+        "left": 0,
+        "top": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "grid",
+        "name": "shell-1",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 184,
+          "height": 580
+        },
+        "frame": {
+          "left": 0,
+          "top": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "children": [
+          {
+            "path": "0.0",
+            "kind": "column",
+            "name": "slide-1-stack",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 733.06,
+              "height": 352
+            },
+            "frame": {
+              "left": 92,
+              "top": 74,
+              "width": 1736,
+              "height": 370
+            },
+            "children": [
+              {
+                "path": "0.0.0",
+                "kind": "text",
+                "name": "slide-1-eyebrow",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 900
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 186.69,
+                  "height": 18
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 74,
+                  "width": 186.69,
+                  "height": 36
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 74,
+                  "width": 186,
+                  "height": 36
+                },
+                "children": [],
+                "text": "POSLA proposal draft",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/dg7adsji",
+                  "id": "5",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.0.1",
+                "kind": "rule",
+                "name": "slide-1-rule",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fixed",
+                    "value": 120
+                  },
+                  "height": {
+                    "mode": "fixed",
+                    "value": 4
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 120,
+                  "height": 4
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 124,
+                  "width": 120,
+                  "height": 4
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 124,
+                  "width": 120,
+                  "height": 4
+                },
+                "children": [],
+                "weight": 4,
+                "element": {
+                  "aid": "sh/6tovahoz",
+                  "id": "6",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.0.2",
+                "kind": "text",
+                "name": "slide-1-title",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 1280
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 468,
+                  "height": 234
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 142,
+                  "width": 468,
+                  "height": 234
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 142,
+                  "width": 468,
+                  "height": 234
+                },
+                "children": [],
+                "text": "売上増と\n現場効率化を\n同時に進める",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/vahoza1g",
+                  "id": "7",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.0.3",
+                "kind": "text",
+                "name": "slide-1-subtitle",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 760
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 733.06,
+                  "height": 54
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 390,
+                  "width": 733.06,
+                  "height": 54
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 390,
+                  "width": 734,
+                  "height": 54
+                },
+                "children": [],
+                "text": "POSLAは注文システムではなく、予約・厨房・会計・在庫・分析までつなぐ店舗運営基盤です。",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/o7qpg3ex",
+                  "id": "8",
+                  "kind": "shape"
+                }
+              }
+            ],
+            "padding": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "gap": 14,
+            "effectiveGap": 14,
+            "justifyOffset": 0,
+            "align": "start",
+            "justify": "start",
+            "contentFrame": {
+              "left": 92,
+              "top": 74,
+              "width": 1736,
+              "height": 370
+            },
+            "items": [
+              {
+                "path": "0.0.0",
+                "frame": {
+                  "left": 92,
+                  "top": 74,
+                  "width": 186.69,
+                  "height": 36
+                }
+              },
+              {
+                "path": "0.0.1",
+                "frame": {
+                  "left": 92,
+                  "top": 124,
+                  "width": 120,
+                  "height": 4
+                }
+              },
+              {
+                "path": "0.0.2",
+                "frame": {
+                  "left": 92,
+                  "top": 142,
+                  "width": 468,
+                  "height": 234
+                }
+              },
+              {
+                "path": "0.0.3",
+                "frame": {
+                  "left": 92,
+                  "top": 390,
+                  "width": 733.06,
+                  "height": 54
+                }
+              }
+            ]
+          },
+          {
+            "path": "0.1",
+            "kind": "grid",
+            "name": "cover-body",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "fill",
+                "value": 1
+              }
+            },
+            "intrinsicSize": {
+              "width": 24,
+              "height": 332
+            },
+            "frame": {
+              "left": 92,
+              "top": 478,
+              "width": 1736,
+              "height": 470
+            },
+            "children": [
+              {
+                "path": "0.1.0",
+                "kind": "column",
+                "name": "cover-left-empty",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fill",
+                    "value": 1
+                  },
+                  "height": {
+                    "mode": "fill",
+                    "value": 1
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 515.9,
+                  "height": 24
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 478,
+                  "width": 856,
+                  "height": 470
+                },
+                "children": [
+                  {
+                    "path": "0.1.0.0",
+                    "kind": "text",
+                    "name": "cover-proof",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 560
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 515.9,
+                      "height": 24
+                    },
+                    "frame": {
+                      "left": 92,
+                      "top": 478,
+                      "width": 515.9,
+                      "height": 24
+                    },
+                    "snappedFrame": {
+                      "left": 92,
+                      "top": 478,
+                      "width": 516,
+                      "height": 24
+                    },
+                    "children": [],
+                    "text": "単機能ではなく、店舗の1日をまとめて変える。",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/dsji5sne",
+                      "id": "9",
+                      "kind": "shape"
+                    }
+                  }
+                ],
+                "padding": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "gap": 14,
+                "effectiveGap": 14,
+                "justifyOffset": 0,
+                "align": "start",
+                "justify": "start",
+                "contentFrame": {
+                  "left": 92,
+                  "top": 478,
+                  "width": 856,
+                  "height": 470
+                },
+                "items": [
+                  {
+                    "path": "0.1.0.0",
+                    "frame": {
+                      "left": 92,
+                      "top": 478,
+                      "width": 515.9,
+                      "height": 24
+                    }
+                  }
+                ]
+              },
+              {
+                "path": "0.1.1",
+                "kind": "column",
+                "name": "cover-right-promises",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fill",
+                    "value": 1
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 458,
+                  "height": 332
+                },
+                "frame": {
+                  "left": 972,
+                  "top": 478,
+                  "width": 856,
+                  "height": 470
+                },
+                "children": [
+                  {
+                    "path": "0.1.1.0",
+                    "kind": "text",
+                    "name": "cover-word-1",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 420
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 261.36,
+                      "height": 44
+                    },
+                    "frame": {
+                      "left": 972,
+                      "top": 478,
+                      "width": 261.36,
+                      "height": 44
+                    },
+                    "snappedFrame": {
+                      "left": 972,
+                      "top": 478,
+                      "width": 262,
+                      "height": 44
+                    },
+                    "children": [],
+                    "text": "客単価アップ",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/pwb2hwfy",
+                      "id": "10",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.1.1",
+                    "kind": "text",
+                    "name": "cover-word-1-detail",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 460
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 455.74,
+                      "height": 40
+                    },
+                    "frame": {
+                      "left": 972,
+                      "top": 542,
+                      "width": 455.74,
+                      "height": 40
+                    },
+                    "snappedFrame": {
+                      "left": 972,
+                      "top": 542,
+                      "width": 456,
+                      "height": 40
+                    },
+                    "children": [],
+                    "text": "おすすめ表示、AIウェイター、併売分析で売れる導線をつくる。",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/0bi9s36h",
+                      "id": "11",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.1.2",
+                    "kind": "text",
+                    "name": "cover-word-2",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 420
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 264,
+                      "height": 44
+                    },
+                    "frame": {
+                      "left": 972,
+                      "top": 602,
+                      "width": 264,
+                      "height": 44
+                    },
+                    "snappedFrame": {
+                      "left": 972,
+                      "top": 602,
+                      "width": 264,
+                      "height": 44
+                    },
+                    "children": [],
+                    "text": "電話対応削減",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/7qpg3ex0",
+                      "id": "12",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.1.3",
+                    "kind": "text",
+                    "name": "cover-word-2-detail",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 460
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 440,
+                      "height": 20
+                    },
+                    "frame": {
+                      "left": 972,
+                      "top": 666,
+                      "width": 440,
+                      "height": 20
+                    },
+                    "snappedFrame": {
+                      "left": 972,
+                      "top": 666,
+                      "width": 440,
+                      "height": 20
+                    },
+                    "children": [],
+                    "text": "予約変更や受取調整を店舗だけで抱え込まない。",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/i5sneloj",
+                      "id": "13",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.1.4",
+                    "kind": "text",
+                    "name": "cover-word-3",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 420
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 264,
+                      "height": 44
+                    },
+                    "frame": {
+                      "left": 972,
+                      "top": 706,
+                      "width": 264,
+                      "height": 44
+                    },
+                    "snappedFrame": {
+                      "left": 972,
+                      "top": 706,
+                      "width": 264,
+                      "height": 44
+                    },
+                    "children": [],
+                    "text": "発注精度向上",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/p4r65wju",
+                      "id": "14",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.1.5",
+                    "kind": "text",
+                    "name": "cover-word-3-detail",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 460
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 458,
+                      "height": 40
+                    },
+                    "frame": {
+                      "left": 972,
+                      "top": 770,
+                      "width": 458,
+                      "height": 40
+                    },
+                    "snappedFrame": {
+                      "left": 972,
+                      "top": 770,
+                      "width": 458,
+                      "height": 40
+                    },
+                    "children": [],
+                    "text": "在庫と売上をつなげ、仕込みや欠品のムダを減らしやすくする。",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/wjudg7ad",
+                      "id": "15",
+                      "kind": "shape"
+                    }
+                  }
+                ],
+                "padding": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "gap": 20,
+                "effectiveGap": 20,
+                "justifyOffset": 0,
+                "align": "start",
+                "justify": "start",
+                "contentFrame": {
+                  "left": 972,
+                  "top": 478,
+                  "width": 856,
+                  "height": 470
+                },
+                "items": [
+                  {
+                    "path": "0.1.1.0",
+                    "frame": {
+                      "left": 972,
+                      "top": 478,
+                      "width": 261.36,
+                      "height": 44
+                    }
+                  },
+                  {
+                    "path": "0.1.1.1",
+                    "frame": {
+                      "left": 972,
+                      "top": 542,
+                      "width": 455.74,
+                      "height": 40
+                    }
+                  },
+                  {
+                    "path": "0.1.1.2",
+                    "frame": {
+                      "left": 972,
+                      "top": 602,
+                      "width": 264,
+                      "height": 44
+                    }
+                  },
+                  {
+                    "path": "0.1.1.3",
+                    "frame": {
+                      "left": 972,
+                      "top": 666,
+                      "width": 440,
+                      "height": 20
+                    }
+                  },
+                  {
+                    "path": "0.1.1.4",
+                    "frame": {
+                      "left": 972,
+                      "top": 706,
+                      "width": 264,
+                      "height": 44
+                    }
+                  },
+                  {
+                    "path": "0.1.1.5",
+                    "frame": {
+                      "left": 972,
+                      "top": 770,
+                      "width": 458,
+                      "height": 40
+                    }
+                  }
+                ]
+              }
+            ],
+            "padding": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "columnGap": 24,
+            "rowGap": 0,
+            "alignItems": "stretch",
+            "justifyItems": "stretch",
+            "contentFrame": {
+              "left": 92,
+              "top": 478,
+              "width": 1736,
+              "height": 470
+            },
+            "columns": [
+              {
+                "mode": "fr",
+                "value": 1
+              },
+              {
+                "mode": "fr",
+                "value": 1
+              }
+            ],
+            "autoRows": "auto",
+            "resolvedRows": [
+              "auto"
+            ],
+            "columnSizes": [
+              856,
+              856
+            ],
+            "rowSizes": [
+              470
+            ],
+            "cells": [
+              {
+                "path": "0.1.0",
+                "column": 0,
+                "row": 0,
+                "columnSpan": 1,
+                "rowSpan": 1,
+                "cellFrame": {
+                  "left": 92,
+                  "top": 478,
+                  "width": 856,
+                  "height": 470
+                }
+              },
+              {
+                "path": "0.1.1",
+                "column": 1,
+                "row": 0,
+                "columnSpan": 1,
+                "rowSpan": 1,
+                "cellFrame": {
+                  "left": 972,
+                  "top": 478,
+                  "width": 856,
+                  "height": 470
+                }
+              }
+            ]
+          },
+          {
+            "path": "0.2",
+            "kind": "row",
+            "name": "footer-row-1",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 392.23,
+              "height": 12
+            },
+            "frame": {
+              "left": 92,
+              "top": 982,
+              "width": 1736,
+              "height": 24
+            },
+            "children": [
+              {
+                "path": "0.2.0",
+                "kind": "text",
+                "name": "footer-source-1",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 1100
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 361.09,
+                  "height": 11
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 982,
+                  "width": 361.09,
+                  "height": 24
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 982,
+                  "width": 362,
+                  "height": 24
+                },
+                "children": [],
+                "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/7y1kre1w",
+                  "id": "16",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.2.1",
+                "kind": "text",
+                "name": "footer-page-1",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 120
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 31.14,
+                  "height": 12
+                },
+                "frame": {
+                  "left": 1796.86,
+                  "top": 982,
+                  "width": 31.14,
+                  "height": 24
+                },
+                "snappedFrame": {
+                  "left": 1796,
+                  "top": 982,
+                  "width": 32,
+                  "height": 24
+                },
+                "children": [],
+                "text": "1 / 11",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/ed8v6psf",
+                  "id": "17",
+                  "kind": "shape"
+                }
+              }
+            ],
+            "padding": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "gap": 0,
+            "effectiveGap": 1343.77,
+            "justifyOffset": 0,
+            "align": "center",
+            "justify": "between",
+            "contentFrame": {
+              "left": 92,
+              "top": 982,
+              "width": 1736,
+              "height": 24
+            },
+            "items": [
+              {
+                "path": "0.2.0",
+                "frame": {
+                  "left": 92,
+                  "top": 982,
+                  "width": 361.09,
+                  "height": 24
+                }
+              },
+              {
+                "path": "0.2.1",
+                "frame": {
+                  "left": 1796.86,
+                  "top": 982,
+                  "width": 31.14,
+                  "height": 24
+                }
+              }
+            ]
+          }
+        ],
+        "padding": {
+          "top": 74,
+          "right": 92,
+          "bottom": 74,
+          "left": 92
+        },
+        "columnGap": 0,
+        "rowGap": 34,
+        "alignItems": "stretch",
+        "justifyItems": "stretch",
+        "contentFrame": {
+          "left": 92,
+          "top": 74,
+          "width": 1736,
+          "height": 932
+        },
+        "columns": [
+          {
+            "mode": "fr",
+            "value": 1
+          }
+        ],
+        "rows": [
+          "auto",
+          {
+            "mode": "fr",
+            "value": 1
+          },
+          "auto"
+        ],
+        "autoRows": "auto",
+        "resolvedRows": [
+          "auto",
+          {
+            "mode": "fr",
+            "value": 1
+          },
+          "auto"
+        ],
+        "columnSizes": [
+          1736
+        ],
+        "rowSizes": [
+          370,
+          470,
+          24
+        ],
+        "cells": [
+          {
+            "path": "0.0",
+            "column": 0,
+            "row": 0,
+            "columnSpan": 1,
+            "rowSpan": 1,
+            "cellFrame": {
+              "left": 92,
+              "top": 74,
+              "width": 1736,
+              "height": 370
+            }
+          },
+          {
+            "path": "0.1",
+            "column": 0,
+            "row": 1,
+            "columnSpan": 1,
+            "rowSpan": 1,
+            "cellFrame": {
+              "left": 92,
+              "top": 478,
+              "width": 1736,
+              "height": 470
+            }
+          },
+          {
+            "path": "0.2",
+            "column": 0,
+            "row": 2,
+            "columnSpan": 1,
+            "rowSpan": 1,
+            "cellFrame": {
+              "left": 92,
+              "top": 982,
+              "width": 1736,
+              "height": 24
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

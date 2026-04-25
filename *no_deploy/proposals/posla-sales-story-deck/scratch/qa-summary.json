@@ -1,0 +1,118 @@
+{
+  "slideCount": 11,
+  "outputPptx": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/output/output.pptx",
+  "sourceSummary": [
+    {
+      "slide": 1,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-01.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-01.layout.json"
+    },
+    {
+      "slide": 2,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-02.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-02.layout.json"
+    },
+    {
+      "slide": 3,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-03.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-03.layout.json"
+    },
+    {
+      "slide": 4,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-04.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-04.layout.json"
+    },
+    {
+      "slide": 5,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-05.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-05.layout.json"
+    },
+    {
+      "slide": 6,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-06.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-06.layout.json"
+    },
+    {
+      "slide": 7,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-07.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-07.layout.json"
+    },
+    {
+      "slide": 8,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-08.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-08.layout.json"
+    },
+    {
+      "slide": 9,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-09.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-09.layout.json"
+    },
+    {
+      "slide": 10,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-10.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-10.layout.json"
+    },
+    {
+      "slide": 11,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-11.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/source-renders/source-slide-11.layout.json"
+    }
+  ],
+  "pptxSummary": [
+    {
+      "slide": 1,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-01.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-01.layout.json"
+    },
+    {
+      "slide": 2,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-02.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-02.layout.json"
+    },
+    {
+      "slide": 3,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-03.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-03.layout.json"
+    },
+    {
+      "slide": 4,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-04.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-04.layout.json"
+    },
+    {
+      "slide": 5,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-05.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-05.layout.json"
+    },
+    {
+      "slide": 6,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-06.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-06.layout.json"
+    },
+    {
+      "slide": 7,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-07.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-07.layout.json"
+    },
+    {
+      "slide": 8,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-08.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-08.layout.json"
+    },
+    {
+      "slide": 9,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-09.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-09.layout.json"
+    },
+    {
+      "slide": 10,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-10.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-10.layout.json"
+    },
+    {
+      "slide": 11,
+      "png": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-11.png",
+      "layout": "/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【擬似本番環境】meal.posla.jp/*no_deploy/proposals/posla-sales-story-deck/scratch/pptx-renders/pptx-slide-11.layout.json"
+    }
+  ]
+}

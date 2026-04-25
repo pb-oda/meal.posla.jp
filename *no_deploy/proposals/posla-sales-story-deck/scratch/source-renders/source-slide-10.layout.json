@@ -1,0 +1,2029 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/bhpye9",
+    "id": "bhpye9",
+    "slide": 10,
+    "layoutId": "fc8614bb-557e-4e3a-9afb-6c4bdd7a29a5",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "52342e28-6700-4ce1-847f-ce0e7fbb4774",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "fc8614bb-557e-4e3a-9afb-6c4bdd7a29a5",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "52342e28-6700-4ce1-847f-ce0e7fbb4774",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "52342e28-6700-4ce1-847f-ce0e7fbb4774",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/36hcrmhk",
+      "id": "1",
+      "name": "background",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "fillColor": "#FBF7F2",
+      "lineColor": "#FBF7F2",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wra5gbq1",
+      "id": "2",
+      "name": "slide-10-eyebrow",
+      "bbox": [
+        92,
+        74,
+        62,
+        18
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.0.0"
+      },
+      "geometry": "rect",
+      "text": "Best fit",
+      "textPreview": "Best fit",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Best fit"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Best fit",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Best fit",
+              "fontSize": 18,
+              "color": "#C46A2E",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lc7u54zi",
+      "id": "3",
+      "name": "slide-10-rule",
+      "bbox": [
+        92,
+        106,
+        120,
+        4
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.0.1"
+      },
+      "geometry": "rect",
+      "fillColor": "#C46A2E",
+      "lineColor": "#C46A2E",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ed8bat47",
+      "id": "4",
+      "name": "slide-10-title",
+      "bbox": [
+        92,
+        124,
+        384,
+        128
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.0.2"
+      },
+      "geometry": "rect",
+      "text": "こんな店舗に\n向いている",
+      "textPreview": "こんな店舗に | 向いている",
+      "resolvedFontSize": 64,
+      "resolvedTextStyle": {
+        "fontSize": 64,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "こんな店舗に"
+          },
+          {
+            "index": 2,
+            "text": "向いている"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "こんな店舗に",
+          "runs": [
+            {
+              "index": 1,
+              "text": "こんな店舗に",
+              "fontSize": 64,
+              "color": "#151311",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "向いている",
+          "runs": [
+            {
+              "index": 1,
+              "text": "向いている",
+              "fontSize": 64,
+              "color": "#151311",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7u54zido",
+      "id": "5",
+      "name": "slide-10-subtitle",
+      "bbox": [
+        92,
+        266,
+        1148,
+        54
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.0.3"
+      },
+      "geometry": "rect",
+      "text": "1店舗の省力化から、多店舗運営の標準化まで。業態ごとの悩みに合わせて見せ方を変えられる。",
+      "textPreview": "1店舗の省力化から、多店舗運営の標準化まで。業態ごとの悩みに合わせて見せ方を変えられる。",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "fontSize": 27,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1店舗の省力化から、多店舗運営の標準化まで。業態ごとの悩みに合わせて見せ方を変えられる"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "1店舗の省力化から、多店舗運営の標準化まで。業態ごとの悩みに合わせて見せ方を変えられる。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "1店舗の省力化から、多店舗運営の標準化まで。業態ごとの悩みに合わせて見せ方を変えられる。",
+              "fontSize": 27,
+              "color": "#6D6258",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wfyxobm5",
+      "id": "6",
+      "name": "fit-1-lead",
+      "bbox": [
+        92,
+        354,
+        156,
+        56
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.0.0"
+      },
+      "geometry": "rect",
+      "text": "1店舗の個店",
+      "textPreview": "1店舗の個店",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "fontSize": 28,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1店舗の個店"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "1店舗の個店",
+          "runs": [
+            {
+              "index": 1,
+              "text": "1店舗の個店",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/l0rqd4vm",
+      "id": "7",
+      "name": "fit-1-detail",
+      "bbox": [
+        92,
+        416,
+        360,
+        20
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.0.1"
+      },
+      "geometry": "rect",
+      "text": "少人数でも回しやすい店をつくりたい。",
+      "textPreview": "少人数でも回しやすい店をつくりたい。",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "少人数でも回しやすい店をつくりたい。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "少人数でも回しやすい店をつくりたい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "少人数でも回しやすい店をつくりたい。",
+              "fontSize": 20,
+              "color": "#6D6258",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/e1w7mp0b",
+      "id": "8",
+      "name": "fit-2-lead",
+      "bbox": [
+        978,
+        354,
+        362,
+        56
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.1.0"
+      },
+      "geometry": "rect",
+      "text": "予約やテイクアウトが多い店",
+      "textPreview": "予約やテイクアウトが多い店",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "fontSize": 28,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "予約やテイクアウトが多い店"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "予約やテイクアウトが多い店",
+          "runs": [
+            {
+              "index": 1,
+              "text": "予約やテイクアウトが多い店",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7mp0bi9s",
+      "id": "9",
+      "name": "fit-2-detail",
+      "bbox": [
+        978,
+        416,
+        280,
+        20
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.1.1"
+      },
+      "geometry": "rect",
+      "text": "電話や確認作業を減らしたい。",
+      "textPreview": "電話や確認作業を減らしたい。",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "電話や確認作業を減らしたい。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "電話や確認作業を減らしたい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "電話や確認作業を減らしたい。",
+              "fontSize": 20,
+              "color": "#6D6258",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zed8v6ps",
+      "id": "10",
+      "name": "fit-3-lead",
+      "bbox": [
+        92,
+        678,
+        140,
+        28
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.2.0"
+      },
+      "geometry": "rect",
+      "text": "多店舗運営",
+      "textPreview": "多店舗運営",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "fontSize": 28,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "多店舗運営"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "多店舗運営",
+          "runs": [
+            {
+              "index": 1,
+              "text": "多店舗運営",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6xkf6dcb",
+      "id": "11",
+      "name": "fit-3-detail",
+      "bbox": [
+        92,
+        712,
+        400,
+        20
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.2.1"
+      },
+      "geometry": "rect",
+      "text": "本部と店舗のズレを減らし、横断で見たい。",
+      "textPreview": "本部と店舗のズレを減らし、横断で見たい。",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "本部と店舗のズレを減らし、横断で見たい。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "本部と店舗のズレを減らし、横断で見たい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "本部と店舗のズレを減らし、横断で見たい。",
+              "fontSize": 20,
+              "color": "#6D6258",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hk3q5o7q",
+      "id": "12",
+      "name": "fit-4-lead",
+      "bbox": [
+        978,
+        678,
+        280,
+        28
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.3.0"
+      },
+      "geometry": "rect",
+      "text": "訪日客対応が必要な店",
+      "textPreview": "訪日客対応が必要な店",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "fontSize": 28,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "訪日客対応が必要な店"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "訪日客対応が必要な店",
+          "runs": [
+            {
+              "index": 1,
+              "text": "訪日客対応が必要な店",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true,
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/oza1gvy9",
+      "id": "13",
+      "name": "fit-4-detail",
+      "bbox": [
+        978,
+        712,
+        280,
+        20
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.1.3.1"
+      },
+      "geometry": "rect",
+      "text": "多言語で注文障壁を下げたい。",
+      "textPreview": "多言語で注文障壁を下げたい。",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "多言語で注文障壁を下げたい。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "多言語で注文障壁を下げたい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "多言語で注文障壁を下げたい。",
+              "fontSize": 20,
+              "color": "#6D6258",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zqtcj6to",
+      "id": "14",
+      "name": "footer-source-10",
+      "bbox": [
+        92,
+        982,
+        362,
+        24
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.2.0"
+      },
+      "geometry": "rect",
+      "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "textPreview": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "fontSize": 11,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+              "fontSize": 11,
+              "color": "#6D6258",
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/65wjudg7",
+      "id": "15",
+      "name": "footer-page-10",
+      "bbox": [
+        1790,
+        982,
+        38,
+        24
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0.2.1"
+      },
+      "geometry": "rect",
+      "text": "10 / 11",
+      "textPreview": "10 / 11",
+      "resolvedFontSize": 12,
+      "resolvedTextStyle": {
+        "fontSize": 12,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "right"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "10 / 11"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "10 / 11",
+          "runs": [
+            {
+              "index": 1,
+              "text": "10 / 11",
+              "fontSize": 12,
+              "color": "#C46A2E",
+              "bold": true,
+              "alignment": "right"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": [
+    {
+      "index": 1,
+      "frame": {
+        "left": 0,
+        "top": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "name": "background",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 0,
+          "top": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "snappedFrame": {
+          "left": 0,
+          "top": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "children": [],
+        "geometry": "rect",
+        "element": {
+          "aid": "sh/36hcrmhk",
+          "id": "1",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 2,
+      "frame": {
+        "left": 0,
+        "top": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "grid",
+        "name": "shell-10",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 184,
+          "height": 474
+        },
+        "frame": {
+          "left": 0,
+          "top": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "children": [
+          {
+            "path": "0.0",
+            "kind": "column",
+            "name": "slide-10-stack",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 1147.93,
+              "height": 246
+            },
+            "frame": {
+              "left": 92,
+              "top": 74,
+              "width": 1736,
+              "height": 246
+            },
+            "children": [
+              {
+                "path": "0.0.0",
+                "kind": "text",
+                "name": "slide-10-eyebrow",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 900
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 61.34,
+                  "height": 18
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 74,
+                  "width": 61.34,
+                  "height": 18
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 74,
+                  "width": 62,
+                  "height": 18
+                },
+                "children": [],
+                "text": "Best fit",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/wra5gbq1",
+                  "id": "2",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.0.1",
+                "kind": "rule",
+                "name": "slide-10-rule",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fixed",
+                    "value": 120
+                  },
+                  "height": {
+                    "mode": "fixed",
+                    "value": 4
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 120,
+                  "height": 4
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 106,
+                  "width": 120,
+                  "height": 4
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 106,
+                  "width": 120,
+                  "height": 4
+                },
+                "children": [],
+                "weight": 4,
+                "element": {
+                  "aid": "sh/lc7u54zi",
+                  "id": "3",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.0.2",
+                "kind": "text",
+                "name": "slide-10-title",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 1280
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 384,
+                  "height": 128
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 124,
+                  "width": 384,
+                  "height": 128
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 124,
+                  "width": 384,
+                  "height": 128
+                },
+                "children": [],
+                "text": "こんな店舗に\n向いている",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/ed8bat47",
+                  "id": "4",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.0.3",
+                "kind": "text",
+                "name": "slide-10-subtitle",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 1150
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 1147.93,
+                  "height": 54
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 266,
+                  "width": 1147.93,
+                  "height": 54
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 266,
+                  "width": 1148,
+                  "height": 54
+                },
+                "children": [],
+                "text": "1店舗の省力化から、多店舗運営の標準化まで。業態ごとの悩みに合わせて見せ方を変えられる。",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/7u54zido",
+                  "id": "5",
+                  "kind": "shape"
+                }
+              }
+            ],
+            "padding": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "gap": 14,
+            "effectiveGap": 14,
+            "justifyOffset": 0,
+            "align": "start",
+            "justify": "start",
+            "contentFrame": {
+              "left": 92,
+              "top": 74,
+              "width": 1736,
+              "height": 246
+            },
+            "items": [
+              {
+                "path": "0.0.0",
+                "frame": {
+                  "left": 92,
+                  "top": 74,
+                  "width": 61.34,
+                  "height": 18
+                }
+              },
+              {
+                "path": "0.0.1",
+                "frame": {
+                  "left": 92,
+                  "top": 106,
+                  "width": 120,
+                  "height": 4
+                }
+              },
+              {
+                "path": "0.0.2",
+                "frame": {
+                  "left": 92,
+                  "top": 124,
+                  "width": 384,
+                  "height": 128
+                }
+              },
+              {
+                "path": "0.0.3",
+                "frame": {
+                  "left": 92,
+                  "top": 266,
+                  "width": 1147.93,
+                  "height": 54
+                }
+              }
+            ]
+          },
+          {
+            "path": "0.1",
+            "kind": "grid",
+            "name": "fit-grid",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "fill",
+                "value": 1
+              }
+            },
+            "intrinsicSize": {
+              "width": 36,
+              "height": 132
+            },
+            "frame": {
+              "left": 92,
+              "top": 354,
+              "width": 1736,
+              "height": 594
+            },
+            "children": [
+              {
+                "path": "0.1.0",
+                "kind": "column",
+                "name": "fit-1-item",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fill",
+                    "value": 1
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 360,
+                  "height": 54
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 354,
+                  "width": 850,
+                  "height": 299
+                },
+                "children": [
+                  {
+                    "path": "0.1.0.0",
+                    "kind": "text",
+                    "name": "fit-1-lead",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 560
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 155.57,
+                      "height": 28
+                    },
+                    "frame": {
+                      "left": 92,
+                      "top": 354,
+                      "width": 155.57,
+                      "height": 56
+                    },
+                    "snappedFrame": {
+                      "left": 92,
+                      "top": 354,
+                      "width": 156,
+                      "height": 56
+                    },
+                    "children": [],
+                    "text": "1店舗の個店",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/wfyxobm5",
+                      "id": "6",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.0.1",
+                    "kind": "text",
+                    "name": "fit-1-detail",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 560
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 360,
+                      "height": 20
+                    },
+                    "frame": {
+                      "left": 92,
+                      "top": 416,
+                      "width": 360,
+                      "height": 20
+                    },
+                    "snappedFrame": {
+                      "left": 92,
+                      "top": 416,
+                      "width": 360,
+                      "height": 20
+                    },
+                    "children": [],
+                    "text": "少人数でも回しやすい店をつくりたい。",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/l0rqd4vm",
+                      "id": "7",
+                      "kind": "shape"
+                    }
+                  }
+                ],
+                "padding": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "gap": 6,
+                "effectiveGap": 6,
+                "justifyOffset": 0,
+                "align": "start",
+                "justify": "start",
+                "contentFrame": {
+                  "left": 92,
+                  "top": 354,
+                  "width": 850,
+                  "height": 299
+                },
+                "items": [
+                  {
+                    "path": "0.1.0.0",
+                    "frame": {
+                      "left": 92,
+                      "top": 354,
+                      "width": 155.57,
+                      "height": 56
+                    }
+                  },
+                  {
+                    "path": "0.1.0.1",
+                    "frame": {
+                      "left": 92,
+                      "top": 416,
+                      "width": 360,
+                      "height": 20
+                    }
+                  }
+                ]
+              },
+              {
+                "path": "0.1.1",
+                "kind": "column",
+                "name": "fit-2-item",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fill",
+                    "value": 1
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 361.48,
+                  "height": 54
+                },
+                "frame": {
+                  "left": 978,
+                  "top": 354,
+                  "width": 850,
+                  "height": 299
+                },
+                "children": [
+                  {
+                    "path": "0.1.1.0",
+                    "kind": "text",
+                    "name": "fit-2-lead",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 560
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 361.48,
+                      "height": 28
+                    },
+                    "frame": {
+                      "left": 978,
+                      "top": 354,
+                      "width": 361.48,
+                      "height": 56
+                    },
+                    "snappedFrame": {
+                      "left": 978,
+                      "top": 354,
+                      "width": 362,
+                      "height": 56
+                    },
+                    "children": [],
+                    "text": "予約やテイクアウトが多い店",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/e1w7mp0b",
+                      "id": "8",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.1.1",
+                    "kind": "text",
+                    "name": "fit-2-detail",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 560
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 280,
+                      "height": 20
+                    },
+                    "frame": {
+                      "left": 978,
+                      "top": 416,
+                      "width": 280,
+                      "height": 20
+                    },
+                    "snappedFrame": {
+                      "left": 978,
+                      "top": 416,
+                      "width": 280,
+                      "height": 20
+                    },
+                    "children": [],
+                    "text": "電話や確認作業を減らしたい。",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/7mp0bi9s",
+                      "id": "9",
+                      "kind": "shape"
+                    }
+                  }
+                ],
+                "padding": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "gap": 6,
+                "effectiveGap": 6,
+                "justifyOffset": 0,
+                "align": "start",
+                "justify": "start",
+                "contentFrame": {
+                  "left": 978,
+                  "top": 354,
+                  "width": 850,
+                  "height": 299
+                },
+                "items": [
+                  {
+                    "path": "0.1.1.0",
+                    "frame": {
+                      "left": 978,
+                      "top": 354,
+                      "width": 361.48,
+                      "height": 56
+                    }
+                  },
+                  {
+                    "path": "0.1.1.1",
+                    "frame": {
+                      "left": 978,
+                      "top": 416,
+                      "width": 280,
+                      "height": 20
+                    }
+                  }
+                ]
+              },
+              {
+                "path": "0.1.2",
+                "kind": "column",
+                "name": "fit-3-item",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fill",
+                    "value": 1
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 400,
+                  "height": 54
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 677,
+                  "width": 850,
+                  "height": 271
+                },
+                "children": [
+                  {
+                    "path": "0.1.2.0",
+                    "kind": "text",
+                    "name": "fit-3-lead",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 560
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 140,
+                      "height": 28
+                    },
+                    "frame": {
+                      "left": 92,
+                      "top": 677,
+                      "width": 140,
+                      "height": 28
+                    },
+                    "snappedFrame": {
+                      "left": 92,
+                      "top": 678,
+                      "width": 140,
+                      "height": 28
+                    },
+                    "children": [],
+                    "text": "多店舗運営",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/zed8v6ps",
+                      "id": "10",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.2.1",
+                    "kind": "text",
+                    "name": "fit-3-detail",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 560
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 400,
+                      "height": 20
+                    },
+                    "frame": {
+                      "left": 92,
+                      "top": 711,
+                      "width": 400,
+                      "height": 20
+                    },
+                    "snappedFrame": {
+                      "left": 92,
+                      "top": 712,
+                      "width": 400,
+                      "height": 20
+                    },
+                    "children": [],
+                    "text": "本部と店舗のズレを減らし、横断で見たい。",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/6xkf6dcb",
+                      "id": "11",
+                      "kind": "shape"
+                    }
+                  }
+                ],
+                "padding": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "gap": 6,
+                "effectiveGap": 6,
+                "justifyOffset": 0,
+                "align": "start",
+                "justify": "start",
+                "contentFrame": {
+                  "left": 92,
+                  "top": 677,
+                  "width": 850,
+                  "height": 271
+                },
+                "items": [
+                  {
+                    "path": "0.1.2.0",
+                    "frame": {
+                      "left": 92,
+                      "top": 677,
+                      "width": 140,
+                      "height": 28
+                    }
+                  },
+                  {
+                    "path": "0.1.2.1",
+                    "frame": {
+                      "left": 92,
+                      "top": 711,
+                      "width": 400,
+                      "height": 20
+                    }
+                  }
+                ]
+              },
+              {
+                "path": "0.1.3",
+                "kind": "column",
+                "name": "fit-4-item",
+                "requestedSize": {
+                  "width": {
+                    "mode": "fill",
+                    "value": 1
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 280,
+                  "height": 54
+                },
+                "frame": {
+                  "left": 978,
+                  "top": 677,
+                  "width": 850,
+                  "height": 271
+                },
+                "children": [
+                  {
+                    "path": "0.1.3.0",
+                    "kind": "text",
+                    "name": "fit-4-lead",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 560
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 280,
+                      "height": 28
+                    },
+                    "frame": {
+                      "left": 978,
+                      "top": 677,
+                      "width": 280,
+                      "height": 28
+                    },
+                    "snappedFrame": {
+                      "left": 978,
+                      "top": 678,
+                      "width": 280,
+                      "height": 28
+                    },
+                    "children": [],
+                    "text": "訪日客対応が必要な店",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/hk3q5o7q",
+                      "id": "12",
+                      "kind": "shape"
+                    }
+                  },
+                  {
+                    "path": "0.1.3.1",
+                    "kind": "text",
+                    "name": "fit-4-detail",
+                    "requestedSize": {
+                      "width": {
+                        "mode": "wrap",
+                        "max": 560
+                      },
+                      "height": {
+                        "mode": "hug"
+                      }
+                    },
+                    "intrinsicSize": {
+                      "width": 280,
+                      "height": 20
+                    },
+                    "frame": {
+                      "left": 978,
+                      "top": 711,
+                      "width": 280,
+                      "height": 20
+                    },
+                    "snappedFrame": {
+                      "left": 978,
+                      "top": 712,
+                      "width": 280,
+                      "height": 20
+                    },
+                    "children": [],
+                    "text": "多言語で注文障壁を下げたい。",
+                    "transform": "none",
+                    "element": {
+                      "aid": "sh/oza1gvy9",
+                      "id": "13",
+                      "kind": "shape"
+                    }
+                  }
+                ],
+                "padding": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "gap": 6,
+                "effectiveGap": 6,
+                "justifyOffset": 0,
+                "align": "start",
+                "justify": "start",
+                "contentFrame": {
+                  "left": 978,
+                  "top": 677,
+                  "width": 850,
+                  "height": 271
+                },
+                "items": [
+                  {
+                    "path": "0.1.3.0",
+                    "frame": {
+                      "left": 978,
+                      "top": 677,
+                      "width": 280,
+                      "height": 28
+                    }
+                  },
+                  {
+                    "path": "0.1.3.1",
+                    "frame": {
+                      "left": 978,
+                      "top": 711,
+                      "width": 280,
+                      "height": 20
+                    }
+                  }
+                ]
+              }
+            ],
+            "padding": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "columnGap": 36,
+            "rowGap": 24,
+            "alignItems": "stretch",
+            "justifyItems": "stretch",
+            "contentFrame": {
+              "left": 92,
+              "top": 354,
+              "width": 1736,
+              "height": 594
+            },
+            "columns": [
+              {
+                "mode": "fr",
+                "value": 1
+              },
+              {
+                "mode": "fr",
+                "value": 1
+              }
+            ],
+            "autoRows": "auto",
+            "resolvedRows": [
+              "auto",
+              "auto"
+            ],
+            "columnSizes": [
+              850,
+              850
+            ],
+            "rowSizes": [
+              299,
+              271
+            ],
+            "cells": [
+              {
+                "path": "0.1.0",
+                "column": 0,
+                "row": 0,
+                "columnSpan": 1,
+                "rowSpan": 1,
+                "cellFrame": {
+                  "left": 92,
+                  "top": 354,
+                  "width": 850,
+                  "height": 299
+                }
+              },
+              {
+                "path": "0.1.1",
+                "column": 1,
+                "row": 0,
+                "columnSpan": 1,
+                "rowSpan": 1,
+                "cellFrame": {
+                  "left": 978,
+                  "top": 354,
+                  "width": 850,
+                  "height": 299
+                }
+              },
+              {
+                "path": "0.1.2",
+                "column": 0,
+                "row": 1,
+                "columnSpan": 1,
+                "rowSpan": 1,
+                "cellFrame": {
+                  "left": 92,
+                  "top": 677,
+                  "width": 850,
+                  "height": 271
+                }
+              },
+              {
+                "path": "0.1.3",
+                "column": 1,
+                "row": 1,
+                "columnSpan": 1,
+                "rowSpan": 1,
+                "cellFrame": {
+                  "left": 978,
+                  "top": 677,
+                  "width": 850,
+                  "height": 271
+                }
+              }
+            ]
+          },
+          {
+            "path": "0.2",
+            "kind": "row",
+            "name": "footer-row-10",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 398.9,
+              "height": 12
+            },
+            "frame": {
+              "left": 92,
+              "top": 982,
+              "width": 1736,
+              "height": 24
+            },
+            "children": [
+              {
+                "path": "0.2.0",
+                "kind": "text",
+                "name": "footer-source-10",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 1100
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 361.09,
+                  "height": 11
+                },
+                "frame": {
+                  "left": 92,
+                  "top": 982,
+                  "width": 361.09,
+                  "height": 24
+                },
+                "snappedFrame": {
+                  "left": 92,
+                  "top": 982,
+                  "width": 362,
+                  "height": 24
+                },
+                "children": [],
+                "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/zqtcj6to",
+                  "id": "14",
+                  "kind": "shape"
+                }
+              },
+              {
+                "path": "0.2.1",
+                "kind": "text",
+                "name": "footer-page-10",
+                "requestedSize": {
+                  "width": {
+                    "mode": "wrap",
+                    "max": 120
+                  },
+                  "height": {
+                    "mode": "hug"
+                  }
+                },
+                "intrinsicSize": {
+                  "width": 37.81,
+                  "height": 12
+                },
+                "frame": {
+                  "left": 1790.19,
+                  "top": 982,
+                  "width": 37.81,
+                  "height": 24
+                },
+                "snappedFrame": {
+                  "left": 1790,
+                  "top": 982,
+                  "width": 38,
+                  "height": 24
+                },
+                "children": [],
+                "text": "10 / 11",
+                "transform": "none",
+                "element": {
+                  "aid": "sh/65wjudg7",
+                  "id": "15",
+                  "kind": "shape"
+                }
+              }
+            ],
+            "padding": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "gap": 0,
+            "effectiveGap": 1337.1,
+            "justifyOffset": 0,
+            "align": "center",
+            "justify": "between",
+            "contentFrame": {
+              "left": 92,
+              "top": 982,
+              "width": 1736,
+              "height": 24
+            },
+            "items": [
+              {
+                "path": "0.2.0",
+                "frame": {
+                  "left": 92,
+                  "top": 982,
+                  "width": 361.09,
+                  "height": 24
+                }
+              },
+              {
+                "path": "0.2.1",
+                "frame": {
+                  "left": 1790.19,
+                  "top": 982,
+                  "width": 37.81,
+                  "height": 24
+                }
+              }
+            ]
+          }
+        ],
+        "padding": {
+          "top": 74,
+          "right": 92,
+          "bottom": 74,
+          "left": 92
+        },
+        "columnGap": 0,
+        "rowGap": 34,
+        "alignItems": "stretch",
+        "justifyItems": "stretch",
+        "contentFrame": {
+          "left": 92,
+          "top": 74,
+          "width": 1736,
+          "height": 932
+        },
+        "columns": [
+          {
+            "mode": "fr",
+            "value": 1
+          }
+        ],
+        "rows": [
+          "auto",
+          {
+            "mode": "fr",
+            "value": 1
+          },
+          "auto"
+        ],
+        "autoRows": "auto",
+        "resolvedRows": [
+          "auto",
+          {
+            "mode": "fr",
+            "value": 1
+          },
+          "auto"
+        ],
+        "columnSizes": [
+          1736
+        ],
+        "rowSizes": [
+          246,
+          594,
+          24
+        ],
+        "cells": [
+          {
+            "path": "0.0",
+            "column": 0,
+            "row": 0,
+            "columnSpan": 1,
+            "rowSpan": 1,
+            "cellFrame": {
+              "left": 92,
+              "top": 74,
+              "width": 1736,
+              "height": 246
+            }
+          },
+          {
+            "path": "0.1",
+            "column": 0,
+            "row": 1,
+            "columnSpan": 1,
+            "rowSpan": 1,
+            "cellFrame": {
+              "left": 92,
+              "top": 354,
+              "width": 1736,
+              "height": 594
+            }
+          },
+          {
+            "path": "0.2",
+            "column": 0,
+            "row": 2,
+            "columnSpan": 1,
+            "rowSpan": 1,
+            "cellFrame": {
+              "left": 92,
+              "top": 982,
+              "width": 1736,
+              "height": 24
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

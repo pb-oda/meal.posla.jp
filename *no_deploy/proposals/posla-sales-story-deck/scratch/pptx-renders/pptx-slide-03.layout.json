@@ -1,0 +1,1091 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/s72x4nap",
+    "id": "s72x4nap",
+    "slide": 4,
+    "layoutId": "/ppt/slideLayouts/slideLayout2.xml",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout2.xml",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vmtwra5g",
+      "id": "1",
+      "name": "background",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "#151311",
+      "lineColor": "#151311",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/o7qpg3ex",
+      "id": "2",
+      "name": "slide-3-eyebrow",
+      "bbox": [
+        92,
+        74,
+        194,
+        36
+      ],
+      "geometry": "rect",
+      "text": "What POSLA connects",
+      "textPreview": "What POSLA connects",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "What POSLA"
+          },
+          {
+            "index": 2,
+            "text": "connects"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "What POSLA connects",
+          "runs": [
+            {
+              "index": 1,
+              "text": "What POSLA connects",
+              "fontSize": 18,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dsji5sne",
+      "id": "3",
+      "name": "slide-3-rule",
+      "bbox": [
+        92,
+        124,
+        120,
+        4
+      ],
+      "geometry": "rect",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6dcbulwv",
+      "id": "4",
+      "name": "slide-3-title",
+      "bbox": [
+        92,
+        142,
+        512,
+        128
+      ],
+      "geometry": "rect",
+      "text": "POSLAは\n業務を分断しない",
+      "textPreview": "POSLAは | 業務を分断しない",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "POSLAは"
+          },
+          {
+            "index": 2,
+            "text": "業務を分断しない"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "POSLAは",
+          "runs": [
+            {
+              "index": 1,
+              "text": "POSLAは",
+              "fontSize": 64,
+              "color": "#FBF7F2",
+              "bold": true
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "業務を分断しない",
+          "runs": [
+            {
+              "index": 1,
+              "text": "業務を分断しない",
+              "fontSize": 64,
+              "color": "#FBF7F2",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vy90je9c",
+      "id": "5",
+      "name": "slide-3-subtitle",
+      "bbox": [
+        92,
+        284,
+        1050,
+        28
+      ],
+      "geometry": "rect",
+      "text": "顧客接点だけ強くしても、店舗運営は変わらない。注文から改善までを一つにつなぐ。",
+      "textPreview": "顧客接点だけ強くしても、店舗運営は変わらない。注文から改善までを一つにつなぐ。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "顧客接点だけ強くしても、店舗運営は変わらない。注文から改善までを一つにつなぐ"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "顧客接点だけ強くしても、店舗運営は変わらない。注文から改善までを一つにつなぐ。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "顧客接点だけ強くしても、店舗運営は変わらない。注文から改善までを一つにつなぐ。",
+              "fontSize": 27,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/oj2t83it",
+      "id": "6",
+      "name": "connection-customer-title",
+      "bbox": [
+        92,
+        346,
+        332,
+        34
+      ],
+      "geometry": "rect",
+      "text": "顧客",
+      "textPreview": "顧客",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "顧客"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "顧客",
+          "runs": [
+            {
+              "index": 1,
+              "text": "顧客",
+              "fontSize": 34,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d4vmtwra",
+      "id": "7",
+      "name": "connection-customer-body",
+      "bbox": [
+        92,
+        390,
+        136,
+        80
+      ],
+      "geometry": "rect",
+      "text": "セルフオーダー\n予約\nテイクアウト",
+      "textPreview": "セルフオーダー | 予約 | テイクアウト",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "セルフオーダ"
+          },
+          {
+            "index": 2,
+            "text": "ー"
+          },
+          {
+            "index": 3,
+            "text": "予約"
+          },
+          {
+            "index": 4,
+            "text": "テイクアウト"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "セルフオーダー",
+          "runs": [
+            {
+              "index": 1,
+              "text": "セルフオーダー",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "予約",
+          "runs": [
+            {
+              "index": 1,
+              "text": "予約",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "text": "テイクアウト",
+          "runs": [
+            {
+              "index": 1,
+              "text": "テイクアウト",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6hcrmhk3",
+      "id": "8",
+      "name": "connection-floor-title",
+      "bbox": [
+        442,
+        346,
+        332,
+        34
+      ],
+      "geometry": "rect",
+      "text": "ホール",
+      "textPreview": "ホール",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "ホール"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "ホール",
+          "runs": [
+            {
+              "index": 1,
+              "text": "ホール",
+              "fontSize": 34,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/z25kb6xk",
+      "id": "9",
+      "name": "connection-floor-body",
+      "bbox": [
+        442,
+        390,
+        118,
+        60
+      ],
+      "geometry": "rect",
+      "text": "ハンディ\nテーブル運用\n接客補助",
+      "textPreview": "ハンディ | テーブル運用 | 接客補助",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "ハンディ"
+          },
+          {
+            "index": 2,
+            "text": "テーブル運用"
+          },
+          {
+            "index": 3,
+            "text": "接客補助"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "ハンディ",
+          "runs": [
+            {
+              "index": 1,
+              "text": "ハンディ",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "テーブル運用",
+          "runs": [
+            {
+              "index": 1,
+              "text": "テーブル運用",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "text": "接客補助",
+          "runs": [
+            {
+              "index": 1,
+              "text": "接客補助",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vy90je9c",
+      "id": "10",
+      "name": "connection-kitchen-title",
+      "bbox": [
+        794,
+        346,
+        332,
+        34
+      ],
+      "geometry": "rect",
+      "text": "厨房",
+      "textPreview": "厨房",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "厨房"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "厨房",
+          "runs": [
+            {
+              "index": 1,
+              "text": "厨房",
+              "fontSize": 34,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6dcbulwv",
+      "id": "11",
+      "name": "connection-kitchen-body",
+      "bbox": [
+        794,
+        390,
+        80,
+        60
+      ],
+      "geometry": "rect",
+      "text": "KDS\n優先順位\n提供状況",
+      "textPreview": "KDS | 優先順位 | 提供状況",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "KDS"
+          },
+          {
+            "index": 2,
+            "text": "優先順位"
+          },
+          {
+            "index": 3,
+            "text": "提供状況"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "KDS",
+          "runs": [
+            {
+              "index": 1,
+              "text": "KDS",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "優先順位",
+          "runs": [
+            {
+              "index": 1,
+              "text": "優先順位",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "text": "提供状況",
+          "runs": [
+            {
+              "index": 1,
+              "text": "提供状況",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d4vmtwra",
+      "id": "12",
+      "name": "connection-payment-title",
+      "bbox": [
+        1144,
+        346,
+        332,
+        34
+      ],
+      "geometry": "rect",
+      "text": "会計",
+      "textPreview": "会計",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "会計"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "会計",
+          "runs": [
+            {
+              "index": 1,
+              "text": "会計",
+              "fontSize": 34,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/oj2t83it",
+      "id": "13",
+      "name": "connection-payment-body",
+      "bbox": [
+        1144,
+        390,
+        120,
+        60
+      ],
+      "geometry": "rect",
+      "text": "レジ\nセルフ会計\n分割合流会計",
+      "textPreview": "レジ | セルフ会計 | 分割合流会計",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "レジ"
+          },
+          {
+            "index": 2,
+            "text": "セルフ会計"
+          },
+          {
+            "index": 3,
+            "text": "分割合流会計"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "レジ",
+          "runs": [
+            {
+              "index": 1,
+              "text": "レジ",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "セルフ会計",
+          "runs": [
+            {
+              "index": 1,
+              "text": "セルフ会計",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "text": "分割合流会計",
+          "runs": [
+            {
+              "index": 1,
+              "text": "分割合流会計",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vmtwra5g",
+      "id": "14",
+      "name": "connection-insight-title",
+      "bbox": [
+        1496,
+        346,
+        332,
+        34
+      ],
+      "geometry": "rect",
+      "text": "改善",
+      "textPreview": "改善",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "改善"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "改善",
+          "runs": [
+            {
+              "index": 1,
+              "text": "改善",
+              "fontSize": 34,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/61032lsz",
+      "id": "15",
+      "name": "connection-insight-body",
+      "bbox": [
+        1496,
+        390,
+        80,
+        60
+      ],
+      "geometry": "rect",
+      "text": "在庫\n分析\n本部管理",
+      "textPreview": "在庫 | 分析 | 本部管理",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "在庫"
+          },
+          {
+            "index": 2,
+            "text": "分析"
+          },
+          {
+            "index": 3,
+            "text": "本部管理"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "在庫",
+          "runs": [
+            {
+              "index": 1,
+              "text": "在庫",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "分析",
+          "runs": [
+            {
+              "index": 1,
+              "text": "分析",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "text": "本部管理",
+          "runs": [
+            {
+              "index": 1,
+              "text": "本部管理",
+              "fontSize": 20,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dsji5sne",
+      "id": "16",
+      "name": "footer-source-3",
+      "bbox": [
+        92,
+        982,
+        362,
+        24
+      ],
+      "geometry": "rect",
+      "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "textPreview": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+              "fontSize": 11,
+              "color": "#D5C2AE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/o7qpg3ex",
+      "id": "17",
+      "name": "footer-page-3",
+      "bbox": [
+        1796,
+        982,
+        32,
+        24
+      ],
+      "geometry": "rect",
+      "text": "3 / 11",
+      "textPreview": "3 / 11",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "3 / 11"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "3 / 11",
+          "runs": [
+            {
+              "index": 1,
+              "text": "3 / 11",
+              "fontSize": 12,
+              "color": "#E2A65B",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vahoza1g",
+      "id": "18",
+      "name": "connection-line",
+      "bbox": [
+        164,
+        638,
+        1592,
+        3
+      ],
+      "geometry": "rect",
+      "fillColor": "#B4573C",
+      "lineColor": "#B4573C",
+      "lineWidth": 0
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6tovahoz",
+      "id": "19",
+      "name": "connection-dot-1",
+      "bbox": [
+        204,
+        628,
+        20,
+        20
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/epkzupwb",
+      "id": "20",
+      "name": "connection-dot-2",
+      "bbox": [
+        536,
+        628,
+        20,
+        20
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7adsji5s",
+      "id": "21",
+      "name": "connection-dot-3",
+      "bbox": [
+        864,
+        628,
+        20,
+        20
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wval87ed",
+      "id": "22",
+      "name": "connection-dot-4",
+      "bbox": [
+        1196,
+        628,
+        20,
+        20
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    },
+    {
+      "order": 23,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pg3ex0nu",
+      "id": "23",
+      "name": "connection-dot-5",
+      "bbox": [
+        1524,
+        628,
+        20,
+        20
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#E2A65B",
+      "lineColor": "#E2A65B",
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

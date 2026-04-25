@@ -1,0 +1,998 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/mlkjm1cf",
+    "id": "mlkjm1cf",
+    "slide": 6,
+    "layoutId": "/ppt/slideLayouts/slideLayout2.xml",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout2.xml",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vahoza1g",
+      "id": "1",
+      "name": "background",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "#FBF7F2",
+      "lineColor": "#FBF7F2",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ovahoza1",
+      "id": "2",
+      "name": "revenue-orb",
+      "bbox": [
+        1384,
+        544,
+        704,
+        704
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#F2D7BE",
+      "lineColor": "#F2D7BE",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dg7adsji",
+      "id": "3",
+      "name": "slide-5-eyebrow",
+      "bbox": [
+        92,
+        74,
+        138,
+        18
+      ],
+      "geometry": "rect",
+      "text": "Revenue upside",
+      "textPreview": "Revenue upside",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Revenue upside"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Revenue upside",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Revenue upside",
+              "fontSize": 18,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6hcrmhk3",
+      "id": "4",
+      "name": "slide-5-rule",
+      "bbox": [
+        92,
+        106,
+        120,
+        4
+      ],
+      "geometry": "rect",
+      "fillColor": "#C46A2E",
+      "lineColor": "#C46A2E",
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/z25kb6xk",
+      "id": "5",
+      "name": "slide-5-title",
+      "bbox": [
+        92,
+        124,
+        702,
+        192
+      ],
+      "geometry": "rect",
+      "text": "売上増に効くのは\n売れる導線をつくること",
+      "textPreview": "売上増に効くのは | 売れる導線をつくること",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "売上増に効くのは"
+          },
+          {
+            "index": 2,
+            "text": "売れる導線をつくること"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "売上増に効くのは",
+          "runs": [
+            {
+              "index": 1,
+              "text": "売上増に効くのは",
+              "fontSize": 64,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "売れる導線をつくること",
+          "runs": [
+            {
+              "index": 1,
+              "text": "売れる導線をつくること",
+              "fontSize": 64,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/onyd0z61",
+      "id": "6",
+      "name": "slide-5-subtitle",
+      "bbox": [
+        92,
+        330,
+        1030,
+        54
+      ],
+      "geometry": "rect",
+      "text": "POSLAは注文を受けるだけでなく、見せ方と提案の精度を上げる基盤として使える。",
+      "textPreview": "POSLAは注文を受けるだけでなく、見せ方と提案の精度を上げる基盤として使える。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "POSLAは注文を受けるだけでなく、見せ方と提案の精度を上げる基盤として使える。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "POSLAは注文を受けるだけでなく、見せ方と提案の精度を上げる基盤として使える。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "POSLAは注文を受けるだけでなく、見せ方と提案の精度を上げる基盤として使える。",
+              "fontSize": 27,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8v6psfi",
+      "id": "7",
+      "name": "revenue-word-1",
+      "bbox": [
+        92,
+        418,
+        262,
+        44
+      ],
+      "geometry": "rect",
+      "text": "おすすめ表示",
+      "textPreview": "おすすめ表示",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "おすすめ表"
+          },
+          {
+            "index": 2,
+            "text": "示"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "おすすめ表示",
+          "runs": [
+            {
+              "index": 1,
+              "text": "おすすめ表示",
+              "fontSize": 44,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6dcbulwv",
+      "id": "8",
+      "name": "revenue-word-2",
+      "bbox": [
+        92,
+        486,
+        260,
+        88
+      ],
+      "geometry": "rect",
+      "text": "AIウェイター",
+      "textPreview": "AIウェイター",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AIウェイター"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AIウェイター",
+          "runs": [
+            {
+              "index": 1,
+              "text": "AIウェイター",
+              "fontSize": 44,
+              "color": "#B4573C",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vy90je9c",
+      "id": "9",
+      "name": "revenue-word-3",
+      "bbox": [
+        92,
+        598,
+        176,
+        44
+      ],
+      "geometry": "rect",
+      "text": "併売分析",
+      "textPreview": "併売分析",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "併売分析"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "併売分析",
+          "runs": [
+            {
+              "index": 1,
+              "text": "併売分析",
+              "fontSize": 44,
+              "color": "#5F6C4C",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nuxc3ylc",
+      "id": "10",
+      "name": "revenue-word-4",
+      "bbox": [
+        92,
+        666,
+        264,
+        44
+      ],
+      "geometry": "rect",
+      "text": "レビュー導線",
+      "textPreview": "レビュー導線",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "レビュー導線"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "レビュー導線",
+          "runs": [
+            {
+              "index": 1,
+              "text": "レビュー導線",
+              "fontSize": 44,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/y90je9cv",
+      "id": "11",
+      "name": "revenue-1-lead",
+      "bbox": [
+        978,
+        418,
+        392,
+        56
+      ],
+      "geometry": "rect",
+      "text": "今日売りたい商品を目立たせる",
+      "textPreview": "今日売りたい商品を目立たせる",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "今日売りたい商品を目立たせる"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "今日売りたい商品を目立たせる",
+          "runs": [
+            {
+              "index": 1,
+              "text": "今日売りたい商品を目立たせる",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5wjudg7a",
+      "id": "12",
+      "name": "revenue-1-detail",
+      "bbox": [
+        978,
+        480,
+        480,
+        40
+      ],
+      "geometry": "rect",
+      "text": "おすすめ / 人気 / 限定のバッジで、見せたい商品に視線を集めやすい。",
+      "textPreview": "おすすめ / 人気 / 限定のバッジで、見せたい商品に視線を集めやすい。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "おすすめ / 人気 /"
+          },
+          {
+            "index": 2,
+            "text": "限定のバッジで、見せたい商品に視線を集めやすい。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "おすすめ / 人気 / 限定のバッジで、見せたい商品に視線を集めやすい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "おすすめ / 人気 / 限定のバッジで、見せたい商品に視線を集めやすい。",
+              "fontSize": 20,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gbq1oryt",
+      "id": "13",
+      "name": "revenue-rule-1",
+      "bbox": [
+        978,
+        538,
+        850,
+        1
+      ],
+      "geometry": "rect",
+      "fillColor": "#D5C2AE",
+      "lineColor": "#D5C2AE",
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/n29gr2p8",
+      "id": "14",
+      "name": "revenue-2-lead",
+      "bbox": [
+        978,
+        558,
+        364,
+        28
+      ],
+      "geometry": "rect",
+      "text": "迷いを減らし、提案を増やす",
+      "textPreview": "迷いを減らし、提案を増やす",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "迷いを減らし、提案を増やす"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "迷いを減らし、提案を増やす",
+          "runs": [
+            {
+              "index": 1,
+              "text": "迷いを減らし、提案を増やす",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/yhgn29gr",
+      "id": "15",
+      "name": "revenue-2-detail",
+      "bbox": [
+        978,
+        592,
+        514,
+        20
+      ],
+      "geometry": "rect",
+      "text": "AIウェイターがメニュー案内やおすすめ提案を支援する。",
+      "textPreview": "AIウェイターがメニュー案内やおすすめ提案を支援する。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AIウェイターがメニュー案内やおすすめ提案を支援する"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AIウェイターがメニュー案内やおすすめ提案を支援する。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "AIウェイターがメニュー案内やおすすめ提案を支援する。",
+              "fontSize": 20,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/58z25kb6",
+      "id": "16",
+      "name": "revenue-rule-2",
+      "bbox": [
+        978,
+        630,
+        850,
+        1
+      ],
+      "geometry": "rect",
+      "fillColor": "#D5C2AE",
+      "lineColor": "#D5C2AE",
+      "lineWidth": 0
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gn29gr2p",
+      "id": "17",
+      "name": "revenue-3-lead",
+      "bbox": [
+        978,
+        648,
+        448,
+        56
+      ],
+      "geometry": "rect",
+      "text": "一緒に売れる組み合わせを見つける",
+      "textPreview": "一緒に売れる組み合わせを見つける",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "一緒に売れる組み合わせを見つける"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "一緒に売れる組み合わせを見つける",
+          "runs": [
+            {
+              "index": 1,
+              "text": "一緒に売れる組み合わせを見つける",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/neloj2t8",
+      "id": "18",
+      "name": "revenue-3-detail",
+      "bbox": [
+        978,
+        710,
+        558,
+        40
+      ],
+      "geometry": "rect",
+      "text": "バスケット分析で、セット提案や客単価アップのヒントを得られる。",
+      "textPreview": "バスケット分析で、セット提案や客単価アップのヒントを得られる。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "バスケット分析で、セット提案や客単価アップのヒントを得ら"
+          },
+          {
+            "index": 2,
+            "text": "れる。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "バスケット分析で、セット提案や客単価アップのヒントを得られる。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "バスケット分析で、セット提案や客単価アップのヒントを得られる。",
+              "fontSize": 20,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ytsvu9kn",
+      "id": "19",
+      "name": "revenue-rule-3",
+      "bbox": [
+        978,
+        768,
+        850,
+        1
+      ],
+      "geometry": "rect",
+      "fillColor": "#D5C2AE",
+      "lineColor": "#D5C2AE",
+      "lineWidth": 0
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2x4nap4r",
+      "id": "20",
+      "name": "revenue-4-lead",
+      "bbox": [
+        978,
+        788,
+        364,
+        28
+      ],
+      "geometry": "rect",
+      "text": "高満足のお客様を次の集客へ",
+      "textPreview": "高満足のお客様を次の集客へ",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "高満足のお客様を次の集客へ"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "高満足のお客様を次の集客へ",
+          "runs": [
+            {
+              "index": 1,
+              "text": "高満足のお客様を次の集客へ",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vixczed8",
+      "id": "21",
+      "name": "revenue-4-detail",
+      "bbox": [
+        978,
+        822,
+        544,
+        40
+      ],
+      "geometry": "rect",
+      "text": "満足度評価とGoogleレビュー導線で、自然な口コミ獲得につなげやすい。",
+      "textPreview": "満足度評価とGoogleレビュー導線で、自然な口コミ獲得につなげやすい。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "満足度評価とGoogleレビュー導線で、自然な口コミ獲得につ"
+          },
+          {
+            "index": 2,
+            "text": "なげやすい。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "満足度評価とGoogleレビュー導線で、自然な口コミ獲得につなげやすい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "満足度評価とGoogleレビュー導線で、自然な口コミ獲得につなげやすい。",
+              "fontSize": 20,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/k3q5o7qp",
+      "id": "22",
+      "name": "footer-source-5",
+      "bbox": [
+        92,
+        982,
+        362,
+        24
+      ],
+      "geometry": "rect",
+      "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "textPreview": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+              "fontSize": 11,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 23,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/donyd0z6",
+      "id": "23",
+      "name": "footer-page-5",
+      "bbox": [
+        1796,
+        982,
+        32,
+        24
+      ],
+      "geometry": "rect",
+      "text": "5 / 11",
+      "textPreview": "5 / 11",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "5 / 11"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "5 / 11",
+          "runs": [
+            {
+              "index": 1,
+              "text": "5 / 11",
+              "fontSize": 12,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}

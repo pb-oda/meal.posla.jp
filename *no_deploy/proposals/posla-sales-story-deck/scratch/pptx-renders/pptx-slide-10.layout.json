@@ -1,0 +1,722 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/29gr2p8n",
+    "id": "29gr2p8n",
+    "slide": 11,
+    "layoutId": "/ppt/slideLayouts/slideLayout2.xml",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout2.xml",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2p8nqxs7",
+      "id": "1",
+      "name": "background",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "#FBF7F2",
+      "lineColor": "#FBF7F2",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9gr2p8nq",
+      "id": "2",
+      "name": "slide-10-eyebrow",
+      "bbox": [
+        92,
+        74,
+        62,
+        18
+      ],
+      "geometry": "rect",
+      "text": "Best fit",
+      "textPreview": "Best fit",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Best fit"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Best fit",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Best fit",
+              "fontSize": 18,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gvy90je9",
+      "id": "3",
+      "name": "slide-10-rule",
+      "bbox": [
+        92,
+        106,
+        120,
+        4
+      ],
+      "geometry": "rect",
+      "fillColor": "#C46A2E",
+      "lineColor": "#C46A2E",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/r2p8nqxs",
+      "id": "4",
+      "name": "slide-10-title",
+      "bbox": [
+        92,
+        124,
+        384,
+        128
+      ],
+      "geometry": "rect",
+      "text": "こんな店舗に\n向いている",
+      "textPreview": "こんな店舗に | 向いている",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "こんな店舗に"
+          },
+          {
+            "index": 2,
+            "text": "向いている"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "こんな店舗に",
+          "runs": [
+            {
+              "index": 1,
+              "text": "こんな店舗に",
+              "fontSize": 64,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "向いている",
+          "runs": [
+            {
+              "index": 1,
+              "text": "向いている",
+              "fontSize": 64,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2hwfyxob",
+      "id": "5",
+      "name": "slide-10-subtitle",
+      "bbox": [
+        92,
+        266,
+        1148,
+        54
+      ],
+      "geometry": "rect",
+      "text": "1店舗の省力化から、多店舗運営の標準化まで。業態ごとの悩みに合わせて見せ方を変えられる。",
+      "textPreview": "1店舗の省力化から、多店舗運営の標準化まで。業態ごとの悩みに合わせて見せ方を変えられる。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1店舗の省力化から、多店舗運営の標準化まで。業態ごとの悩みに合わせて見せ方を変えられる"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "1店舗の省力化から、多店舗運営の標準化まで。業態ごとの悩みに合わせて見せ方を変えられる。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "1店舗の省力化から、多店舗運営の標準化まで。業態ごとの悩みに合わせて見せ方を変えられる。",
+              "fontSize": 27,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/94fu18jq",
+      "id": "6",
+      "name": "fit-1-lead",
+      "bbox": [
+        92,
+        354,
+        156,
+        56
+      ],
+      "geometry": "rect",
+      "text": "1店舗の個店",
+      "textPreview": "1店舗の個店",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1店舗の個店"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "1店舗の個店",
+          "runs": [
+            {
+              "index": 1,
+              "text": "1店舗の個店",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kjm1cfa9",
+      "id": "7",
+      "name": "fit-1-detail",
+      "bbox": [
+        92,
+        416,
+        360,
+        20
+      ],
+      "geometry": "rect",
+      "text": "少人数でも回しやすい店をつくりたい。",
+      "textPreview": "少人数でも回しやすい店をつくりたい。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "少人数でも回しやすい店をつくりたい。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "少人数でも回しやすい店をつくりたい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "少人数でも回しやすい店をつくりたい。",
+              "fontSize": 20,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rqd4vmtw",
+      "id": "8",
+      "name": "fit-2-lead",
+      "bbox": [
+        978,
+        354,
+        362,
+        56
+      ],
+      "geometry": "rect",
+      "text": "予約やテイクアウトが多い店",
+      "textPreview": "予約やテイクアウトが多い店",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "予約やテイクアウトが多い店"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "予約やテイクアウトが多い店",
+          "runs": [
+            {
+              "index": 1,
+              "text": "予約やテイクアウトが多い店",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/25kb6xkf",
+      "id": "9",
+      "name": "fit-2-detail",
+      "bbox": [
+        978,
+        416,
+        280,
+        20
+      ],
+      "geometry": "rect",
+      "text": "電話や確認作業を減らしたい。",
+      "textPreview": "電話や確認作業を減らしたい。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "電話や確認作業を減らしたい。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "電話や確認作業を減らしたい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "電話や確認作業を減らしたい。",
+              "fontSize": 20,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4fu18jqh",
+      "id": "10",
+      "name": "fit-3-lead",
+      "bbox": [
+        92,
+        678,
+        140,
+        28
+      ],
+      "geometry": "rect",
+      "text": "多店舗運営",
+      "textPreview": "多店舗運営",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "多店舗運営"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "多店舗運営",
+          "runs": [
+            {
+              "index": 1,
+              "text": "多店舗運営",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/x0nuxc3y",
+      "id": "11",
+      "name": "fit-3-detail",
+      "bbox": [
+        92,
+        712,
+        400,
+        20
+      ],
+      "geometry": "rect",
+      "text": "本部と店舗のズレを減らし、横断で見たい。",
+      "textPreview": "本部と店舗のズレを減らし、横断で見たい。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "本部と店舗のズレを減らし、横断で見たい。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "本部と店舗のズレを減らし、横断で見たい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "本部と店舗のズレを減らし、横断で見たい。",
+              "fontSize": 20,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/m94fu18j",
+      "id": "12",
+      "name": "fit-4-lead",
+      "bbox": [
+        978,
+        678,
+        280,
+        28
+      ],
+      "geometry": "rect",
+      "text": "訪日客対応が必要な店",
+      "textPreview": "訪日客対応が必要な店",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "訪日客対応が必要な店"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "訪日客対応が必要な店",
+          "runs": [
+            {
+              "index": 1,
+              "text": "訪日客対応が必要な店",
+              "fontSize": 28,
+              "color": "#151311",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fu18jqh0",
+      "id": "13",
+      "name": "fit-4-detail",
+      "bbox": [
+        978,
+        712,
+        280,
+        20
+      ],
+      "geometry": "rect",
+      "text": "多言語で注文障壁を下げたい。",
+      "textPreview": "多言語で注文障壁を下げたい。",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "多言語で注文障壁を下げたい。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "多言語で注文障壁を下げたい。",
+          "runs": [
+            {
+              "index": 1,
+              "text": "多言語で注文障壁を下げたい。",
+              "fontSize": 20,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/83itgfml",
+      "id": "14",
+      "name": "footer-source-10",
+      "bbox": [
+        92,
+        982,
+        362,
+        24
+      ],
+      "geometry": "rect",
+      "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "textPreview": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source: POSLA current implementation, pseudo-prod review, 2026-04-25",
+              "fontSize": 11,
+              "color": "#6D6258"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xobm58z2",
+      "id": "15",
+      "name": "footer-page-10",
+      "bbox": [
+        1790,
+        982,
+        38,
+        24
+      ],
+      "geometry": "rect",
+      "text": "10 / 11",
+      "textPreview": "10 / 11",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "10 / 11"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "10 / 11",
+          "runs": [
+            {
+              "index": 1,
+              "text": "10 / 11",
+              "fontSize": 12,
+              "color": "#C46A2E",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": []
+}
