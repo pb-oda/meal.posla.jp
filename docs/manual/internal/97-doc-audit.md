@@ -179,6 +179,14 @@ maintainer: posla
 
 ---
 
-## 97.8 更新履歴
+## 97.8 関連監査
 
+- [96. PHP Coverage Matrix](./96-php-coverage-matrix.md) — 全 PHP ファイル 212 件の docs 網羅性を機械突合した内部トレーサビリティ台帳 (2026-04-23 作成)。本章と相補関係:
+  - 本章 = 「人手で深堀りした gap 報告 (P0/P1/P2)」
+  - 96 章 = 「全件機械マトリクス (documented/partial/missing)」
+  - 96 章の結論: **completely missing は 14 件、うち 13 件が L-17 LINE 連携 + L-9 予約管理の内部実装**
+
+## 97.9 更新履歴
+
+- **2026-04-23**: §97.8 に 96 章 (PHP Coverage Matrix) への参照を追加。DOC-AUDIT-PHP-COVERAGE タスク成果物。
 - **2026-04-21**: 初版。5 分野並列 Explore agent による gap 監査、実コード裏取りで確度担保。§9.38 / §9.39 / §9.40 の stop 判断 tenant 反映不足を P1 として記録。

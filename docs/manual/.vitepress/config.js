@@ -1,14 +1,14 @@
 import { defineConfig } from 'vitepress'
 
 // ビルドモード切替: VP_MODE=tenant | internal
-// ・tenant    → 顧客向け (tenant/ + operations/) → public/docs-tenant/
-// ・internal  → 弊社向け (tenant/ + internal/) → public/docs-internal/ (Basic認証で保護)
+// ・tenant    → 顧客向け (tenant/ + operations/) → public/docs-tenant/ → /docs-tenant/
+// ・internal  → 弊社向け (tenant/ + internal/) → public/docs-internal/ → /docs-internal/ (Basic認証で保護)
 // 未指定時は tenant（誤ビルドで internal が混入することを防ぐデフォルト）
 var MODE = process.env.VP_MODE || 'tenant'
 
 var MODE_CONF = {
   tenant: {
-    base: '/public/docs-tenant/',
+    base: '/docs-tenant/',
     outDir: '../../public/docs-tenant',
     title: 'POSLA ご利用ガイド',
     srcExclude: [
@@ -18,7 +18,7 @@ var MODE_CONF = {
     ]
   },
   internal: {
-    base: '/public/docs-internal/',
+    base: '/docs-internal/',
     outDir: '../../public/docs-internal',
     title: 'POSLA 運営マニュアル',
     srcExclude: [
@@ -144,7 +144,10 @@ var internalSidebar = [
     { text: '6. 運用トラブルシューティング', link: '/internal/06-troubleshoot' },
     { text: '7. 監視・アラート', link: '/internal/07-monitor' },
     { text: '8. サインアップフロー', link: '/internal/08-signup-flow' },
-    { text: '9. スタッフ画面 PWA 化', link: '/internal/09-pwa' }
+    { text: '9. スタッフ画面 PWA 化', link: '/internal/09-pwa' },
+    { text: '10. 新サーバ移行ハンドオフ', link: '/internal/10-server-migration' },
+    { text: '11. Cell配備運用', link: '/internal/11-cell-deployment' },
+    { text: '12. 本番切替 API チェックリスト (canonical)', link: '/internal/production-api-checklist' }
   ]}
 ]
 
@@ -185,7 +188,7 @@ themeConfig.outline = { level: [2, 3], label: '目次' }
 themeConfig.docFooter = { prev: '前のページ', next: '次のページ' }
 
 // ---------- tenant mode 専用: 認証ゲート ----------
-// 未ログイン時は /public/admin/index.html に強制リダイレクト。
+// 未ログイン時は /admin/ に強制リダイレクト。
 // POSLA の契約テナントのみが閲覧可。認証チェックが完了するまで body を hidden にして
 // 未認証ユーザーに一瞬でも中身を見せないようにする。
 var AUTH_GATE_SCRIPT = [
@@ -194,7 +197,7 @@ var AUTH_GATE_SCRIPT = [
   'var show=function(){document.documentElement.style.visibility="";};',
   'var login=function(){',
   'var ret=encodeURIComponent(location.pathname+location.search);',
-  'location.replace("/public/admin/index.html?return="+ret);',
+  'location.replace("/admin/?return="+ret);',
   '};',
   'fetch("/api/auth/me.php",{credentials:"same-origin"})',
   '.then(function(r){return r.text().then(function(t){return {status:r.status,body:t};});})',
@@ -222,5 +225,10 @@ export default defineConfig({
   cleanUrls: false,
   ignoreDeadLinks: true,
   head: head,
-  themeConfig: themeConfig
+  themeConfig: themeConfig,
+  vite: {
+    build: {
+      chunkSizeWarningLimit: 2500
+    }
+  }
 })

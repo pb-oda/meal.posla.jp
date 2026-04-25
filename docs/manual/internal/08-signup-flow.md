@@ -21,8 +21,8 @@ POSLA の LP (ランディングページ) から申込 → Stripe 決済 → **
 
 ## 8.1 LP (ランディングページ)
 
-- URL (デモ): `https://eat.posla.jp/public/index.html`
-- URL (本番予定): `https://meal.posla.jp/`
+- URL (擬似本番 / 本番想定): `https://meal.posla.jp/`
+- ローカル確認: `http://127.0.0.1:8081/`
 - 構成: ヒーロー → 機能一覧 → 料金 → 申込フォーム
 
 ### LP のファイル
@@ -168,7 +168,7 @@ POSLA の LP (ランディングページ) から申込 → Stripe 決済 → **
 
 **登録 URL**:
 ```
-https://eat.posla.jp/public/api/signup/webhook.php
+https://meal.posla.jp/api/signup/webhook.php
 ```
 
 **購読イベント**:
@@ -315,7 +315,7 @@ POSLA へのお申込みありがとうございます。
 30 日間無料トライアルを開始しました。
 
 ■ ログイン情報
-URL: https://eat.posla.jp/public/admin/
+URL: https://meal.posla.jp/admin/
 ユーザー名: [username]
 初期パスワード: [password]
 

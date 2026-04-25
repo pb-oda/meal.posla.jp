@@ -56,14 +56,14 @@
 | **07** | **monitor** | ★★★★☆ I-1 新規 |
 | **08** | **signup-flow** | ★★★★☆ A5 新規 |
 
-## AIヘルプデスク knowledge base
+## Retired: AI helpdesk knowledge base
 
-```
-scripts/output/helpdesk-prompt-tenant.txt   : 592KB / 26章 + voice
-scripts/output/helpdesk-prompt-internal.txt : 889KB / 34章 + voice + spec
-```
+2026-04-25 に旧 AI helpdesk 系 (`api/posla/ai-helpdesk.php` / `scripts/build-helpdesk-prompt.php` / `scripts/output/helpdesk-*`) は runtime から retire し、`*no_deploy/retired_ai_helpdesk/` へ退避しました。
 
-`scripts/build-helpdesk-prompt.php` 実行で再生成。
+現行 product 内の案内 UI は以下に統一されています。
+
+- tenant 側: `posla-supportdesk-fab.js`
+- POSLA 管理画面: `posla-supportdesk.js` / `posla-ops-center.js`
 
 ## 次のステップ
 
@@ -74,7 +74,7 @@ scripts/output/helpdesk-prompt-internal.txt : 889KB / 34章 + voice + spec
 | Phase 3 (Light 残章) | ✅ 完了 |
 | 新機能 3章 (24/25/26) | ✅ 完了 |
 | internal/ frontmatter | ✅ 完了 |
-| **Batch-FINAL** AIヘルプデスクUI実装 | ✅ 実装済 (CB1c) — 全管理画面に共通 FAB (`public/shared/js/posla-helpdesk-fab.js`) 設置済 |
+| **Batch-FINAL** AIヘルプデスクUI実装 | ⚠️ 実装済 (CB1c) → **2026-04-23 に非AI 化で撤去**。現在は tenant = `posla-supportdesk-fab.js` (静的 FAQ) / POSLA管理画面 = `posla-supportdesk.js` (サポートタブ) + `posla-ops-center.js` (運用補助タブ) に置換済 |
 | FINAL-1 究極マニュアル | 🔲 operations/ 配下、Part 0 のみ |
 
 ## メンテナンス
@@ -83,4 +83,4 @@ scripts/output/helpdesk-prompt-internal.txt : 889KB / 34章 + voice + spec
 1. 該当章に追記 (or 新章追加)
 2. frontmatter の `last_updated` 更新
 3. `更新履歴` セクションに追記
-4. `scripts/build-helpdesk-prompt.php` 再生成
+4. 必要に応じて `python3 scripts/generate_error_catalog.py` と docs build を再実行
