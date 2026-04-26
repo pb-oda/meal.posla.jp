@@ -227,7 +227,7 @@ docker compose exec -T db mysql \
 | Feature Flags | tenant / cell 単位の表示制御 |
 | API設定 | AI / Places / 通知 / 決済 provider / Smaregi |
 | PWA / Web Push | VAPID 公開鍵 / 秘密鍵 |
-| 監視・通知 | Google Chat、heartbeat、monitor health |
+| 監視・通知 | Google Chat、内部 heartbeat、monitor health、op 側外形監視 |
 | 管理者ユーザー | 管理者アカウント、不要管理者の削除 |
 
 ## 12.10 決済 provider 設定
@@ -444,7 +444,7 @@ deploy 後 30 分は次を確認します。
 
 | 項目 | 見るもの |
 |---|---|
-| app ping | `/api/monitor/ping.php` |
+| app ping | codex-ops-platform から `/api/monitor/ping.php` |
 | DB | read-only 接続、migration ledger |
 | signup | onboarding request の停滞 |
 | cell | `posla_cell_registry.status`、cell smoke |

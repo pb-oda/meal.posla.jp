@@ -1,25 +1,25 @@
 {
-  "version": "2026-04-23",
+  "version": "2026-04-26",
   "audience": "posla-admin",
   "purpose": "non-AI read-only 運用補助センター (OPS-CENTER-P1-READONLY-20260423)",
   "health_cards": [
     {
       "id": "hc-ping",
-      "title": "POSLA 稼働状態 (ping)",
-      "description": "`/api/monitor/ping.php` から ok / db 状態 / cron 最終 heartbeat / cron lag を読み取り。DB 接続失敗 or cron 15 分以上停止で ok:false",
-      "source": "api/monitor/ping.php"
+      "title": "外形 ping endpoint",
+      "description": "`/api/monitor/ping.php` は codex-ops-platform など POSLA外部の監視主体が叩く。POSLA管理画面自身から定期取得しない",
+      "source": "op -> api/monitor/ping.php"
     },
     {
       "id": "hc-cron-threshold",
       "title": "cron 遅延閾値",
-      "description": "cron_lag_sec > 900 (15 分) で警告。通常運用では 5 分 cron なので 600 秒前後で推移するのが正常。1500 秒超は要調査",
-      "source": "api/monitor/ping.php"
+      "description": "op が ping 応答の cron_lag_sec を読み、900 秒超で警告。monitor-health は内部 heartbeat 更新用で、死活監視の主体にはしない",
+      "source": "op -> api/monitor/ping.php"
     },
     {
       "id": "hc-db-status",
       "title": "DB 接続",
-      "description": "ping が ok でも db が ng ならアプリ側のクエリは全滅。まず credentials rotation 直後かどうか確認 (§5.3.6 沈黙事故の典型)",
-      "source": "api/monitor/ping.php"
+      "description": "op から見た ping 応答で db が ng ならアプリ側のクエリは全滅。まず credentials rotation 直後かどうか確認 (§5.3.6 沈黙事故の典型)",
+      "source": "op -> api/monitor/ping.php"
     }
   ],
   "error_codes": [

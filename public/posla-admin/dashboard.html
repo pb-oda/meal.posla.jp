@@ -1269,7 +1269,7 @@
         <div class="header-shortcuts">
           <a class="header-shortcut" href="/docs-internal/" target="_blank" rel="noopener">運営マニュアル</a>
           <a class="header-shortcut" href="/docs-tenant/" target="_blank" rel="noopener">テナント docs</a>
-          <a class="header-shortcut" href="/api/monitor/ping.php" target="_blank" rel="noopener">稼働確認 <code>/api/monitor/ping.php</code></a>
+          <a class="header-shortcut" href="/api/monitor/ping.php" target="_blank" rel="noopener">監視エンドポイント <code>/api/monitor/ping.php</code></a>
         </div>
       </div>
     </aside>
@@ -1912,7 +1912,7 @@
       <div class="panel-header">
         <div class="panel-header__eyebrow">Ops Readonly</div>
         <h2 class="panel-header__title">運用補助センター</h2>
-        <p class="panel-header__lead">障害切り分けや日次確認のための read-only 支援ビューです。本番修正や強制操作はここでは行いません。</p>
+        <p class="panel-header__lead">障害切り分けや日次確認のための read-only 支援ビューです。外形 ping と全 cell 健全性確認は op 側から実行し、本番修正や強制操作はここでは行いません。</p>
       </div>
       <div id="posla-ops-root"></div>
     </div>
@@ -2233,6 +2233,6 @@
 
   <script src="js/posla-supportdesk.js?v=20260426-content1"></script>
   <script src="js/posla-support-console.js?v=20260426-delete-controls1"></script>
-  <script src="../shared/js/posla-ops-center.js?v=20260426-content1"></script>
+  <script src="../shared/js/posla-ops-center.js?v=20260426-external-monitor1"></script>
 </body>
 </html>

@@ -17,7 +17,7 @@ var PoslaOpsCenter = (function () {
   'use strict';
 
   var DATA_URL = '/shared/data/internal-ops-center.json';
-  var PING_URL = '/api/monitor/ping.php';
+  var MONITOR_ENDPOINT = '/api/monitor/ping.php';
   var BRAND = 'var(--primary)';
 
   var _mounted = false;
@@ -172,11 +172,21 @@ var PoslaOpsCenter = (function () {
   // ── 運用状況 (ping + health cards) ──
   function _renderStatus() {
     var html = ''
-      + '<div class="posla-opc__notice">この画面は <strong>read-only</strong> です。書き込み操作・本番修正は含みません。障害時の本命調査ツールは別系統 (外部運用支援)、ここは平常時 / 軽障害時の一次確認向けです。</div>'
-      + '<h4>稼働状態 (/api/monitor/ping.php)</h4>'
-      + '<div class="posla-opc__reload"><button id="posla-opc-reload" type="button">最新情報を取得</button></div>'
-      + '<div id="posla-opc-health-grid" class="posla-opc__health-grid"><div class="posla-opc__empty">クリックして読み込み</div></div>'
-      + '<h4>health 閾値の目安</h4>';
+      + '<div class="posla-opc__notice">この画面は POSLA 本体の中にあるため、POSLA 停止時には表示できません。外形 ping と日次の全 cell 健全性確認は <strong>codex-ops-platform</strong> など外部運用支援側から実行します。このタブは endpoint と判定基準の確認だけに限定します。</div>'
+      + '<h4>外部監視 endpoint</h4>'
+      + '<div class="posla-opc__health-grid">'
+      +   '<div class="posla-opc__health ok">'
+      +     '<div class="posla-opc__health-label">op 側が叩くURL</div>'
+      +     '<div class="posla-opc__health-value" style="font-size:0.95rem;">' + _escapeHtml(MONITOR_ENDPOINT) + '</div>'
+      +     '<div class="posla-opc__health-note">POSLA管理画面から定期 ping しない。op 側の監視ジョブが外から取得する。</div>'
+      +   '</div>'
+      +   '<div class="posla-opc__health warn">'
+      +     '<div class="posla-opc__health-label">POSLA内で保持するもの</div>'
+      +     '<div class="posla-opc__health-value" style="font-size:0.95rem;">heartbeat / error_log</div>'
+      +     '<div class="posla-opc__health-note">monitor-health は内部ログ集計と heartbeat 更新用。死活監視の主体にはしない。</div>'
+      +   '</div>'
+      + '</div>'
+      + '<h4>op 側で見る health 閾値</h4>';
     var i;
     for (i = 0; i < _data.health_cards.length; i++) {
       var c = _data.health_cards[i];
@@ -187,75 +197,6 @@ var PoslaOpsCenter = (function () {
       html += '</div></div>';
     }
     _bodyEl.innerHTML = html;
-
-    _rootEl.querySelector('#posla-opc-reload').addEventListener('click', _fetchPing);
-    _fetchPing();
-  }
-
-  function _fetchPing() {
-    var gridEl = _rootEl.querySelector('#posla-opc-health-grid');
-    var btn = _rootEl.querySelector('#posla-opc-reload');
-    if (!gridEl) return;
-    if (btn) btn.disabled = true;
-    gridEl.innerHTML = '<div class="posla-opc__empty">取得中...</div>';
-    fetch(PING_URL, { credentials: 'same-origin', cache: 'no-store' })
-      .then(function (r) { return r.text(); })
-      .then(function (t) {
-        var json;
-        try { json = JSON.parse(t); } catch (e) {
-          gridEl.innerHTML = '<div class="posla-opc__empty">ping 応答の解析に失敗しました</div>';
-          return;
-        }
-        gridEl.innerHTML = _renderPingCards(json);
-      })
-      .catch(function (err) {
-        gridEl.innerHTML = '<div class="posla-opc__empty">ping に接続できません (ネットワーク / 外部 firewall 確認): ' + _escapeHtml((err && err.message) || '') + '</div>';
-      })
-      .then(function () {
-        if (btn) btn.disabled = false;
-      });
-  }
-
-  function _renderPingCards(p) {
-    var okClass = p.ok ? 'ok' : 'ng';
-    var dbClass = p.db === 'ok' ? 'ok' : 'ng';
-    var cronClass = 'ok';
-    var cronNote = '';
-    if (p.cron_lag_sec == null) {
-      cronClass = 'warn'; cronNote = 'heartbeat 未記録';
-    } else if (p.cron_lag_sec > 900) {
-      cronClass = 'ng'; cronNote = '15 分以上遅延 → 要調査';
-    } else if (p.cron_lag_sec > 600) {
-      cronClass = 'warn'; cronNote = 'やや遅延 (600 秒超)';
-    } else {
-      cronNote = '正常範囲 (< 10 分)';
-    }
-    var timeNote = p.time ? ('サーバ時刻: ' + _escapeHtml(p.time)) : '';
-    var heartbeat = p.last_heartbeat ? _escapeHtml(p.last_heartbeat) : '(未記録)';
-
-    var html = ''
-      + '<div class="posla-opc__health ' + okClass + '">'
-      +   '<div class="posla-opc__health-label">overall ok</div>'
-      +   '<div class="posla-opc__health-value">' + (p.ok ? '✓ TRUE' : '✗ FALSE') + '</div>'
-      +   '<div class="posla-opc__health-note">' + timeNote + '</div>'
-      + '</div>'
-      + '<div class="posla-opc__health ' + dbClass + '">'
-      +   '<div class="posla-opc__health-label">DB 接続</div>'
-      +   '<div class="posla-opc__health-value">' + _escapeHtml(String(p.db || 'unknown')) + '</div>'
-      +   '<div class="posla-opc__health-note">ng の場合 credentials rotation / env 未供給を疑う</div>'
-      + '</div>'
-      + '<div class="posla-opc__health ' + cronClass + '">'
-      +   '<div class="posla-opc__health-label">cron lag (秒)</div>'
-      +   '<div class="posla-opc__health-value">' + (p.cron_lag_sec == null ? '—' : _escapeHtml(String(p.cron_lag_sec))) + '</div>'
-      +   '<div class="posla-opc__health-note">' + cronNote + '<br>last heartbeat: ' + heartbeat + '</div>'
-      + '</div>';
-    if (p.error) {
-      html += '<div class="posla-opc__health ng">'
-        +   '<div class="posla-opc__health-label">エラー詳細</div>'
-        +   '<div class="posla-opc__health-value" style="font-size:0.85rem;">' + _escapeHtml(p.error) + '</div>'
-        + '</div>';
-    }
-    return html;
   }
 
   // ── エラー検索 ──

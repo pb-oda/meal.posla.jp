@@ -24,7 +24,7 @@ POSLA 管理画面に **運用補助センター** (`js/posla-ops-center.js` + `
 
 | パネル | 内容 | ソース |
 |---|---|---|
-| 運用状況 | `/api/monitor/ping.php` を fetch して overall ok / DB / cron lag (秒) をカード表示。cron_lag_sec > 600 は warn、> 900 は ng | api/monitor/ping.php (read-only) |
+| 運用状況 | `/api/monitor/ping.php` の endpoint と判定基準を表示。外形 ping は POSLA 管理画面ではなく codex-ops-platform など外部監視主体が実行 | api/monitor/ping.php (read-only endpoint) |
 | エラー検索 | `SESSION_REVOKED` / `RATE_LIMITED` / `AI_NOT_CONFIGURED` / `FORBIDDEN_ORIGIN` / `PIN_INVALID` / `UNAUTHORIZED` 等 6 コードの直引き | internal-ops-center.json |
 | 症状からたどる | ログインできない / 決済できない / cron silent / 予約通知来ない / 新サーバ移行前 の 5 flow | 同上 |
 | 運用ドキュメント | internal/05-operations / 06-troubleshoot / 99-error-catalog / production-api-checklist / internal index / 01-posla-admin へのダイレクトリンク 6 本 | 同上 |
@@ -507,8 +507,8 @@ application_fee_amount = ceil(charge_amount × fee_percent / 100)
 
 ### 1.6.1 サーバーダウン検知時
 
-1. UptimeRobot からメールアラート受信
-2. `https://meal.posla.jp/api/monitor/ping.php` または `http://127.0.0.1:8081/api/monitor/ping.php` で生存確認
+1. codex-ops-platform または外部 uptime からアラート受信
+2. `https://<production-domain>/api/monitor/ping.php` または擬似本番 `http://127.0.0.1:8081/api/monitor/ping.php` で生存確認
 3. 必要なら運営チームメンバー全員に Slack で連絡
 4. 復旧作業 → 復旧告知メール
 
@@ -578,8 +578,8 @@ POSLA 管理画面には **2 種類の非AI ヘルプ UI** があります。AI 
 
 - 設置: POSLA 管理画面のタブ nav 内「運用補助」(サポートの右)
 - 実装: `public/shared/js/posla-ops-center.js` (ES5 IIFE、panel-mount)
-- データ: `public/shared/data/internal-ops-center.json` (health_cards / error_codes / flows / doc_links / checklist) + live `/api/monitor/ping.php`
-- タブ: 運用状況 (ping live fetch) / エラー検索 / 症状から / 運用ドキュメント (deep link) / 対応前チェック
+- データ: `public/shared/data/internal-ops-center.json` (health_cards / error_codes / flows / doc_links / checklist)
+- タブ: 運用状況 (外部監視 endpoint と閾値) / エラー検索 / 症状から / 運用ドキュメント (deep link) / 対応前チェック
 - 用途: 平常時の稼働確認 + 軽障害時の一次切り分け + テナント問い合わせ対応前の情報整理
 - **書込操作ゼロ、destructive action ゼロ**、本格調査は外部運用支援へ
 
@@ -715,9 +715,9 @@ A. 確認項目：
 3. Basic 認証未突破なら 401 — まず `/posla-admin/` ログイン済か確認
 4. ブラウザキャッシュ: Cmd+Shift+R で強制リロード
 
-### Q25. 運用補助 > 運用状況タブで ping が赤くなる (db=ng / cron lag 警告)
+### Q25. op 側の外形監視で ping が赤くなる (db=ng / cron lag 警告)
 
-A. `/api/monitor/ping.php` の応答から切り分け:
+A. codex-ops-platform など外部監視主体が取得した `/api/monitor/ping.php` の応答から切り分け:
 1. `db=ng` → credentials rotation 後の env 未更新 / DB サーバー接続失敗 → §5.3.5 の env 供給経路確認
 2. `cron_lag_sec > 900` → cron silent 停止 → §5.3.6 沈黙事故と同構造、cron 側 env 確認
 3. `cron_lag_sec 600-900` → 軽微な遅延 (monitor_events を spot check)
