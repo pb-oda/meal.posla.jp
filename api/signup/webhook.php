@@ -21,6 +21,7 @@
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/tenant-onboarding.php';
+require_once __DIR__ . '/../lib/provisioner-trigger.php';
 require_once __DIR__ . '/../config/app.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -97,6 +98,7 @@ if ($type === 'checkout.session.completed') {
             'activated_at' => date('Y-m-d H:i:s'),
             'notes' => 'Stripe checkout completed. Ready for cell provisioning.',
         ]);
+        posla_trigger_cell_provisioner($pdo, (string)$tenantId, 'signup_webhook');
     } catch (Throwable $e) {
         error_log('[A5][webhook] onboarding_update_failed tenant=' . $tenantId . ' err=' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }

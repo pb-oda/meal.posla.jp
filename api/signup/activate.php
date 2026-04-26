@@ -20,6 +20,7 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
 require_once __DIR__ . '/../lib/stripe-billing.php';
 require_once __DIR__ . '/../lib/tenant-onboarding.php';
+require_once __DIR__ . '/../lib/provisioner-trigger.php';
 require_once __DIR__ . '/../config/app.php';
 
 require_method(['POST']);
@@ -49,6 +50,7 @@ if (!$tenant) {
 
 if ((int)$tenant['is_active'] === 1) {
     // 既に有効化済み (webhook 経由で更新済み等)
+    posla_trigger_cell_provisioner($pdo, (string)$tenant['id'], 'signup_activate_already_active');
     json_response(['ok' => true, 'already_activated' => true, 'tenant_name' => $tenant['name']]);
 }
 
@@ -105,6 +107,7 @@ try {
         'activated_at' => date('Y-m-d H:i:s'),
         'notes' => 'Signup activated by fallback. Ready for cell provisioning.',
     ]);
+    posla_trigger_cell_provisioner($pdo, (string)$tenant['id'], 'signup_activate');
 } catch (Throwable $e) {
     error_log('[A5][activate] onboarding_update_failed tenant=' . $tenant['id'] . ' err=' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }

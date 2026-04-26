@@ -4,8 +4,9 @@
  * Host-side on-demand cell provisioner.
  *
  * This script is intentionally CLI-only. Stripe webhooks only move signup
- * requests to ready_for_cell; a production host scheduler runs this script
- * and creates the dedicated cell outside the web request lifecycle.
+ * requests to ready_for_cell; a localhost-only trigger service or operator
+ * runs this script and creates the dedicated cell outside the web request
+ * lifecycle.
  */
 
 if (PHP_SAPI !== 'cli') {

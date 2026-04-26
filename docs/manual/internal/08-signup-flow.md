@@ -173,7 +173,7 @@ POSLA の LP (ランディングページ) から申込 → Stripe 決済 → 30
 
 **登録 URL**:
 ```
-https://meal.posla.jp/api/signup/webhook.php
+https://<production-domain>/api/signup/webhook.php
 ```
 
 **購読イベント**:
@@ -205,13 +205,23 @@ https://meal.posla.jp/api/signup/webhook.php
 
 ## 8.4 on-demand cell provisioner
 
-Stripe webhook / activate は deploy を直接実行しません。Webhookは短時間で返し、本番 provisioner ホスト上の provisioner が `ready_for_cell` を拾います。
+Stripe webhook / activate は deploy を直接実行しません。Webhookは短時間で返し、`ready_for_cell` へ更新した直後に、本番 provisioner ホスト上の localhost trigger service へ通知します。通常フローでは 1分ごとの timer / cron で巡回しません。
 
 ```bash
-php scripts/cell/provision-ready-cells.php --limit=1
+POSLA_PROVISIONER_TRIGGER_SECRET='<secret>' \
+  php scripts/cell/provisioner-trigger-server.php
 ```
 
-本番では systemd timer / cron 等で 1 分ごとに実行します。ローカルMacを販売フローの一部にはしません。
+Web 側には同じ secret と trigger URL を設定します。
+
+```bash
+POSLA_PROVISIONER_TRIGGER_URL='http://127.0.0.1:19091/run'
+POSLA_PROVISIONER_TRIGGER_SECRET='<secret>'
+```
+
+Docker 擬似本番からホスト側 trigger service を呼ぶ場合だけ、URL は `http://host.docker.internal:19091/run` にします。
+
+trigger service は POST `/run` を受けた時だけ `php scripts/cell/provision-ready-cells.php --request-id=<id>` をバックグラウンド起動します。サービスの常駐には systemd service 等を使いますが、systemd timer / cron は通常フローでは使いません。ローカルMacを販売フローの一部にはしません。
 
 本番では `POSLA_CELL_APP_URL_PATTERN` を必ず設定します。未設定の production 環境では、localhost のログインURLを作らないよう provisioner が停止します。
 

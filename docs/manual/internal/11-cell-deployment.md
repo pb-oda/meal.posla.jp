@@ -121,11 +121,21 @@ Cell配備タブで表示するもの:
 
 ### on-demand provisioner
 
-Stripe webhook / `signup-complete.html` は deploy を直接実行しません。1分ごとに本番 provisioner ホスト上で provisioner を実行し、`ready_for_cell` を1件ずつ処理します。
+Stripe webhook / `signup-complete.html` は deploy を直接実行しません。決済完了後に control DB を `ready_for_cell` へ更新し、本番 provisioner ホスト上の localhost trigger service に通知します。通常フローでは 1分ごとの timer / cron で巡回しません。
 
 ```bash
-php scripts/cell/provision-ready-cells.php --limit=1
+POSLA_PROVISIONER_TRIGGER_SECRET='<secret>' \
+  php scripts/cell/provisioner-trigger-server.php
 ```
+
+Web 側には同じ secret と trigger URL を設定します。
+
+```bash
+POSLA_PROVISIONER_TRIGGER_URL='http://127.0.0.1:19091/run'
+POSLA_PROVISIONER_TRIGGER_SECRET='<secret>'
+```
+
+Docker 擬似本番からホスト側 trigger service を呼ぶ場合だけ、URL は `http://host.docker.internal:19091/run` にします。本番で Web と provisioner が同一ホスト上の通常プロセスなら `127.0.0.1` を使います。
 
 事前確認だけ行う場合:
 
