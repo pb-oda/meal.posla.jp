@@ -971,6 +971,7 @@
         <button class="tab-nav__btn" data-tab="overview">ダッシュボード</button>
         <button class="tab-nav__btn" data-tab="tenants">テナント管理</button>
         <button class="tab-nav__btn" data-tab="create-tenant">テナント作成</button>
+        <button class="tab-nav__btn" data-tab="cell-provisioning">Cell配備</button>
         <button class="tab-nav__btn" data-tab="feature-flags">Feature Flags</button>
         <button class="tab-nav__btn" data-tab="api-settings">API設定</button>
         <button class="tab-nav__btn" data-tab="ops-source">OP連携</button>
@@ -1168,6 +1169,32 @@
               <li>契約差分は `hq_menu_broadcast` オプションだけです。旧 `plan` は表示互換のためだけに保持しています。</li>
             </ul>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cell配備 -->
+    <div class="posla-tab-panel" id="posla-panel-cell-provisioning">
+      <div class="panel-header">
+        <div class="panel-header__eyebrow">Cell Provisioning</div>
+        <h2 class="panel-header__title">Cell配備</h2>
+        <p class="panel-header__lead">1 tenant / 1 cell の作成待ち、実行手順、control registry の状態を確認します。ここではコマンドを直接実行せず、このMacで対象cellだけを作成・検証します。</p>
+        <div class="panel-header__actions">
+          <button class="btn btn-secondary" id="btn-refresh-cell-provisioning" type="button">再読込</button>
+        </div>
+      </div>
+
+      <div class="settings-summary-grid" id="cell-provisioning-summary"></div>
+
+      <div class="card table-card">
+        <div class="card__header">
+          <div>
+            <h3 class="section-title" style="margin-bottom:0;">Provisioning Queue</h3>
+            <p class="card-intro">顧客ごとの専用cell作成状況です。`ready_for_cell` は作成待ち、`cell_provisioning` は作業中、`active` は監視対象です。</p>
+          </div>
+        </div>
+        <div class="card__body">
+          <div id="cell-provisioning-list"></div>
         </div>
       </div>
     </div>
@@ -1692,8 +1719,8 @@
   <div id="posla-toast" style="position:fixed;bottom:1.5rem;right:1.5rem;background:#333;color:#fff;padding:0.75rem 1.25rem;border-radius:6px;font-size:0.875rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;"></div>
 
   <script src="../shared/js/utils.js"></script>
-  <script src="js/posla-api.js?v=20260426-opsource1"></script>
-  <script src="js/posla-app.js?v=20260426-opsource1"></script>
+  <script src="js/posla-api.js?v=20260426-cellprov1"></script>
+  <script src="js/posla-app.js?v=20260426-cellprov1"></script>
 
   <!-- パスワード変更モーダル（P1-5） -->
   <div class="modal-overlay" id="password-change-overlay" style="display:none;opacity:1;visibility:visible;">

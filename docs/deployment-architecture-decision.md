@@ -1,6 +1,7 @@
 # POSLA 配備アーキテクチャ設計メモ
 
 作成日: 2026-04-25
+最終更新: 2026-04-26
 対象: `【擬似本番環境】meal.posla.jp`
 目的: 顧客別の緊急修正や検証で、他顧客を巻き込まない配備単位を最初から決める。
 
@@ -101,9 +102,15 @@ MVP では **1 tenant / 1 cell** を原則にする。これは single-tenant de
 - restore 系コマンドは `POSLA_CELL_RESTORE_CONFIRM=<cell-id>` 必須。`restore-db` は root credential で実行し、`rolled_back` 履歴を記録する。
 - `scripts/cell/cell.sh smoke` で app ping / cell metadata / DB接続 / migration ledger / registry / deploy履歴を cell 単位で確認できる。
 - `scripts/cell/cell.sh onboard-tenant` で対象 cell DB のみに初期 tenant / store / owner を作成し、cell registry に tenant metadata を反映できる。
+- POSLA管理画面に **Cell配備** タブを追加し、`posla_tenant_onboarding_requests` と `posla_cell_registry` を見ながら、顧客ごとの専用cell作成コマンドを確認できる。UIはコマンドを直接実行せず、このMacでの承認実行を前提にする。
+- `api/posla/cell-provisioning.php` で Cell配備キューのGET、作業状態更新、control registry active 同期を提供する。
+- `cells/registry.tsv`, `cells/*/*.env`, `cells/*/uploads/`, `cells/*/backups/` は runtime 実値・秘密値・DB dump を含むため git 管理しない。
+- `scripts/cell/cell.sh` の MySQL / mysqldump / restore は `--default-character-set=utf8mb4` を明示し、日本語の tenant / store / owner 名を壊さない。
 - `api/.htaccess` の固定 `SetEnv POSLA_DB_*` / URL 値を外し、Docker / cell の env_file を正にした。
 - `cell-rollbacktest` で init -> deploy -> backup -> rollback-plan -> restore-db guard -> restore-db -> rollback -> deploy history を確認済み。検証後、cell-rollbacktest のコンテナ / volume / 一時設定は削除済み。
-- `cell-onboardtest` で init -> deploy -> migration -> register-db -> onboard-tenant -> smoke -> login API を確認する。
+- `cell-onboardtest` で init -> deploy -> migration -> register-db -> onboard-tenant -> smoke -> login API を確認済み。
+- `test-01` で control DB の onboarding request / registry と専用cellを同期し、`http://127.0.0.1:18081` / `posla_test_01` として 1 tenant / 1 cell を作成済み。
+- `test-01` で backup -> rollback-plan -> restore guard -> rollback -> strict smoke -> owner login を確認済み。rollback は `POSLA_CELL_RESTORE_CONFIRM=test-01` がない場合に停止し、確認付き実行後は対象cellだけ復元・再deployされた。
 
 ## Git 作業識別名
 

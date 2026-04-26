@@ -76,6 +76,12 @@ var PoslaApi = (function() {
     updateOpsSource: function(data) {
       return request('PATCH', '/ops-sources.php', data);
     },
+    getCellProvisioning: function() {
+      return request('GET', '/cell-provisioning.php');
+    },
+    updateCellProvisioning: function(data) {
+      return request('PATCH', '/cell-provisioning.php', data);
+    },
     getPushVapid: function() {
       return request('GET', '/push-vapid.php');
     },

@@ -355,30 +355,30 @@ checksum_file() {
 }
 
 schema_migrations_exists() {
-  count="$(compose exec -T db sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '\''schema_migrations'\''" "$MYSQL_DATABASE"' 2>/dev/null || printf '0')"
+  count="$(compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '\''schema_migrations'\''" "$MYSQL_DATABASE"' 2>/dev/null || printf '0')"
   [ "$count" = "1" ]
 }
 
 table_exists() {
   table_name="$1"
   escaped_table="$(sql_escape "$table_name")"
-  count="$(compose exec -T db sh -c "mysql -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" -Nse \"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '${escaped_table}'\" \"\$MYSQL_DATABASE\"" 2>/dev/null || printf '0')"
+  count="$(compose exec -T db sh -c "mysql --default-character-set=utf8mb4 -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" -Nse \"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '${escaped_table}'\" \"\$MYSQL_DATABASE\"" 2>/dev/null || printf '0')"
   [ "$count" = "1" ]
 }
 
 mysql_scalar() {
   sql="$1"
-  compose exec -T db sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -Nse "$1" "$MYSQL_DATABASE"' sh "$sql"
+  compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -Nse "$1" "$MYSQL_DATABASE"' sh "$sql"
 }
 
 db_mysql_ready() {
-  compose exec -T db sh -c 'mysqladmin ping -h localhost -u"$MYSQL_USER" -p"$MYSQL_PASSWORD"' >/dev/null 2>&1
+  compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -Nse "SELECT 1" "$MYSQL_DATABASE"' >/dev/null 2>&1
 }
 
 schema_migration_applied() {
   key="$1"
   escaped_key="$(sql_escape "$key")"
-  count="$(compose exec -T db sh -c "mysql -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" -Nse \"SELECT COUNT(*) FROM schema_migrations WHERE migration_key = '${escaped_key}' AND status = 'applied'\" \"\$MYSQL_DATABASE\"" 2>/dev/null || printf '0')"
+  count="$(compose exec -T db sh -c "mysql --default-character-set=utf8mb4 -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" -Nse \"SELECT COUNT(*) FROM schema_migrations WHERE migration_key = '${escaped_key}' AND status = 'applied'\" \"\$MYSQL_DATABASE\"" 2>/dev/null || printf '0')"
   [ "$count" != "0" ]
 }
 
@@ -392,7 +392,7 @@ record_schema_migration() {
   escaped_user="$(sql_escape "${USER:-cell.sh}")"
   printf "INSERT INTO schema_migrations (migration_key, checksum_sha256, status, cell_id, deploy_version, applied_by, notes) VALUES ('%s', '%s', 'applied', '%s', '%s', '%s', 'scripts/cell/cell.sh migrate') ON DUPLICATE KEY UPDATE checksum_sha256 = VALUES(checksum_sha256), status = VALUES(status), cell_id = VALUES(cell_id), deploy_version = VALUES(deploy_version), applied_by = VALUES(applied_by), notes = VALUES(notes), applied_at = CURRENT_TIMESTAMP;\n" \
     "$escaped_key" "$escaped_checksum" "$escaped_cell" "$escaped_version" "$escaped_user" \
-    | compose exec -T db sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
+    | compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
 }
 
 env_file_value() {
@@ -458,7 +458,7 @@ register_cell_db() {
     "$escaped_cell" "$escaped_environment" "$escaped_status" "$escaped_app_base_url" "$escaped_health_url" \
     "$escaped_db_host" "$escaped_db_name" "$escaped_db_user" "$escaped_uploads_path" \
     "$escaped_php_image" "$escaped_deploy_version" "$cron_value" \
-    | compose exec -T db sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
+    | compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
 }
 
 record_deployment() {
@@ -480,7 +480,7 @@ record_deployment() {
   escaped_notes="$(sql_escape "$notes")"
   printf "INSERT INTO posla_cell_deployments (cell_id, deploy_version, php_image, status, deployed_by, notes) VALUES ('%s', '%s', '%s', '%s', '%s', '%s');\n" \
     "$escaped_cell" "$escaped_version" "$escaped_image" "$escaped_status" "$escaped_user" "$escaped_notes" \
-    | compose exec -T db sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
+    | compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
 }
 
 password_hash_from_php() {
@@ -595,18 +595,18 @@ onboard_tenant() {
     printf "INSERT INTO user_stores (user_id, store_id) VALUES ('%s', '%s');\n" \
       "$escaped_owner_user_id" "$escaped_store_id"
     printf 'COMMIT;\n'
-  } | compose exec -T db sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
+  } | compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
 
   if table_exists "posla_cell_registry"; then
     register_cell_db "active" || true
     printf "UPDATE posla_cell_registry SET tenant_id = '%s', tenant_slug = '%s', tenant_name = '%s', updated_at = CURRENT_TIMESTAMP WHERE cell_id = '%s';\n" \
       "$escaped_tenant_id" "$escaped_tenant_slug" "$escaped_tenant_name" "$(sql_escape "$CELL_ID")" \
-      | compose exec -T db sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
+      | compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
   fi
   if table_exists "posla_tenant_onboarding_requests"; then
     printf "UPDATE posla_tenant_onboarding_requests SET status = 'active', cell_id = '%s', provisioned_at = COALESCE(provisioned_at, NOW()), activated_at = COALESCE(activated_at, NOW()), notes = 'Tenant onboarded by scripts/cell/cell.sh', updated_at = CURRENT_TIMESTAMP WHERE tenant_id = '%s' OR tenant_slug = '%s';\n" \
       "$(sql_escape "$CELL_ID")" "$escaped_tenant_id" "$escaped_tenant_slug" \
-      | compose exec -T db sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
+      | compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
   fi
 
   echo "Onboarded tenant in $CELL_ID"
@@ -641,7 +641,7 @@ backup_cell() {
   } > "$backup_dir/manifest.env"
 
   if db_mysql_ready; then
-    if ! compose exec -T db sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --single-transaction --routines --triggers --no-tablespaces "$MYSQL_DATABASE"' > "$backup_dir/db.sql"; then
+    if ! compose exec -T db sh -c 'mysqldump --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --single-transaction --routines --triggers --no-tablespaces "$MYSQL_DATABASE"' > "$backup_dir/db.sql"; then
       rm -f "$backup_dir/db.sql"
       echo "DB backup failed: $backup_dir/db.sql" >&2
       return 1
@@ -766,7 +766,7 @@ restore_db() {
     echo "DB is not ready for $CELL_ID. Start the cell before restore-db." >&2
     exit 1
   fi
-  compose exec -T db sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < "$backup_dir/db.sql"
+  compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < "$backup_dir/db.sql"
   record_deployment "rolled_back" "restore-db backup=$backup_dir"
   register_cell_db "active" || true
   echo "Restored DB from: $backup_dir/db.sql"
@@ -962,7 +962,7 @@ case "$COMMAND" in
       echo "Migration already applied in $CELL_ID: $MIGRATION_KEY"
       exit 0
     fi
-    compose exec -T db sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < "$MIGRATION_FILE"
+    compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < "$MIGRATION_FILE"
     if schema_migrations_exists; then
       record_schema_migration "$MIGRATION_KEY" "$(checksum_file "$MIGRATION_FILE")"
     else

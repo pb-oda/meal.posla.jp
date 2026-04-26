@@ -78,6 +78,14 @@
     var createBtn = document.getElementById('btn-create-tenant');
     if (createBtn) createBtn.addEventListener('click', createTenant);
 
+    var refreshCellProvisioningBtn = document.getElementById('btn-refresh-cell-provisioning');
+    if (refreshCellProvisioningBtn) refreshCellProvisioningBtn.addEventListener('click', loadCellProvisioning);
+
+    var cellProvisioningList = document.getElementById('cell-provisioning-list');
+    if (cellProvisioningList) {
+      cellProvisioningList.addEventListener('click', handleCellProvisioningClick);
+    }
+
     var refreshFeatureFlagsBtn = document.getElementById('btn-refresh-feature-flags');
     if (refreshFeatureFlagsBtn) refreshFeatureFlagsBtn.addEventListener('click', loadFeatureFlags);
 
@@ -190,6 +198,7 @@
     // データ読み込み
     if (tabId === 'overview') loadDashboard();
     if (tabId === 'tenants') loadTenants();
+    if (tabId === 'cell-provisioning') loadCellProvisioning();
     if (tabId === 'feature-flags') loadFeatureFlags();
     if (tabId === 'api-settings') loadApiStatus();
     if (tabId === 'ops-source') loadOpsSource();
@@ -1267,6 +1276,217 @@
 
     html += '</tbody></table></div>';
     root.innerHTML = html;
+  }
+
+  // ── Cell Provisioning ──
+  var _cellProvisioningState = {
+    items: []
+  };
+
+  function loadCellProvisioning() {
+    var summaryEl = document.getElementById('cell-provisioning-summary');
+    var listEl = document.getElementById('cell-provisioning-list');
+    if (summaryEl) summaryEl.innerHTML = '<div style="padding:1rem;color:var(--text-muted);">読み込み中...</div>';
+    if (listEl) listEl.innerHTML = '';
+
+    PoslaApi.getCellProvisioning().then(function(data) {
+      _cellProvisioningState.items = data.items || [];
+      renderCellProvisioning(data);
+    }).catch(function(err) {
+      if (summaryEl) {
+        summaryEl.innerHTML = '<div style="padding:1rem;color:#c62828;">Cell配備状況の読み込みに失敗しました: ' + Utils.escapeHtml(err.message) + '</div>';
+      }
+      showToast('Cell配備状況の読み込みに失敗しました: ' + err.message);
+    });
+  }
+
+  function renderCellProvisioning(data) {
+    var items = data.items || [];
+    var summaryEl = document.getElementById('cell-provisioning-summary');
+    var listEl = document.getElementById('cell-provisioning-list');
+    var counts = {};
+    var i;
+    var html;
+    var item;
+
+    for (i = 0; i < items.length; i++) {
+      counts[items[i].status || 'unknown'] = (counts[items[i].status || 'unknown'] || 0) + 1;
+    }
+
+    if (summaryEl) {
+      summaryEl.innerHTML =
+        _buildSummaryCard('QUEUE', 'Cell配備待ち', [
+          _summaryLine('ready_for_cell', Utils.escapeHtml(String(counts.ready_for_cell || 0))),
+          _summaryLine('cell_provisioning', Utils.escapeHtml(String(counts.cell_provisioning || 0))),
+          _summaryLine('failed', Utils.escapeHtml(String(counts.failed || 0)))
+        ]) +
+        _buildSummaryCard('ACTIVE', '稼働対象', [
+          _summaryLine('active', Utils.escapeHtml(String(counts.active || 0))),
+          _summaryLine('total', Utils.escapeHtml(String(items.length)))
+        ]);
+    }
+
+    if (!listEl) return;
+    if (!data.available) {
+      listEl.innerHTML = '<div style="padding:1rem;color:#c62828;">Cell provisioning API が利用できません。</div>';
+      return;
+    }
+    if (!items.length) {
+      listEl.innerHTML = '<div style="padding:1rem;color:var(--text-muted);">Cell配備対象はありません。</div>';
+      return;
+    }
+
+    html = '';
+    for (i = 0; i < items.length; i++) {
+      item = items[i];
+      html += buildCellProvisioningItemHtml(item, i);
+    }
+    listEl.innerHTML = html;
+  }
+
+  function buildCellProvisioningItemHtml(item, index) {
+    var registryTone = item.registry_status === 'active' ? 'ok' : (item.registry_status === 'failed' ? 'danger' : 'warn');
+    var target = item.suggested_target || {};
+    var commands = item.commands || [];
+    var commandHtml = '';
+    var actionHtml = '';
+    var i;
+
+    for (i = 0; i < commands.length; i++) {
+      commandHtml += '<div class="settings-test-result" style="margin-top:0.75rem;">' +
+        '<div style="display:flex;justify-content:space-between;gap:0.75rem;align-items:center;">' +
+          '<strong>' + Utils.escapeHtml(commands[i].label || ('step ' + (i + 1))) + '</strong>' +
+          '<button class="btn btn-secondary btn-sm" type="button" data-cell-command-copy="' + index + ':' + i + '">コピー</button>' +
+        '</div>' +
+        '<pre style="white-space:pre-wrap;word-break:break-word;margin:0.75rem 0 0;"><code>' + Utils.escapeHtml(commands[i].command || '') + '</code></pre>' +
+      '</div>';
+    }
+    if (!commands.length) {
+      commandHtml = '<div class="settings-test-result" style="margin-top:0.75rem;color:var(--text-muted);">この状態では実行コマンドはありません。</div>';
+    }
+
+    if (item.status === 'ready_for_cell') {
+      actionHtml =
+        '<button class="btn btn-secondary" type="button" data-cell-status-action="cell_provisioning" data-cell-request-id="' + Utils.escapeHtml(item.request_id || '') + '">作業開始</button>' +
+        '<button class="btn btn-secondary" type="button" data-cell-status-action="failed" data-cell-request-id="' + Utils.escapeHtml(item.request_id || '') + '">失敗にする</button>';
+    } else if (item.status === 'cell_provisioning' || item.status === 'failed') {
+      actionHtml =
+        '<button class="btn btn-secondary" type="button" data-cell-status-action="cell_provisioning" data-cell-request-id="' + Utils.escapeHtml(item.request_id || '') + '">' + (item.status === 'failed' ? '作業再開' : '作業中に戻す') + '</button>' +
+        '<button class="btn" type="button" style="border:1px solid var(--primary);color:var(--primary);" data-cell-status-action="sync_registry" data-cell-index="' + index + '" data-cell-request-id="' + Utils.escapeHtml(item.request_id || '') + '">control registry を active 更新</button>' +
+        '<button class="btn btn-secondary" type="button" data-cell-status-action="failed" data-cell-request-id="' + Utils.escapeHtml(item.request_id || '') + '">失敗にする</button>';
+    } else if (item.status === 'active') {
+      actionHtml =
+        '<button class="btn" type="button" style="border:1px solid var(--primary);color:var(--primary);" data-cell-status-action="sync_registry" data-cell-index="' + index + '" data-cell-request-id="' + Utils.escapeHtml(item.request_id || '') + '">control registry を active 更新</button>';
+    } else {
+      actionHtml = '<span style="color:var(--text-muted);font-size:0.85rem;">支払い確認または申込確認後に作業対象になります。</span>';
+    }
+
+    return '<section class="card table-card" style="margin-bottom:1rem;">' +
+      '<div class="card__header">' +
+        '<div>' +
+          '<h3 class="section-title" style="margin-bottom:0;">' + Utils.escapeHtml(item.tenant_name || '-') + '</h3>' +
+          '<p class="card-intro"><code>' + Utils.escapeHtml(item.cell_id || '-') + '</code> / ' + Utils.escapeHtml(item.tenant_slug || '-') + '</p>' +
+        '</div>' +
+        '<div class="tenant-contract">' +
+          buildCellOnboardingStatusBadge(item.status || '-') +
+          '<span class="status-pill status-pill--' + registryTone + '">registry: ' + Utils.escapeHtml(item.registry_status || 'missing') + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="card__body">' +
+        '<div class="metric-list">' +
+          buildMetricRow('次アクション', Utils.escapeHtml(item.next_action || '-'), '') +
+          buildMetricRow('顧客 / 店舗', Utils.escapeHtml(item.tenant_name || '-') + ' / ' + Utils.escapeHtml(item.store_name || '-'), 'tenant_id: ' + (item.tenant_id || '-')) +
+          buildMetricRow('Owner', Utils.escapeHtml(item.owner_username || '-'), item.owner_display_name || '') +
+          buildMetricRow('App URL', '<code>' + Utils.escapeHtml(item.app_base_url || target.app_base_url || '-') + '</code>', 'health: ' + (item.health_url || target.health_url || '-')) +
+          buildMetricRow('DB / uploads', '<code>' + Utils.escapeHtml(target.db_host || '-') + '</code>', target.db_name ? ('db: ' + target.db_name + ' / uploads: ' + target.uploads_path) : '') +
+        '</div>' +
+        '<div class="settings-inline-actions">' +
+          actionHtml +
+        '</div>' +
+        commandHtml +
+      '</div>' +
+    '</section>';
+  }
+
+  function handleCellProvisioningClick(e) {
+    var copyBtn = e.target.closest('[data-cell-command-copy]');
+    var actionBtn;
+    if (copyBtn) {
+      copyCellProvisioningCommand(copyBtn.getAttribute('data-cell-command-copy'));
+      return;
+    }
+
+    actionBtn = e.target.closest('[data-cell-status-action]');
+    if (!actionBtn) return;
+    updateCellProvisioningFromButton(actionBtn);
+  }
+
+  function copyCellProvisioningCommand(value) {
+    var parts = String(value || '').split(':');
+    var itemIndex = parseInt(parts[0], 10);
+    var commandIndex = parseInt(parts[1], 10);
+    var item = _cellProvisioningState.items[itemIndex] || {};
+    var command = item.commands && item.commands[commandIndex] ? item.commands[commandIndex].command : '';
+    if (!command) return;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(command).then(function() {
+        showToast('コマンドをコピーしました');
+      }).catch(function() {
+        showToast('コピーに失敗しました');
+      });
+      return;
+    }
+    showToast('このブラウザではコピーできません');
+  }
+
+  function updateCellProvisioningFromButton(btn) {
+    var action = btn.getAttribute('data-cell-status-action');
+    var requestId = btn.getAttribute('data-cell-request-id') || '';
+    var itemIndex = parseInt(btn.getAttribute('data-cell-index') || '-1', 10);
+    var item = _cellProvisioningState.items[itemIndex] || {};
+    var target = item.suggested_target || {};
+    var payload;
+
+    if (!requestId) return;
+
+    if (action === 'sync_registry') {
+      payload = {
+        action: 'sync_registry',
+        request_id: requestId,
+        cell_id: item.cell_id || target.cell_id || '',
+        registry_status: 'active',
+        environment: target.environment || 'pseudo-prod',
+        app_base_url: target.app_base_url || '',
+        health_url: target.health_url || '',
+        db_host: target.db_host || '',
+        db_name: target.db_name || '',
+        db_user: target.db_user || '',
+        uploads_path: target.uploads_path || '',
+        php_image: target.php_image || '',
+        deploy_version: target.deploy_version || '',
+        cron_enabled: 1,
+        notes: 'Marked active from POSLA Cell配備 UI after smoke.'
+      };
+    } else {
+      payload = {
+        action: 'update_status',
+        request_id: requestId,
+        status: action,
+        notes: 'Updated from POSLA Cell配備 UI'
+      };
+    }
+
+    btn.disabled = true;
+    PoslaApi.updateCellProvisioning(payload).then(function() {
+      showToast('Cell配備状態を更新しました');
+      loadCellProvisioning();
+      loadDashboard();
+    }).catch(function(err) {
+      showToast('Cell配備状態の更新に失敗しました: ' + err.message);
+    }).then(function() {
+      btn.disabled = false;
+    });
   }
 
   // ── ダッシュボード ──

@@ -5,7 +5,7 @@ plan: [all]
 role: [posla-admin]
 audience: POSLA 運営チーム (内部)
 keywords: [cell, deployment, blast-radius, docker, migration, rollback]
-last_updated: 2026-04-25
+last_updated: 2026-04-26
 maintainer: POSLA運営
 ---
 
@@ -62,7 +62,9 @@ cell app image は `docker/php/Dockerfile.cell` で build します。`api/`, `p
 ## 11.3 初期作成
 
 ```bash
-scripts/cell/cell.sh init acme-prod acme https://<production-domain> 18081 13306
+POSLA_CELL_DB_PASSWORD='<secure-db-password>' \
+POSLA_CELL_DB_ROOT_PASSWORD='<secure-root-password>' \
+  scripts/cell/cell.sh init acme-prod acme https://<production-domain> 18081 13306
 scripts/cell/cell.sh registry
 ```
 
@@ -90,9 +92,29 @@ POSLA_CELL_DB_PORT=13306
 POSLA_PHP_IMAGE=posla_php_cell:dev
 ```
 
-`init` は placeholder password を残します。本番cellでは `app.env` / `db.env` の `__REPLACE_*` を必ず実値に置換してから `deploy` します。
+`init` は password が未指定の場合だけ placeholder password を残します。本番cellでは `POSLA_CELL_DB_PASSWORD` / `POSLA_CELL_DB_ROOT_PASSWORD` を付けて作成し、`app.env` / `db.env` に `__REPLACE_*` が残っていないことを確認してから `deploy` します。
 
 ## 11.4 Tenant Onboarding
+
+POSLA管理画面またはLP申込で顧客が追加されると、control DB の `posla_tenant_onboarding_requests` に作成待ちが残ります。MVP では、この ledger をPOSLA管理画面の **Cell配備** タブで確認し、このMacから対象cellだけを作成します。POSLA管理画面は deploy コマンドを直接実行しません。
+
+状態の意味:
+
+| status | 意味 | 次アクション |
+|---|---|---|
+| `payment_pending` | LP申込後、支払い確認待ち | Stripe / webhook を確認 |
+| `ready_for_cell` | 専用cell作成待ち | Cell配備タブのコマンドをこのMacで順に実行 |
+| `cell_provisioning` | cell作業中 | deploy / onboard / smoke を完了させる |
+| `active` | 監視対象 | op 側の同期対象 |
+| `failed` | 作業失敗 | 原因を確認し、修正後に作業再開 |
+
+Cell配備タブで表示するもの:
+
+- 顧客名、tenant slug、cell_id
+- control registry の状態
+- 推奨 app URL / health URL / DB host / uploads path
+- `init` / `build` / `deploy` / `onboard-tenant` / `smoke` の実行コマンド
+- 作業開始、失敗、control registry active 更新の操作
 
 cell 作成後、対象 cell DB に最初の tenant / store / owner を作ります。
 
@@ -107,7 +129,7 @@ scripts/cell/cell.sh acme-prod register-db
 POSLA_OWNER_PASSWORD='<initial-owner-password>' \
   scripts/cell/cell.sh acme-prod onboard-tenant acme 'Acme Inc.' 'Acme Main Store' owner 'Owner Name' owner@example.com
 
-scripts/cell/cell.sh acme-prod smoke
+POSLA_CELL_SMOKE_STRICT=1 scripts/cell/cell.sh acme-prod smoke
 ```
 
 `onboard-tenant` が作るもの:
@@ -133,6 +155,7 @@ scripts/cell/cell.sh acme-prod smoke
 注意:
 
 - `onboard-tenant` は対象 cell DB のみに書き込みます。
+- 日本語の tenant / store / owner 名を壊さないため、`scripts/cell/cell.sh` の MySQL / mysqldump / restore は `--default-character-set=utf8mb4` を明示します。
 - 既存 `tenant.slug`, `users.username`, `users.email` と重複する場合は停止します。
 - 本番課金フローが有効な顧客は、Stripe 側の契約情報と `subscription_status` の整合を別途確認します。
 
@@ -163,6 +186,8 @@ uploads本体のarchiveが必要な時だけ、次を付けます。
 ```bash
 POSLA_CELL_BACKUP_UPLOADS=1 scripts/cell/cell.sh acme-prod backup
 ```
+
+DB dump は `--default-character-set=utf8mb4` で作成します。backup 後に日本語名が含まれる顧客では、必要に応じて `db.sql` 内に店舗名・owner表示名が読める状態で残っていることを確認します。
 
 ## 11.6 Build / Deploy
 
@@ -403,6 +428,23 @@ MVP のローカル source:
 | snapshot_url | `http://127.0.0.1:8081/api/monitor/cell-snapshot.php` |
 
 POSLA管理画面の **OP連携** タブから source metadata を確認・編集できます。op側には `snapshot_url` と認証ヘッダーを登録し、そこから `registry.cells` を同期します。
+
+### 11.11.3 検証済みローカルcell
+
+2026-04-26 時点で、擬似本番 control DB から `test-01` を 1 tenant / 1 cell として作成し、次を確認済みです。
+
+| 項目 | 結果 |
+|---|---|
+| app URL | `http://127.0.0.1:18081` |
+| DB | `127.0.0.1:13306` / `posla_test_01` |
+| tenant | `TEST` / `test-01` |
+| store | `TEST 本店` |
+| owner | `test-01-owner` / `TEST オーナー` |
+| smoke | `POSLA_CELL_SMOKE_STRICT=1 scripts/cell/cell.sh test-01 smoke` 通過 |
+| rollback | `POSLA_CELL_RESTORE_CONFIRM=test-01 scripts/cell/cell.sh test-01 rollback latest` 通過 |
+| login | `test-01-owner` で専用cellへログイン成功 |
+
+この検証で、対象cellだけの backup -> rollback -> deploy -> smoke が成立し、他cellや擬似本番 control stack を巻き込まないことを確認しました。
 
 ## 11.12 Git 管理名
 

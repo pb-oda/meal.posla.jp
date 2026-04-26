@@ -74,3 +74,9 @@ public/.htaccess
 # Docker — ローカル開発用データ（リポジトリにコミットしない）
 docker/db/data/
 docker-compose.override.yml
+
+# Cell runtime files — generated per customer/cell and may contain secrets
+cells/registry.tsv
+cells/*/*.env
+cells/*/uploads/
+cells/*/backups/
