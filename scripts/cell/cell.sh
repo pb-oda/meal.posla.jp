@@ -21,6 +21,7 @@ Commands:
   deploy   Backup, validate config, update the cell, then run monitor ping
   migrate  Apply one SQL file to this cell database only
   register-db Upsert this cell metadata into posla_cell_registry
+  sync-registry Sync cells/registry.tsv from the cell DB registry row
   rollback-plan [backup|latest] Show rollback plan for a backup
   restore-env <backup|latest> Restore app/db/cell env files from a backup
   restore-db <backup|latest> Restore DB from a backup db.sql
@@ -185,6 +186,66 @@ print_registry() {
   else
     cat "$registry_file"
   fi
+}
+
+local_registry_field() {
+  cell_id="$1"
+  field_no="$2"
+  if [ ! -f "$registry_file" ]; then
+    return 0
+  fi
+  awk -F '\t' -v id="$cell_id" -v n="$field_no" 'NR > 1 && $1 == id { print $n; exit }' "$registry_file"
+}
+
+upsert_registry() {
+  ensure_registry_file
+  cell_id="$1"
+  tenant_slug="$2"
+  tenant_id="$3"
+  domain="$4"
+  app_url="$5"
+  health_url="$6"
+  environment="$7"
+  status="$8"
+  http_port="$9"
+  db_port="${10}"
+  db_name="${11}"
+  php_image="${12}"
+  deploy_version="${13}"
+  cron_enabled="${14}"
+  updated_at="${15}"
+
+  tmp_file="${registry_file}.tmp.$$"
+  awk -F '\t' -v OFS='\t' \
+    -v cell_id="$cell_id" \
+    -v tenant_slug="$tenant_slug" \
+    -v tenant_id="$tenant_id" \
+    -v domain="$domain" \
+    -v app_url="$app_url" \
+    -v health_url="$health_url" \
+    -v environment="$environment" \
+    -v status="$status" \
+    -v http_port="$http_port" \
+    -v db_port="$db_port" \
+    -v db_name="$db_name" \
+    -v php_image="$php_image" \
+    -v deploy_version="$deploy_version" \
+    -v cron_enabled="$cron_enabled" \
+    -v updated_at="$updated_at" '
+      NR == 1 { print; next }
+      $1 == cell_id {
+        print cell_id, tenant_slug, tenant_id, domain, app_url, health_url, environment, status, http_port, db_port, db_name, php_image, deploy_version, cron_enabled, updated_at
+        found = 1
+        next
+      }
+      { print }
+      END {
+        if (!found) {
+          print cell_id, tenant_slug, tenant_id, domain, app_url, health_url, environment, status, http_port, db_port, db_name, php_image, deploy_version, cron_enabled, updated_at
+        }
+      }
+    ' "$registry_file" > "$tmp_file"
+  mv "$tmp_file" "$registry_file"
 }
 
 append_registry() {
@@ -424,6 +485,55 @@ reload_runtime_env() {
   export POSLA_DEPLOY_VERSION
 }
 
+sync_local_registry_from_db() {
+  fallback_status="${1:-active}"
+  app_env="$CELL_DIR/app.env"
+  app_base_url="$(env_file_value "$app_env" POSLA_APP_BASE_URL)"
+  environment="$(env_file_value "$app_env" POSLA_ENVIRONMENT)"
+  deploy_version="$(env_file_value "$app_env" POSLA_DEPLOY_VERSION)"
+  db_name="$(env_file_value "$app_env" POSLA_DB_NAME)"
+  cron_enabled="$(env_file_value "$app_env" POSLA_CRON_ENABLED)"
+  health_url="${app_base_url%/}/api/monitor/ping.php"
+  domain_host="$(host_from_domain "$app_base_url")"
+  updated_at="$(date '+%Y-%m-%dT%H:%M:%S%z')"
+
+  tenant_slug="$(local_registry_field "$CELL_ID" 2)"
+  tenant_id="$(local_registry_field "$CELL_ID" 3)"
+  registry_status="$fallback_status"
+
+  if db_mysql_ready && table_exists "posla_cell_registry"; then
+    escaped_cell="$(sql_escape "$CELL_ID")"
+    registry_row="$(compose exec -T db sh -c "mysql --default-character-set=utf8mb4 -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" --batch --skip-column-names \"\$MYSQL_DATABASE\" -e \"SELECT CONCAT_WS('|', COALESCE(NULLIF(tenant_slug, ''), '-'), COALESCE(NULLIF(tenant_id, ''), '-'), COALESCE(NULLIF(environment, ''), '-'), COALESCE(NULLIF(status, ''), '-'), COALESCE(NULLIF(deploy_version, ''), '-'), COALESCE(cron_enabled, 1)) FROM posla_cell_registry WHERE cell_id = '${escaped_cell}' LIMIT 1\"" 2>/dev/null || true)"
+    if [ -n "$registry_row" ]; then
+      old_ifs="$IFS"
+      IFS="|"
+      # shellcheck disable=SC2086
+      set -- $registry_row
+      IFS="$old_ifs"
+      tenant_slug="${1:-$tenant_slug}"
+      tenant_id="${2:-$tenant_id}"
+      environment="${3:-$environment}"
+      registry_status="${4:-$registry_status}"
+      deploy_version="${5:-$deploy_version}"
+      cron_enabled="${6:-$cron_enabled}"
+    fi
+  fi
+
+  if [ "$environment" = "-" ]; then environment=""; fi
+  if [ "$registry_status" = "-" ]; then registry_status=""; fi
+  if [ "$deploy_version" = "-" ]; then deploy_version=""; fi
+  if [ -z "$tenant_slug" ]; then tenant_slug="-"; fi
+  if [ -z "$tenant_id" ]; then tenant_id="-"; fi
+  if [ -z "$environment" ]; then environment="production"; fi
+  if [ -z "$registry_status" ]; then registry_status="$fallback_status"; fi
+  if [ -z "$deploy_version" ]; then deploy_version="$(current_deploy_version)"; fi
+  if [ -z "$cron_enabled" ]; then cron_enabled="1"; fi
+
+  upsert_registry "$CELL_ID" "$tenant_slug" "$tenant_id" "$domain_host" "$app_base_url" "$health_url" \
+    "$environment" "$registry_status" "$POSLA_CELL_HTTP_PORT" "$POSLA_CELL_DB_PORT" "$db_name" \
+    "$POSLA_PHP_IMAGE" "$deploy_version" "$cron_enabled" "$updated_at"
+}
+
 register_cell_db() {
   registry_status="${1:-active}"
   app_env="$CELL_DIR/app.env"
@@ -459,6 +569,7 @@ register_cell_db() {
     "$escaped_db_host" "$escaped_db_name" "$escaped_db_user" "$escaped_uploads_path" \
     "$escaped_php_image" "$escaped_deploy_version" "$cron_value" \
     | compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
+  sync_local_registry_from_db "$registry_status" || true
 }
 
 record_deployment() {
@@ -608,6 +719,7 @@ onboard_tenant() {
       "$(sql_escape "$CELL_ID")" "$escaped_tenant_id" "$escaped_tenant_slug" \
       | compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
   fi
+  sync_local_registry_from_db "active" || true
 
   echo "Onboarded tenant in $CELL_ID"
   echo "tenant_id=$tenant_id"
@@ -971,6 +1083,9 @@ case "$COMMAND" in
     ;;
   register-db)
     register_cell_db "active"
+    ;;
+  sync-registry)
+    sync_local_registry_from_db "active"
     ;;
   rollback-plan)
     print_rollback_plan "${3:-latest}"

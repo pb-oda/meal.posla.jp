@@ -8,9 +8,9 @@ set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BASE_URL="${BASE_URL:-http://127.0.0.1:8081}"
 OWNER_USER="${OWNER_USER:-test-01-owner}"
-OWNER_PASS="${OWNER_PASS:-Demo1234}"
+OWNER_PASS="${OWNER_PASS:-}"
 POSLA_EMAIL="${POSLA_EMAIL:-oda@plusbelief.co.jp}"
-POSLA_PASS="${POSLA_PASS:-Demo1234}"
+POSLA_PASS="${POSLA_PASS:-}"
 FAIL=0
 
 cd "${ROOT}" || exit 1
@@ -80,22 +80,30 @@ check_http_200 "/docs-internal/"
 
 echo
 echo "[3] auth smoke"
-ownerResp=$(curl -s -H 'Content-Type: application/json' \
-  -d "{\"username\":\"${OWNER_USER}\",\"password\":\"${OWNER_PASS}\"}" \
-  "${BASE_URL}/api/auth/login.php")
-if echo "$ownerResp" | grep -q '"ok":true'; then
-  pass "owner login"
+if [ -n "${OWNER_PASS}" ]; then
+  ownerResp=$(curl -s -H 'Content-Type: application/json' \
+    -d "{\"username\":\"${OWNER_USER}\",\"password\":\"${OWNER_PASS}\"}" \
+    "${BASE_URL}/api/auth/login.php")
+  if echo "$ownerResp" | grep -q '"ok":true'; then
+    pass "owner login"
+  else
+    fail "owner login failed: ${ownerResp}"
+  fi
 else
-  fail "owner login failed: ${ownerResp}"
+  warn "owner login skipped: set OWNER_PASS to enable auth smoke"
 fi
 
-poslaResp=$(curl -s -H 'Content-Type: application/json' \
-  -d "{\"email\":\"${POSLA_EMAIL}\",\"password\":\"${POSLA_PASS}\"}" \
-  "${BASE_URL}/api/posla/login.php")
-if echo "$poslaResp" | grep -q '"ok":true'; then
-  pass "posla admin login"
+if [ -n "${POSLA_PASS}" ]; then
+  poslaResp=$(curl -s -H 'Content-Type: application/json' \
+    -d "{\"email\":\"${POSLA_EMAIL}\",\"password\":\"${POSLA_PASS}\"}" \
+    "${BASE_URL}/api/posla/login.php")
+  if echo "$poslaResp" | grep -q '"ok":true'; then
+    pass "posla admin login"
+  else
+    fail "posla admin login failed: ${poslaResp}"
+  fi
 else
-  fail "posla admin login failed: ${poslaResp}"
+  warn "posla admin login skipped: set POSLA_PASS to enable auth smoke"
 fi
 
 echo
