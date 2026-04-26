@@ -70,6 +70,12 @@ var PoslaApi = (function() {
     updateSettings: function(data) {
       return request('PATCH', '/settings.php', data);
     },
+    getOpsSources: function() {
+      return request('GET', '/ops-sources.php');
+    },
+    updateOpsSource: function(data) {
+      return request('PATCH', '/ops-sources.php', data);
+    },
     getPushVapid: function() {
       return request('GET', '/push-vapid.php');
     },

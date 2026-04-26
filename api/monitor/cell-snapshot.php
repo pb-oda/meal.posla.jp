@@ -16,6 +16,7 @@ $method = require_method(['GET']);
 require_codex_ops_read_access();
 
 $cellId = defined('APP_CELL_ID') ? (string)APP_CELL_ID : 'unknown';
+$sourceId = defined('APP_OPS_SOURCE_ID') ? (string)APP_OPS_SOURCE_ID : $cellId;
 $snapshot = array_merge([
     'ok' => true,
     'time' => date('c'),
@@ -33,6 +34,7 @@ try {
 
 $snapshot['db'] = build_db_health($pdo);
 $snapshot['cron'] = build_cron_health($pdo);
+$snapshot['ops_source'] = build_ops_source_snapshot($pdo, $sourceId);
 $snapshot['registry'] = build_registry_snapshot($pdo, $cellId);
 $snapshot['onboarding'] = posla_fetch_onboarding_snapshot($pdo);
 $snapshot['deployments'] = fetch_recent_deployments($pdo, $cellId);
@@ -200,6 +202,73 @@ function build_registry_snapshot(PDO $pdo, string $cellId): array
     } catch (PDOException $e) {
         return ['available' => true, 'cell' => null, 'control_cell' => null, 'cells' => []];
     }
+}
+
+function build_ops_source_snapshot(PDO $pdo, string $sourceId): array
+{
+    $fallback = [
+        'source_id' => $sourceId,
+        'label' => 'POSLA control source',
+        'environment' => defined('APP_ENVIRONMENT') ? APP_ENVIRONMENT : null,
+        'status' => 'unknown',
+        'base_url' => defined('APP_BASE_URL') ? APP_BASE_URL : null,
+        'ping_url' => null,
+        'snapshot_url' => null,
+        'auth_type' => 'unknown',
+        'updated_at' => null,
+    ];
+
+    if (!table_exists($pdo, 'posla_ops_sources')) {
+        return [
+            'available' => false,
+            'source' => $fallback,
+            'auth' => build_ops_source_auth_state('unknown'),
+        ];
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT source_id, label, environment, status, base_url, ping_url,
+                    snapshot_url, auth_type, notes, updated_at
+             FROM posla_ops_sources
+             WHERE source_id = ?
+             LIMIT 1'
+        );
+        $stmt->execute([$sourceId]);
+        $row = $stmt->fetch();
+
+        return [
+            'available' => true,
+            'source' => $row ?: $fallback,
+            'auth' => build_ops_source_auth_state($row['auth_type'] ?? 'unknown'),
+        ];
+    } catch (PDOException $e) {
+        return [
+            'available' => true,
+            'source' => $fallback,
+            'auth' => build_ops_source_auth_state('unknown'),
+        ];
+    }
+}
+
+function build_ops_source_auth_state(string $authType): array
+{
+    $opsSecretSet = (getenv('POSLA_OPS_READ_SECRET') ?: '') !== '';
+    $cronSecretSet = (getenv('POSLA_CRON_SECRET') ?: '') !== '';
+    $headerName = 'none';
+
+    if ($authType === 'ops_read_secret') {
+        $headerName = 'X-POSLA-OPS-SECRET';
+    } elseif ($authType === 'cron_secret') {
+        $headerName = 'X-POSLA-CRON-SECRET';
+    }
+
+    return [
+        'auth_type' => $authType,
+        'header_name' => $headerName,
+        'ops_read_secret_env_set' => $opsSecretSet ? 1 : 0,
+        'cron_secret_env_set' => $cronSecretSet ? 1 : 0,
+    ];
 }
 
 function fetch_recent_deployments(PDO $pdo, string $cellId): array

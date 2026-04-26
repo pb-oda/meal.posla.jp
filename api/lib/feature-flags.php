@@ -32,7 +32,7 @@ function posla_feature_flags_available(PDO $pdo): bool
 
 function posla_feature_flag_current_cell_id(): string
 {
-    return defined('APP_CELL_ID') ? (string)APP_CELL_ID : 'pseudo-prod-local';
+    return defined('APP_CELL_ID') ? (string)APP_CELL_ID : 'posla-control-local';
 }
 
 function posla_feature_flag_valid_key($featureKey): bool

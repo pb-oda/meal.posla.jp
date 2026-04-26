@@ -27,7 +27,11 @@ if (!defined('APP_SUPPORT_EMAIL')) {
 }
 
 if (!defined('APP_CELL_ID')) {
-    define('APP_CELL_ID', _app_env_or('POSLA_CELL_ID', 'pseudo-prod-local'));
+    define('APP_CELL_ID', _app_env_or('POSLA_CELL_ID', 'posla-control-local'));
+}
+
+if (!defined('APP_OPS_SOURCE_ID')) {
+    define('APP_OPS_SOURCE_ID', _app_env_or('POSLA_OPS_SOURCE_ID', APP_CELL_ID));
 }
 
 if (!defined('APP_DEPLOY_VERSION')) {
@@ -112,6 +116,7 @@ if (!function_exists('app_deployment_metadata')) {
     function app_deployment_metadata() {
         return [
             'cell_id' => APP_CELL_ID,
+            'source_id' => APP_OPS_SOURCE_ID,
             'deploy_version' => APP_DEPLOY_VERSION,
             'environment' => APP_ENVIRONMENT,
         ];

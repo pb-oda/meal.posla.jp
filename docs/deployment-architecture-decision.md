@@ -10,7 +10,7 @@ POSLA は **cell architecture** で開始する。
 
 MVP では **1 tenant / 1 cell** を原則にする。これは single-tenant deployment と同じ blast radius を持たせるための運用ポリシーであり、コードベースは分けない。顧客向け cell に他 tenant を同居させない。
 
-`pseudo-prod-local` のような擬似本番 / control 用 cell は顧客 cell ではない。codex-ops-platform が registry を読む入口として使うことはあるが、`registry.cells` に出す一覧は `tenant_id` / `tenant_slug` を持つ顧客専用 cell だけにする。
+`posla-control-local` のような擬似本番 / control 用 source は顧客 cell ではない。codex-ops-platform が snapshot を読む入口として使うが、`registry.cells` に出す一覧は `tenant_id` / `tenant_slug` を持つ顧客専用 cell だけにする。source 自体は `posla_ops_sources` で管理し、`posla_cell_registry` には入れない。
 
 採用しないもの:
 
@@ -93,6 +93,7 @@ MVP では **1 tenant / 1 cell** を原則にする。これは single-tenant de
 - `sql/migration-p1-41-cell-registry.sql` で cell registry / deployment history の初期テーブルを追加済み。
 - `scripts/cell/cell.sh init` で `cells/<cell-id>/` の env 生成と `cells/registry.tsv` 記録が可能。
 - `scripts/cell/cell.sh register-db` で対象 cell DB の `posla_cell_registry` へ自己メタデータを upsert 可能。
+- `posla_ops_sources` で codex-ops-platform が読む POSLA control/source endpoint を管理する。source は顧客 cell ではないため `posla_cell_registry` と分離する。
 - `scripts/cell/cell.sh migrate` は `schema_migrations` に checksum / cell_id / deploy_version を記録し、二重適用を防止する。
 - `scripts/cell/cell.sh backup` は cell 単位で DB dump / env snapshot / uploads manifest を作る。
 - `scripts/cell/cell.sh deploy` は pre-deploy backup を作り、`posla_cell_deployments` に `planned` / `deployed` / `failed` を記録する。

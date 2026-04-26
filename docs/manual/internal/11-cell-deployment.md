@@ -367,11 +367,12 @@ curl -H "X-POSLA-OPS-SECRET: <shared-read-secret>" \
 |---|---|
 | `contract_version` | `codex-ops-cell-snapshot-v1` |
 | `cell_id` / `deploy_version` / `environment` | 現在の app metadata |
+| `source_id` / `ops_source` | codex-ops-platform が snapshot を読む POSLA control/source endpoint。顧客 cell ではない |
 | `db` | DB接続状態 |
 | `cron` | `monitor_last_heartbeat` と遅延秒数 |
 | `registry.cell` | 現在の app が顧客 cell の場合だけ、その顧客 cell 行 |
-| `registry.control_cell` | 現在の app / control / 擬似本番 source の cell 行 |
-| `registry.cells` | `tenant_id` / `tenant_slug` を持つ顧客専用 cell 一覧。`pseudo-prod-local` のような control cell は含めない |
+| `registry.control_cell` | v1 後方互換の項目。control/source は `ops_source` を使う |
+| `registry.cells` | `tenant_id` / `tenant_slug` を持つ顧客専用 cell 一覧。`posla-control-local` のような control source は含めない |
 | `deployments` | `posla_cell_deployments` の直近履歴 |
 | `migrations` | `schema_migrations` の直近履歴と24h失敗数 |
 | `feature_flags` | `global/cell` 解決後の flag 状態 |
@@ -388,6 +389,20 @@ Tier 0 監視では、まず次を MVP 指標にします。
 - 外部決済の `gateway_status` 分布
 
 codex-ops-platform 側の初期 collector は、この snapshot を各 cell から定期取得し、`ok=false`、`tier0.status != ok`、または Tier 0 error 件数増加を最優先で表示します。
+
+### 11.11.2 POSLA control/source endpoint
+
+`posla_ops_sources` は、codex-ops-platform が POSLA を読む入口です。顧客に提供する app / DB / uploads の単位ではないため、`posla_cell_registry` とは分けて管理します。
+
+MVP のローカル source:
+
+| 項目 | 値 |
+|---|---|
+| source_id | `posla-control-local` |
+| ping_url | `http://127.0.0.1:8081/api/monitor/ping.php` |
+| snapshot_url | `http://127.0.0.1:8081/api/monitor/cell-snapshot.php` |
+
+POSLA管理画面の **OP連携** タブから source metadata を確認・編集できます。op側には `snapshot_url` と認証ヘッダーを登録し、そこから `registry.cells` を同期します。
 
 ## 11.12 Git 管理名
 
