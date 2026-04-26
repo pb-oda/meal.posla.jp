@@ -21,8 +21,8 @@ POSLA の LP (ランディングページ) から申込 → Stripe 決済 → 30
 
 ## 8.1 LP (ランディングページ)
 
-- URL (擬似本番 / 本番想定): `https://meal.posla.jp/`
-- ローカル確認: `http://127.0.0.1:8081/`
+- URL (本番): `https://<production-domain>/`
+- 擬似本番確認: `http://127.0.0.1:8081/`
 - 構成: ヒーロー → 機能一覧 → 料金 → 申込フォーム
 
 ### LP のファイル
@@ -67,7 +67,7 @@ POSLA の LP (ランディングページ) から申込 → Stripe 決済 → 30
       POST /api/signup/webhook.php
       ・同じ処理を冪等に実行
       ↓
-[8] host-side provisioner
+[8] 本番 provisioner ホスト
       php scripts/cell/provision-ready-cells.php --limit=1
       ・cell init / build / deploy / onboard / smoke
       ・control registry を active へ更新
@@ -205,13 +205,15 @@ https://meal.posla.jp/api/signup/webhook.php
 
 ## 8.4 on-demand cell provisioner
 
-Stripe webhook / activate は deploy を直接実行しません。Webhookは短時間で返し、ホスト側の provisioner が `ready_for_cell` を拾います。
+Stripe webhook / activate は deploy を直接実行しません。Webhookは短時間で返し、本番 provisioner ホスト上の provisioner が `ready_for_cell` を拾います。
 
 ```bash
 php scripts/cell/provision-ready-cells.php --limit=1
 ```
 
-本番では cron / LaunchAgent 等で 1 分ごとに実行します。
+本番では systemd timer / cron 等で 1 分ごとに実行します。ローカルMacを販売フローの一部にはしません。
+
+本番では `POSLA_CELL_APP_URL_PATTERN` を必ず設定します。未設定の production 環境では、localhost のログインURLを作らないよう provisioner が停止します。
 
 ```text
 ready_for_cell

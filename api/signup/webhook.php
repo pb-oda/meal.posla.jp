@@ -10,7 +10,7 @@
  *   - onboarding request を ready_for_cell に更新
  *   - 専用環境準備中メール送信
  *
- * 専用cell作成とログインURL送信は host-side provisioner が行う。
+ * 専用cell作成とログインURL送信は本番 provisioner ホストが行う。
  *
  * Stripe ダッシュボードで設定する URL:
  *   https://meal.posla.jp/api/signup/webhook.php

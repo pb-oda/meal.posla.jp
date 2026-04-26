@@ -12,7 +12,7 @@
  *  - onboarding request を ready_for_cell に更新
  *  - Webhook と併用しても冪等 (is_active=1 ならスキップ)
  *
- * 専用cell作成とログインURL送信は host-side provisioner が行う。
+ * 専用cell作成とログインURL送信は本番 provisioner ホストが行う。
  */
 
 require_once __DIR__ . '/../lib/db.php';

@@ -96,14 +96,14 @@ POSLA_PHP_IMAGE=posla_php_cell:dev
 
 ## 11.4 Tenant Onboarding
 
-POSLA管理画面またはLP申込で顧客が追加されると、control DB の `posla_tenant_onboarding_requests` に作成待ちが残ります。LP経由でカード登録まで完了した顧客は、host-side の on-demand provisioner が `ready_for_cell` を拾い、このMacから対象cellだけを作成します。POSLA管理画面は deploy コマンドを直接実行しません。
+POSLA管理画面またはLP申込で顧客が追加されると、control DB の `posla_tenant_onboarding_requests` に作成待ちが残ります。LP経由でカード登録まで完了した顧客は、本番 provisioner ホスト上の on-demand provisioner が `ready_for_cell` を拾い、対象cellだけを作成します。POSLA管理画面は deploy コマンドを直接実行しません。
 
 状態の意味:
 
 | status | 意味 | 次アクション |
 |---|---|---|
 | `payment_pending` | LP申込後、支払い確認待ち | Stripe / webhook を確認 |
-| `ready_for_cell` | 専用cell作成待ち | provisioner が自動作成。手動時はCell配備タブのコマンドをこのMacで順に実行 |
+| `ready_for_cell` | 専用cell作成待ち | provisioner が自動作成。手動時はCell配備タブのコマンドを本番 provisioner ホストで順に実行 |
 | `cell_provisioning` | cell作業中 | deploy / onboard / smoke を完了させる |
 | `active` | 監視対象 | op 側の同期対象 |
 | `failed` | 作業失敗 | 原因を確認し、修正後に作業再開 |
@@ -121,7 +121,7 @@ Cell配備タブで表示するもの:
 
 ### on-demand provisioner
 
-Stripe webhook / `signup-complete.html` は deploy を直接実行しません。1分ごとにこのMac上で provisioner を実行し、`ready_for_cell` を1件ずつ処理します。
+Stripe webhook / `signup-complete.html` は deploy を直接実行しません。1分ごとに本番 provisioner ホスト上で provisioner を実行し、`ready_for_cell` を1件ずつ処理します。
 
 ```bash
 php scripts/cell/provision-ready-cells.php --limit=1
@@ -142,14 +142,14 @@ provisioner が実行する処理:
 5. `POSLA_CELL_SMOKE_STRICT=1 scripts/cell/cell.sh <cell> smoke`
 6. 成功時に control `posla_cell_registry` と onboarding request を `active` へ更新
 
-本番でサブドメイン型 URL にする場合は、実行環境に `POSLA_CELL_APP_URL_PATTERN` を設定します。
+本番では、実行環境に `POSLA_CELL_APP_URL_PATTERN` を必ず設定します。未設定のまま production 環境で実行すると、provisioner は localhost のログインURLを作らずに停止します。
 
 ```bash
 POSLA_CELL_APP_URL_PATTERN='https://{tenant_slug}.<production-domain>' \
   php scripts/cell/provision-ready-cells.php --limit=1 --dry-run
 ```
 
-未設定時はローカル検証向けに `http://127.0.0.1:<auto-port>` を使います。
+ローカル / 擬似本番検証では、未設定時に `http://127.0.0.1:<auto-port>` を使えます。本番で例外的に localhost URL を許可する場合だけ `POSLA_CELL_PROVISIONER_ALLOW_LOCAL_URL=1` を明示します。
 
 cell 作成後、対象 cell DB に最初の tenant / store / owner を作ります。
 

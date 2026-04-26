@@ -7,7 +7,7 @@
  *
  * The token is the same opaque token attached to signup-complete.html.
  * It lets the applicant poll only their own onboarding request while the
- * dedicated cell is being created by the host-side provisioner.
+ * dedicated cell is being created by the production provisioner host.
  */
 
 require_once __DIR__ . '/../lib/response.php';

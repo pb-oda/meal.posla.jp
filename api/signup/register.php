@@ -21,7 +21,7 @@
  *  - tenant/owner を is_active=1 に
  *  - onboarding request を ready_for_cell に更新
  *  - 専用環境準備中メール送信
- *  - host-side provisioner が cell 作成後にログインURLを送信
+ *  - 本番 provisioner ホストが cell 作成後にログインURLを送信
  */
 
 require_once __DIR__ . '/../lib/response.php';

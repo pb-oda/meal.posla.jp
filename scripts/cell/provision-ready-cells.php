@@ -4,8 +4,8 @@
  * Host-side on-demand cell provisioner.
  *
  * This script is intentionally CLI-only. Stripe webhooks only move signup
- * requests to ready_for_cell; a host cron/LaunchAgent runs this script and
- * creates the dedicated cell outside the web request lifecycle.
+ * requests to ready_for_cell; a production host scheduler runs this script
+ * and creates the dedicated cell outside the web request lifecycle.
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -20,11 +20,12 @@ function usage(): void
     echo "Usage:\n";
     echo "  php scripts/cell/provision-ready-cells.php [--limit=1] [--request-id=<id>] [--dry-run]\n\n";
     echo "Environment:\n";
-    echo "  POSLA_CELL_PROVISIONER_DB_HOST      Control DB host for this host-side script (default: 127.0.0.1 when app env host is db)\n";
+    echo "  POSLA_CELL_PROVISIONER_DB_HOST      Control DB host for this provisioner script (default: 127.0.0.1 when app env host is db)\n";
     echo "  POSLA_CELL_PROVISIONER_DB_PORT      Control DB port (default: 3306)\n";
     echo "  POSLA_CELL_HTTP_PORT_BASE           First auto-assigned cell HTTP port (default: 18081)\n";
     echo "  POSLA_CELL_DB_PORT_BASE             First auto-assigned cell DB port (default: 13306)\n";
-    echo "  POSLA_CELL_APP_URL_PATTERN          Optional pattern, e.g. https://{tenant_slug}.<production-domain>\n";
+    echo "  POSLA_CELL_APP_URL_PATTERN          Public URL pattern, e.g. https://{tenant_slug}.<production-domain>\n";
+    echo "  POSLA_CELL_PROVISIONER_ALLOW_LOCAL_URL=1 allows localhost app URLs outside local/pseudo-prod environments\n";
     echo "  POSLA_CELL_PROVISIONER_ENV_FILE     Env file to load first (default: docker/env/app.env)\n";
 }
 
@@ -202,6 +203,12 @@ function next_port(array &$used, int $base): int
     return $port;
 }
 
+function localish_environment(): bool
+{
+    $env = strtolower(env_or('POSLA_CELL_PROVISIONER_ENVIRONMENT', env_or('POSLA_ENVIRONMENT', env_or('POSLA_ENV'))));
+    return in_array($env, ['local', 'development', 'dev', 'pseudo-prod', 'staging', 'test'], true);
+}
+
 function app_base_url(string $cellId, string $tenantSlug, int $httpPort): string
 {
     $pattern = env_or('POSLA_CELL_APP_URL_PATTERN');
@@ -210,6 +217,12 @@ function app_base_url(string $cellId, string $tenantSlug, int $httpPort): string
             ['{cell_id}', '{tenant_slug}', '{http_port}'],
             [$cellId, $tenantSlug, (string)$httpPort],
             $pattern
+        );
+    }
+    if (!localish_environment() && env_or('POSLA_CELL_PROVISIONER_ALLOW_LOCAL_URL') !== '1') {
+        throw new RuntimeException(
+            'POSLA_CELL_APP_URL_PATTERN is required outside local/pseudo-prod environments. '
+            . 'Refusing to create a production customer cell with a localhost login URL.'
         );
     }
     return 'http://127.0.0.1:' . $httpPort;
