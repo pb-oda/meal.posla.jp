@@ -5,19 +5,20 @@
  * GET   /api/posla/admin-users.php
  * POST  /api/posla/admin-users.php   { email, display_name, password }
  * PATCH /api/posla/admin-users.php   { id, display_name?, is_active?, new_password? }
+ * DELETE /api/posla/admin-users.php  { id, confirm_email }
  *
  * 方針:
  * - 現状の posla_admins スキーマを維持し、ロール分離は入れない
- * - 削除ではなく is_active で無効化
- * - 自分自身の無効化と、最後の有効管理者の無効化は不可
+ * - 自分自身の無効化/削除と、最後の有効管理者の無効化/削除は不可
  * - 自分自身のパスワード変更は既存 change-password.php を使う
  */
 
 require_once __DIR__ . '/auth-helper.php';
+require_once __DIR__ . '/admin-audit-helper.php';
 require_once __DIR__ . '/../lib/password-policy.php';
 
 $admin = require_posla_admin();
-$method = require_method(['GET', 'POST', 'PATCH']);
+$method = require_method(['GET', 'POST', 'PATCH', 'DELETE']);
 $pdo = get_db();
 
 function _posla_admin_users_active_count(PDO $pdo): int
@@ -37,6 +38,15 @@ function _posla_admin_users_fetch_list(PDO $pdo): array
     );
     $stmt->execute();
     return $stmt->fetchAll();
+}
+
+function _posla_admin_users_audit_value(array $row): array
+{
+    return [
+        'email' => $row['email'] ?? null,
+        'display_name' => $row['display_name'] ?? null,
+        'is_active' => !empty($row['is_active']) ? 1 : 0,
+    ];
 }
 
 function _posla_admin_users_send_invite_mail($to, $displayName, $password, $actorName)
@@ -263,4 +273,70 @@ if ($method === 'PATCH') {
     json_response([
         'admin' => $stmt->fetch(),
     ]);
+}
+
+if ($method === 'DELETE') {
+    $body = get_json_body();
+    $id = trim((string)($body['id'] ?? ''));
+    $confirmEmail = trim((string)($body['confirm_email'] ?? ''));
+
+    if ($id === '') {
+        json_error('MISSING_ID', 'id は必須です', 400);
+    }
+    if ($id === $admin['admin_id']) {
+        json_error('SELF_DELETE_FORBIDDEN', '現在ログイン中の管理者は削除できません', 403);
+    }
+
+    $stmt = $pdo->prepare('SELECT id, email, display_name, is_active FROM posla_admins WHERE id = ? LIMIT 1');
+    $stmt->execute([$id]);
+    $target = $stmt->fetch();
+    if (!$target) {
+        json_error('NOT_FOUND', '管理者が見つかりません', 404);
+    }
+    if ($confirmEmail !== (string)$target['email']) {
+        json_error('CONFIRM_EMAIL_MISMATCH', '削除確認として管理者メールアドレスを正確に入力してください', 400);
+    }
+    if ((int)$target['is_active'] === 1 && _posla_admin_users_active_count($pdo) <= 1) {
+        json_error('LAST_ACTIVE_ADMIN', '最後の有効管理者は削除できません', 409);
+    }
+
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare('UPDATE posla_admin_sessions SET is_active = 0 WHERE admin_id = ?')->execute([$id]);
+        $pdo->prepare('DELETE FROM posla_admin_sessions WHERE admin_id = ?')->execute([$id]);
+        $deleteStmt = $pdo->prepare('DELETE FROM posla_admins WHERE id = ?');
+        $deleteStmt->execute([$id]);
+        if ($deleteStmt->rowCount() < 1) {
+            throw new RuntimeException('admin row was not deleted');
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('posla_admin delete failed: ' . $e->getMessage());
+        json_error('DB_ERROR', '管理者の削除に失敗しました', 500);
+    }
+
+    posla_admin_write_audit_log(
+        $pdo,
+        $admin,
+        'posla_admin_delete',
+        'posla_admin',
+        $id,
+        _posla_admin_users_audit_value($target),
+        ['deleted' => true],
+        'POSLA管理画面から管理者を削除',
+        generate_uuid()
+    );
+
+    error_log(sprintf(
+        'posla_admin deleted: actor=%s target=%s email=%s ip=%s',
+        $admin['admin_id'],
+        $id,
+        $target['email'],
+        $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+    ));
+
+    json_response(['message' => '管理者を削除しました']);
 }

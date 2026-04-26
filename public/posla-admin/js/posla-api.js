@@ -60,6 +60,11 @@ var PoslaApi = (function() {
     createTenant: function(data) {
       return request('POST', '/tenants.php', data);
     },
+    deleteTenant: function(id, data) {
+      data = data || {};
+      data.id = id;
+      return request('DELETE', '/tenants.php', data);
+    },
     getFeatureFlags: function(tenantId) {
       var query = tenantId ? ('?tenant_id=' + encodeURIComponent(tenantId)) : '';
       return request('GET', '/feature-flags.php' + query);
@@ -106,6 +111,9 @@ var PoslaApi = (function() {
     },
     updateAdminUser: function(data) {
       return request('PATCH', '/admin-users.php', data);
+    },
+    deleteAdminUser: function(data) {
+      return request('DELETE', '/admin-users.php', data);
     },
     getCustomerSupportSessions: function(params) {
       params = params || {};

@@ -100,7 +100,7 @@ var PoslaSupportConsole = (function() {
       + '      <div class="posla-support-console__head">'
       + '        <div>'
       + '          <span class="posla-support-console__title">POSLA 管理者ユーザー管理</span>'
-      + '          <span class="posla-support-console__desc">POSLA 管理者の追加、表示名変更、無効化、パスワード再設定を行います。追加時にはログイン案内メールを自動送信し、初期パスワードの変更を促します。</span>'
+      + '          <span class="posla-support-console__desc">POSLA 管理者の追加、表示名変更、無効化、削除、パスワード再設定を行います。追加時にはログイン案内メールを自動送信し、初期パスワードの変更を促します。</span>'
       + '        </div>'
       + '        <div class="posla-support-console__meta" id="posla-admin-users-meta">読み込み中...</div>'
       + '      </div>'
@@ -175,6 +175,10 @@ var PoslaSupportConsole = (function() {
       }
       if (action === 'admin-password') {
         handleAdminPasswordReset(target.getAttribute('data-id'), target.getAttribute('data-self') === '1');
+        return;
+      }
+      if (action === 'admin-delete') {
+        handleAdminDelete(target.getAttribute('data-id'), target.getAttribute('data-email'), target.getAttribute('data-self') === '1');
       }
     });
 
@@ -280,6 +284,7 @@ var PoslaSupportConsole = (function() {
         + '<button class="btn btn-sm ' + (parseInt(row.is_active, 10) === 1 ? 'btn-outline' : 'btn-primary') + '" type="button" data-action="admin-toggle" data-id="' + esc(row.id) + '" data-self="' + (row.id === currentAdminId ? '1' : '0') + '" data-active="' + (parseInt(row.is_active, 10) === 1 ? '1' : '0') + '"' + (row.id === currentAdminId ? ' disabled' : '') + '>'
         + (parseInt(row.is_active, 10) === 1 ? '無効化' : '再有効化')
         + '</button>'
+        + '<button class="btn btn-sm btn-outline" style="border-color:#f5c2c7;color:#b42318;" type="button" data-action="admin-delete" data-id="' + esc(row.id) + '" data-email="' + esc(row.email || '') + '" data-self="' + (row.id === currentAdminId ? '1' : '0') + '"' + (row.id === currentAdminId ? ' disabled' : '') + '>削除</button>'
         + '</div>';
 
       html += '<tr>'
@@ -396,6 +401,38 @@ var PoslaSupportConsole = (function() {
       if (typeof window.PoslaShowToast === 'function') window.PoslaShowToast('管理者パスワードを再設定しました');
     }).catch(function(err) {
       window.alert('パスワード再設定に失敗しました: ' + err.message);
+    });
+  }
+
+  function handleAdminDelete(id, email, isSelf) {
+    if (!id) return;
+    if (isSelf) {
+      window.alert('現在ログイン中の管理者は削除できません');
+      return;
+    }
+
+    var firstConfirm = 'POSLA 管理者「' + (email || id) + '」を削除します。\n\n'
+      + '削除するとこの管理者のセッションは失効し、管理者一覧から消えます。\n'
+      + '最後の有効管理者はAPI側で削除を拒否します。\n\n'
+      + '続行しますか？';
+    if (!window.confirm(firstConfirm)) return;
+
+    var confirmEmail = window.prompt('削除確認のため、管理者メールアドレスを入力してください: ' + (email || ''));
+    if (confirmEmail === null) return;
+    confirmEmail = trim(confirmEmail);
+    if (confirmEmail !== email) {
+      window.alert('メールアドレスが一致しないため削除しませんでした');
+      return;
+    }
+
+    PoslaApi.deleteAdminUser({
+      id: id,
+      confirm_email: confirmEmail
+    }).then(function() {
+      loadAdminUsers();
+      if (typeof window.PoslaShowToast === 'function') window.PoslaShowToast('管理者を削除しました');
+    }).catch(function(err) {
+      window.alert('管理者削除に失敗しました: ' + err.message);
     });
   }
 

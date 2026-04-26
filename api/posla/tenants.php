@@ -4,8 +4,9 @@
  *
  * GET   /api/posla/tenants.php          — 全テナント一覧
  * GET   /api/posla/tenants.php?id=xxx   — テナント詳細
- * PATCH /api/posla/tenants.php          — テナント更新
- * POST  /api/posla/tenants.php          — テナント新規作成
+ * PATCH  /api/posla/tenants.php         — テナント更新
+ * POST   /api/posla/tenants.php         — テナント新規作成
+ * DELETE /api/posla/tenants.php         — テナント削除（実運用データがない場合のみ）
  */
 
 require_once __DIR__ . '/auth-helper.php';
@@ -15,7 +16,7 @@ require_once __DIR__ . '/../lib/tenant-onboarding.php';
 require_once __DIR__ . '/../lib/provisioner-trigger.php';
 
 $admin = require_posla_admin();
-$method = require_method(['GET', 'PATCH', 'POST']);
+$method = require_method(['GET', 'PATCH', 'POST', 'DELETE']);
 $pdo = get_db();
 
 function normalize_tenant_contract(array $tenant): array
@@ -88,6 +89,291 @@ function build_tenant_audit_value(array $tenant): array
         'hq_menu_broadcast' => !empty($tenant['hq_menu_broadcast']) ? 1 : 0,
         'plan' => $tenant['plan'] ?? 'standard',
     ];
+}
+
+function posla_tenant_table_exists(PDO $pdo, string $tableName): bool
+{
+    static $cache = [];
+
+    if (!preg_match('/^[A-Za-z0-9_]+$/', $tableName)) {
+        return false;
+    }
+    if (array_key_exists($tableName, $cache)) {
+        return $cache[$tableName];
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*)
+               FROM information_schema.tables
+              WHERE table_schema = DATABASE()
+                AND table_name = ?'
+        );
+        $stmt->execute([$tableName]);
+        $cache[$tableName] = ((int)$stmt->fetchColumn()) > 0;
+    } catch (Throwable $e) {
+        $cache[$tableName] = false;
+    }
+
+    return $cache[$tableName];
+}
+
+function posla_tenant_count_query(PDO $pdo, string $tableName, string $sql, array $params): int
+{
+    if (!posla_tenant_table_exists($pdo, $tableName)) {
+        return 0;
+    }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return (int)$stmt->fetchColumn();
+}
+
+function posla_tenant_delete_query(PDO $pdo, string $tableName, string $sql, array $params, array &$deletedCounts): void
+{
+    if (!posla_tenant_table_exists($pdo, $tableName)) {
+        return;
+    }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $count = $stmt->rowCount();
+    if ($count > 0) {
+        if (!isset($deletedCounts[$tableName])) {
+            $deletedCounts[$tableName] = 0;
+        }
+        $deletedCounts[$tableName] += $count;
+    }
+}
+
+function posla_tenant_delete_blockers(PDO $pdo, string $tenantId): array
+{
+    $checks = [
+        [
+            'table' => 'orders',
+            'label' => '注文',
+            'sql' => 'SELECT COUNT(*) FROM orders o INNER JOIN stores s ON s.id = o.store_id WHERE s.tenant_id = ?',
+        ],
+        [
+            'table' => 'payments',
+            'label' => '会計',
+            'sql' => 'SELECT COUNT(*) FROM payments p INNER JOIN stores s ON s.id = p.store_id WHERE s.tenant_id = ?',
+        ],
+        [
+            'table' => 'emergency_payments',
+            'label' => '緊急会計',
+            'sql' => 'SELECT COUNT(*) FROM emergency_payments WHERE tenant_id = ?',
+        ],
+        [
+            'table' => 'reservations',
+            'label' => '予約',
+            'sql' => 'SELECT COUNT(*) FROM reservations WHERE tenant_id = ?',
+        ],
+        [
+            'table' => 'table_sessions',
+            'label' => '来店セッション',
+            'sql' => 'SELECT COUNT(*) FROM table_sessions ts INNER JOIN stores s ON s.id = ts.store_id WHERE s.tenant_id = ?',
+        ],
+        [
+            'table' => 'cash_log',
+            'label' => 'レジ金ログ',
+            'sql' => 'SELECT COUNT(*) FROM cash_log cl INNER JOIN stores s ON s.id = cl.store_id WHERE s.tenant_id = ?',
+        ],
+        [
+            'table' => 'receipts',
+            'label' => '領収書',
+            'sql' => 'SELECT COUNT(*) FROM receipts WHERE tenant_id = ?',
+        ],
+        [
+            'table' => 'attendance_logs',
+            'label' => '勤怠ログ',
+            'sql' => 'SELECT COUNT(*) FROM attendance_logs WHERE tenant_id = ?',
+        ],
+        [
+            'table' => 'shift_assignments',
+            'label' => 'シフト',
+            'sql' => 'SELECT COUNT(*) FROM shift_assignments WHERE tenant_id = ?',
+        ],
+    ];
+
+    $blockers = [];
+    foreach ($checks as $check) {
+        $count = posla_tenant_count_query($pdo, $check['table'], $check['sql'], [$tenantId]);
+        if ($count > 0) {
+            $blockers[] = [
+                'label' => $check['label'],
+                'table' => $check['table'],
+                'count' => $count,
+            ];
+        }
+    }
+
+    return $blockers;
+}
+
+function posla_tenant_fetch_cell_ids(PDO $pdo, string $tenantId): array
+{
+    if (!posla_tenant_table_exists($pdo, 'posla_cell_registry')) {
+        return [];
+    }
+
+    $stmt = $pdo->prepare('SELECT cell_id FROM posla_cell_registry WHERE tenant_id = ?');
+    $stmt->execute([$tenantId]);
+    $rows = $stmt->fetchAll();
+    $ids = [];
+    foreach ($rows as $row) {
+        if (!empty($row['cell_id'])) {
+            $ids[] = (string)$row['cell_id'];
+        }
+    }
+    return $ids;
+}
+
+function posla_tenant_delete_data(PDO $pdo, string $tenantId): array
+{
+    $deleted = [];
+    $cellIds = posla_tenant_fetch_cell_ids($pdo, $tenantId);
+
+    // Control-plane records and feature flag overrides.
+    posla_tenant_delete_query(
+        $pdo,
+        'posla_feature_flag_overrides',
+        "DELETE FROM posla_feature_flag_overrides WHERE scope_type = 'tenant' AND scope_id = ?",
+        [$tenantId],
+        $deleted
+    );
+    foreach ($cellIds as $cellId) {
+        posla_tenant_delete_query(
+            $pdo,
+            'posla_feature_flag_overrides',
+            "DELETE FROM posla_feature_flag_overrides WHERE scope_type = 'cell' AND scope_id = ?",
+            [$cellId],
+            $deleted
+        );
+    }
+    posla_tenant_delete_query($pdo, 'posla_tenant_onboarding_requests', 'DELETE FROM posla_tenant_onboarding_requests WHERE tenant_id = ?', [$tenantId], $deleted);
+    posla_tenant_delete_query($pdo, 'posla_cell_registry', 'DELETE FROM posla_cell_registry WHERE tenant_id = ?', [$tenantId], $deleted);
+
+    // Records that reference users/help requests must be removed before users.
+    posla_tenant_delete_query(
+        $pdo,
+        'shift_help_assignments',
+        'DELETE sha FROM shift_help_assignments sha INNER JOIN shift_help_requests shr ON shr.id = sha.help_request_id WHERE shr.tenant_id = ?',
+        [$tenantId],
+        $deleted
+    );
+    posla_tenant_delete_query(
+        $pdo,
+        'shift_help_assignments',
+        'DELETE sha FROM shift_help_assignments sha INNER JOIN users u ON u.id = sha.user_id WHERE u.tenant_id = ?',
+        [$tenantId],
+        $deleted
+    );
+
+    $tenantScopedTables = [
+        'takeout_order_line_link_tokens',
+        'takeout_order_line_links',
+        'reservation_customer_line_links',
+        'reservation_customer_line_link_tokens',
+        'tenant_line_settings',
+        'subscription_events',
+        'push_send_log',
+        'push_subscriptions',
+        'monitor_events',
+        'error_log',
+        'audit_log',
+        'device_registration_tokens',
+        'attendance_logs',
+        'shift_availabilities',
+        'shift_assignments',
+        'shift_help_requests',
+        'shift_templates',
+        'shift_settings',
+        'emergency_payment_orders',
+        'emergency_payments',
+        'smaregi_product_mapping',
+        'smaregi_store_mapping',
+        'inventory_consumption_log',
+        'menu_translations',
+    ];
+
+    foreach ($tenantScopedTables as $table) {
+        posla_tenant_delete_query($pdo, $table, 'DELETE FROM `' . $table . '` WHERE tenant_id = ?', [$tenantId], $deleted);
+    }
+
+    // Store-scoped operational/support tables. Business tables are already guarded above.
+    $storeScopedTables = [
+        'reservation_notifications_log',
+        'reservation_holds',
+        'reservation_courses',
+        'reservation_settings',
+        'table_sub_sessions',
+        'table_sessions',
+        'satisfaction_ratings',
+        'order_rate_log',
+        'cart_events',
+        'call_alerts',
+        'cash_log',
+        'daily_recommendations',
+        'store_menu_overrides',
+        'store_option_overrides',
+        'store_local_items',
+        'kds_stations',
+        'course_templates',
+        'time_limit_plans',
+        'tables',
+        'store_settings',
+    ];
+
+    foreach ($storeScopedTables as $table) {
+        posla_tenant_delete_query(
+            $pdo,
+            $table,
+            'DELETE t FROM `' . $table . '` t INNER JOIN stores s ON s.id = t.store_id WHERE s.tenant_id = ?',
+            [$tenantId],
+            $deleted
+        );
+    }
+
+    // Tenant-scoped master data. Order matters because several child tables reference these rows.
+    $masterTables = [
+        'menu_templates',
+        'option_groups',
+        'ingredients',
+        'categories',
+        'reservation_customers',
+    ];
+
+    foreach ($masterTables as $table) {
+        posla_tenant_delete_query($pdo, $table, 'DELETE FROM `' . $table . '` WHERE tenant_id = ?', [$tenantId], $deleted);
+    }
+
+    posla_tenant_delete_query(
+        $pdo,
+        'user_sessions',
+        'DELETE FROM user_sessions WHERE tenant_id = ?',
+        [$tenantId],
+        $deleted
+    );
+    posla_tenant_delete_query(
+        $pdo,
+        'user_stores',
+        'DELETE us FROM user_stores us INNER JOIN users u ON u.id = us.user_id WHERE u.tenant_id = ?',
+        [$tenantId],
+        $deleted
+    );
+    posla_tenant_delete_query(
+        $pdo,
+        'user_stores',
+        'DELETE us FROM user_stores us INNER JOIN stores s ON s.id = us.store_id WHERE s.tenant_id = ?',
+        [$tenantId],
+        $deleted
+    );
+    posla_tenant_delete_query($pdo, 'users', 'DELETE FROM users WHERE tenant_id = ?', [$tenantId], $deleted);
+    posla_tenant_delete_query($pdo, 'stores', 'DELETE FROM stores WHERE tenant_id = ?', [$tenantId], $deleted);
+    posla_tenant_delete_query($pdo, 'tenants', 'DELETE FROM tenants WHERE id = ?', [$tenantId], $deleted);
+
+    return $deleted;
 }
 
 // ============================================================
@@ -190,6 +476,95 @@ if ($method === 'PATCH') {
     );
 
     json_response(['message' => 'テナントを更新しました']);
+}
+
+// ============================================================
+// DELETE — 削除
+// ============================================================
+if ($method === 'DELETE') {
+    $input = get_json_body();
+    $id = trim((string)($input['id'] ?? ''));
+    $confirmSlug = trim((string)($input['confirm_slug'] ?? ''));
+    $billingAck = !empty($input['acknowledge_external_billing']);
+
+    if ($id === '') {
+        json_error('MISSING_ID', 'テナントIDは必須です', 400);
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT id, slug, name, plan, is_active, hq_menu_broadcast,
+                stripe_customer_id, stripe_subscription_id, subscription_status
+           FROM tenants
+          WHERE id = ?
+          LIMIT 1'
+    );
+    $stmt->execute([$id]);
+    $tenant = $stmt->fetch();
+    if (!$tenant) {
+        json_error('NOT_FOUND', 'テナントが見つかりません', 404);
+    }
+
+    if ($confirmSlug !== (string)$tenant['slug']) {
+        json_error('CONFIRM_SLUG_MISMATCH', '削除確認としてテナント slug を正確に入力してください', 400);
+    }
+
+    $hasStripeRef = !empty($tenant['stripe_customer_id']) || !empty($tenant['stripe_subscription_id']);
+    $activeBilling = in_array((string)($tenant['subscription_status'] ?? ''), ['active', 'trialing', 'past_due'], true);
+    if (($hasStripeRef || $activeBilling) && !$billingAck) {
+        json_error('EXTERNAL_BILLING_ACK_REQUIRED', 'Stripe側の契約・顧客情報は自動削除されません。外部課金の確認後に再実行してください', 409);
+    }
+
+    $blockers = posla_tenant_delete_blockers($pdo, $id);
+    if (!empty($blockers)) {
+        $labels = [];
+        foreach ($blockers as $blocker) {
+            $labels[] = $blocker['label'] . ':' . $blocker['count'];
+        }
+        json_error(
+            'TENANT_HAS_OPERATIONAL_DATA',
+            '実運用データがあるテナントは削除できません。先に無効化または個別バックアップ/退会手順を実施してください（' . implode(', ', $labels) . '）',
+            409
+        );
+    }
+
+    $oldValue = build_tenant_audit_value($tenant);
+    $batchId = generate_uuid();
+
+    $pdo->beginTransaction();
+    try {
+        $deletedCounts = posla_tenant_delete_data($pdo, $id);
+        if (empty($deletedCounts['tenants'])) {
+            throw new RuntimeException('tenant row was not deleted');
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('[api/posla/tenants.php] delete tenant failed: ' . $e->getMessage());
+        json_error('DELETE_TENANT_FAILED', 'テナント削除に失敗しました。関連データが残っている可能性があります', 500);
+    }
+
+    posla_admin_write_audit_log(
+        $pdo,
+        $admin,
+        'tenant_delete',
+        'tenant',
+        $id,
+        $oldValue,
+        [
+            'deleted' => true,
+            'deleted_counts' => $deletedCounts,
+            'external_billing_acknowledged' => $billingAck ? 1 : 0,
+        ],
+        'POSLA管理画面からテナントを削除',
+        $batchId
+    );
+
+    json_response([
+        'message' => 'テナントを削除しました',
+        'deleted_counts' => $deletedCounts,
+    ]);
 }
 
 // ============================================================

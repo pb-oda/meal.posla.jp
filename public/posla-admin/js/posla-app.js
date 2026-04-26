@@ -109,6 +109,16 @@
         if (btn) {
           var id = btn.getAttribute('data-id');
           openTenantModal(id);
+          return;
+        }
+
+        btn = e.target.closest('[data-action="delete-tenant"]');
+        if (btn) {
+          deleteTenant(
+            btn.getAttribute('data-id'),
+            btn.getAttribute('data-slug'),
+            btn.getAttribute('data-name')
+          );
         }
       });
     }
@@ -1745,7 +1755,10 @@
             '<td>' + subHtml + '</td>' +
             '<td>' + connectHtml + '</td>' +
             '<td><span class="badge badge--' + activeClass + '">' + activeLabel + '</span></td>' +
-            '<td><button class="btn btn-sm btn-outline" data-action="edit-tenant" data-id="' + Utils.escapeHtml(t.id) + '">編集</button></td>' +
+            '<td><div style="display:flex;flex-wrap:wrap;gap:0.35rem;">' +
+              '<button class="btn btn-sm btn-outline" data-action="edit-tenant" data-id="' + Utils.escapeHtml(t.id) + '">編集</button>' +
+              '<button class="btn btn-sm btn-outline" style="border-color:#f5c2c7;color:#b42318;" data-action="delete-tenant" data-id="' + Utils.escapeHtml(t.id) + '" data-slug="' + Utils.escapeHtml(t.slug) + '" data-name="' + Utils.escapeHtml(t.name) + '">削除</button>' +
+            '</div></td>' +
             '</tr>';
         }
       }
@@ -1829,6 +1842,39 @@
       showToast('更新に失敗しました: ' + err.message);
     }).then(function() {
       saveBtn.disabled = false;
+    });
+  }
+
+  function deleteTenant(id, slug, name) {
+    if (!id || !slug) return;
+
+    var title = name || slug;
+    var firstConfirm = 'テナント「' + title + '」を削除します。\n\n'
+      + 'この操作はPOSLA管理DB上のテナント、初期店舗、初期ユーザー、未使用の導入データを削除します。\n'
+      + '注文・会計・予約・勤怠などの実運用データがある場合、API側で削除を拒否します。\n'
+      + 'Stripe側の契約や顧客情報、既に作成済みのcell実体は自動削除されません。\n\n'
+      + '続行しますか？';
+    if (!window.confirm(firstConfirm)) return;
+
+    var confirmSlug = window.prompt('削除確認のため、テナント slug を入力してください: ' + slug);
+    if (confirmSlug === null) return;
+    confirmSlug = confirmSlug.trim();
+    if (confirmSlug !== slug) {
+      showToast('slug が一致しないため削除しませんでした');
+      return;
+    }
+
+    PoslaApi.deleteTenant(id, {
+      confirm_slug: confirmSlug,
+      acknowledge_external_billing: true
+    }).then(function() {
+      showToast('テナントを削除しました');
+      _featureFlagState.tenantsLoaded = false;
+      loadTenants();
+      loadDashboard();
+      loadFeatureFlagTenants();
+    }).catch(function(err) {
+      showToast('削除に失敗しました: ' + err.message);
     });
   }
 
