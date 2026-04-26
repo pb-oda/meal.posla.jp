@@ -590,6 +590,74 @@
     .posla-admin-page #settings-audit-list .data-table {
       min-width: 980px;
     }
+    .release-readiness {
+      background: #fff;
+      border: 1px solid #dde3f5;
+      border-radius: 8px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 1.2rem;
+      padding: 1rem;
+    }
+    .release-readiness__head {
+      align-items: flex-start;
+      display: flex;
+      gap: 1rem;
+      justify-content: space-between;
+      margin-bottom: 0.9rem;
+    }
+    .release-readiness__title {
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+    .release-readiness__meta {
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      line-height: 1.6;
+      margin-top: 0.2rem;
+    }
+    .release-readiness__checks {
+      display: grid;
+      gap: 0.65rem;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+    .release-readiness-check {
+      background: #f8faff;
+      border: 1px solid #dfe4f5;
+      border-left: 4px solid #90a4ae;
+      border-radius: 8px;
+      min-height: 94px;
+      padding: 0.75rem 0.8rem;
+    }
+    .release-readiness-check--ok {
+      border-left-color: var(--success);
+    }
+    .release-readiness-check--warn {
+      border-left-color: #fb8c00;
+    }
+    .release-readiness-check--fail {
+      border-left-color: var(--danger);
+    }
+    .release-readiness-check__label {
+      color: var(--text-secondary);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .release-readiness-check__value {
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 700;
+      margin-top: 0.25rem;
+    }
+    .release-readiness-check__detail {
+      color: var(--text-secondary);
+      font-size: 0.76rem;
+      line-height: 1.5;
+      margin-top: 0.32rem;
+    }
     .feature-flag-summary {
       display: grid;
       gap: 0.75rem;
@@ -1246,6 +1314,7 @@
         </div>
       </div>
       <div id="overview-stats" class="stat-grid"></div>
+      <div id="release-readiness"></div>
       <div class="panel-grid">
         <section class="card card--tint table-card">
           <div class="card__header">
@@ -1935,7 +2004,7 @@
 
   <script src="../shared/js/utils.js"></script>
   <script src="js/posla-api.js?v=20260426-cellprov1"></script>
-  <script src="js/posla-app.js?v=20260426-admin-ui1"></script>
+  <script src="js/posla-app.js?v=20260426-release-ready1"></script>
 
   <!-- パスワード変更モーダル（P1-5） -->
   <div class="modal-overlay" id="password-change-overlay" style="display:none;opacity:1;visibility:visible;">

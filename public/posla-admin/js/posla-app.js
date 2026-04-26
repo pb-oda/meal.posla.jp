@@ -1259,6 +1259,53 @@
     return html;
   }
 
+  function renderReleaseReadiness(readiness) {
+    var root = document.getElementById('release-readiness');
+    var checks = readiness.checks || [];
+    var status = readiness.status || 'warn';
+    var statusTone = status === 'ok' ? 'ok' : (status === 'fail' ? 'danger' : 'warn');
+    var html = '';
+    var i;
+    var check;
+    var checkTone;
+
+    if (!root) return;
+
+    html += '<section class="release-readiness">' +
+      '<div class="release-readiness__head">' +
+        '<div>' +
+          '<div class="release-readiness__title">リリース準備状況</div>' +
+          '<div class="release-readiness__meta">Cell / snapshot / Tier0 / onboarding をまとめて確認します。完了 ' +
+            escapeHtml(String(readiness.completed_checks || 0)) + ' / ' + escapeHtml(String(readiness.total_checks || 0)) +
+            ' ・ 要対応 ' + escapeHtml(String(readiness.failure_count || 0)) +
+            ' ・ 要確認 ' + escapeHtml(String(readiness.warning_count || 0)) + '</div>' +
+        '</div>' +
+        _buildStatusPill(readiness.label || '要確認あり', statusTone) +
+      '</div>' +
+      '<div class="release-readiness__checks">';
+
+    if (!checks.length) {
+      html += '<div class="release-readiness-check release-readiness-check--warn">' +
+        '<div class="release-readiness-check__label">No data</div>' +
+        '<div class="release-readiness-check__value">未取得</div>' +
+        '<div class="release-readiness-check__detail">ダッシュボードAPIの readiness 情報を確認してください。</div>' +
+      '</div>';
+    } else {
+      for (i = 0; i < checks.length; i++) {
+        check = checks[i] || {};
+        checkTone = check.status === 'ok' ? 'ok' : (check.status === 'fail' ? 'fail' : 'warn');
+        html += '<div class="release-readiness-check release-readiness-check--' + checkTone + '">' +
+          '<div class="release-readiness-check__label">' + escapeHtml(check.label || '-') + '</div>' +
+          '<div class="release-readiness-check__value">' + escapeHtml(check.value || '-') + '</div>' +
+          '<div class="release-readiness-check__detail">' + escapeHtml(check.detail || '-') + '</div>' +
+        '</div>';
+      }
+    }
+
+    html += '</div></section>';
+    root.innerHTML = html;
+  }
+
   function renderTenantCreateResult(data) {
     var container = document.getElementById('tenant-create-result');
     var bootstrap = data && data.bootstrap ? data.bootstrap : {};
@@ -1588,6 +1635,8 @@
           '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.alertTenantCount || 0)) + '</div><div class="stat-card__label">要対応テナント</div></div>' +
           '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.cellOnboardingPendingCount || 0)) + '</div><div class="stat-card__label">Cell作成待ち</div></div>';
       }
+
+      renderReleaseReadiness(data.releaseReadiness || {});
 
       // 契約構成
       var planEl = document.getElementById('plan-distribution');

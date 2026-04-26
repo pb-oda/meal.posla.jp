@@ -73,7 +73,8 @@ scripts/cell/cell.sh cell-a migrate sql/migration-p1-41-cell-registry.sql
 scripts/cell/cell.sh cell-a register-db
 ```
 
-Create the first tenant / store / owner account in one cell:
+Create the first tenant / store / owner / manager / staff / device accounts in
+one cell:
 
 ```bash
 POSLA_OWNER_PASSWORD='replace-with-initial-password' \
@@ -83,8 +84,17 @@ scripts/cell/cell.sh cell-a smoke
 ```
 
 `onboard-tenant` creates active `tenants`, `stores`, `users`, and `user_stores`
-records in the target cell DB only. It also writes tenant metadata into
-`posla_cell_registry` when the registry table exists.
+records in the target cell DB only. The initial role set mirrors POSLA admin
+tenant creation: `owner`, `manager`, `staff`, and `device`. It also writes tenant
+metadata into `posla_cell_registry` when the registry table exists.
+
+If a pre-existing cell was created with only an owner account, repair it before
+release readiness checks:
+
+```bash
+POSLA_OPS_USER_PASSWORD='replace-with-temporary-password' \
+  scripts/cell/cell.sh cell-a ensure-ops-users tenant-a
+```
 
 Rollback from a backup:
 

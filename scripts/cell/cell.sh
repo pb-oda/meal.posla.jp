@@ -28,7 +28,9 @@ Commands:
   rollback <backup|latest> Restore env/DB from backup, then deploy this cell
   smoke    Run app / DB / cell metadata smoke checks for this cell
   onboard-tenant <tenant-slug> <tenant-name> <store-name> <owner-username> [owner-display-name] [owner-email]
-           Create the first tenant / store / owner inside this cell DB
+           Create the first tenant / store / owner / manager / staff / device inside this cell DB
+  ensure-ops-users [tenant-slug]
+           Add missing manager / staff / device accounts for an existing cell tenant
   down     Stop the cell
   ps       Show cell containers
   logs     Show recent php logs
@@ -44,6 +46,7 @@ Environment:
   POSLA_CELL_RESTORE_CONFIRM=<cell-id> required for restore-env / restore-db
   POSLA_CELL_SMOKE_STRICT=1 treats missing ledger / registry metadata as failure
   POSLA_OWNER_PASSWORD  Required by onboard-tenant
+  POSLA_OPS_USER_PASSWORD Required by ensure-ops-users; POSLA_OWNER_PASSWORD is accepted as fallback
   POSLA_STORE_SLUG      Store slug for onboard-tenant (default: default)
   POSLA_SUBSCRIPTION_STATUS  Tenant subscription status (default: trialing)
 USAGE
@@ -156,12 +159,12 @@ validate_slug() {
 validate_username() {
   case "$1" in
     *[!a-zA-Z0-9_-]*|'')
-      echo "Invalid owner username: $1" >&2
+      echo "Invalid username: $1" >&2
       exit 2
       ;;
   esac
   if [ "${#1}" -lt 3 ] || [ "${#1}" -gt 50 ]; then
-    echo "Owner username must be 3-50 chars." >&2
+    echo "Username must be 3-50 chars." >&2
     exit 2
   fi
 }
@@ -427,6 +430,15 @@ table_exists() {
   [ "$count" = "1" ]
 }
 
+column_exists() {
+  table_name="$1"
+  column_name="$2"
+  escaped_table="$(sql_escape "$table_name")"
+  escaped_column="$(sql_escape "$column_name")"
+  count="$(compose exec -T db sh -c "mysql --default-character-set=utf8mb4 -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" -Nse \"SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '${escaped_table}' AND column_name = '${escaped_column}'\" \"\$MYSQL_DATABASE\"" 2>/dev/null || printf '0')"
+  [ "$count" = "1" ]
+}
+
 mysql_scalar() {
   sql="$1"
   compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -Nse "$1" "$MYSQL_DATABASE"' sh "$sql"
@@ -616,10 +628,19 @@ onboard_tenant() {
   subscription_status="${POSLA_SUBSCRIPTION_STATUS:-trialing}"
   hq_menu_broadcast="${POSLA_HQ_MENU_BROADCAST:-0}"
   owner_password="${POSLA_OWNER_PASSWORD:-}"
+  manager_username="${POSLA_MANAGER_USERNAME:-${tenant_slug}-manager}"
+  staff_username="${POSLA_STAFF_USERNAME:-${tenant_slug}-staff}"
+  device_username="${POSLA_DEVICE_USERNAME:-${tenant_slug}-kds01}"
+  manager_display_name="${POSLA_MANAGER_DISPLAY_NAME:-${tenant_name} Manager}"
+  staff_display_name="${POSLA_STAFF_DISPLAY_NAME:-${tenant_name} Staff}"
+  device_display_name="${POSLA_DEVICE_DISPLAY_NAME:-${tenant_name} KDS}"
 
   validate_slug "tenant slug" "$tenant_slug"
   validate_slug "store slug" "$store_slug"
   validate_username "$owner_username"
+  validate_username "$manager_username"
+  validate_username "$staff_username"
+  validate_username "$device_username"
 
   case "$subscription_status" in
     none|active|past_due|canceled|trialing) ;;
@@ -655,17 +676,19 @@ onboard_tenant() {
   done
 
   escaped_tenant_slug="$(sql_escape "$tenant_slug")"
-  escaped_owner_username="$(sql_escape "$owner_username")"
   tenant_count="$(mysql_scalar "SELECT COUNT(*) FROM tenants WHERE slug = '${escaped_tenant_slug}'" 2>/dev/null || printf '0')"
   if [ "$tenant_count" != "0" ]; then
     echo "Tenant slug already exists in $CELL_ID: $tenant_slug" >&2
     exit 1
   fi
-  user_count="$(mysql_scalar "SELECT COUNT(*) FROM users WHERE username = '${escaped_owner_username}'" 2>/dev/null || printf '0')"
-  if [ "$user_count" != "0" ]; then
-    echo "Owner username already exists in $CELL_ID: $owner_username" >&2
-    exit 1
-  fi
+  for bootstrap_username in "$owner_username" "$manager_username" "$staff_username" "$device_username"; do
+    escaped_bootstrap_username="$(sql_escape "$bootstrap_username")"
+    user_count="$(mysql_scalar "SELECT COUNT(*) FROM users WHERE username = '${escaped_bootstrap_username}'" 2>/dev/null || printf '0')"
+    if [ "$user_count" != "0" ]; then
+      echo "Bootstrap username already exists in $CELL_ID: $bootstrap_username" >&2
+      exit 1
+    fi
+  done
   if [ -n "$owner_email" ]; then
     escaped_owner_email="$(sql_escape "$owner_email")"
     email_count="$(mysql_scalar "SELECT COUNT(*) FROM users WHERE email = '${escaped_owner_email}'" 2>/dev/null || printf '0')"
@@ -678,18 +701,35 @@ onboard_tenant() {
   tenant_id="${POSLA_TENANT_ID:-$(generate_hex_id)}"
   store_id="${POSLA_STORE_ID:-$(generate_hex_id)}"
   owner_user_id="${POSLA_OWNER_USER_ID:-$(generate_hex_id)}"
+  manager_user_id="${POSLA_MANAGER_USER_ID:-$(generate_hex_id)}"
+  staff_user_id="${POSLA_STAFF_USER_ID:-$(generate_hex_id)}"
+  device_user_id="${POSLA_DEVICE_USER_ID:-$(generate_hex_id)}"
   password_hash="$(password_hash_from_php "$owner_password")"
 
   escaped_tenant_id="$(sql_escape "$tenant_id")"
   escaped_store_id="$(sql_escape "$store_id")"
   escaped_owner_user_id="$(sql_escape "$owner_user_id")"
+  escaped_manager_user_id="$(sql_escape "$manager_user_id")"
+  escaped_staff_user_id="$(sql_escape "$staff_user_id")"
+  escaped_device_user_id="$(sql_escape "$device_user_id")"
   escaped_tenant_name="$(sql_escape "$tenant_name")"
   escaped_store_slug="$(sql_escape "$store_slug")"
   escaped_store_name="$(sql_escape "$store_name")"
-  escaped_display_name="$(sql_escape "$owner_display_name")"
+  escaped_owner_display_name="$(sql_escape "$owner_display_name")"
+  escaped_manager_display_name="$(sql_escape "$manager_display_name")"
+  escaped_staff_display_name="$(sql_escape "$staff_display_name")"
+  escaped_device_display_name="$(sql_escape "$device_display_name")"
+  escaped_owner_username="$(sql_escape "$owner_username")"
+  escaped_manager_username="$(sql_escape "$manager_username")"
+  escaped_staff_username="$(sql_escape "$staff_username")"
+  escaped_device_username="$(sql_escape "$device_username")"
   escaped_password_hash="$(sql_escape "$password_hash")"
   owner_email_sql="$(sql_nullable "$owner_email")"
   escaped_subscription_status="$(sql_escape "$subscription_status")"
+  has_visible_tools=0
+  if column_exists "user_stores" "visible_tools"; then
+    has_visible_tools=1
+  fi
 
   {
     printf 'START TRANSACTION;\n'
@@ -702,9 +742,20 @@ onboard_tenant() {
         "$escaped_store_id" "$escaped_store_name"
     fi
     printf "INSERT INTO users (id, tenant_id, email, username, password_hash, display_name, role, is_active, created_at, updated_at) VALUES ('%s', '%s', %s, '%s', '%s', '%s', 'owner', 1, NOW(), NOW());\n" \
-      "$escaped_owner_user_id" "$escaped_tenant_id" "$owner_email_sql" "$escaped_owner_username" "$escaped_password_hash" "$escaped_display_name"
-    printf "INSERT INTO user_stores (user_id, store_id) VALUES ('%s', '%s');\n" \
-      "$escaped_owner_user_id" "$escaped_store_id"
+      "$escaped_owner_user_id" "$escaped_tenant_id" "$owner_email_sql" "$escaped_owner_username" "$escaped_password_hash" "$escaped_owner_display_name"
+    printf "INSERT INTO users (id, tenant_id, email, username, password_hash, display_name, role, is_active, created_at, updated_at) VALUES ('%s', '%s', NULL, '%s', '%s', '%s', 'manager', 1, NOW(), NOW());\n" \
+      "$escaped_manager_user_id" "$escaped_tenant_id" "$escaped_manager_username" "$escaped_password_hash" "$escaped_manager_display_name"
+    printf "INSERT INTO users (id, tenant_id, email, username, password_hash, display_name, role, is_active, created_at, updated_at) VALUES ('%s', '%s', NULL, '%s', '%s', '%s', 'staff', 1, NOW(), NOW());\n" \
+      "$escaped_staff_user_id" "$escaped_tenant_id" "$escaped_staff_username" "$escaped_password_hash" "$escaped_staff_display_name"
+    printf "INSERT INTO users (id, tenant_id, email, username, password_hash, display_name, role, is_active, created_at, updated_at) VALUES ('%s', '%s', NULL, '%s', '%s', '%s', 'device', 1, NOW(), NOW());\n" \
+      "$escaped_device_user_id" "$escaped_tenant_id" "$escaped_device_username" "$escaped_password_hash" "$escaped_device_display_name"
+    if [ "$has_visible_tools" = "1" ]; then
+      printf "INSERT INTO user_stores (user_id, store_id, visible_tools) VALUES ('%s', '%s', NULL), ('%s', '%s', NULL), ('%s', '%s', NULL), ('%s', '%s', 'kds,register');\n" \
+        "$escaped_owner_user_id" "$escaped_store_id" "$escaped_manager_user_id" "$escaped_store_id" "$escaped_staff_user_id" "$escaped_store_id" "$escaped_device_user_id" "$escaped_store_id"
+    else
+      printf "INSERT INTO user_stores (user_id, store_id) VALUES ('%s', '%s'), ('%s', '%s'), ('%s', '%s'), ('%s', '%s');\n" \
+        "$escaped_owner_user_id" "$escaped_store_id" "$escaped_manager_user_id" "$escaped_store_id" "$escaped_staff_user_id" "$escaped_store_id" "$escaped_device_user_id" "$escaped_store_id"
+    fi
     printf 'COMMIT;\n'
   } | compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
 
@@ -728,6 +779,168 @@ onboard_tenant() {
   echo "store_slug=$store_slug"
   echo "owner_user_id=$owner_user_id"
   echo "owner_username=$owner_username"
+  echo "manager_user_id=$manager_user_id"
+  echo "manager_username=$manager_username"
+  echo "staff_user_id=$staff_user_id"
+  echo "staff_username=$staff_username"
+  echo "device_user_id=$device_user_id"
+  echo "device_username=$device_username"
+}
+
+ensure_ops_users() {
+  tenant_slug_filter="${1:-}"
+  ops_password="${POSLA_OPS_USER_PASSWORD:-${POSLA_OWNER_PASSWORD:-}}"
+
+  if [ -n "$tenant_slug_filter" ]; then
+    validate_slug "tenant slug" "$tenant_slug_filter"
+  fi
+  if [ -z "$ops_password" ]; then
+    echo "POSLA_OPS_USER_PASSWORD is required for ensure-ops-users." >&2
+    echo "POSLA_OWNER_PASSWORD is accepted as a fallback for local repair runs." >&2
+    exit 2
+  fi
+  if ! db_mysql_ready; then
+    echo "DB is not ready for $CELL_ID. Deploy or start the cell before ensure-ops-users." >&2
+    exit 1
+  fi
+  for required_table in tenants stores users user_stores; do
+    if ! table_exists "$required_table"; then
+      echo "Required table missing: $required_table" >&2
+      exit 1
+    fi
+  done
+
+  if [ -n "$tenant_slug_filter" ]; then
+    escaped_filter="$(sql_escape "$tenant_slug_filter")"
+    tenant_count="$(mysql_scalar "SELECT COUNT(*) FROM tenants WHERE slug = '${escaped_filter}'" 2>/dev/null || printf '0')"
+    tenant_where="slug = '${escaped_filter}'"
+  else
+    tenant_count="$(mysql_scalar "SELECT COUNT(*) FROM tenants" 2>/dev/null || printf '0')"
+    tenant_where="1 = 1"
+  fi
+
+  if [ "$tenant_count" != "1" ]; then
+    echo "ensure-ops-users requires exactly one target tenant. Found: $tenant_count" >&2
+    echo "Pass tenant slug explicitly: scripts/cell/cell.sh $CELL_ID ensure-ops-users <tenant-slug>" >&2
+    exit 1
+  fi
+
+  tenant_row="$(compose exec -T db sh -c "mysql --default-character-set=utf8mb4 -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" --batch --skip-column-names \"\$MYSQL_DATABASE\" -e \"SELECT CONCAT_WS('|', id, slug, REPLACE(name, '|', ' ')) FROM tenants WHERE ${tenant_where} LIMIT 1\"" 2>/dev/null || true)"
+  if [ -z "$tenant_row" ]; then
+    echo "Target tenant was not found." >&2
+    exit 1
+  fi
+  old_ifs="$IFS"
+  IFS="|"
+  # shellcheck disable=SC2086
+  set -- $tenant_row
+  IFS="$old_ifs"
+  tenant_id="$1"
+  tenant_slug="$2"
+  tenant_name="$3"
+
+  escaped_tenant_id="$(sql_escape "$tenant_id")"
+  store_row="$(compose exec -T db sh -c "mysql --default-character-set=utf8mb4 -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" --batch --skip-column-names \"\$MYSQL_DATABASE\" -e \"SELECT CONCAT_WS('|', id, slug, REPLACE(name, '|', ' ')) FROM stores WHERE tenant_id = '${escaped_tenant_id}' ORDER BY created_at ASC, id ASC LIMIT 1\"" 2>/dev/null || true)"
+  if [ -z "$store_row" ]; then
+    echo "Target tenant has no store. Create a store before ensure-ops-users." >&2
+    exit 1
+  fi
+  old_ifs="$IFS"
+  IFS="|"
+  # shellcheck disable=SC2086
+  set -- $store_row
+  IFS="$old_ifs"
+  store_id="$1"
+
+  password_hash="$(password_hash_from_php "$ops_password")"
+  escaped_password_hash="$(sql_escape "$password_hash")"
+  escaped_store_id="$(sql_escape "$store_id")"
+  has_visible_tools=0
+  if column_exists "user_stores" "visible_tools"; then
+    has_visible_tools=1
+  fi
+
+  manager_exists="$(mysql_scalar "SELECT COUNT(*) FROM users WHERE tenant_id = '${escaped_tenant_id}' AND role = 'manager' AND is_active = 1" 2>/dev/null || printf '0')"
+  staff_exists="$(mysql_scalar "SELECT COUNT(*) FROM users WHERE tenant_id = '${escaped_tenant_id}' AND role = 'staff' AND is_active = 1" 2>/dev/null || printf '0')"
+  device_exists="$(mysql_scalar "SELECT COUNT(*) FROM users WHERE tenant_id = '${escaped_tenant_id}' AND role = 'device' AND is_active = 1" 2>/dev/null || printf '0')"
+
+  manager_username="${POSLA_MANAGER_USERNAME:-${tenant_slug}-manager}"
+  staff_username="${POSLA_STAFF_USERNAME:-${tenant_slug}-staff}"
+  device_username="${POSLA_DEVICE_USERNAME:-${tenant_slug}-kds01}"
+  manager_display_name="${POSLA_MANAGER_DISPLAY_NAME:-${tenant_name} Manager}"
+  staff_display_name="${POSLA_STAFF_DISPLAY_NAME:-${tenant_name} Staff}"
+  device_display_name="${POSLA_DEVICE_DISPLAY_NAME:-${tenant_name} KDS}"
+  manager_user_id="${POSLA_MANAGER_USER_ID:-$(generate_hex_id)}"
+  staff_user_id="${POSLA_STAFF_USER_ID:-$(generate_hex_id)}"
+  device_user_id="${POSLA_DEVICE_USER_ID:-$(generate_hex_id)}"
+
+  if [ "$manager_exists" = "0" ]; then validate_username "$manager_username"; fi
+  if [ "$staff_exists" = "0" ]; then validate_username "$staff_username"; fi
+  if [ "$device_exists" = "0" ]; then validate_username "$device_username"; fi
+
+  for role_username in "$manager_username" "$staff_username" "$device_username"; do
+    escaped_role_username="$(sql_escape "$role_username")"
+    username_count="$(mysql_scalar "SELECT COUNT(*) FROM users WHERE username = '${escaped_role_username}'" 2>/dev/null || printf '0')"
+    if [ "$username_count" != "0" ]; then
+      role_count="$(mysql_scalar "SELECT COUNT(*) FROM users WHERE username = '${escaped_role_username}' AND tenant_id = '${escaped_tenant_id}' AND role IN ('manager', 'staff', 'device')" 2>/dev/null || printf '0')"
+      if [ "$role_count" = "0" ]; then
+        echo "Username already exists and is not one of the target ops roles: $role_username" >&2
+        exit 1
+      fi
+    fi
+  done
+
+  if [ "$manager_exists" != "0" ] && [ "$staff_exists" != "0" ] && [ "$device_exists" != "0" ]; then
+    echo "Ops users already exist in $CELL_ID for tenant $tenant_slug"
+    return 0
+  fi
+
+  escaped_manager_user_id="$(sql_escape "$manager_user_id")"
+  escaped_staff_user_id="$(sql_escape "$staff_user_id")"
+  escaped_device_user_id="$(sql_escape "$device_user_id")"
+  escaped_manager_username="$(sql_escape "$manager_username")"
+  escaped_staff_username="$(sql_escape "$staff_username")"
+  escaped_device_username="$(sql_escape "$device_username")"
+  escaped_manager_display_name="$(sql_escape "$manager_display_name")"
+  escaped_staff_display_name="$(sql_escape "$staff_display_name")"
+  escaped_device_display_name="$(sql_escape "$device_display_name")"
+
+  {
+    printf 'START TRANSACTION;\n'
+    if [ "$manager_exists" = "0" ]; then
+      printf "INSERT INTO users (id, tenant_id, email, username, password_hash, display_name, role, is_active, created_at, updated_at) VALUES ('%s', '%s', NULL, '%s', '%s', '%s', 'manager', 1, NOW(), NOW());\n" \
+        "$escaped_manager_user_id" "$escaped_tenant_id" "$escaped_manager_username" "$escaped_password_hash" "$escaped_manager_display_name"
+      if [ "$has_visible_tools" = "1" ]; then
+        printf "INSERT INTO user_stores (user_id, store_id, visible_tools) VALUES ('%s', '%s', NULL);\n" "$escaped_manager_user_id" "$escaped_store_id"
+      else
+        printf "INSERT INTO user_stores (user_id, store_id) VALUES ('%s', '%s');\n" "$escaped_manager_user_id" "$escaped_store_id"
+      fi
+    fi
+    if [ "$staff_exists" = "0" ]; then
+      printf "INSERT INTO users (id, tenant_id, email, username, password_hash, display_name, role, is_active, created_at, updated_at) VALUES ('%s', '%s', NULL, '%s', '%s', '%s', 'staff', 1, NOW(), NOW());\n" \
+        "$escaped_staff_user_id" "$escaped_tenant_id" "$escaped_staff_username" "$escaped_password_hash" "$escaped_staff_display_name"
+      if [ "$has_visible_tools" = "1" ]; then
+        printf "INSERT INTO user_stores (user_id, store_id, visible_tools) VALUES ('%s', '%s', NULL);\n" "$escaped_staff_user_id" "$escaped_store_id"
+      else
+        printf "INSERT INTO user_stores (user_id, store_id) VALUES ('%s', '%s');\n" "$escaped_staff_user_id" "$escaped_store_id"
+      fi
+    fi
+    if [ "$device_exists" = "0" ]; then
+      printf "INSERT INTO users (id, tenant_id, email, username, password_hash, display_name, role, is_active, created_at, updated_at) VALUES ('%s', '%s', NULL, '%s', '%s', '%s', 'device', 1, NOW(), NOW());\n" \
+        "$escaped_device_user_id" "$escaped_tenant_id" "$escaped_device_username" "$escaped_password_hash" "$escaped_device_display_name"
+      if [ "$has_visible_tools" = "1" ]; then
+        printf "INSERT INTO user_stores (user_id, store_id, visible_tools) VALUES ('%s', '%s', 'kds,register');\n" "$escaped_device_user_id" "$escaped_store_id"
+      else
+        printf "INSERT INTO user_stores (user_id, store_id) VALUES ('%s', '%s');\n" "$escaped_device_user_id" "$escaped_store_id"
+      fi
+    fi
+    printf 'COMMIT;\n'
+  } | compose exec -T db sh -c 'mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
+
+  echo "Ensured ops users in $CELL_ID for tenant $tenant_slug"
+  if [ "$manager_exists" = "0" ]; then echo "manager_username=$manager_username"; fi
+  if [ "$staff_exists" = "0" ]; then echo "staff_username=$staff_username"; fi
+  if [ "$device_exists" = "0" ]; then echo "device_username=$device_username"; fi
 }
 
 backup_cell() {
@@ -1105,6 +1318,10 @@ case "$COMMAND" in
   onboard-tenant)
     shift 2
     onboard_tenant "$@"
+    ;;
+  ensure-ops-users)
+    shift 2
+    ensure_ops_users "$@"
     ;;
   down)
     compose down
