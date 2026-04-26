@@ -16,37 +16,37 @@
 
 <section class="lp-section lp-section--signup sc-section">
   <div class="lp-container lp-container--narrow sc-wrap">
-    <div id="sc-status" class="sc-loading">アカウントを有効化しています…</div>
+    <div id="sc-status" class="sc-loading">決済完了を確認しています...</div>
     <div id="sc-content" class="sc-content" hidden>
-      <div class="sc-check">✓</div>
-      <h1 class="sc-title">お申込みありがとうございます</h1>
-      <p class="sc-lead">決済が正常に完了しました。<br>ご登録のメールアドレスにログイン情報をお送りしています。</p>
+      <div class="sc-check" id="sc-icon">✓</div>
+      <h1 class="sc-title" id="sc-title">お申込みありがとうございます</h1>
+      <p class="sc-lead" id="sc-lead">30日間無料トライアルを開始しました。<br>ただいま専用環境を準備しています。</p>
 
       <div class="sc-trial">
-        <div class="sc-trial__title">📅 30日間無料トライアル開始</div>
+        <div class="sc-trial__title">30日間無料トライアル開始</div>
         <div class="sc-trial__sub">期間内のキャンセルで請求は発生しません。31 日目から通常月額が自動開始します。</div>
       </div>
 
       <div class="sc-steps-wrap">
-        <h3 class="sc-steps__title">次の 3 ステップ</h3>
+        <h3 class="sc-steps__title">専用環境の準備状況</h3>
         <ol class="sc-steps">
           <li>
+            <strong>決済確認</strong>
+            <small id="sc-step-payment">Stripe の決済完了を確認しています。</small>
+          </li>
+          <li>
+            <strong>専用環境を作成</strong>
+            <small id="sc-step-cell">通常 3〜5 分ほどで、専用の app / DB / uploads を準備します。</small>
+          </li>
+          <li>
             <strong>ログイン</strong>
-            <small>届いたメールのユーザー名とパスワードで管理画面に入ります。</small>
-          </li>
-          <li>
-            <strong>メニューを登録</strong>
-            <small>カテゴリ → 商品 → 価格の順。最初は代表メニュー 5 品からで十分です。</small>
-          </li>
-          <li>
-            <strong>テーブル QR を印刷して貼り付け</strong>
-            <small>店舗設定からテーブルを登録すると QR が生成されます。印刷して各席に設置すれば、セルフオーダーがすぐ始まります。</small>
+            <small id="sc-step-login">準備完了後、この画面にログインボタンが表示されます。</small>
           </li>
         </ol>
       </div>
 
-      <a href="admin/index.html" class="lp-btn lp-btn--primary sc-cta">ログイン画面へ →</a>
-      <p class="sc-footer-note">メールが届かない場合は info@posla.jp までご連絡ください。</p>
+      <a href="#" class="lp-btn lp-btn--primary sc-cta" id="sc-login-link" hidden>ログイン画面へ</a>
+      <p class="sc-footer-note" id="sc-footer-note">この画面を閉じても、準備完了後にメールでログインURLをお送りします。時間がかかる場合は info@posla.jp までご連絡ください。</p>
     </div>
   </div>
 </section>
@@ -58,10 +58,61 @@
   var token = qs.get('t');
   var statusEl = document.getElementById('sc-status');
   var contentEl = document.getElementById('sc-content');
+  var iconEl = document.getElementById('sc-icon');
+  var titleEl = document.getElementById('sc-title');
+  var leadEl = document.getElementById('sc-lead');
+  var paymentStepEl = document.getElementById('sc-step-payment');
+  var cellStepEl = document.getElementById('sc-step-cell');
+  var loginStepEl = document.getElementById('sc-step-login');
+  var loginLinkEl = document.getElementById('sc-login-link');
+  var footerNoteEl = document.getElementById('sc-footer-note');
+  var activateAttempts = 0;
+  var lastActivateAt = 0;
+  var pollTimer = null;
 
-  function show() {
+  function showContent() {
     statusEl.hidden = true;
     contentEl.hidden = false;
+  }
+
+  function setText(el, text) {
+    if (el) el.textContent = text;
+  }
+
+  function setPreparing(title, lead, data) {
+    showContent();
+    iconEl.textContent = '...';
+    iconEl.className = 'sc-check sc-check--pending';
+    setText(titleEl, title);
+    setText(leadEl, lead);
+    setText(paymentStepEl, '30日間無料トライアルを確認しました。');
+    setText(cellStepEl, data && data.message ? data.message : '専用環境を作成しています。通常 3〜5 分ほどで完了します。');
+    setText(loginStepEl, '準備完了後、この画面にログインボタンが表示されます。');
+    loginLinkEl.hidden = true;
+    setText(footerNoteEl, 'この画面を閉じても、準備完了後にメールでログインURLをお送りします。');
+  }
+
+  function setReady(data) {
+    showContent();
+    iconEl.textContent = '✓';
+    iconEl.className = 'sc-check';
+    setText(titleEl, '専用環境の準備が完了しました');
+    setText(leadEl, 'ログインして初期設定を始められます。');
+    setText(paymentStepEl, '30日間無料トライアルを開始しました。');
+    setText(cellStepEl, '専用の app / DB / uploads を作成しました。');
+    setText(loginStepEl, '登録したユーザー名とパスワードでログインできます。');
+    if (data && data.login_url) {
+      loginLinkEl.href = data.login_url;
+      loginLinkEl.hidden = false;
+    }
+    setText(footerNoteEl, 'ログインできない場合は info@posla.jp までご連絡ください。');
+  }
+
+  function schedulePoll(ms) {
+    if (pollTimer) clearTimeout(pollTimer);
+    if (ms > 0) {
+      pollTimer = setTimeout(pollStatus, ms);
+    }
   }
 
   function showFailure(msg) {
@@ -113,12 +164,64 @@
 
   if (!token) { showInvalidAccess(); return; }
 
-  // S3-#18: POSLA 規約に従い res.text() → JSON.parse() パターンに統一
-  fetch('/api/signup/activate.php', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ signup_token: token })
-  }).then(function (r) { return r.text(); })
+  function callActivate(done) {
+    fetch('/api/signup/activate.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signup_token: token })
+    }).then(function (r) { return r.text(); })
+      .then(function (txt) {
+        var j;
+        try { j = JSON.parse(txt); } catch (e) { done(false); return; }
+        done(!!(j && j.ok));
+      })
+      .catch(function () { done(false); });
+  }
+
+  function handleStatus(data) {
+    var s = data.status;
+    if (s === 'ready') {
+      setReady(data);
+      schedulePoll(0);
+      return;
+    }
+    if (s === 'payment_pending') {
+      setPreparing('決済完了を確認しています', data.message || 'Stripe の決済完了を確認しています。', data);
+      if (activateAttempts < 6 && (Date.now() - lastActivateAt > 10000)) {
+        activateAttempts += 1;
+        lastActivateAt = Date.now();
+        callActivate(function () { schedulePoll(2000); });
+      } else {
+        schedulePoll(data.refresh_after_ms || 5000);
+      }
+      return;
+    }
+    if (s === 'queued' || s === 'preparing') {
+      setPreparing('専用環境を準備しています', data.message || '専用環境を準備しています。通常 3〜5 分ほどで完了します。', data);
+      schedulePoll(data.refresh_after_ms || 5000);
+      return;
+    }
+    if (s === 'delayed') {
+      setPreparing('準備に時間がかかっています', data.message || 'POSLA運営が状況を確認します。', data);
+      setText(loginStepEl, '準備が完了するとログインURLをお送りします。');
+      schedulePoll(data.refresh_after_ms || 15000);
+      return;
+    }
+    if (s === 'canceled') {
+      showFailure(data.message || '申込みが完了していません。');
+      return;
+    }
+    setPreparing('専用環境を準備しています', data.message || '準備状況を確認しています。', data);
+    schedulePoll(data.refresh_after_ms || 5000);
+  }
+
+  function pollStatus() {
+    // S3-#18: POSLA 規約に従い res.text() → JSON.parse() パターンに統一
+    fetch('/api/signup/provisioning-status.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signup_token: token })
+    }).then(function (r) { return r.text(); })
     .then(function (txt) {
       var j;
       try { j = JSON.parse(txt); } catch (e) {
@@ -126,16 +229,19 @@
         return;
       }
       if (j && j.ok) {
-        show();
+        handleStatus(j.data || {});
       } else {
         var msg = (j && j.error && j.error.message) ? j.error.message : '不明なエラー';
-        showFailure('有効化に失敗しました: ' + msg);
+        showFailure('準備状況の確認に失敗しました: ' + msg);
       }
     })
     .catch(function () {
-      // S3-#18: 通信失敗を成功表示にしない
-      showFailure('通信に失敗しました。ネットワークをご確認のうえ、もう一度お試しください。');
+      setPreparing('通信を再試行しています', '準備状況の確認に失敗しました。自動で再試行します。', {});
+      schedulePoll(5000);
     });
+  }
+
+  pollStatus();
 })();
 </script>
 

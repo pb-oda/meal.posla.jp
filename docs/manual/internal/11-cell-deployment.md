@@ -96,14 +96,14 @@ POSLA_PHP_IMAGE=posla_php_cell:dev
 
 ## 11.4 Tenant Onboarding
 
-POSLA管理画面またはLP申込で顧客が追加されると、control DB の `posla_tenant_onboarding_requests` に作成待ちが残ります。MVP では、この ledger をPOSLA管理画面の **Cell配備** タブで確認し、このMacから対象cellだけを作成します。POSLA管理画面は deploy コマンドを直接実行しません。
+POSLA管理画面またはLP申込で顧客が追加されると、control DB の `posla_tenant_onboarding_requests` に作成待ちが残ります。LP経由でカード登録まで完了した顧客は、host-side の on-demand provisioner が `ready_for_cell` を拾い、このMacから対象cellだけを作成します。POSLA管理画面は deploy コマンドを直接実行しません。
 
 状態の意味:
 
 | status | 意味 | 次アクション |
 |---|---|---|
 | `payment_pending` | LP申込後、支払い確認待ち | Stripe / webhook を確認 |
-| `ready_for_cell` | 専用cell作成待ち | Cell配備タブのコマンドをこのMacで順に実行 |
+| `ready_for_cell` | 専用cell作成待ち | provisioner が自動作成。手動時はCell配備タブのコマンドをこのMacで順に実行 |
 | `cell_provisioning` | cell作業中 | deploy / onboard / smoke を完了させる |
 | `active` | 監視対象 | op 側の同期対象 |
 | `failed` | 作業失敗 | 原因を確認し、修正後に作業再開 |
@@ -118,6 +118,38 @@ Cell配備タブで表示するもの:
 - 作業開始、失敗、control registry active 更新の操作
 
 推奨 port は `posla_cell_registry` の既存 `app_base_url` / `health_url` / `db_host` を読んで、既存cellと衝突しない値を提示します。手動で変更する場合も、同一ホスト上では HTTP port / DB port を cell ごとに必ず分けます。
+
+### on-demand provisioner
+
+Stripe webhook / `signup-complete.html` は deploy を直接実行しません。1分ごとにこのMac上で provisioner を実行し、`ready_for_cell` を1件ずつ処理します。
+
+```bash
+php scripts/cell/provision-ready-cells.php --limit=1
+```
+
+事前確認だけ行う場合:
+
+```bash
+php scripts/cell/provision-ready-cells.php --limit=1 --dry-run
+```
+
+provisioner が実行する処理:
+
+1. control DB の `ready_for_cell` を `cell_provisioning` に更新
+2. `scripts/cell/cell.sh init` で cell env / DB env / uploads を作成
+3. `build` / `deploy`
+4. control DB の owner `password_hash` を使って `onboard-tenant`
+5. `POSLA_CELL_SMOKE_STRICT=1 scripts/cell/cell.sh <cell> smoke`
+6. 成功時に control `posla_cell_registry` と onboarding request を `active` へ更新
+
+本番でサブドメイン型 URL にする場合は、実行環境に `POSLA_CELL_APP_URL_PATTERN` を設定します。
+
+```bash
+POSLA_CELL_APP_URL_PATTERN='https://{tenant_slug}.<production-domain>' \
+  php scripts/cell/provision-ready-cells.php --limit=1 --dry-run
+```
+
+未設定時はローカル検証向けに `http://127.0.0.1:<auto-port>` を使います。
 
 cell 作成後、対象 cell DB に最初の tenant / store / owner を作ります。
 
@@ -150,7 +182,8 @@ POSLA_CELL_SMOKE_STRICT=1 scripts/cell/cell.sh acme-prod smoke
 
 | 変数 | 用途 |
 |---|---|
-| `POSLA_OWNER_PASSWORD` | owner 初期パスワード。必須 |
+| `POSLA_OWNER_PASSWORD` | owner 初期パスワード。`POSLA_OWNER_PASSWORD_HASH` 未指定時は必須 |
+| `POSLA_OWNER_PASSWORD_HASH` | 既存 `password_hash()` を引き継ぐ場合に指定。LP申込の on-demand provisioner で使用 |
 | `POSLA_STORE_SLUG` | 店舗 slug。省略時 `default` |
 | `POSLA_SUBSCRIPTION_STATUS` | `none` / `trialing` / `active` など。省略時 `trialing` |
 | `POSLA_HQ_MENU_BROADCAST` | 本部一括メニュー配信アドオン。省略時 `0` |

@@ -7,7 +7,10 @@
  *   - tenants.subscription_status = 'trialing'
  *   - stores.is_active = 1
  *   - users.is_active = 1
- *   - ログイン案内メール送信
+ *   - onboarding request を ready_for_cell に更新
+ *   - 専用環境準備中メール送信
+ *
+ * 専用cell作成とログインURL送信は host-side provisioner が行う。
  *
  * Stripe ダッシュボードで設定する URL:
  *   https://meal.posla.jp/api/signup/webhook.php
@@ -103,7 +106,7 @@ if ($type === 'checkout.session.completed') {
     $tStmt->execute([$tenantId]);
     $row = $tStmt->fetch();
     if ($row && $row['email']) {
-        _a5_send_welcome_mail($row['email'], $row['display_name'], $row['username'], $row['name']);
+        _a5_send_welcome_mail($row['email'], $row['display_name'], $row['username'], $row['name'], $signupToken);
     }
 }
 
@@ -138,21 +141,23 @@ function _a5_verify_stripe_sig($payload, $header, $secret) {
     return false;
 }
 
-function _a5_send_welcome_mail($to, $displayName, $username, $storeName) {
+function _a5_send_welcome_mail($to, $displayName, $username, $storeName, $signupToken) {
     if (function_exists('mb_language')) {
         mb_language('Japanese');
         mb_internal_encoding('UTF-8');
     }
-    $subject = '【POSLA】ご登録ありがとうございます — ログイン情報のご案内';
-    $loginUrl = app_url('/admin/index.html');
+    $subject = '【POSLA】お申込みありがとうございます — 専用環境を準備しています';
+    $statusUrl = app_url('/signup-complete.html') . '?t=' . urlencode((string)$signupToken);
     $body = "{$displayName} 様\n\n"
           . "POSLA にご登録いただきありがとうございます。\n"
-          . "以下のログイン情報でサービスをご利用いただけます。\n\n"
+          . "30日間無料トライアルを開始しました。\n"
+          . "現在、専用環境を準備しています。通常 3〜5 分ほどで完了します。\n\n"
           . "■ 店舗名: {$storeName}\n"
-          . "■ ログインURL: {$loginUrl}\n"
           . "■ ユーザー名: {$username}\n"
-          . "■ パスワード: ご登録時に設定されたもの\n\n"
-          . "★ 30日間無料トライアル中です。期間内のキャンセルで請求は発生しません。\n\n"
+          . "■ パスワード: ご登録時に設定されたもの\n"
+          . "■ 準備状況: {$statusUrl}\n\n"
+          . "準備完了後、ログインURLをメールでお送りします。\n"
+          . "期間内のキャンセルで請求は発生しません。\n\n"
           . "ご不明な点は " . APP_SUPPORT_EMAIL . " までお気軽にお問い合わせください。\n\n"
           . "--\nPOSLA 運営チーム";
     $fromName = 'POSLA';

@@ -9,7 +9,10 @@
  *  - signup_token を tenants.stripe_subscription_id='pending:{token}' で検索
  *  - Stripe API で subscription の実態を確認 (任意)
  *  - is_active=1 + subscription_status='trialing' に更新
+ *  - onboarding request を ready_for_cell に更新
  *  - Webhook と併用しても冪等 (is_active=1 ならスキップ)
+ *
+ * 専用cell作成とログインURL送信は host-side provisioner が行う。
  */
 
 require_once __DIR__ . '/../lib/db.php';
@@ -112,7 +115,7 @@ try {
     $uStmt->execute([$tenant['id']]);
     $u = $uStmt->fetch();
     if ($u && $u['email']) {
-        _a5_send_welcome($u['email'], $u['display_name'] ?: $u['username'], $u['username'], $tenant['name']);
+        _a5_send_welcome($u['email'], $u['display_name'] ?: $u['username'], $u['username'], $tenant['name'], $token);
     }
 } catch (Exception $e) {
     error_log('[A5][activate] mail_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
@@ -150,16 +153,18 @@ function _a5_find_subscription_by_token($secretKey, $customerId, $token) {
     return null;
 }
 
-function _a5_send_welcome($to, $displayName, $username, $storeName) {
+function _a5_send_welcome($to, $displayName, $username, $storeName, $signupToken) {
     if (function_exists('mb_language')) { mb_language('Japanese'); mb_internal_encoding('UTF-8'); }
-    $subject = '【POSLA】ご登録ありがとうございます';
-    $loginUrl = app_url('/admin/index.html');
+    $subject = '【POSLA】お申込みありがとうございます';
+    $statusUrl = app_url('/signup-complete.html') . '?t=' . urlencode((string)$signupToken);
     $body = "{$displayName} 様\n\nPOSLAにご登録ありがとうございます。\n\n"
           . "■ 店舗名: {$storeName}\n"
-          . "■ ログインURL: {$loginUrl}\n"
           . "■ ユーザー名: {$username}\n"
           . "■ パスワード: ご登録時のもの\n\n"
-          . "30日間無料トライアル中です。\n\n--\nPOSLA 運営チーム";
+          . "30日間無料トライアルを開始しました。\n"
+          . "現在、専用環境を準備しています。通常 3〜5 分ほどで完了します。\n\n"
+          . "準備状況はこちらで確認できます:\n{$statusUrl}\n\n"
+          . "準備完了後、ログインURLをメールでお送りします。\n\n--\nPOSLA 運営チーム";
     $fromName = 'POSLA';
     $fromEmail = APP_FROM_EMAIL;
     $fromHeader = '=?UTF-8?B?' . base64_encode($fromName) . '?= <' . $fromEmail . '>';

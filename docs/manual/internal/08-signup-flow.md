@@ -1,9 +1,9 @@
 ---
 feature_id: A5
-title: 新規申込フロー (LP + 自動アクティベーション)
+title: 新規申込フロー (LP + 自動アクティベーション + on-demand cell)
 chapter: 08
 audience: POSLA 運営チーム (内部)
-keywords: [新規申込, LP, Stripe Checkout, 自動アクティベーション, テナント作成]
+keywords: [新規申込, LP, Stripe Checkout, 自動アクティベーション, on-demand cell, テナント作成]
 related: [02-onboarding, 03-billing]
 last_updated: 2026-04-19
 maintainer: POSLA運営
@@ -11,7 +11,7 @@ maintainer: POSLA運営
 
 # 8. 新規申込フロー (A5)
 
-POSLA の LP (ランディングページ) から申込 → Stripe 決済 → **完全自動** でテナント作成 → オーナーがログイン可能になる一気通貫フロー。
+POSLA の LP (ランディングページ) から申込 → Stripe 決済 → 30日無料トライアル開始 → **on-demand cell provisioner** で専用 cell 作成 → オーナーがログイン可能になる一気通貫フロー。
 
 ::: warning これは社内向け資料です
 テナントは読まなくて OK。運用開始後のサポート対応に必要な知識です。
@@ -61,13 +61,18 @@ POSLA の LP (ランディングページ) から申込 → Stripe 決済 → **
       ・tenants.is_active=1, subscription_status='trialing'
       ・stores.is_active=1
       ・users.is_active=1
-      ・ウェルカムメール送信
+      ・onboarding request を ready_for_cell へ更新
       ↓
 [7b] Stripe Webhook (冗長化)
       POST /api/signup/webhook.php
       ・同じ処理を冪等に実行
       ↓
-[8] オーナーがログイン可能に
+[8] host-side provisioner
+      php scripts/cell/provision-ready-cells.php --limit=1
+      ・cell init / build / deploy / onboard / smoke
+      ・control registry を active へ更新
+      ↓
+[9] signup-complete.html が準備完了を検知し、cell のログインURLを表示
 ```
 
 ---
@@ -176,9 +181,52 @@ https://meal.posla.jp/api/signup/webhook.php
 
 **処理**: activate.php と同じ冪等処理。
 
+### POST /api/signup/provisioning-status.php
+
+**認証不要**。`signup-complete.html` から `signup_token` で呼ばれ、専用cellの準備状況を返します。
+
+**レスポンス例**:
+```json
+{
+  "ok": true,
+  "data": {
+    "status": "preparing",
+    "onboarding_status": "cell_provisioning",
+    "message": "専用環境を作成しています。完了後、この画面にログインボタンが表示されます。",
+    "login_url": null,
+    "refresh_after_ms": 5000
+  }
+}
+```
+
+`status=ready` になると `login_url` に対象cellのログインURLが入ります。
+
 ---
 
-## 8.4 サポート対応シナリオ
+## 8.4 on-demand cell provisioner
+
+Stripe webhook / activate は deploy を直接実行しません。Webhookは短時間で返し、ホスト側の provisioner が `ready_for_cell` を拾います。
+
+```bash
+php scripts/cell/provision-ready-cells.php --limit=1
+```
+
+本番では cron / LaunchAgent 等で 1 分ごとに実行します。
+
+```text
+ready_for_cell
+  ↓
+cell_provisioning
+  ↓ init / build / deploy / onboard-tenant / smoke
+  ↓
+active
+```
+
+`--dry-run` を付けると、実行予定のコマンドだけを確認できます。
+
+---
+
+## 8.5 サポート対応シナリオ
 
 ### ケース A: 「申込後にログインできない」
 
@@ -209,7 +257,7 @@ UPDATE tenants SET is_active=1, subscription_status='trialing' WHERE id='xxx';
 
 ---
 
-## 8.5 データクリーンアップ
+## 8.6 データクリーンアップ
 
 申込途中で放棄されたテナント (is_active=0 のまま N 日経過) は定期的に削除:
 
@@ -232,7 +280,7 @@ DELETE FROM tenants WHERE is_active=0 AND created_at < DATE_SUB(NOW(), INTERVAL 
 
 ---
 
-## 8.6 トライアル管理
+## 8.7 トライアル管理
 
 - Stripe Subscription `trial_period_days=30` で自動管理
 - 31 日目に自動で初回課金
@@ -240,7 +288,7 @@ DELETE FROM tenants WHERE is_active=0 AND created_at < DATE_SUB(NOW(), INTERVAL 
 
 ---
 
-## 8.7 申込フローの完全シーケンス図
+## 8.8 申込フローの完全シーケンス図
 
 ```
 [お客様]                  [LP]                    [POSLA API]              [Stripe]
@@ -267,21 +315,24 @@ DELETE FROM tenants WHERE is_active=0 AND created_at < DATE_SUB(NOW(), INTERVAL 
    │                                  │                                       │
    │                                  ├── 10. tenants.is_active=1            │
    │                                  │       users.is_active=1               │
-   │                                  │       wellcome メール送信             │
+   │                                  │       専用環境準備中メール送信         │
    │                                  │                                       │
    │ ←─── 11. signup-complete.html へ redirect ────                          │
-   │       activate.php を JS から呼ぶ                                       │
+   │       provisioning-status.php を polling                                │
    │                                  │                                      │
    │                                  ├── 12. activate.php 確認・冪等         │
    │                                  │       (Webhook 失敗時のフォールバック) │
    │                                  │                                       │
-   │ ←─── 13. ウェルカムメール受信 ──┤                                       │
-   │       (URL + ユーザー名 + パスワード)                                   │
+   │                                  ├── 13. provision-ready-cells.php       │
+   │                                  │       cell init/build/deploy/smoke    │
+   │                                  │                                       │
+   │ ←─── 14. ログインURL表示 / メール ─┤                                    │
+   │       (cell URL + ユーザー名 + パスワード)                              │
    │                                                                          │
-   ├── 14. ログイン ───────→ /api/auth/login.php → ダッシュボード             │
+   ├── 15. ログイン ───────→ /api/auth/login.php → ダッシュボード             │
 ```
 
-## 8.8 各 API の冪等性設計
+## 8.9 各 API の冪等性設計
 
 ### 8.8.1 register.php
 
@@ -304,20 +355,43 @@ DELETE FROM tenants WHERE is_active=0 AND created_at < DATE_SUB(NOW(), INTERVAL 
 
 ---
 
-## 8.9 ウェルカムメールのテンプレート
+## 8.10 メールテンプレート
+
+### カード登録直後
+
+この時点ではまだcell作成中のため、ログインURLは送らない。
 
 ```
-件名: 【POSLA】お申込みありがとうございます — ログイン情報
+件名: 【POSLA】お申込みありがとうございます — 専用環境を準備しています
 
-[テナント名] 様
+[オーナー名] 様
 
-POSLA へのお申込みありがとうございます。
-30 日間無料トライアルを開始しました。
+POSLA にご登録いただきありがとうございます。
+30日間無料トライアルを開始しました。
+
+現在、専用環境を準備しています。通常 3〜5 分ほどで完了します。
+
+■ 店舗名: [店舗名]
+ユーザー名: [username]
+パスワード: ご登録時に設定されたもの
+準備状況: https://<production-domain>/signup-complete.html?t=[signup_token]
+
+準備完了後、ログインURLをメールでお送りします。
+```
+
+### 専用環境準備完了後
+
+```
+件名: 【POSLA】専用環境の準備が完了しました
+
+[オーナー名] 様
+
+POSLA の専用環境の準備が完了しました。
 
 ■ ログイン情報
-URL: https://meal.posla.jp/admin/
+URL: https://[cell-domain]/admin/index.html
 ユーザー名: [username]
-初期パスワード: [password]
+パスワード: お申込み時に設定されたもの
 
 ■ 次のステップ
 1. 上記 URL からログイン
@@ -334,7 +408,7 @@ POSLA 運営チーム（プラスビリーフ株式会社）
 
 ---
 
-## 8.10 異常系の対応
+## 8.11 異常系の対応
 
 ### 8.10.1 Stripe Checkout を閉じた場合
 
@@ -361,3 +435,4 @@ POSLA 運営チーム（プラスビリーフ株式会社）
 - **2026-04-19**: 8.3 申込フォームを「企業名 + 1 店舗目の店舗名」2 フィールドに分離（A5 改修）。`tenant_name` パラメータ追加 + ASCII モック + DB 反映先表 + 後方互換挙動を追記
 - **2026-04-19**: 8.7 シーケンス図 / 8.8 冪等性 / 8.9 メールテンプレート / 8.10 異常系 追加
 - **2026-04-18**: A5 実装完了 (LP + 自動アクティベーション)
+- **2026-04-26**: 1 tenant / 1 cell 方針に合わせ、カード登録後は on-demand cell provisioner が専用環境を作成し、完了後にログインURLを表示する流れへ更新

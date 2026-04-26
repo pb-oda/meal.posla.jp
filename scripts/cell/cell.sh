@@ -45,7 +45,8 @@ Environment:
   POSLA_CELL_INIT_OVERWRITE=1 allows init to overwrite existing env files
   POSLA_CELL_RESTORE_CONFIRM=<cell-id> required for restore-env / restore-db
   POSLA_CELL_SMOKE_STRICT=1 treats missing ledger / registry metadata as failure
-  POSLA_OWNER_PASSWORD  Required by onboard-tenant
+  POSLA_OWNER_PASSWORD  Required by onboard-tenant unless POSLA_OWNER_PASSWORD_HASH is set
+  POSLA_OWNER_PASSWORD_HASH Existing password_hash() output for onboard-tenant
   POSLA_OPS_USER_PASSWORD Required by ensure-ops-users; POSLA_OWNER_PASSWORD is accepted as fallback
   POSLA_STORE_SLUG      Store slug for onboard-tenant (default: default)
   POSLA_SUBSCRIPTION_STATUS  Tenant subscription status (default: trialing)
@@ -628,6 +629,7 @@ onboard_tenant() {
   subscription_status="${POSLA_SUBSCRIPTION_STATUS:-trialing}"
   hq_menu_broadcast="${POSLA_HQ_MENU_BROADCAST:-0}"
   owner_password="${POSLA_OWNER_PASSWORD:-}"
+  owner_password_hash="${POSLA_OWNER_PASSWORD_HASH:-}"
   manager_username="${POSLA_MANAGER_USERNAME:-${tenant_slug}-manager}"
   staff_username="${POSLA_STAFF_USERNAME:-${tenant_slug}-staff}"
   device_username="${POSLA_DEVICE_USERNAME:-${tenant_slug}-kds01}"
@@ -656,8 +658,8 @@ onboard_tenant() {
     hq_value="0"
   fi
 
-  if [ -z "$owner_password" ]; then
-    echo "POSLA_OWNER_PASSWORD is required for onboard-tenant." >&2
+  if [ -z "$owner_password" ] && [ -z "$owner_password_hash" ]; then
+    echo "POSLA_OWNER_PASSWORD or POSLA_OWNER_PASSWORD_HASH is required for onboard-tenant." >&2
     exit 2
   fi
   if [ -z "$tenant_name" ] || [ -z "$store_name" ]; then
@@ -704,7 +706,11 @@ onboard_tenant() {
   manager_user_id="${POSLA_MANAGER_USER_ID:-$(generate_hex_id)}"
   staff_user_id="${POSLA_STAFF_USER_ID:-$(generate_hex_id)}"
   device_user_id="${POSLA_DEVICE_USER_ID:-$(generate_hex_id)}"
-  password_hash="$(password_hash_from_php "$owner_password")"
+  if [ -n "$owner_password_hash" ]; then
+    password_hash="$owner_password_hash"
+  else
+    password_hash="$(password_hash_from_php "$owner_password")"
+  fi
 
   escaped_tenant_id="$(sql_escape "$tenant_id")"
   escaped_store_id="$(sql_escape "$store_id")"

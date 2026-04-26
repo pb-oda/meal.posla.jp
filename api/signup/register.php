@@ -9,7 +9,7 @@
  *
  * フロー:
  *  1. バリデーション (重複チェック / パスワード強度)
- *  2. tenant 仮作成 (subscription_status='incomplete')
+ *  2. tenant 仮作成 (subscription_status='none')
  *  3. store 仮作成 (1店舗目)
  *  4. owner アカウント作成 (users + user_stores)
  *  5. Stripe Customer 作成
@@ -19,7 +19,9 @@
  * Webhook (api/signup/webhook.php) で checkout.session.completed を受けて:
  *  - subscription_status='trialing' に更新
  *  - tenant/owner を is_active=1 に
- *  - ログイン案内メール送信
+ *  - onboarding request を ready_for_cell に更新
+ *  - 専用環境準備中メール送信
+ *  - host-side provisioner が cell 作成後にログインURLを送信
  */
 
 require_once __DIR__ . '/../lib/response.php';
