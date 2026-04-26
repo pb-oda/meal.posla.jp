@@ -4,14 +4,17 @@ title: POSLA 運営マニュアル
 hero:
   name: POSLA 運営マニュアル
   text: プラスビリーフ社内向け
-  tagline: システム全体像・API・DB・運用・障害対応を確認できる社内用ドキュメント。新サーバ移行は専用ページから着手してください。
+  tagline: システム全体像・API・DB・運用・障害対応を確認できる社内用ドキュメント。本番化はデプロイ手順書から着手してください。
   actions:
     - theme: brand
-      text: 🚀 新サーバ移行ハンドオフを見る →
-      link: /internal/10-server-migration
+      text: 本番デプロイ手順書を見る →
+      link: /internal/12-production-deploy-runbook
     - theme: alt
       text: Cell配備運用を見る →
       link: /internal/11-cell-deployment
+    - theme: alt
+      text: 新サーバ移行ハンドオフを見る →
+      link: /internal/10-server-migration
     - theme: alt
       text: 全体リファレンスから読む →
       link: /internal/00-complete-reference
@@ -19,6 +22,9 @@ hero:
       text: 運営編を見る →
       link: /internal/01-posla-admin
 features:
+  - title: 本番デプロイ手順書
+    details: 本番host準備、env実値化、Docker起動、DB restore、決済provider、on-demand provisioner、cell deploy、smoke、rollbackまでの実行順 runbook
+    link: /internal/12-production-deploy-runbook
   - title: 🚀 新サーバ移行ハンドオフ
     details: サーバ移行担当者が最初に読む専用ページ。着手前に必要な情報、web+cron の env、永続化、SQL、smoke test、ロールバックまで 1 枚で確認できます。
     link: /internal/10-server-migration

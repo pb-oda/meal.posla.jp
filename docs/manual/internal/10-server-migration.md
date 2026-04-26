@@ -14,7 +14,7 @@ maintainer: POSLA運営
 この章は、**`【擬似本番環境】meal.posla.jp` の現実装をそのまま新サーバへ移す**ための要約版です。
 本番もコンテナ運用を前提とし、公開 URL は `<production-domain>` で表記します。
 
-詳細手順は [container-server-migration-runbook.md](../../container-server-migration-runbook.md) を正本として参照してください。この章は、POSLA運営メンバーが切替時に見落としやすい論点だけを短くまとめたものです。
+実行順の詳細手順は [本番デプロイ手順書](./12-production-deploy-runbook.md) を正本として参照してください。サーバ移行の低レベル作業は [container-server-migration-runbook.md](../../container-server-migration-runbook.md) も併用します。この章は、POSLA運営メンバーが切替時に見落としやすい論点だけを短くまとめたものです。
 
 ::: warning 先に押さえること
 本番化で事故になりやすいのはコード差分そのものではなく、**env / volume / reverse proxy / webhook / cron** です。

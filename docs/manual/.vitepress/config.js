@@ -147,7 +147,8 @@ var internalSidebar = [
     { text: '9. スタッフ画面 PWA 化', link: '/internal/09-pwa' },
     { text: '10. 新サーバ移行ハンドオフ', link: '/internal/10-server-migration' },
     { text: '11. Cell配備運用', link: '/internal/11-cell-deployment' },
-    { text: '12. 本番切替 API チェックリスト (canonical)', link: '/internal/production-api-checklist' }
+    { text: '12. 本番デプロイ手順書', link: '/internal/12-production-deploy-runbook' },
+    { text: '13. 本番切替 API チェックリスト (canonical)', link: '/internal/production-api-checklist' }
   ]}
 ]
 

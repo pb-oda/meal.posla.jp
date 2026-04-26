@@ -1,18 +1,18 @@
 ---
 title: 本番切替 API チェックリスト (canonical)
-chapter: 11
+chapter: 13
 plan: [all]
 role: [posla-admin]
 audience: POSLA 運営チーム / サーバ移行担当
 keywords: [production migration, docker, env, stripe, gemini, smaregi, cutover]
-last_updated: 2026-04-25
+last_updated: 2026-04-26
 maintainer: POSLA運営
 ---
 
-# 11. 本番切替 API チェックリスト (canonical)
+# 13. 本番切替 API チェックリスト (canonical)
 
-この章は、**擬似本番 `【擬似本番環境】meal.posla.jp` をそのまま本番へ載せる** ときの canonical checklist です。
-本章の正本対象は **container-based な `meal.posla.jp` 系** であり、`eat.posla.jp` の共有サーバ運用ではありません。
+この章は、本番切替時の **env / API / 外部サービス設定チェックリスト** です。
+実際の実行順は [本番デプロイ手順書](./12-production-deploy-runbook.md) を正本として参照してください。
 
 ::: tip この章の役割
 - `docker/env/*.env` の canonical source
@@ -28,7 +28,7 @@ maintainer: POSLA運営
 
 - `smaregi_client_id`
 - `smaregi_client_secret`
-- `https://meal.posla.jp/api/smaregi/callback.php` を live 側 redirect URI に登録
+- `https://<production-domain>/api/smaregi/callback.php` を live 側 redirect URI に登録
 
 ## 2. Gemini API / Google Places
 
@@ -39,9 +39,10 @@ maintainer: POSLA運営
 - `gemini_api_key`
 - `google_places_api_key`
 
-## 3. Stripe Billing / Connect
+## 3. 決済 provider / Stripe Billing / Connect
 
-コード差し替えは不要です。設定値だけ切り替えます。
+現在の実装標準は Stripe です。Stripe を使う場合、コード差し替えは不要で、設定値だけ切り替えます。
+別 provider を採用する場合は、deploy 手順は維持し、checkout 作成 / webhook 署名検証 / billing event handler / 設定 UI ラベルを provider 固有実装へ差し替えます。
 
 対象キー:
 
@@ -124,7 +125,7 @@ owner-dashboard の「決済設定」で管理するものです。
 8. smoke test
 9. DNS 切替
 
-## 9. 本番ドメイン切替 / サーバ移行（`meal.posla.jp` 系 canonical）
+## 9. 本番ドメイン切替 / サーバ移行
 
 本番は container-based です。
 `docker-compose.yml` と `docker/env/*.env` を正本として扱います。
