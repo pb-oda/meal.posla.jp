@@ -113,6 +113,7 @@ MVP では **1 tenant / 1 cell** を原則にする。これは single-tenant de
 - `test-01` で backup -> rollback-plan -> restore guard -> rollback -> strict smoke -> owner login を確認済み。rollback は `POSLA_CELL_RESTORE_CONFIRM=test-01` がない場合に停止し、確認付き実行後は対象cellだけ復元・再deployされた。
 - `json_error()` は未カタログ code でも `E0xxx` の暫定問い合わせ番号を返すため、顧客画面から `errorNo` が欠落しない。
 - `public/shared/js/utils.js` は API エラーを `[E3035] メッセージ（発生時刻: YYYY-MM-DD HH:MM）` に整形する。予約・注文・会計・テイクアウト・ライブ表示・管理APIクライアントはこの形式を利用する。
+- Cell配備タブの推奨 port は既存 registry を見て衝突を避ける。LP申込が Stripe customer / checkout 作成前段で失敗した場合は `canceled` として扱い、配備待ちに残さない。
 - `/api/monitor/cell-snapshot.php` は Tier0 詳細に `tenant_name` / `store_name` と対象IDを含める。op側は `pending_payment_orders`, `pending_refunds`, `gateway_problem_payments`, `emergency_unresolved_items` を顧客名付きで表示できる。
 - Feature Flag は `test-01` tenant に対する `tenant_preview_release` の一時ON/OFFをAPI経由で確認済み。`codex_ops_write` は default OFF のまま。
 

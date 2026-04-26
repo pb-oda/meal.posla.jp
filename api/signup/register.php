@@ -167,7 +167,7 @@ try {
 $custResult = create_stripe_customer($secretKey, $storeName, $email, $tenantId);
 if (!$custResult['success']) {
     // 失敗時: 作成済 DB レコードを削除 (ロールバック)
-    _a5_cleanup_tenant($pdo, $tenantId, $storeId, $userId);
+    _a5_cleanup_tenant($pdo, $tenantId, $storeId, $userId, 'stripe_customer_failed: ' . $custResult['error']);
     json_error('STRIPE_ERROR', 'Stripe顧客登録に失敗: ' . $custResult['error'], 502);
 }
 $customerId = $custResult['customer_id'];
@@ -197,7 +197,7 @@ $extraParams = array(
 
 $checkoutResult = create_billing_checkout_session($secretKey, $customerId, $lineItems, $successUrl, $cancelUrl, $extraParams);
 if (!$checkoutResult['success']) {
-    _a5_cleanup_tenant($pdo, $tenantId, $storeId, $userId);
+    _a5_cleanup_tenant($pdo, $tenantId, $storeId, $userId, 'stripe_checkout_failed: ' . $checkoutResult['error']);
     json_error('STRIPE_ERROR', '決済セッション作成に失敗: ' . $checkoutResult['error'], 502);
 }
 
@@ -215,7 +215,15 @@ json_response([
 ]);
 
 // ---------- クリーンアップヘルパ ----------
-function _a5_cleanup_tenant($pdo, $tenantId, $storeId, $userId) {
+function _a5_cleanup_tenant($pdo, $tenantId, $storeId, $userId, $reason = '') {
+    try {
+        posla_update_tenant_onboarding_status($pdo, (string)$tenantId, 'canceled', [
+            'last_error' => $reason ?: 'signup canceled before checkout completion',
+            'notes' => 'LP signup DB records were removed before payment confirmation.',
+        ]);
+    } catch (Throwable $e) {
+        error_log('[A5][signup/register] onboarding_cleanup_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+    }
     try {
         $pdo->prepare('DELETE FROM user_stores WHERE user_id = ?')->execute([$userId]);
     } catch (PDOException $e) {}

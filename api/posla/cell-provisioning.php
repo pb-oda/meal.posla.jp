@@ -104,6 +104,7 @@ function cell_provisioning_update_request_status(PDO $pdo, string $requestId, st
 
 function cell_provisioning_fetch_items(PDO $pdo): array
 {
+    $usedPorts = cell_provisioning_collect_used_ports($pdo);
     $stmt = $pdo->query(
         'SELECT r.request_id, r.request_source, r.status,
                 r.tenant_id, r.tenant_slug, r.tenant_name,
@@ -138,10 +139,66 @@ function cell_provisioning_fetch_items(PDO $pdo): array
     $items = [];
     $i = 0;
     for ($i = 0; $i < count($rows); $i++) {
-        $items[] = cell_provisioning_enrich_item($rows[$i], $i);
+        $items[] = cell_provisioning_enrich_item($rows[$i], $i, $usedPorts);
     }
 
     return $items;
+}
+
+function cell_provisioning_extract_port(?string $value): int
+{
+    $value = trim((string)$value);
+    if ($value === '') {
+        return 0;
+    }
+    if (preg_match('/:(\d+)(?:\/|$)/', $value, $m)) {
+        return (int)$m[1];
+    }
+    return 0;
+}
+
+function cell_provisioning_collect_used_ports(PDO $pdo): array
+{
+    $ports = ['http' => [], 'db' => []];
+    if (!cell_provisioning_table_exists($pdo, 'posla_cell_registry')) {
+        return $ports;
+    }
+
+    try {
+        $stmt = $pdo->query(
+            'SELECT app_base_url, health_url, db_host
+             FROM posla_cell_registry'
+        );
+        $rows = $stmt ? $stmt->fetchAll() : [];
+        foreach ($rows as $row) {
+            $httpPort = cell_provisioning_extract_port($row['app_base_url'] ?? '');
+            if (!$httpPort) {
+                $httpPort = cell_provisioning_extract_port($row['health_url'] ?? '');
+            }
+            if ($httpPort) {
+                $ports['http'][$httpPort] = true;
+            }
+
+            $dbPort = cell_provisioning_extract_port($row['db_host'] ?? '');
+            if ($dbPort) {
+                $ports['db'][$dbPort] = true;
+            }
+        }
+    } catch (PDOException $e) {
+        return $ports;
+    }
+
+    return $ports;
+}
+
+function cell_provisioning_next_available_port(array &$used, int $base): int
+{
+    $port = $base;
+    while (!empty($used[$port])) {
+        $port++;
+    }
+    $used[$port] = true;
+    return $port;
 }
 
 function cell_provisioning_shell_quote(string $value): string
@@ -160,7 +217,7 @@ function cell_provisioning_command_plan(array $row, int $index): array
     $ownerUsername = (string)($row['owner_username'] ?? ($tenantSlug . '-owner'));
     $ownerDisplayName = (string)($row['owner_display_name'] ?? $ownerUsername);
     $ownerEmail = (string)($row['owner_email'] ?? '');
-    $suggested = cell_provisioning_suggested_target($row, $index);
+    $suggested = $row['suggested_target'] ?? cell_provisioning_suggested_target($row, $index);
     $httpPort = (int)$suggested['http_port'];
     $dbPort = (int)$suggested['db_port'];
     $baseUrl = (string)$suggested['app_base_url'];
@@ -232,10 +289,21 @@ function cell_provisioning_db_key_from_slug(string $tenantSlug): string
 
 function cell_provisioning_suggested_target(array $row, int $index): array
 {
+    $usedPorts = ['http' => [], 'db' => []];
+    return cell_provisioning_assign_suggested_target($row, $index, $usedPorts);
+}
+
+function cell_provisioning_assign_suggested_target(array $row, int $index, array &$usedPorts): array
+{
     $cellId = (string)($row['cell_id'] ?? '');
     $tenantSlug = (string)($row['tenant_slug'] ?? '');
-    $httpPort = 18081 + $index;
-    $dbPort = 13306 + $index;
+    $existingHttpPort = cell_provisioning_extract_port((string)($row['app_base_url'] ?? ''));
+    if (!$existingHttpPort) {
+        $existingHttpPort = cell_provisioning_extract_port((string)($row['health_url'] ?? ''));
+    }
+    $existingDbPort = cell_provisioning_extract_port((string)($row['db_host'] ?? ''));
+    $httpPort = $existingHttpPort ?: cell_provisioning_next_available_port($usedPorts['http'], 18081);
+    $dbPort = $existingDbPort ?: cell_provisioning_next_available_port($usedPorts['db'], 13306);
     $baseUrl = !empty($row['app_base_url'])
         ? (string)$row['app_base_url']
         : ('http://127.0.0.1:' . $httpPort);
@@ -280,12 +348,12 @@ function cell_provisioning_next_action(array $row): string
     return '支払い確認または申込内容の確認';
 }
 
-function cell_provisioning_enrich_item(array $row, int $index): array
+function cell_provisioning_enrich_item(array $row, int $index, array &$usedPorts): array
 {
     $row['hq_menu_broadcast'] = !empty($row['hq_menu_broadcast']) ? 1 : 0;
     $row['cron_enabled'] = !empty($row['cron_enabled']) ? 1 : 0;
     $row['next_action'] = cell_provisioning_next_action($row);
-    $row['suggested_target'] = cell_provisioning_suggested_target($row, $index);
+    $row['suggested_target'] = cell_provisioning_assign_suggested_target($row, $index, $usedPorts);
     $row['commands'] = cell_provisioning_command_plan($row, $index);
     return $row;
 }
