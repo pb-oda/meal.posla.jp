@@ -142,27 +142,49 @@ function build_cron_health(PDO $pdo): array
 function build_registry_snapshot(PDO $pdo, string $cellId): array
 {
     if (!table_exists($pdo, 'posla_cell_registry')) {
-        return ['available' => false, 'cell' => null];
+        return ['available' => false, 'cell' => null, 'cells' => []];
     }
 
     try {
-        $stmt = $pdo->prepare(
+        $selectSql =
             'SELECT cell_id, tenant_id, tenant_slug, tenant_name, environment, status,
                     app_base_url, health_url, php_image, deploy_version, cron_enabled,
                     last_ping_at, updated_at
-             FROM posla_cell_registry
+             FROM posla_cell_registry';
+
+        $stmt = $pdo->prepare(
+            $selectSql . '
              WHERE cell_id = ?
              LIMIT 1'
         );
         $stmt->execute([$cellId]);
         $row = $stmt->fetch();
-        if (!$row) {
-            return ['available' => true, 'cell' => null];
+        if ($row) {
+            $row['cron_enabled'] = !empty($row['cron_enabled']) ? 1 : 0;
         }
-        $row['cron_enabled'] = !empty($row['cron_enabled']) ? 1 : 0;
-        return ['available' => true, 'cell' => $row];
+
+        $allStmt = $pdo->query(
+            $selectSql . '
+             ORDER BY
+               CASE status
+                 WHEN "active" THEN 1
+                 WHEN "maintenance" THEN 2
+                 WHEN "provisioning" THEN 3
+                 WHEN "planned" THEN 4
+                 ELSE 9
+               END,
+               updated_at DESC,
+               cell_id ASC
+             LIMIT 200'
+        );
+        $cells = $allStmt ? $allStmt->fetchAll() : [];
+        for ($i = 0; $i < count($cells); $i++) {
+            $cells[$i]['cron_enabled'] = !empty($cells[$i]['cron_enabled']) ? 1 : 0;
+        }
+
+        return ['available' => true, 'cell' => $row ?: null, 'cells' => $cells];
     } catch (PDOException $e) {
-        return ['available' => true, 'cell' => null];
+        return ['available' => true, 'cell' => null, 'cells' => []];
     }
 }
 
