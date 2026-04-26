@@ -11,6 +11,7 @@
 require_once __DIR__ . '/auth-helper.php';
 require_once __DIR__ . '/admin-audit-helper.php';
 require_once __DIR__ . '/tenant-insights-helper.php';
+require_once __DIR__ . '/../lib/tenant-onboarding.php';
 
 $admin = require_posla_admin();
 $method = require_method(['GET', 'PATCH', 'POST']);
@@ -279,6 +280,28 @@ if ($method === 'POST') {
                 ]);
             }
         }
+
+        posla_record_tenant_onboarding_request($pdo, [
+            'request_source' => 'posla_admin',
+            'status' => 'ready_for_cell',
+            'tenant_id' => $tenantId,
+            'tenant_slug' => $slug,
+            'tenant_name' => $name,
+            'store_id' => $storeId,
+            'store_slug' => $storeSlug,
+            'store_name' => $storeName,
+            'owner_user_id' => $accounts[0]['id'],
+            'owner_username' => $accounts[0]['username'],
+            'owner_display_name' => $accounts[0]['display_name'],
+            'requested_store_count' => 1,
+            'hq_menu_broadcast' => $hqMenuBroadcast,
+            'payload' => [
+                'created_by_admin_id' => $admin['id'] ?? null,
+                'created_by_admin_email' => $admin['email'] ?? null,
+                'entrypoint' => 'public/posla-admin/dashboard.html',
+            ],
+            'notes' => 'Created from POSLA admin. Ready for cell provisioning.',
+        ]);
 
         $pdo->commit();
     } catch (Throwable $e) {

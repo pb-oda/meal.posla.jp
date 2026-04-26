@@ -8,6 +8,7 @@
 
 require_once __DIR__ . '/auth-helper.php';
 require_once __DIR__ . '/tenant-insights-helper.php';
+require_once __DIR__ . '/../lib/tenant-onboarding.php';
 
 require_method(['GET']);
 $admin = require_posla_admin();
@@ -112,6 +113,8 @@ $recentTenants = array_map('normalize_recent_tenant', array_slice($tenantInsight
 $averageHealthScore = $totalTenants > 0 ? (int)floor($healthTotal / $totalTenants) : 0;
 $riskyTenants = array_map('normalize_recent_tenant', build_risky_tenants($tenantInsights));
 $onboardingWatchlist = array_map('normalize_recent_tenant', build_onboarding_watchlist($tenantInsights));
+$cellOnboarding = posla_fetch_onboarding_snapshot($pdo);
+$cellOnboardingPendingCount = !empty($cellOnboarding['pending']) ? count($cellOnboarding['pending']) : 0;
 
 json_response([
     'totalTenants'     => $totalTenants,
@@ -125,4 +128,6 @@ json_response([
     'recentTenants'    => $recentTenants,
     'riskyTenants'     => $riskyTenants,
     'onboardingWatchlist' => $onboardingWatchlist,
+    'cellOnboardingPendingCount' => $cellOnboardingPendingCount,
+    'cellOnboarding' => $cellOnboarding,
 ]);

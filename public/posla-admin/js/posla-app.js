@@ -1097,6 +1097,53 @@
 
   // ── (HELPDESK-P2-NONAI-ALL-20260423: AIコード案内関連の内部関数は削除、posla-supportdesk.js に置換) ──
 
+  function buildCellOnboardingStatusBadge(status) {
+    var tone = 'inactive';
+    if (status === 'ready_for_cell' || status === 'cell_provisioning') tone = 'pro';
+    if (status === 'active') tone = 'active';
+    if (status === 'failed') tone = 'inactive';
+    return '<span class="badge badge--' + tone + '">' + Utils.escapeHtml(status || '-') + '</span>';
+  }
+
+  function renderCellOnboardingRequests(data) {
+    var root = document.getElementById('cell-onboarding-requests');
+    var onboarding = data.cellOnboarding || {};
+    var rows = onboarding.pending || [];
+    var html;
+    var i;
+    var row;
+    if (!root) return;
+
+    if (!onboarding.available) {
+      root.innerHTML = '<div style="padding:1rem;color:#c62828;">onboarding ledger が未作成です。migration-p1-43 を適用してください。</div>';
+      return;
+    }
+
+    html = '<div class="data-table-wrap"><table class="data-table"><thead><tr>' +
+      '<th>顧客名</th><th>Slug</th><th>経路</th><th>Status</th><th>店舗</th><th>Cell</th><th>更新</th>' +
+      '</tr></thead><tbody>';
+
+    if (!rows.length) {
+      html += '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Cell作成待ちはありません</td></tr>';
+    } else {
+      for (i = 0; i < rows.length; i++) {
+        row = rows[i];
+        html += '<tr>' +
+          '<td>' + Utils.escapeHtml(row.tenant_name || '-') + '</td>' +
+          '<td><code>' + Utils.escapeHtml(row.tenant_slug || '-') + '</code></td>' +
+          '<td>' + Utils.escapeHtml(row.request_source || '-') + '</td>' +
+          '<td>' + buildCellOnboardingStatusBadge(row.status || '-') + '</td>' +
+          '<td>' + Utils.escapeHtml(row.store_name || '-') + '</td>' +
+          '<td>' + Utils.escapeHtml(row.cell_id || '未割当') + '</td>' +
+          '<td>' + Utils.escapeHtml(row.updated_at || '-') + '</td>' +
+          '</tr>';
+      }
+    }
+
+    html += '</tbody></table></div>';
+    root.innerHTML = html;
+  }
+
   // ── ダッシュボード ──
   function loadDashboard() {
     PoslaApi.getDashboard().then(function(data) {
@@ -1109,7 +1156,8 @@
           '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.totalUsers)) + '</div><div class="stat-card__label">ユーザー数</div></div>' +
           '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.averageHealthScore || 0)) + '</div><div class="stat-card__label">平均健全性スコア</div></div>' +
           '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.onboardingTenantCount || 0)) + '</div><div class="stat-card__label">要フォロー導入中</div></div>' +
-          '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.alertTenantCount || 0)) + '</div><div class="stat-card__label">要対応テナント</div></div>';
+          '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.alertTenantCount || 0)) + '</div><div class="stat-card__label">要対応テナント</div></div>' +
+          '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.cellOnboardingPendingCount || 0)) + '</div><div class="stat-card__label">Cell作成待ち</div></div>';
       }
 
       // 契約構成
@@ -1158,6 +1206,8 @@
       if (onboardingEl) {
         onboardingEl.innerHTML = buildWatchListHtml(data.onboardingWatchlist || [], '導入途中のテナントはありません', 'onboarding');
       }
+
+      renderCellOnboardingRequests(data);
     }).catch(function(err) {
       showToast('ダッシュボードの読み込みに失敗しました: ' + err.message);
     });

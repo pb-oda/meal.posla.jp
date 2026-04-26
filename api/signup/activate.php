@@ -16,6 +16,7 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
 require_once __DIR__ . '/../lib/stripe-billing.php';
+require_once __DIR__ . '/../lib/tenant-onboarding.php';
 require_once __DIR__ . '/../config/app.php';
 
 require_method(['POST']);
@@ -92,6 +93,17 @@ try {
     $pdo->rollBack();
     error_log('[A5][activate] failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('ACTIVATE_FAILED', '有効化に失敗しました', 500);
+}
+
+try {
+    posla_update_tenant_onboarding_status($pdo, (string)$tenant['id'], 'ready_for_cell', [
+        'stripe_subscription_id' => $realSubId,
+        'payment_confirmed_at' => date('Y-m-d H:i:s'),
+        'activated_at' => date('Y-m-d H:i:s'),
+        'notes' => 'Signup activated by fallback. Ready for cell provisioning.',
+    ]);
+} catch (Throwable $e) {
+    error_log('[A5][activate] onboarding_update_failed tenant=' . $tenant['id'] . ' err=' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // メール送信 (ベストエフォート)

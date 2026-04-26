@@ -10,6 +10,7 @@ require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/feature-flags.php';
+require_once __DIR__ . '/../lib/tenant-onboarding.php';
 
 $method = require_method(['GET']);
 require_codex_ops_read_access();
@@ -33,6 +34,7 @@ try {
 $snapshot['db'] = build_db_health($pdo);
 $snapshot['cron'] = build_cron_health($pdo);
 $snapshot['registry'] = build_registry_snapshot($pdo, $cellId);
+$snapshot['onboarding'] = posla_fetch_onboarding_snapshot($pdo);
 $snapshot['deployments'] = fetch_recent_deployments($pdo, $cellId);
 $snapshot['migrations'] = fetch_migration_summary($pdo, $cellId);
 $snapshot['feature_flags'] = fetch_feature_flag_snapshot($pdo);
@@ -217,7 +219,7 @@ function fetch_migration_summary(PDO $pdo, string $cellId): array
 
     try {
         $stmt = $pdo->prepare(
-            'SELECT migration, checksum, status, applied_at, applied_by
+            'SELECT migration_key AS migration, checksum_sha256 AS checksum, status, applied_at, applied_by
              FROM schema_migrations
              WHERE cell_id = ?
              ORDER BY applied_at DESC

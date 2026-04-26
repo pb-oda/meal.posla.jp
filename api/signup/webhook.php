@@ -17,6 +17,7 @@
 
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
+require_once __DIR__ . '/../lib/tenant-onboarding.php';
 require_once __DIR__ . '/../config/app.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -84,6 +85,17 @@ if ($type === 'checkout.session.completed') {
         $pdo->rollBack();
         error_log('[A5][webhook] activation_failed tenant=' . $tenantId . ' err=' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         http_response_code(200); echo '{"ok":true,"note":"activation_retry_needed"}'; exit;
+    }
+
+    try {
+        posla_update_tenant_onboarding_status($pdo, (string)$tenantId, 'ready_for_cell', [
+            'stripe_subscription_id' => $subscriptionId ?: null,
+            'payment_confirmed_at' => date('Y-m-d H:i:s'),
+            'activated_at' => date('Y-m-d H:i:s'),
+            'notes' => 'Stripe checkout completed. Ready for cell provisioning.',
+        ]);
+    } catch (Throwable $e) {
+        error_log('[A5][webhook] onboarding_update_failed tenant=' . $tenantId . ' err=' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
 
     // メール送信

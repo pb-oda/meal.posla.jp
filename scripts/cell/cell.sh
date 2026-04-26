@@ -603,6 +603,11 @@ onboard_tenant() {
       "$escaped_tenant_id" "$escaped_tenant_slug" "$escaped_tenant_name" "$(sql_escape "$CELL_ID")" \
       | compose exec -T db sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
   fi
+  if table_exists "posla_tenant_onboarding_requests"; then
+    printf "UPDATE posla_tenant_onboarding_requests SET status = 'active', cell_id = '%s', provisioned_at = COALESCE(provisioned_at, NOW()), activated_at = COALESCE(activated_at, NOW()), notes = 'Tenant onboarded by scripts/cell/cell.sh', updated_at = CURRENT_TIMESTAMP WHERE tenant_id = '%s' OR tenant_slug = '%s';\n" \
+      "$(sql_escape "$CELL_ID")" "$escaped_tenant_id" "$escaped_tenant_slug" \
+      | compose exec -T db sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
+  fi
 
   echo "Onboarded tenant in $CELL_ID"
   echo "tenant_id=$tenant_id"

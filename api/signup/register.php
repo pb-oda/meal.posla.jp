@@ -27,6 +27,7 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
 require_once __DIR__ . '/../lib/password-policy.php';
 require_once __DIR__ . '/../lib/stripe-billing.php';
+require_once __DIR__ . '/../lib/tenant-onboarding.php';
 
 require_method(['POST']);
 
@@ -128,6 +129,30 @@ try {
         // user_stores 未存在 or 重複時はスキップ
     }
 
+    posla_record_tenant_onboarding_request($pdo, [
+        'request_source' => 'lp_signup',
+        'status' => 'payment_pending',
+        'tenant_id' => $tenantId,
+        'tenant_slug' => $slug,
+        'tenant_name' => $tenantName,
+        'store_id' => $storeId,
+        'store_slug' => 'default',
+        'store_name' => $storeName,
+        'owner_user_id' => $userId,
+        'owner_username' => $username,
+        'owner_email' => $email,
+        'owner_display_name' => $ownerName,
+        'requested_store_count' => $storeCount,
+        'hq_menu_broadcast' => $hqBroadcast ? 1 : 0,
+        'signup_token' => $signupToken,
+        'payload' => [
+            'phone' => $phone,
+            'address_present' => $address !== null,
+            'entrypoint' => 'public/index.html',
+        ],
+        'notes' => 'LP signup accepted. Stripe checkout is pending.',
+    ]);
+
     // signup_tokens 一時テーブル (webhook で使う) — なければ tenants.subscription_status に tokens を紐付ける
     // シンプルに tenants テーブルに stripe_customer_id を後で追加することで紐付け
     $pdo->commit();
@@ -147,6 +172,13 @@ if (!$custResult['success']) {
 }
 $customerId = $custResult['customer_id'];
 $pdo->prepare('UPDATE tenants SET stripe_customer_id = ? WHERE id = ?')->execute([$customerId, $tenantId]);
+try {
+    posla_update_tenant_onboarding_status($pdo, $tenantId, 'payment_pending', [
+        'stripe_customer_id' => $customerId,
+    ]);
+} catch (Throwable $e) {
+    error_log('[A5][signup/register] onboarding_customer_update_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+}
 
 // ---------- Stripe Checkout Session 作成 ----------
 $successUrl = app_url('/signup-complete.html') . '?t=' . urlencode($signupToken);
