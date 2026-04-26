@@ -2133,6 +2133,7 @@
       var stripeSecret = _getKeyInfo(s, 'stripe_secret_key');
       var stripePub = _getKeyInfo(s, 'stripe_publishable_key');
       var stripeWebhook = _getKeyInfo(s, 'stripe_webhook_secret');
+      var stripeSignupWebhook = _getKeyInfo(s, 'stripe_webhook_secret_signup');
       var smaregiSecret = _getKeyInfo(s, 'smaregi_client_secret');
       var googleChat = _getKeyInfo(s, 'google_chat_webhook_url');
       var slackWebhook = _getKeyInfo(s, 'slack_webhook_url');
@@ -2153,7 +2154,7 @@
         ]) +
         _buildSummaryCard('BILLING', 'Stripe Billing', [
           _summaryLine('Secret', stripeSecret.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'muted')),
-          _summaryLine('Webhook', stripeWebhook.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'muted')),
+          _summaryLine('Webhook', (stripeWebhook.set && stripeSignupWebhook.set) ? _buildStatusPill('2/2 設定済み', 'ok') : _buildStatusPill('一部未設定', 'warn')),
           _summaryLine('Price ID', (priceBaseVal && priceAddVal && priceHqVal) ? _buildStatusPill('3/3 設定済み', 'info') : _buildStatusPill('一部未設定', 'warn'))
         ]) +
         _buildSummaryCard('EXTERNAL', 'Connect・スマレジ', [
@@ -2221,6 +2222,7 @@
     var stripeSecret = document.getElementById('posla-stripe-secret').value.trim();
     var stripePub = document.getElementById('posla-stripe-pub').value.trim();
     var stripeWebhook = document.getElementById('posla-stripe-webhook').value.trim();
+    var stripeSignupWebhook = document.getElementById('posla-stripe-webhook-signup').value.trim();
     var priceBase = document.getElementById('posla-stripe-price-base').value.trim();
     var priceAdd = document.getElementById('posla-stripe-price-add').value.trim();
     var priceHq = document.getElementById('posla-stripe-price-hq').value.trim();
@@ -2235,6 +2237,7 @@
     if (stripeSecret) data.stripe_secret_key = stripeSecret;
     if (stripePub) data.stripe_publishable_key = stripePub;
     if (stripeWebhook) data.stripe_webhook_secret = stripeWebhook;
+    if (stripeSignupWebhook) data.stripe_webhook_secret_signup = stripeSignupWebhook;
     if (priceBase) data.stripe_price_base = priceBase;
     if (priceAdd) data.stripe_price_additional_store = priceAdd;
     if (priceHq) data.stripe_price_hq_broadcast = priceHq;
@@ -2262,6 +2265,7 @@
       document.getElementById('posla-stripe-secret').value = '';
       document.getElementById('posla-stripe-pub').value = '';
       document.getElementById('posla-stripe-webhook').value = '';
+      document.getElementById('posla-stripe-webhook-signup').value = '';
       document.getElementById('posla-google-chat-webhook').value = '';
       var smSecEl = document.getElementById('posla-smaregi-client-secret');
       if (smSecEl) smSecEl.value = '';
@@ -2285,6 +2289,7 @@
       stripe_secret_key: null,
       stripe_publishable_key: null,
       stripe_webhook_secret: null,
+      stripe_webhook_secret_signup: null,
       smaregi_client_secret: null,
       google_chat_webhook_url: null
     }).then(function() {
@@ -2293,6 +2298,7 @@
       document.getElementById('posla-stripe-secret').value = '';
       document.getElementById('posla-stripe-pub').value = '';
       document.getElementById('posla-stripe-webhook').value = '';
+      document.getElementById('posla-stripe-webhook-signup').value = '';
       document.getElementById('posla-google-chat-webhook').value = '';
       var smSecEl = document.getElementById('posla-smaregi-client-secret');
       if (smSecEl) smSecEl.value = '';

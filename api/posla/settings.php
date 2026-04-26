@@ -96,7 +96,8 @@ function _setting_label_map() {
         'google_places_api_key' => 'Google Places APIキー',
         'stripe_secret_key' => 'Stripe Secret Key',
         'stripe_publishable_key' => 'Stripe Publishable Key',
-        'stripe_webhook_secret' => 'Stripe Webhook Secret',
+        'stripe_webhook_secret' => 'Stripe Subscription Webhook Secret',
+        'stripe_webhook_secret_signup' => 'Stripe Signup Webhook Secret',
         'stripe_price_base' => 'Price ID: 基本料金',
         'stripe_price_additional_store' => 'Price ID: 追加店舗',
         'stripe_price_hq_broadcast' => 'Price ID: 本部一括配信',
@@ -226,23 +227,24 @@ function _build_config_health(array $settingsMap): array {
     $stripeSecretSet = _setting_is_present($settingsMap, 'stripe_secret_key');
     $stripePublishableSet = _setting_is_present($settingsMap, 'stripe_publishable_key');
     $stripeWebhookSet = _setting_is_present($settingsMap, 'stripe_webhook_secret');
+    $stripeSignupWebhookSet = _setting_is_present($settingsMap, 'stripe_webhook_secret_signup');
     $stripePriceBaseSet = _setting_is_present($settingsMap, 'stripe_price_base');
     $stripePriceAddSet = _setting_is_present($settingsMap, 'stripe_price_additional_store');
     $stripePriceHqSet = _setting_is_present($settingsMap, 'stripe_price_hq_broadcast');
     $connectFeeSet = _setting_is_present($settingsMap, 'connect_application_fee_percent');
-    $stripeReadyCount = ($stripeSecretSet ? 1 : 0) + ($stripePublishableSet ? 1 : 0) + ($stripeWebhookSet ? 1 : 0)
+    $stripeReadyCount = ($stripeSecretSet ? 1 : 0) + ($stripePublishableSet ? 1 : 0) + ($stripeWebhookSet ? 1 : 0) + ($stripeSignupWebhookSet ? 1 : 0)
         + ($stripePriceBaseSet ? 1 : 0) + ($stripePriceAddSet ? 1 : 0) + ($stripePriceHqSet ? 1 : 0) + ($connectFeeSet ? 1 : 0);
     $stripeMode = _detect_stripe_mode(
         _setting_value($settingsMap, 'stripe_secret_key'),
         _setting_value($settingsMap, 'stripe_publishable_key')
     );
     $stripeTone = 'ok';
-    $stripeSummary = $stripeReadyCount . '/7 設定済み';
+    $stripeSummary = $stripeReadyCount . '/8 設定済み';
 
     if ($stripeMode === 'mismatch') {
         $stripeTone = 'danger';
         $stripeSummary = 'test/live 不一致';
-    } elseif ($stripeReadyCount < 7) {
+    } elseif ($stripeReadyCount < 8) {
         $stripeTone = 'warn';
     }
 
@@ -254,7 +256,8 @@ function _build_config_health(array $settingsMap): array {
         [
             'Secret Key: ' . ($stripeSecretSet ? '設定済み' : '未設定'),
             'Publishable Key: ' . ($stripePublishableSet ? '設定済み' : '未設定'),
-            'Webhook Secret: ' . ($stripeWebhookSet ? '設定済み' : '未設定'),
+            'Subscription Webhook Secret: ' . ($stripeWebhookSet ? '設定済み' : '未設定'),
+            'Signup Webhook Secret: ' . ($stripeSignupWebhookSet ? '設定済み' : '未設定'),
             'Price ID: ' . (($stripePriceBaseSet && $stripePriceAddSet && $stripePriceHqSet) ? '3/3 設定済み' : (($stripePriceBaseSet ? 1 : 0) + ($stripePriceAddSet ? 1 : 0) + ($stripePriceHqSet ? 1 : 0)) . '/3 設定済み'),
             'Application Fee: ' . ($connectFeeSet ? '設定済み' : '未設定'),
             'モード判定: ' . ($stripeMode === 'mismatch' ? '不一致' : ($stripeMode !== '' ? $stripeMode : '未判定')),
@@ -458,7 +461,7 @@ if ($method === 'PATCH') {
     $input = get_json_body();
     // P1-35: α-1 化で stripe_price_standard/pro/enterprise → base/additional_store/hq_broadcast
     // 旧キーは posla_settings の row として温存（rollback 用）。allowedKeys からは削除して UI 編集経路を閉じる
-    $allowedKeys = ['gemini_api_key', 'google_places_api_key', 'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret', 'stripe_price_base', 'stripe_price_additional_store', 'stripe_price_hq_broadcast', 'connect_application_fee_percent', 'smaregi_client_id', 'smaregi_client_secret', 'google_chat_webhook_url', 'ops_notify_email'];
+    $allowedKeys = ['gemini_api_key', 'google_places_api_key', 'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret', 'stripe_webhook_secret_signup', 'stripe_price_base', 'stripe_price_additional_store', 'stripe_price_hq_broadcast', 'connect_application_fee_percent', 'smaregi_client_id', 'smaregi_client_secret', 'google_chat_webhook_url', 'ops_notify_email'];
     $updated = 0;
     $updatedKeys = [];
     $currentSettings = _fetch_current_settings_map($pdo);

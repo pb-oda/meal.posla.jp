@@ -48,6 +48,7 @@ maintainer: POSLA運営
 - `stripe_secret_key`
 - `stripe_publishable_key`
 - `stripe_webhook_secret`
+- `stripe_webhook_secret_signup`
 - `stripe_price_base`
 - `stripe_price_additional_store`
 - `stripe_price_hq_broadcast`
@@ -100,7 +101,8 @@ owner-dashboard の「決済設定」で管理するものです。
 | `google_places_api_key` | Places / レビュー | live キー投入 |
 | `stripe_secret_key` | Stripe Billing | `sk_live_...` |
 | `stripe_publishable_key` | Checkout | `pk_live_...` |
-| `stripe_webhook_secret` | Stripe Webhook 検証 | live webhook 再登録後に更新 |
+| `stripe_webhook_secret` | Stripe Subscription Webhook 検証 | live webhook 再登録後に更新 |
+| `stripe_webhook_secret_signup` | Stripe Signup Webhook 検証 | live signup webhook 再登録後に更新 |
 | `stripe_price_base` | 基本料金 | live Price ID |
 | `stripe_price_additional_store` | 追加店舗 | live Price ID |
 | `stripe_price_hq_broadcast` | 本部一括配信 | live Price ID |

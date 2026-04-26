@@ -1600,8 +1600,13 @@
               <input class="form-input" type="password" id="posla-stripe-pub" placeholder="pk_test_...">
             </div>
             <div class="form-group">
-              <label class="form-label" for="posla-stripe-webhook">Stripe Webhook Secret</label>
+              <label class="form-label" for="posla-stripe-webhook">Stripe Subscription Webhook Secret</label>
               <input class="form-input" type="password" id="posla-stripe-webhook" placeholder="whsec_...">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-stripe-webhook-signup">Stripe Signup Webhook Secret</label>
+              <input class="form-input" type="password" id="posla-stripe-webhook-signup" placeholder="whsec_...">
+              <span class="form-hint">LP申込用 `/api/signup/webhook.php` の署名検証で使います。</span>
             </div>
             <div class="form-group">
               <label class="form-label" for="posla-stripe-price-base">Price ID: 基本料金（¥20,000/月）</label>
