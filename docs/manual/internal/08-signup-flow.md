@@ -221,7 +221,7 @@ POSLA_PROVISIONER_TRIGGER_SECRET='<secret>'
 
 Docker 擬似本番からホスト側 trigger service を呼ぶ場合だけ、URL は `http://host.docker.internal:19091/run` にします。
 
-trigger service は POST `/run` を受けた時だけ `php scripts/cell/provision-ready-cells.php --request-id=<id>` をバックグラウンド起動します。サービスの常駐には systemd service 等を使いますが、systemd timer / cron は通常フローでは使いません。ローカルMacを販売フローの一部にはしません。
+trigger service は POST `/run` を受けた時だけ `php scripts/cell/provision-ready-cells.php --request-id=<id>` をバックグラウンド起動します。LP申込だけでなく、POSLA管理画面の「テナント新規作成」も同じ trigger service を呼びます。サービスの常駐には systemd service 等を使いますが、systemd timer / cron は通常フローでは使いません。ローカルMacを販売フローの一部にはしません。
 
 本番では `POSLA_CELL_APP_URL_PATTERN` を必ず設定します。未設定の production 環境では、localhost のログインURLを作らないよう provisioner が停止します。
 

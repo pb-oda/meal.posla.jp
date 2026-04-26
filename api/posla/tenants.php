@@ -12,6 +12,7 @@ require_once __DIR__ . '/auth-helper.php';
 require_once __DIR__ . '/admin-audit-helper.php';
 require_once __DIR__ . '/tenant-insights-helper.php';
 require_once __DIR__ . '/../lib/tenant-onboarding.php';
+require_once __DIR__ . '/../lib/provisioner-trigger.php';
 
 $admin = require_posla_admin();
 $method = require_method(['GET', 'PATCH', 'POST']);
@@ -333,6 +334,7 @@ if ($method === 'POST') {
         ]);
 
         $pdo->commit();
+        posla_trigger_cell_provisioner($pdo, (string)$tenantId, 'posla_admin_create_tenant');
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();

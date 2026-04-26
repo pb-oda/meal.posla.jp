@@ -121,7 +121,7 @@ Cell配備タブで表示するもの:
 
 ### on-demand provisioner
 
-Stripe webhook / `signup-complete.html` は deploy を直接実行しません。決済完了後に control DB を `ready_for_cell` へ更新し、本番 provisioner ホスト上の localhost trigger service に通知します。通常フローでは 1分ごとの timer / cron で巡回しません。
+Stripe webhook / `signup-complete.html` は deploy を直接実行しません。決済完了後に control DB を `ready_for_cell` へ更新し、本番 provisioner ホスト上の localhost trigger service に通知します。POSLA管理画面の「テナント新規作成」も、同じく `ready_for_cell` を作成して trigger service に通知します。通常フローでは 1分ごとの timer / cron で巡回しません。
 
 ```bash
 POSLA_PROVISIONER_TRIGGER_SECRET='<secret>' \
