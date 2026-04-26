@@ -23,6 +23,7 @@
   </div>
 </div>
 
+<script src="../shared/js/utils.js?v=20260426-error-display"></script>
 <script>
 (function() {
   'use strict';
@@ -59,7 +60,7 @@
       .then(function(text) {
         var json = JSON.parse(text);
         if (!json.ok) {
-          showError(json.error ? json.error.message : 'データの取得に失敗しました');
+          showError((window.Utils && Utils.formatError) ? Utils.formatError(json) : (json.error ? json.error.message : 'データの取得に失敗しました'));
           return;
         }
         render(json.data);

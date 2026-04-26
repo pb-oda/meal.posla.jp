@@ -19,10 +19,20 @@
     el.textContent = msg; el.hidden = false;
     setTimeout(function () { el.hidden = true; }, ms || 2400);
   }
+  function makeApiError(d, fallback) {
+    if (window.Utils && Utils.createApiError) {
+      return Utils.createApiError(d, fallback || 'エラー');
+    }
+    return (d && d.error) || d || { message: fallback || 'エラー' };
+  }
+  function formatDisplayError(err, fallback) {
+    if (window.Utils && Utils.formatError) return Utils.formatError(err || { message: fallback || 'エラー' });
+    return (err && err.message) || fallback || 'エラー';
+  }
   function apiGet(path, cb) {
     var x = new XMLHttpRequest(); x.open('GET', API + path);
     x.onload = function () {
-      try { var d = JSON.parse(x.responseText); cb(d.ok ? null : (d.error || { message: 'error' }), d.data); }
+      try { var d = JSON.parse(x.responseText); cb(d.ok ? null : makeApiError(d), d.data); }
       catch (e) { cb({ message: 'invalid_response' }); }
     };
     x.onerror = function () { cb({ message: 'network_error' }); };
@@ -32,7 +42,7 @@
     var x = new XMLHttpRequest(); x.open('POST', API + path);
     x.setRequestHeader('Content-Type', 'application/json');
     x.onload = function () {
-      try { var d = JSON.parse(x.responseText); cb(d.ok ? null : (d.error || { message: 'error' }), d.data); }
+      try { var d = JSON.parse(x.responseText); cb(d.ok ? null : makeApiError(d), d.data); }
       catch (e) { cb({ message: 'invalid_response' }); }
     };
     x.onerror = function () { cb({ message: 'network_error' }); };
@@ -51,7 +61,7 @@
 
   function load() {
     apiGet('/reservation-detail.php?id=' + encodeURIComponent(_id) + '&t=' + encodeURIComponent(_token), function (err, data) {
-      if (err) { showError(err.message || '予約を取得できませんでした'); return; }
+      if (err) { showError(formatDisplayError(err, '予約を取得できませんでした')); return; }
       _data = data;
       render();
     });
@@ -109,7 +119,7 @@
 
   function payDeposit() {
     apiPost('/reservation-deposit-checkout.php', { id: _id, edit_token: _token }, function (err, data) {
-      if (err) { showToast(err.message || 'エラー', 3000); return; }
+      if (err) { showToast(formatDisplayError(err, 'エラー'), 3000); return; }
       window.location.href = data.checkout_url;
     });
   }
@@ -140,7 +150,7 @@
       var btn = this;
       apiPost('/reservation-update.php', { id: _id, edit_token: _token, reserved_at: date + 'T' + time + ':00', party_size: party, memo: memo }, function (err, data) {
         btn.disabled = false; btn.textContent = '変更を保存';
-        if (err) { showToast(err.message || 'エラー', 3500); return; }
+        if (err) { showToast(formatDisplayError(err, 'エラー'), 3500); return; }
         showToast('変更を保存しました', 2500);
         load();
       });
@@ -150,7 +160,7 @@
   function confirmCancel() {
     if (!confirm('本当にキャンセルしますか? この操作は取り消せません')) return;
     apiPost('/reservation-cancel.php', { id: _id, edit_token: _token, reason: 'customer_cancel' }, function (err, data) {
-      if (err) { showToast(err.message || 'エラー', 3500); return; }
+      if (err) { showToast(formatDisplayError(err, 'エラー'), 3500); return; }
       var msg = 'キャンセルが完了しました';
       if (data.deposit_outcome === 'captured') msg += '(キャンセル料が発生しました)';
       else if (data.deposit_outcome === 'released') msg += '(予約金は返金されます)';

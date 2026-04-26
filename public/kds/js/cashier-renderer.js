@@ -513,7 +513,7 @@ var CashierRenderer = (function () {
       });
     }).then(function (json) {
       if (!json.ok) {
-        showToast((json.error && json.error.message) || 'エラー', 'error');
+        showToast((window.Utils && Utils.formatError) ? Utils.formatError(json) : ((json.error && json.error.message) || 'エラー'), 'error');
         btn.disabled = false;
         btn.textContent = isPartial ? '個別会計する' : '会計する';
         return;

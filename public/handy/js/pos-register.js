@@ -655,8 +655,8 @@ var PosRegister = (function () {
 
     apiPost('/store/process-payment.php', body).then(function (json) {
       if (!json.ok) {
-        var errMsg = '会計に失敗しました';
-        if (json.error) {
+        var errMsg = (window.Utils && Utils.formatError) ? Utils.formatError(json) : '会計に失敗しました';
+        if (!(window.Utils && Utils.formatError) && json.error) {
           errMsg = typeof json.error === 'string' ? json.error : (json.error.message || errMsg);
         }
         toast(errMsg, 'error');

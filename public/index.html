@@ -225,6 +225,7 @@
   </div>
 </footer>
 
+<script src="shared/js/utils.js?v=20260426-error-display"></script>
 <script>
 (function () {
   'use strict';
@@ -255,9 +256,13 @@
         try { data = JSON.parse(res.text); }
         catch (e) { throw new Error('サーバーの応答を解釈できません'); }
         if (!data.ok) {
-          var msg = (data.error && data.error.message) || '申込に失敗しました';
-          if (data.error && data.error.code === 'USERNAME_TAKEN') msg = 'このユーザー名は既に使用されています';
-          if (data.error && data.error.code === 'EMAIL_TAKEN') msg = 'このメールアドレスは既に登録されています';
+          var msg = (window.Utils && Utils.formatError) ? Utils.formatError(data) : ((data.error && data.error.message) || '申込に失敗しました');
+          if (data.error && data.error.code === 'USERNAME_TAKEN') {
+            msg = (window.Utils && Utils.formatError) ? Utils.formatError({ ok: false, serverTime: data.serverTime, error: { code: data.error.code, errorNo: data.error.errorNo, message: 'このユーザー名は既に使用されています' } }) : 'このユーザー名は既に使用されています';
+          }
+          if (data.error && data.error.code === 'EMAIL_TAKEN') {
+            msg = (window.Utils && Utils.formatError) ? Utils.formatError({ ok: false, serverTime: data.serverTime, error: { code: data.error.code, errorNo: data.error.errorNo, message: 'このメールアドレスは既に登録されています' } }) : 'このメールアドレスは既に登録されています';
+          }
           throw new Error(msg);
         }
         if (data.data && data.data.checkout_url) {

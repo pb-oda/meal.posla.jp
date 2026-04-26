@@ -28,6 +28,7 @@
     </form>
   </div>
 
+  <script src="../shared/js/utils.js?v=20260426-error-display"></script>
   <script>
   (function() {
     'use strict';
@@ -56,7 +57,10 @@
           try { json = JSON.parse(body); }
           catch (err) { return Promise.reject(new Error('応答の解析に失敗しました')); }
           if (!res.ok || !json.ok) {
-            var msg = (json.error && json.error.message) || 'ログインに失敗しました';
+            if (window.Utils && Utils.createApiError) {
+              return Promise.reject(Utils.createApiError(json, 'ログインに失敗しました'));
+            }
+            var msg = (window.Utils && Utils.formatError) ? Utils.formatError(json) : ((json.error && json.error.message) || 'ログインに失敗しました');
             return Promise.reject(new Error(msg));
           }
           return json.data;

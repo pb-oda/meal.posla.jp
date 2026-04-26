@@ -89,7 +89,7 @@ var PollingDataSource = (function () {
       })
       .then(function (json) {
         if (!json.ok) {
-          _onError((json.error && json.error.message) || 'エラー');
+          _onError((window.Utils && Utils.formatError) ? Utils.formatError(json) : ((json.error && json.error.message) || 'エラー'));
           return;
         }
         if (_onData) _onData(json.data);

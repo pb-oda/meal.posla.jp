@@ -1828,7 +1828,7 @@
           alert('パスワードを変更しました。');
           closeModal();
         } else {
-          var msg = (json && json.error && json.error.message) || 'パスワード変更に失敗しました';
+          var msg = (window.Utils && Utils.formatError) ? Utils.formatError(json || { message: 'パスワード変更に失敗しました' }) : ((json && json.error && json.error.message) || 'パスワード変更に失敗しました');
           showError(msg);
         }
       })

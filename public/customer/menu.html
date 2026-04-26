@@ -567,6 +567,29 @@
       return fallbackJa;
     }
 
+    function makeApiError(json, fallback, overrideMessage) {
+      if (window.Utils && Utils.createApiError) {
+        if (overrideMessage && json && json.error) {
+          return Utils.createApiError({
+            ok: false,
+            serverTime: json.serverTime,
+            error: {
+              code: json.error.code,
+              errorNo: json.error.errorNo,
+              message: overrideMessage
+            }
+          }, overrideMessage);
+        }
+        return Utils.createApiError(json, fallback || 'エラーが発生しました');
+      }
+      return new Error(overrideMessage || (json && json.error && json.error.message) || fallback || 'エラーが発生しました');
+    }
+
+    function formatApiError(json, fallback) {
+      if (window.Utils && Utils.formatError) return Utils.formatError(json || { message: fallback || 'エラーが発生しました' });
+      return (json && json.error && json.error.message) || (json && json.message) || fallback || 'エラーが発生しました';
+    }
+
     // 外部JSから参照可能にする
     window.__posla_lang = function () { return lang; };
     window.__posla_t = _t;
@@ -975,7 +998,7 @@
               }
               // その他のエラー（NO_ACTIVE_SESSION, SESSION_COOLDOWN 等）
               document.getElementById('menu-container').innerHTML =
-                '<div class="empty-state"><p>' + Utils.escapeHtml((json.error && json.error.message) || 'セッション取得失敗') + '</p></div>';
+                '<div class="empty-state"><p>' + Utils.escapeHtml(formatApiError(json, 'セッション取得失敗')) + '</p></div>';
               return;
             }
             _sessionPin = pin; // S6: PIN保持（コースポーリング用）
@@ -1104,7 +1127,7 @@
           });
         })
         .then(function (json) {
-          if (!json.ok) throw new Error((json.error && json.error.message) || 'メニュー取得失敗');
+          if (!json.ok) throw makeApiError(json, 'メニュー取得失敗');
           var d = json.data;
           menuData = d.categories || [];
           settings = d.settings || {};
@@ -2652,7 +2675,7 @@
         .then(function (text) {
           var json;
           try { json = JSON.parse(text); } catch (e) { throw new Error('応答の解析に失敗しました'); }
-          if (!json || !json.ok) throw new Error((json.error && json.error.message) || 'データ取得に失敗しました');
+          if (!json || !json.ok) throw makeApiError(json, 'データ取得に失敗しました');
           renderCheckoutBody(json.data);
         })
         .catch(function (err) {
@@ -2942,7 +2965,7 @@
         .then(function (text) {
           var json;
           try { json = JSON.parse(text); } catch (e) { throw new Error('解析に失敗しました'); }
-          if (!json || !json.ok) throw new Error((json.error && json.error.message) || '取得に失敗しました');
+          if (!json || !json.ok) throw makeApiError(json, '取得に失敗しました');
           renderCheckoutHistoryList(body, json.data.orders || []);
         })
         .catch(function (err) {
@@ -3061,7 +3084,7 @@
       .then(function (text) {
         var json;
         try { json = JSON.parse(text); } catch (e) { throw new Error('応答の解析に失敗しました'); }
-        if (!json || !json.ok) throw new Error((json.error && json.error.message) || '決済セッション作成に失敗しました');
+        if (!json || !json.ok) throw makeApiError(json, '決済セッション作成に失敗しました');
         // Stripeの決済ページにリダイレクト
         window.location.href = json.data.checkout_url;
       })
@@ -3097,9 +3120,9 @@
         if (!json || !json.ok) {
           var code = json && json.error ? json.error.code : '';
           if (code === 'PAYMENT_NOT_CONFIRMED') {
-            throw new Error(_t('checkout_not_confirmed', '決済が確認できませんでした。しばらくしてから再度お試しください'));
+            throw makeApiError(json, '決済が確認できませんでした。しばらくしてから再度お試しください', _t('checkout_not_confirmed', '決済が確認できませんでした。しばらくしてから再度お試しください'));
           }
-          throw new Error((json.error && json.error.message) || 'エラーが発生しました。スタッフにお声がけください');
+          throw makeApiError(json, 'エラーが発生しました。スタッフにお声がけください');
         }
 
         var d = json.data;
@@ -3155,7 +3178,7 @@
         .then(function (text) {
           var json;
           try { json = JSON.parse(text); } catch (e) { throw new Error('データ取得に失敗しました'); }
-          if (!json || !json.ok) throw new Error((json.error && json.error.message) || 'データ取得に失敗しました');
+          if (!json || !json.ok) throw makeApiError(json, 'データ取得に失敗しました');
           printReceiptHtml(json.data);
         })
         .catch(function (err) {

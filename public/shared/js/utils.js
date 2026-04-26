@@ -25,11 +25,24 @@ var Utils = (function () {
   function formatDateTime(dtStr) {
     if (!dtStr) return '-';
     var d = new Date(dtStr);
+    if (isNaN(d.getTime())) return String(dtStr);
     var m = ('0' + (d.getMonth() + 1)).slice(-2);
     var day = ('0' + d.getDate()).slice(-2);
     var h = ('0' + d.getHours()).slice(-2);
     var min = ('0' + d.getMinutes()).slice(-2);
     return m + '/' + day + ' ' + h + ':' + min;
+  }
+
+  function formatDateTimeFull(dtStr) {
+    if (!dtStr) return '';
+    var d = new Date(dtStr);
+    if (isNaN(d.getTime())) return String(dtStr);
+    var y = d.getFullYear();
+    var m = ('0' + (d.getMonth() + 1)).slice(-2);
+    var day = ('0' + d.getDate()).slice(-2);
+    var h = ('0' + d.getHours()).slice(-2);
+    var min = ('0' + d.getMinutes()).slice(-2);
+    return y + '-' + m + '-' + day + ' ' + h + ':' + min;
   }
 
   function formatShortDate(dateStr) {
@@ -68,21 +81,40 @@ var Utils = (function () {
   }
 
   /**
-   * Phase B: API エラーを「[E3024] PIN が…」形式の文字列に整形する。
+   * Phase B: API エラーを「[E3024] PIN が…（発生時刻: YYYY-MM-DD HH:MM）」形式に整形する。
    * 入力は API レスポンスの error オブジェクト ({ code, message, errorNo })
    * もしくはレスポンス全体 ({ ok:false, error: {...} })
    * もしくは Error インスタンス。
    */
   function formatError(input) {
     if (!input) return 'エラー';
+    var serverTime = input.serverTime || '';
+    if (input.name === 'Error' || input.stack) return String(input.message || 'エラー');
     // Response 全体が渡された場合
-    if (input.error && typeof input.error === 'object') input = input.error;
+    if (input.error && typeof input.error === 'object') {
+      if (!serverTime && input.error.serverTime) serverTime = input.error.serverTime;
+      input = input.error;
+    }
+    if (!serverTime && input.serverTime) serverTime = input.serverTime;
     // Error インスタンス
-    if (input.message && !input.code) return String(input.message);
+    if (input.message && !input.code && !input.errorNo && !serverTime) return String(input.message);
     var msg = input.message || input.code || 'エラー';
     var tag = input.errorNo || input.code || '';
-    if (!tag) return String(msg);
-    return '[' + tag + '] ' + msg;
+    var out = tag ? ('[' + tag + '] ' + msg) : String(msg);
+    if (serverTime) out += '（発生時刻: ' + formatDateTimeFull(serverTime) + '）';
+    return out;
+  }
+
+  function createApiError(input, fallbackMessage) {
+    var response = input || {};
+    var detail = response.error && typeof response.error === 'object' ? response.error : response;
+    if (!detail.message && fallbackMessage) detail.message = fallbackMessage;
+    var err = new Error(formatError(response));
+    err.code = detail.code || '';
+    err.errorNo = detail.errorNo || '';
+    err.serverTime = response.serverTime || detail.serverTime || '';
+    err.apiError = response;
+    return err;
   }
 
   return {
@@ -90,9 +122,11 @@ var Utils = (function () {
     escapeHtml: escapeHtml,
     toDateStr: toDateStr,
     formatDateTime: formatDateTime,
+    formatDateTimeFull: formatDateTimeFull,
     formatShortDate: formatShortDate,
     formatDuration: formatDuration,
     getPresetRange: getPresetRange,
     formatError: formatError,
+    createApiError: createApiError,
   };
 })();

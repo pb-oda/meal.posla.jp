@@ -44,6 +44,7 @@ var HandyApp = (function () {
 
   function apiErrorMsg(json) {
     if (!json || !json.error) return 'エラー';
+    if (window.Utils && Utils.formatError) return Utils.formatError(json);
     if (typeof json.error === 'string') return json.error;
     return json.error.message || json.error.code || 'エラー';
   }

@@ -546,7 +546,7 @@ var KdsRenderer = (function () {
         if (!body) throw new Error('empty response');
         try { var json = JSON.parse(body); }
         catch (e) { throw new Error('invalid JSON'); }
-        if (!r.ok || !json.ok) throw new Error((json.error && json.error.message) || 'update failed');
+        if (!r.ok || !json.ok) throw ((window.Utils && Utils.createApiError) ? Utils.createApiError(json, 'update failed') : new Error((json.error && json.error.message) || 'update failed'));
         return json;
       });
     })
@@ -613,7 +613,7 @@ var KdsRenderer = (function () {
         if (!body) throw new Error('empty response');
         try { var json = JSON.parse(body); }
         catch (e) { throw new Error('invalid JSON'); }
-        if (!r.ok || !json.ok) throw new Error((json.error && json.error.message) || 'update failed');
+        if (!r.ok || !json.ok) throw ((window.Utils && Utils.createApiError) ? Utils.createApiError(json, 'update failed') : new Error((json.error && json.error.message) || 'update failed'));
         return json;
       });
     })

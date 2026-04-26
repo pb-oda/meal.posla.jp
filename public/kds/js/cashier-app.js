@@ -2542,7 +2542,7 @@
     .then(function (text) {
       var json;
       try { json = JSON.parse(text); } catch (e) { throw new Error('Token応答の解析に失敗'); }
-      if (!json.ok) throw new Error((json.error && json.error.message) || 'Token取得失敗');
+      if (!json.ok) throw ((window.Utils && Utils.createApiError) ? Utils.createApiError(json, 'Token取得失敗') : new Error((json.error && json.error.message) || 'Token取得失敗'));
       return json.data.secret;
     });
   }
@@ -2675,7 +2675,7 @@
     .then(function (text) {
       var json;
       try { json = JSON.parse(text); } catch (e) { throw new Error('応答の解析に失敗'); }
-      if (!json.ok) throw new Error((json.error && json.error.message) || 'PaymentIntent作成失敗');
+      if (!json.ok) throw ((window.Utils && Utils.createApiError) ? Utils.createApiError(json, 'PaymentIntent作成失敗') : new Error((json.error && json.error.message) || 'PaymentIntent作成失敗'));
       return json.data;
     })
     .then(function (piData) {
@@ -2726,7 +2726,7 @@
 
       if (!json.ok) {
         _playError();
-        var errMsg = (json.error && json.error.message) || 'エラー';
+        var errMsg = (window.Utils && Utils.formatError) ? Utils.formatError(json) : ((json.error && json.error.message) || 'エラー');
         _showToast(errMsg, 'error');
         _startPolling();
         _renderRegister();

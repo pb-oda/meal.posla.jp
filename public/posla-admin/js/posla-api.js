@@ -23,7 +23,10 @@ var PoslaApi = (function() {
         try { json = JSON.parse(text); }
         catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
         if (!res.ok || !json.ok) {
-          var msg = (json.error && json.error.message) || 'エラーが発生しました';
+          if (window.Utils && Utils.createApiError) {
+            return Promise.reject(Utils.createApiError(json, 'エラーが発生しました'));
+          }
+          var msg = (window.Utils && Utils.formatError) ? Utils.formatError(json) : ((json.error && json.error.message) || 'エラーが発生しました');
           return Promise.reject(new Error(msg));
         }
         return json.data;

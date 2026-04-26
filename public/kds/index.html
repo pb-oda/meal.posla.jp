@@ -372,7 +372,7 @@
                 var msg = json.data.completed ? 'コース完了' : json.data.message;
                 btn.textContent = msg || '完了';
               } else {
-                btn.textContent = (json && json.error && json.error.message) || 'エラー';
+                btn.textContent = (window.Utils && Utils.formatError) ? Utils.formatError(json) : ((json && json.error && json.error.message) || 'エラー');
               }
               setTimeout(function () { btn.disabled = false; }, 1000);
             })

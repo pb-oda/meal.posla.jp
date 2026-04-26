@@ -28,7 +28,7 @@ var SoldOutRenderer = (function () {
         });
       })
       .then(function (json) {
-        if (!json.ok) throw new Error((json.error && json.error.message) || 'エラー');
+        if (!json.ok) throw ((window.Utils && Utils.createApiError) ? Utils.createApiError(json, 'エラー') : new Error((json.error && json.error.message) || 'エラー'));
         render(json.data.categories || []);
       })
       .catch(function (err) {
@@ -94,7 +94,7 @@ var SoldOutRenderer = (function () {
         catch (e) { throw new Error('応答の解析に失敗しました'); }
       });
     }).then(function (json) {
-      if (!json.ok) throw new Error((json.error && json.error.message) || 'エラー');
+      if (!json.ok) throw ((window.Utils && Utils.createApiError) ? Utils.createApiError(json, 'エラー') : new Error((json.error && json.error.message) || 'エラー'));
       load();
     }).catch(function () {
       load();

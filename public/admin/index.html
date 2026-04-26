@@ -47,6 +47,7 @@
     </form>
   </div>
 
+  <script src="../shared/js/utils.js?v=20260426-error-display"></script>
   <script>
   (function () {
     'use strict';
@@ -107,10 +108,10 @@
             if (ret && ret.indexOf('/docs-tenant/') === 0) {
               dest = ret;
             }
-          }
-          window.location.href = dest;
-        } else {
-          showError(json.error ? json.error.message : 'ログインに失敗しました');
+        }
+        window.location.href = dest;
+      } else {
+          showError((window.Utils && Utils.formatError) ? Utils.formatError(json) : (json.error ? json.error.message : 'ログインに失敗しました'));
         }
       })
       .catch(function (err) {

@@ -255,6 +255,27 @@
   }
 
   // ---------- API helpers ----------
+  function makeApiError(data, fallback) {
+    if (window.Utils && Utils.createApiError) {
+      return Utils.createApiError(data, fallback || t('error.generic'));
+    }
+    return (data && data.error) || data || { message: fallback || t('error.generic') };
+  }
+
+  function formatDisplayError(err, fallback) {
+    if (window.Utils && Utils.formatError) {
+      if (err && (err.errorNo || err.code || err.serverTime) && fallback && fallback !== err.message) {
+        return Utils.formatError({
+          ok: false,
+          serverTime: err.serverTime,
+          error: { code: err.code, errorNo: err.errorNo, message: fallback }
+        });
+      }
+      return Utils.formatError(err || { message: fallback || t('error.generic') });
+    }
+    return (err && err.message) || fallback || t('error.generic');
+  }
+
   function apiGet(path, callback) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', API + path);
@@ -262,7 +283,7 @@
       try {
         var data = JSON.parse(xhr.responseText);
         if (data.ok) callback(null, data.data);
-        else callback(data.error || { message: 'error' });
+        else callback(makeApiError(data));
       } catch (e) {
         callback({ message: 'invalid_response' });
       }
@@ -278,7 +299,7 @@
       try {
         var data = JSON.parse(xhr.responseText);
         if (data.ok) callback(null, data.data);
-        else callback(data.error || { message: 'error' });
+        else callback(makeApiError(data));
       } catch (e) {
         callback({ message: 'invalid_response' });
       }
@@ -314,7 +335,7 @@
 
     apiGet('/reservation-availability.php?action=info&store_id=' + encodeURIComponent(_storeId), function (err, info) {
       if (err) {
-        var msg = (err && err.code === 'RESERVATION_DISABLED') ? t('error.disabled') : (err.message || t('error.generic'));
+        var msg = (err && err.code === 'RESERVATION_DISABLED') ? formatDisplayError(err, t('error.disabled')) : formatDisplayError(err, t('error.generic'));
         document.getElementById('reserve-app').innerHTML = '<div class="rs-error">' + escapeHtml(msg) + '</div>';
         return;
       }
@@ -526,7 +547,7 @@
     }
     apiGet('/reservation-availability.php?store_id=' + encodeURIComponent(_storeId) + '&date=' + _state.date + '&party_size=' + _state.partySize, function (err, data) {
       if (err) {
-        document.getElementById('rs-slot-wrap').innerHTML = '<div class="rs-error">' + escapeHtml(err.message || t('error.generic')) + '</div>';
+        document.getElementById('rs-slot-wrap').innerHTML = '<div class="rs-error">' + escapeHtml(formatDisplayError(err, t('error.generic'))) + '</div>';
         return;
       }
       _slotsCache[cacheKey] = data.slots || [];
@@ -661,9 +682,9 @@
       }, function (err, data) {
         if (err) {
           btn.disabled = false; btn.textContent = t(depositRequired ? 'btn.proceed_payment' : 'btn.confirm');
-          var msg = err.message || t('error.generic');
-          if (err.code === 'SLOT_UNAVAILABLE') msg = t('error.slot_unavailable');
-          if (err.code === 'LEAD_TIME_VIOLATION') msg = t('error.lead_time');
+          var msg = formatDisplayError(err, t('error.generic'));
+          if (err.code === 'SLOT_UNAVAILABLE') msg = formatDisplayError(err, t('error.slot_unavailable'));
+          if (err.code === 'LEAD_TIME_VIOLATION') msg = formatDisplayError(err, t('error.lead_time'));
           // 必須項目欠如系: 情報入力ステップに戻して入力させる
           if (err.code === 'PHONE_REQUIRED' || err.code === 'EMAIL_REQUIRED' || err.code === 'INVALID_PHONE' || err.code === 'INVALID_EMAIL' || err.code === 'INVALID_NAME') {
             _state.step = 4;
@@ -784,7 +805,7 @@
     var resultEl = document.getElementById('rs-ai-result');
     resultEl.hidden = true;
     apiPost('/reservation-ai-parse.php', { store_id: _storeId, text: text }, function (err, data) {
-      if (err) { btn.disabled = false; btn.textContent = t('btn.confirm'); showToast(err.message || t('error.generic'), 3000); return; }
+      if (err) { btn.disabled = false; btn.textContent = t('btn.confirm'); showToast(formatDisplayError(err, t('error.generic')), 3000); return; }
       // AI 解析結果が必須情報を満たしているかチェック
       if (!data.reserved_at || !data.party_size) {
         btn.disabled = false; btn.textContent = t('btn.confirm');

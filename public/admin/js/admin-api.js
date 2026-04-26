@@ -19,6 +19,14 @@ var AdminApi = (function () {
     return _currentStoreId;
   }
 
+  function rejectApiError(json, fallback) {
+    if (window.Utils && Utils.createApiError) {
+      return Promise.reject(Utils.createApiError(json, fallback || 'エラーが発生しました'));
+    }
+    var msg = (window.Utils && Utils.formatError) ? Utils.formatError(json) : ((json.error && json.error.message) || fallback || 'エラーが発生しました');
+    return Promise.reject(new Error(msg));
+  }
+
   function request(method, path, body) {
     var opts = {
       method: method,
@@ -36,8 +44,7 @@ var AdminApi = (function () {
         try { json = JSON.parse(body); }
         catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
         if (!res.ok || !json.ok) {
-          var msg = (json.error && json.error.message) || 'エラーが発生しました';
-          return Promise.reject(new Error(msg));
+          return rejectApiError(json, 'エラーが発生しました');
         }
         return json.data;
       });
@@ -235,8 +242,7 @@ var AdminApi = (function () {
         try { json = JSON.parse(body); }
         catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
         if (!res.ok || !json.ok) {
-          var msg = (json.error && json.error.message) || '画像アップロードに失敗しました';
-          return Promise.reject(new Error(msg));
+          return rejectApiError(json, '画像アップロードに失敗しました');
         }
         return json;
       });
@@ -534,8 +540,7 @@ var AdminApi = (function () {
         try { json = JSON.parse(body); }
         catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
         if (!res.ok || !json.ok) {
-          var msg = (json.error && json.error.message) || '画像アップロードに失敗しました';
-          return Promise.reject(new Error(msg));
+          return rejectApiError(json, '画像アップロードに失敗しました');
         }
         return json;
       });
@@ -602,7 +607,7 @@ var AdminApi = (function () {
         if (!body) return Promise.reject(new Error('サーバーが空のレスポンスを返しました'));
         var json;
         try { json = JSON.parse(body); } catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
-        if (!res.ok || !json.ok) return Promise.reject(new Error((json.error && json.error.message) || 'インポートに失敗しました'));
+        if (!res.ok || !json.ok) return rejectApiError(json, 'インポートに失敗しました');
         return json.data;
       });
     });
@@ -623,7 +628,7 @@ var AdminApi = (function () {
         if (!body) return Promise.reject(new Error('サーバーが空のレスポンスを返しました'));
         var json;
         try { json = JSON.parse(body); } catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
-        if (!res.ok || !json.ok) return Promise.reject(new Error((json.error && json.error.message) || 'インポートに失敗しました'));
+        if (!res.ok || !json.ok) return rejectApiError(json, 'インポートに失敗しました');
         return json.data;
       });
     });
@@ -646,7 +651,7 @@ var AdminApi = (function () {
         if (!body) return Promise.reject(new Error('サーバーが空のレスポンスを返しました'));
         var json;
         try { json = JSON.parse(body); } catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
-        if (!res.ok || !json.ok) return Promise.reject(new Error((json.error && json.error.message) || 'インポートに失敗しました'));
+        if (!res.ok || !json.ok) return rejectApiError(json, 'インポートに失敗しました');
         return json.data;
       });
     });
@@ -669,7 +674,7 @@ var AdminApi = (function () {
         if (!body) return Promise.reject(new Error('サーバーが空のレスポンスを返しました'));
         var json;
         try { json = JSON.parse(body); } catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
-        if (!res.ok || !json.ok) return Promise.reject(new Error((json.error && json.error.message) || 'インポートに失敗しました'));
+        if (!res.ok || !json.ok) return rejectApiError(json, 'インポートに失敗しました');
         return json.data;
       });
     });
@@ -692,7 +697,7 @@ var AdminApi = (function () {
         if (!body) return Promise.reject(new Error('サーバーが空のレスポンスを返しました'));
         var json;
         try { json = JSON.parse(body); } catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
-        if (!res.ok || !json.ok) return Promise.reject(new Error((json.error && json.error.message) || 'インポートに失敗しました'));
+        if (!res.ok || !json.ok) return rejectApiError(json, 'インポートに失敗しました');
         return json.data;
       });
     });
@@ -715,7 +720,7 @@ var AdminApi = (function () {
         if (!body) return Promise.reject(new Error('サーバーが空のレスポンスを返しました'));
         var json;
         try { json = JSON.parse(body); } catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
-        if (!res.ok || !json.ok) return Promise.reject(new Error((json.error && json.error.message) || 'インポートに失敗しました'));
+        if (!res.ok || !json.ok) return rejectApiError(json, 'インポートに失敗しました');
         return json.data;
       });
     });
@@ -738,7 +743,7 @@ var AdminApi = (function () {
         if (!body) return Promise.reject(new Error('サーバーが空のレスポンスを返しました'));
         var json;
         try { json = JSON.parse(body); } catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
-        if (!res.ok || !json.ok) return Promise.reject(new Error((json.error && json.error.message) || 'インポートに失敗しました'));
+        if (!res.ok || !json.ok) return rejectApiError(json, 'インポートに失敗しました');
         return json.data;
       });
     });
@@ -763,8 +768,7 @@ var AdminApi = (function () {
         try { json = JSON.parse(body); }
         catch (e) { return Promise.reject(new Error('応答の解析に失敗しました')); }
         if (!res.ok || !json.ok) {
-          var msg = (json.error && json.error.message) || 'インポートに失敗しました';
-          return Promise.reject(new Error(msg));
+          return rejectApiError(json, 'インポートに失敗しました');
         }
         return json.data;
       });
