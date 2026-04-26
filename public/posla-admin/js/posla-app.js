@@ -347,6 +347,10 @@
     return select ? select.value : '';
   }
 
+  function isFeatureFlagReasonRequired(featureKey, scopeType) {
+    return scopeType === 'global' || featureKey === 'codex_ops_write';
+  }
+
   function buildFeatureFlagPayload(clear) {
     var keyEl = document.getElementById('ff-feature-key');
     var scopeEl = document.getElementById('ff-scope-type');
@@ -363,6 +367,11 @@
     }
     if (scopeType === 'tenant' && !tenantId) {
       showToast('tenant scope では Tenant を選択してください');
+      return null;
+    }
+    if (isFeatureFlagReasonRequired(featureKey, scopeType) && (!reasonEl || !reasonEl.value.trim())) {
+      showToast('global scope または codex_ops_write の変更では Reason を入力してください');
+      if (reasonEl) reasonEl.focus();
       return null;
     }
 

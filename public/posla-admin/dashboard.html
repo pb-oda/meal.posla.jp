@@ -1284,13 +1284,14 @@
             <div class="form-group">
               <label class="form-label" for="ff-enabled">Enabled</label>
               <select class="form-select" id="ff-enabled">
-                <option value="1">ON</option>
                 <option value="0">OFF</option>
+                <option value="1">ON</option>
               </select>
             </div>
             <div class="form-group">
               <label class="form-label" for="ff-reason">Reason</label>
               <input class="form-input" type="text" id="ff-reason" maxlength="255" placeholder="変更理由">
+              <span class="form-hint">global scope または codex_ops_write の変更は理由必須です。</span>
             </div>
             <div class="panel-header__actions">
               <button class="btn btn-primary" id="btn-save-feature-flag" type="button">保存</button>

@@ -113,6 +113,11 @@ function feature_flags_api_require_feature(PDO $pdo, string $featureKey): array
     return $feature;
 }
 
+function feature_flags_api_reason_required(string $featureKey, string $scopeType): bool
+{
+    return $scopeType === 'global' || $featureKey === 'codex_ops_write';
+}
+
 if (!posla_feature_flags_available($pdo)) {
     if ($method === 'GET') {
         json_response([
@@ -162,6 +167,9 @@ if ($method === 'PATCH') {
     $reason = trim((string)($input['reason'] ?? ''));
     if (strlen($reason) > 255) {
         json_error('REASON_TOO_LONG', 'reason は255文字以内で入力してください', 400);
+    }
+    if ($reason === '' && feature_flags_api_reason_required($featureKey, $scopeType)) {
+        json_error('REASON_REQUIRED', 'global scope または codex_ops_write の変更では reason が必須です', 400);
     }
     $reasonValue = $reason !== '' ? $reason : null;
     $oldValue = feature_flags_api_fetch_override($pdo, $featureKey, $scopeType, $scopeId);
