@@ -19,6 +19,7 @@
 
   var BRAND_ORANGE = '#ff6f00';
   var DATA_URL = _resolveDataUrl();
+  var SUPPORT_CASE_ENDPOINT = '/api/support/op-case.php';
 
   var _open = false;
   var _loaded = false;
@@ -26,6 +27,7 @@
   var _root = null;
   var _bodyEl = null;
   var _currentTab = 'home';
+  var _contactSubmitting = false;
 
   function _resolveDataUrl() {
     var path = location.pathname || '';
@@ -69,6 +71,15 @@
       + '.posla-sd__body p{margin:0.3rem 0;color:#444;}'
       + '.posla-sd__search{width:100%;padding:0.55rem 0.7rem;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;font-family:inherit;box-sizing:border-box;}'
       + '.posla-sd__search:focus{outline:none;border-color:' + BRAND_ORANGE + ';}'
+      + '.posla-sd__field{margin:0.65rem 0;}'
+      + '.posla-sd__label{display:block;color:#333;font-weight:bold;font-size:0.78rem;margin-bottom:0.25rem;}'
+      + '.posla-sd__textarea{width:100%;min-height:120px;resize:vertical;padding:0.55rem 0.7rem;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;font-family:inherit;box-sizing:border-box;}'
+      + '.posla-sd__textarea:focus{outline:none;border-color:' + BRAND_ORANGE + ';}'
+      + '.posla-sd__button{width:100%;margin-top:0.55rem;padding:0.65rem 0.8rem;border:0;border-radius:6px;background:' + BRAND_ORANGE + ';color:#fff;font-weight:bold;cursor:pointer;font-family:inherit;}'
+      + '.posla-sd__button:disabled{opacity:0.6;cursor:not-allowed;}'
+      + '.posla-sd__status{margin-top:0.55rem;padding:0.55rem 0.65rem;border-radius:6px;background:#fff;color:#555;font-size:0.8rem;border:1px solid #e5e5e5;}'
+      + '.posla-sd__status.ok{border-color:#81c784;background:#f1f8e9;color:#256029;}'
+      + '.posla-sd__status.bad{border-color:#ef9a9a;background:#ffebee;color:#b71c1c;}'
       + '.posla-sd__shortcut-row{display:flex;flex-wrap:wrap;gap:0.35rem;margin:0.5rem 0 0.8rem;}'
       + '.posla-sd__chip{background:#fff;border:1px solid #ddd;color:#555;padding:0.25rem 0.65rem;border-radius:14px;font-size:0.75rem;cursor:pointer;font-family:inherit;}'
       + '.posla-sd__chip:hover{background:' + BRAND_ORANGE + ';color:#fff;border-color:' + BRAND_ORANGE + ';}'
@@ -122,6 +133,7 @@
       +   '<button class="posla-sd__tab" type="button" data-tab="search">キーワード</button>'
       +   '<button class="posla-sd__tab" type="button" data-tab="flow">症状から</button>'
       +   '<button class="posla-sd__tab" type="button" data-tab="error">エラー番号</button>'
+      +   '<button class="posla-sd__tab" type="button" data-tab="contact">問合せ</button>'
       + '</div>'
       + '<div class="posla-sd__body" id="posla-sd-body"></div>'
       + '<div class="posla-sd__footer">解決しない場合: 画面名・操作内容・エラー番号・発生時刻を控えて <strong>POSLAサポート</strong> に連絡してください。</div>';
@@ -195,6 +207,7 @@
 
   // ── 画面レンダリング ──
   function _render() {
+    if (_currentTab === 'contact') { _renderContact(); return; }
     if (!_data) return;
     if (_currentTab === 'home') _renderHome();
     else if (_currentTab === 'faq') _renderFaq();
@@ -511,6 +524,106 @@
         + '</div>';
     }
     return html;
+  }
+
+  function _queryParam(name) {
+    var query = location.search ? location.search.substring(1).split('&') : [];
+    var i, parts;
+    for (i = 0; i < query.length; i++) {
+      parts = query[i].split('=');
+      if (decodeURIComponent(parts[0] || '') === name) {
+        return decodeURIComponent((parts[1] || '').replace(/\+/g, ' '));
+      }
+    }
+    return '';
+  }
+
+  function _renderContact() {
+    var html = ''
+      + '<h4>POSLAサポートへ問い合わせ</h4>'
+      + '<form id="posla-sd-contact-form">'
+      +   '<div class="posla-sd__field">'
+      +     '<label class="posla-sd__label" for="posla-sd-contact-error">エラー番号</label>'
+      +     '<input type="text" class="posla-sd__search" id="posla-sd-contact-error" placeholder="E3024 / E6001 など">'
+      +   '</div>'
+      +   '<div class="posla-sd__field">'
+      +     '<label class="posla-sd__label" for="posla-sd-contact-screen">画面名</label>'
+      +     '<input type="text" class="posla-sd__search" id="posla-sd-contact-screen" value="' + _escapeHtml(document.title || location.pathname) + '">'
+      +   '</div>'
+      +   '<div class="posla-sd__field">'
+      +     '<label class="posla-sd__label" for="posla-sd-contact-message">内容</label>'
+      +     '<textarea class="posla-sd__textarea" id="posla-sd-contact-message" placeholder="発生した操作、困っている内容、再現できる手順"></textarea>'
+      +   '</div>'
+      +   '<button class="posla-sd__button" type="submit">送信</button>'
+      +   '<div class="posla-sd__status" id="posla-sd-contact-status">画面URL・ログインユーザー・テナント情報を添えて送信します。</div>'
+      + '</form>';
+    _bodyEl.innerHTML = html;
+    var form = _bodyEl.querySelector('#posla-sd-contact-form');
+    if (form) form.addEventListener('submit', _submitContact);
+  }
+
+  function _setContactStatus(message, tone) {
+    var el = _bodyEl ? _bodyEl.querySelector('#posla-sd-contact-status') : null;
+    if (!el) return;
+    el.className = 'posla-sd__status' + (tone ? ' ' + tone : '');
+    el.textContent = message;
+  }
+
+  function _submitContact(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (_contactSubmitting) return;
+
+    var errEl = _bodyEl.querySelector('#posla-sd-contact-error');
+    var screenEl = _bodyEl.querySelector('#posla-sd-contact-screen');
+    var msgEl = _bodyEl.querySelector('#posla-sd-contact-message');
+    var btn = _bodyEl.querySelector('.posla-sd__button');
+    var message = msgEl ? (msgEl.value || '').trim() : '';
+    var errorNo = errEl ? (errEl.value || '').trim() : '';
+
+    if (!message && !errorNo) {
+      _setContactStatus('問い合わせ内容またはエラー番号を入力してください。', 'bad');
+      return;
+    }
+
+    _contactSubmitting = true;
+    if (btn) btn.disabled = true;
+    _setContactStatus('送信中...', '');
+
+    fetch(SUPPORT_CASE_ENDPOINT, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({
+        error_no: errorNo,
+        message: message,
+        screen_name: screenEl ? (screenEl.value || '').trim() : '',
+        page_url: location.href,
+        store_id: _queryParam('store_id'),
+        user_agent: navigator.userAgent || '',
+        client_time: new Date().toISOString()
+      })
+    })
+      .then(function (r) {
+        return r.text().then(function (text) {
+          var json = {};
+          try { json = JSON.parse(text || '{}'); } catch (ignore) {}
+          if (!r.ok || json.ok === false) {
+            throw new Error((json.error && json.error.message) || ('HTTP ' + r.status));
+          }
+          return json;
+        });
+      })
+      .then(function () {
+        _setContactStatus('問い合わせを送信しました。POSLA運営側で確認します。', 'ok');
+        if (msgEl) msgEl.value = '';
+      })
+      .catch(function (err) {
+        _setContactStatus('送信に失敗しました: ' + (err && err.message ? err.message : 'unknown'), 'bad');
+      })
+      .then(function () {
+        _contactSubmitting = false;
+        if (btn) btn.disabled = false;
+      });
   }
 
   // ── 初期化 ──

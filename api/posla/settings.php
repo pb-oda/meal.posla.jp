@@ -53,6 +53,7 @@ function _public_setting_keys() {
         // 運用設定
         'monitor_last_heartbeat',
         'ops_notify_email',
+        'codex_ops_case_endpoint',
         // LLM パラメータ
         'gemini_temperature_sns',
         'gemini_temperature_analysis',
@@ -106,6 +107,8 @@ function _setting_label_map() {
         'smaregi_client_secret' => 'スマレジ Client Secret',
         'google_chat_webhook_url' => 'Google Chat Webhook URL',
         'ops_notify_email' => '運用通知メール',
+        'codex_ops_case_endpoint' => 'OP Support Case Endpoint',
+        'codex_ops_case_token' => 'OP Support Case Token',
     ];
 }
 
@@ -314,6 +317,19 @@ function _build_config_health(array $settingsMap): array {
         ]
     );
 
+    $opsCaseEndpointSet = _setting_is_present($settingsMap, 'codex_ops_case_endpoint');
+    $opsCaseTokenSet = _setting_is_present($settingsMap, 'codex_ops_case_token');
+    $checks[] = _build_config_check(
+        'ops_case_bridge',
+        'OP問い合わせ連携',
+        ($opsCaseEndpointSet && $opsCaseTokenSet) ? 'ok' : 'warn',
+        (($opsCaseEndpointSet ? 1 : 0) + ($opsCaseTokenSet ? 1 : 0)) . '/2 設定済み',
+        [
+            'Support Case Endpoint: ' . ($opsCaseEndpointSet ? '設定済み' : '未設定'),
+            'Support Case Token: ' . ($opsCaseTokenSet ? '設定済み' : '未設定'),
+        ]
+    );
+
     $vapidPublicSet = _setting_is_present($settingsMap, 'web_push_vapid_public');
     $vapidPrivateSet = _setting_is_present($settingsMap, 'web_push_vapid_private_pem');
     $pwaReadyCount = ($vapidPublicSet ? 1 : 0) + ($vapidPrivateSet ? 1 : 0);
@@ -461,7 +477,7 @@ if ($method === 'PATCH') {
     $input = get_json_body();
     // P1-35: α-1 化で stripe_price_standard/pro/enterprise → base/additional_store/hq_broadcast
     // 旧キーは posla_settings の row として温存（rollback 用）。allowedKeys からは削除して UI 編集経路を閉じる
-    $allowedKeys = ['gemini_api_key', 'google_places_api_key', 'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret', 'stripe_webhook_secret_signup', 'stripe_price_base', 'stripe_price_additional_store', 'stripe_price_hq_broadcast', 'connect_application_fee_percent', 'smaregi_client_id', 'smaregi_client_secret', 'google_chat_webhook_url', 'ops_notify_email'];
+    $allowedKeys = ['gemini_api_key', 'google_places_api_key', 'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret', 'stripe_webhook_secret_signup', 'stripe_price_base', 'stripe_price_additional_store', 'stripe_price_hq_broadcast', 'connect_application_fee_percent', 'smaregi_client_id', 'smaregi_client_secret', 'google_chat_webhook_url', 'ops_notify_email', 'codex_ops_case_endpoint', 'codex_ops_case_token'];
     $updated = 0;
     $updatedKeys = [];
     $currentSettings = _fetch_current_settings_map($pdo);

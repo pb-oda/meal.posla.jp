@@ -1685,6 +1685,22 @@
             <div class="settings-test-result" id="posla-notify-test-result">テスト結果はここに表示します。Google Chat は監視経路を通して送信、メールは `ops_notify_email` へ直接送信します。Web Push は PWA / Web Push タブで詳細確認します。</div>
           </div>
         </div>
+
+        <div class="card settings-card">
+          <div class="card__body">
+            <div class="settings-card__eyebrow">Operations Bridge</div>
+            <div class="settings-card__title">OP問い合わせ連携</div>
+            <div class="settings-card__note">テナント画面の問い合わせを codex-ops-platform の Support Cases に送る設定です。トークンは空欄送信では変更しません。</div>
+            <div class="form-group">
+              <label class="form-label" for="posla-codex-ops-case-endpoint">Support Case Endpoint</label>
+              <input class="form-input" type="url" id="posla-codex-ops-case-endpoint" placeholder="http://127.0.0.1:8091/api/cases.php">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-codex-ops-case-token">Support Case Token</label>
+              <input class="form-input" type="password" id="posla-codex-ops-case-token" placeholder="OP側 OPS_CASE_INGEST_TOKEN と同じ値">
+            </div>
+          </div>
+        </div>
       </div>
       <div class="settings-actions">
         <button class="btn btn-primary" id="btn-save-api">保存</button>

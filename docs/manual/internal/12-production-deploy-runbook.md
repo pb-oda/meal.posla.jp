@@ -230,6 +230,17 @@ docker compose exec -T db mysql \
 | 監視・通知 | Google Chat、内部 heartbeat、monitor health、op 側外形監視 |
 | 管理者ユーザー | 管理者アカウント、不要管理者の削除 |
 
+API設定で本番前に必ず入れる値:
+
+| 設定 | 値 |
+|---|---|
+| 決済 provider | 本番 provider 確定後の live key / webhook secret / Price ID |
+| Google Chat / 運用通知 | 本番の通知先 |
+| OP問い合わせ連携 Endpoint | `https://<op-domain>/api/cases.php` |
+| OP問い合わせ連携 Token | op 側 `OPS_CASE_INGEST_TOKEN` と同じ値 |
+
+`POSLA_OP_CASE_ENDPOINT` / `POSLA_OP_CASE_TOKEN` を env で設定した場合は、env が POSLA管理画面の値より優先されます。
+
 ## 12.10 決済 provider 設定
 
 POSLA の本番 deploy 手順は、決済 provider に依存させません。

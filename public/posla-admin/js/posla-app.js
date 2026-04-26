@@ -2184,6 +2184,7 @@
       var googleChat = _getKeyInfo(s, 'google_chat_webhook_url');
       var slackWebhook = _getKeyInfo(s, 'slack_webhook_url');
       var monitorSecret = _getKeyInfo(s, 'monitor_cron_secret');
+      var opsCaseToken = _getKeyInfo(s, 'codex_ops_case_token');
 
       var priceBaseVal = _getPlainValue(s, 'stripe_price_base');
       var priceAddVal = _getPlainValue(s, 'stripe_price_additional_store');
@@ -2192,6 +2193,7 @@
       var smaregiClientIdVal = _getPlainValue(s, 'smaregi_client_id');
       var opsNotifyEmailVal = _getPlainValue(s, 'ops_notify_email');
       var heartbeatVal = _getPlainValue(s, 'monitor_last_heartbeat');
+      var opsCaseEndpointVal = _getPlainValue(s, 'codex_ops_case_endpoint');
 
       statusEl.innerHTML =
         _buildSummaryCard('AI / MAPS', 'Gemini・Places', [
@@ -2212,6 +2214,10 @@
           _summaryLine('Google Chat', googleChat.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
           _summaryLine('運用通知', opsNotifyEmailVal ? Utils.escapeHtml(opsNotifyEmailVal) : '<span style="color:#999;">未設定</span>'),
           _summaryLine('heartbeat', heartbeatVal ? Utils.escapeHtml(heartbeatVal) : '<span style="color:#999;">未到達</span>')
+        ]) +
+        _buildSummaryCard('OPS BRIDGE', 'OP問い合わせ連携', [
+          _summaryLine('Endpoint', opsCaseEndpointVal ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
+          _summaryLine('Token', opsCaseToken.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn'))
         ]);
 
       if (monitorStatusEl) {
@@ -2244,6 +2250,7 @@
       _setInputValue('posla-connect-fee', connectFeeVal);
       _setInputValue('posla-smaregi-client-id', smaregiClientIdVal);
       _setInputValue('posla-ops-notify-email', opsNotifyEmailVal);
+      _setInputValue('posla-codex-ops-case-endpoint', opsCaseEndpointVal);
 
       if (auditSummaryEl) {
         auditSummaryEl.innerHTML = _renderSettingsAuditSummary(data.audit_summary || {});
@@ -2276,6 +2283,10 @@
     var connectFee = connectFeeEl ? connectFeeEl.value.trim() : '';
     var googleChatWebhook = document.getElementById('posla-google-chat-webhook').value.trim();
     var opsNotifyEmail = document.getElementById('posla-ops-notify-email').value.trim();
+    var opsCaseEndpointEl = document.getElementById('posla-codex-ops-case-endpoint');
+    var opsCaseTokenEl = document.getElementById('posla-codex-ops-case-token');
+    var opsCaseEndpoint = opsCaseEndpointEl ? opsCaseEndpointEl.value.trim() : '';
+    var opsCaseToken = opsCaseTokenEl ? opsCaseTokenEl.value.trim() : '';
 
     var data = {};
     if (aiKey) data.gemini_api_key = aiKey;
@@ -2290,6 +2301,8 @@
     if (connectFee !== '') data.connect_application_fee_percent = connectFee;
     if (googleChatWebhook) data.google_chat_webhook_url = googleChatWebhook;
     if (opsNotifyEmail !== '') data.ops_notify_email = opsNotifyEmail;
+    if (opsCaseEndpoint !== '') data.codex_ops_case_endpoint = opsCaseEndpoint;
+    if (opsCaseToken !== '') data.codex_ops_case_token = opsCaseToken;
 
     var smaregiClientId = document.getElementById('posla-smaregi-client-id');
     var smaregiClientSecret = document.getElementById('posla-smaregi-client-secret');
@@ -2313,6 +2326,7 @@
       document.getElementById('posla-stripe-webhook').value = '';
       document.getElementById('posla-stripe-webhook-signup').value = '';
       document.getElementById('posla-google-chat-webhook').value = '';
+      if (opsCaseTokenEl) opsCaseTokenEl.value = '';
       var smSecEl = document.getElementById('posla-smaregi-client-secret');
       if (smSecEl) smSecEl.value = '';
       loadApiStatus();
@@ -2337,7 +2351,8 @@
       stripe_webhook_secret: null,
       stripe_webhook_secret_signup: null,
       smaregi_client_secret: null,
-      google_chat_webhook_url: null
+      google_chat_webhook_url: null,
+      codex_ops_case_token: null
     }).then(function() {
       document.getElementById('posla-ai-key').value = '';
       document.getElementById('posla-places-key').value = '';
@@ -2346,6 +2361,8 @@
       document.getElementById('posla-stripe-webhook').value = '';
       document.getElementById('posla-stripe-webhook-signup').value = '';
       document.getElementById('posla-google-chat-webhook').value = '';
+      var opsCaseTokenEl = document.getElementById('posla-codex-ops-case-token');
+      if (opsCaseTokenEl) opsCaseTokenEl.value = '';
       var smSecEl = document.getElementById('posla-smaregi-client-secret');
       if (smSecEl) smSecEl.value = '';
       showToast('機密値をクリアしました');
