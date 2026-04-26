@@ -24,9 +24,9 @@
       margin-bottom: 1.5rem;
     }
     .stat-card {
-      background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+      background: #fff;
       border: 1px solid #dde3f5;
-      border-radius: 16px;
+      border-radius: 8px;
       box-shadow: var(--shadow-sm);
       padding: 1.25rem;
       text-align: left;
@@ -85,9 +85,9 @@
       margin-bottom: 1.5rem;
     }
     .settings-summary-card {
-      background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+      background: #fff;
       border: 1px solid #dde3f5;
-      border-radius: 16px;
+      border-radius: 8px;
       box-shadow: var(--shadow-sm);
       padding: 1rem 1.1rem;
     }
@@ -158,7 +158,7 @@
     .settings-monitor-status {
       background: #f8faff;
       border: 1px solid #dfe4f5;
-      border-radius: 14px;
+      border-radius: 8px;
       margin-bottom: 1rem;
       padding: 0.95rem 1rem;
     }
@@ -187,7 +187,7 @@
     .settings-test-result {
       background: #f8faff;
       border: 1px solid #dfe4f5;
-      border-radius: 14px;
+      border-radius: 8px;
       color: var(--text-secondary);
       font-size: 0.83rem;
       line-height: 1.7;
@@ -208,7 +208,7 @@
     .settings-health-card {
       background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
       border: 1px solid #dfe4f5;
-      border-radius: 16px;
+      border-radius: 8px;
       padding: 1rem;
     }
     .settings-health-card__head {
@@ -247,7 +247,7 @@
     }
     .push-secret-output {
       background: #0f172a;
-      border-radius: 14px;
+      border-radius: 8px;
       color: #e2e8f0;
       display: none;
       margin-top: 1rem;
@@ -319,7 +319,7 @@
       align-items: flex-start;
       background: #f8faff;
       border: 1px solid #dfe4f5;
-      border-radius: 12px;
+      border-radius: 8px;
       color: var(--text-primary);
       display: flex;
       gap: 0.7rem;
@@ -340,9 +340,9 @@
       margin-top: 0.15rem;
     }
     .tenant-create-result {
-      background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+      background: #fff;
       border: 1px solid #dde3f5;
-      border-radius: 16px;
+      border-radius: 8px;
       display: none;
       margin-top: 1rem;
       padding: 1rem;
@@ -391,9 +391,9 @@
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     }
     .tenant-modal-summary__card {
-      background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+      background: #fff;
       border: 1px solid #dde3f5;
-      border-radius: 14px;
+      border-radius: 8px;
       padding: 0.9rem 1rem;
     }
     .tenant-modal-summary__label {
@@ -422,9 +422,9 @@
       margin-bottom: 0.7rem;
     }
     .tenant-investigation-banner {
-      background: linear-gradient(180deg, #f7f9ff 0%, #ffffff 100%);
+      background: #f8faff;
       border: 1px solid #d9e3ff;
-      border-radius: 14px;
+      border-radius: 8px;
       color: var(--text-primary);
       font-size: 0.84rem;
       line-height: 1.7;
@@ -439,17 +439,17 @@
     .tenant-modal-timeline__empty {
       background: #f8faff;
       border: 1px dashed #d9e3ff;
-      border-radius: 14px;
+      border-radius: 8px;
       color: var(--text-secondary);
       font-size: 0.88rem;
       line-height: 1.7;
       padding: 1rem;
     }
     .tenant-timeline-item {
-      background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+      background: #fff;
       border: 1px solid #e3e8f5;
       border-left-width: 4px;
-      border-radius: 14px;
+      border-radius: 8px;
       padding: 0.9rem 1rem;
     }
     .tenant-timeline-item--critical,
@@ -550,11 +550,11 @@
       max-width: 720px;
     }
     .card--tint {
-      background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+      background: #fff;
       border: 1px solid #dde3f5;
     }
     .card--accent {
-      background: linear-gradient(160deg, #eef2ff 0%, #ffffff 100%);
+      background: #f8faff;
       border: 1px solid #d9e3ff;
     }
     .table-card .card__body {
@@ -589,6 +589,182 @@
     .posla-admin-page #feature-flags-list .data-table,
     .posla-admin-page #settings-audit-list .data-table {
       min-width: 980px;
+    }
+    .feature-flag-summary {
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      margin-bottom: 1rem;
+    }
+    .feature-flag-summary__item {
+      background: #f8faff;
+      border: 1px solid #dfe4f5;
+      border-radius: 8px;
+      padding: 0.8rem 0.9rem;
+    }
+    .feature-flag-summary__label {
+      color: var(--text-secondary);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .feature-flag-summary__value {
+      color: var(--text-primary);
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-top: 0.25rem;
+    }
+    .feature-flag-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+    .feature-flag-card {
+      background: #fff;
+      border: 1px solid #e1e7f2;
+      border-left: 4px solid #90a4ae;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .feature-flag-card--on {
+      border-left-color: var(--success);
+    }
+    .feature-flag-card--off {
+      border-left-color: #90a4ae;
+    }
+    .feature-flag-card__head {
+      align-items: flex-start;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin-bottom: 0.85rem;
+    }
+    .feature-flag-card__title {
+      color: var(--text-primary);
+      font-size: 0.98rem;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+    .feature-flag-card__key {
+      color: var(--text-secondary);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem;
+      margin-top: 0.2rem;
+      word-break: break-word;
+    }
+    .feature-flag-card__desc {
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      line-height: 1.65;
+      margin-bottom: 0.85rem;
+    }
+    .feature-flag-scope-chain {
+      display: grid;
+      gap: 0.55rem;
+      grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    }
+    .feature-flag-scope {
+      background: #f8faff;
+      border: 1px solid #dfe4f5;
+      border-radius: 8px;
+      min-height: 86px;
+      padding: 0.7rem 0.75rem;
+    }
+    .feature-flag-scope.is-resolved {
+      border-color: #9fb3ff;
+      box-shadow: inset 0 0 0 1px rgba(63, 81, 181, 0.18);
+    }
+    .feature-flag-scope__label {
+      color: var(--text-secondary);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+    }
+    .feature-flag-scope__meta {
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      line-height: 1.5;
+      margin-top: 0.32rem;
+      word-break: break-word;
+    }
+    .cell-provisioning-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      padding: 1rem;
+    }
+    .cell-provisioning-item {
+      background: #fff;
+      border: 1px solid #e1e7f2;
+      border-left: 4px solid #90a4ae;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .cell-provisioning-item--active {
+      border-left-color: var(--success);
+    }
+    .cell-provisioning-item--queue {
+      border-left-color: #fb8c00;
+    }
+    .cell-provisioning-item--failed {
+      border-left-color: var(--danger);
+    }
+    .cell-provisioning-item__head {
+      align-items: flex-start;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin-bottom: 0.9rem;
+    }
+    .cell-provisioning-item__title {
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+    .cell-provisioning-item__meta {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      line-height: 1.55;
+      margin-top: 0.2rem;
+    }
+    .cell-command-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      margin-top: 0.85rem;
+    }
+    .cell-command-block {
+      background: #0f172a;
+      border-radius: 8px;
+      color: #e2e8f0;
+      padding: 0.8rem 0.9rem;
+    }
+    .cell-command-block__head {
+      align-items: center;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin-bottom: 0.6rem;
+    }
+    .cell-command-block__label {
+      color: #f8fafc;
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+    .cell-command-block pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .cell-command-block code {
+      color: #e2e8f0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem;
+      line-height: 1.6;
     }
     .card-intro {
       color: var(--text-secondary);
@@ -1759,7 +1935,7 @@
 
   <script src="../shared/js/utils.js"></script>
   <script src="js/posla-api.js?v=20260426-cellprov1"></script>
-  <script src="js/posla-app.js?v=20260426-cellprov1"></script>
+  <script src="js/posla-app.js?v=20260426-admin-ui1"></script>
 
   <!-- パスワード変更モーダル（P1-5） -->
   <div class="modal-overlay" id="password-change-overlay" style="display:none;opacity:1;visibility:visible;">

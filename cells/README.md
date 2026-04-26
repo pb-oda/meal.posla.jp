@@ -33,6 +33,11 @@ scripts/cell/cell.sh cell-a deploy
 scripts/cell/cell.sh cell-a ps
 ```
 
+Set the same `POSLA_OPS_READ_SECRET` in the control app env and every cell app
+env. The control app uses it as a read-only header when it fetches
+`/api/monitor/cell-snapshot.php` from each cell for tenant health and onboarding
+insights. Keep it separate from each cell's `POSLA_CRON_SECRET`.
+
 `deploy` creates a pre-deploy backup under `cells/<cell-id>/backups/` and records
 deployment history when `posla_cell_deployments` exists in the cell DB.
 

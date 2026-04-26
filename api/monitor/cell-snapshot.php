@@ -11,6 +11,7 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/feature-flags.php';
 require_once __DIR__ . '/../lib/tenant-onboarding.php';
+require_once __DIR__ . '/../posla/tenant-insights-helper.php';
 
 $method = require_method(['GET']);
 require_codex_ops_read_access();
@@ -40,6 +41,7 @@ $snapshot['onboarding'] = posla_fetch_onboarding_snapshot($pdo);
 $snapshot['deployments'] = fetch_recent_deployments($pdo, $cellId);
 $snapshot['migrations'] = fetch_migration_summary($pdo, $cellId);
 $snapshot['feature_flags'] = fetch_feature_flag_snapshot($pdo);
+$snapshot['tenant_insights'] = fetch_tenant_insight_snapshot($pdo, empty($snapshot['registry']['cell']));
 $snapshot['errors'] = fetch_error_summary($pdo);
 $snapshot['monitor_events'] = fetch_monitor_event_summary($pdo);
 $snapshot['tier0'] = fetch_tier0_payment_cashier_snapshot($pdo);
@@ -248,6 +250,22 @@ function build_ops_source_snapshot(PDO $pdo, string $sourceId): array
             'source' => $fallback,
             'auth' => build_ops_source_auth_state('unknown'),
         ];
+    }
+}
+
+function fetch_tenant_insight_snapshot(PDO $pdo, bool $includeCellSnapshots): array
+{
+    if (!table_exists($pdo, 'tenants')) {
+        return ['available' => false, 'tenants' => []];
+    }
+
+    try {
+        return [
+            'available' => true,
+            'tenants' => posla_fetch_tenant_insights($pdo, null, $includeCellSnapshots),
+        ];
+    } catch (Throwable $e) {
+        return ['available' => true, 'tenants' => [], 'error' => 'tenant insight unavailable'];
     }
 }
 

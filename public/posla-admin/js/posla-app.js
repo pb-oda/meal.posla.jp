@@ -296,50 +296,97 @@
       return;
     }
 
-    html = '<div class="data-table-wrap"><table class="data-table"><thead><tr>' +
-      '<th>Feature</th><th>Default</th><th>Global</th><th>Cell</th><th>Tenant</th><th>Resolved</th><th>Source</th>' +
-      '</tr></thead><tbody>';
-
     if (flags.length === 0) {
-      html += '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Feature Flag がありません</td></tr>';
-    } else {
-      for (i = 0; i < flags.length; i++) {
-        html += buildFeatureFlagRowHtml(flags[i]);
-      }
+      listEl.innerHTML = '<div style="padding:1rem;color:var(--text-muted);">Feature Flag がありません</div>';
+      return;
     }
 
-    html += '</tbody></table></div>';
+    html = buildFeatureFlagSummaryHtml(flags) + '<div class="feature-flag-list">';
+    for (i = 0; i < flags.length; i++) {
+      html += buildFeatureFlagCardHtml(flags[i]);
+    }
+    html += '</div>';
     listEl.innerHTML = html;
   }
 
-  function buildFeatureFlagRowHtml(flag) {
-    var resolvedTone = parseInt(flag.resolved_enabled, 10) ? 'active' : 'inactive';
-    var resolvedLabel = parseInt(flag.resolved_enabled, 10) ? 'ON' : 'OFF';
-    return '<tr>' +
-      '<td><strong>' + Utils.escapeHtml(flag.label || flag.feature_key) + '</strong><br><code>' + Utils.escapeHtml(flag.feature_key) + '</code></td>' +
-      '<td>' + buildFeatureFlagBadge(flag.default_enabled) + '</td>' +
-      '<td>' + buildFeatureFlagOverrideHtml(flag, 'global') + '</td>' +
-      '<td>' + buildFeatureFlagOverrideHtml(flag, 'cell') + '</td>' +
-      '<td>' + buildFeatureFlagOverrideHtml(flag, 'tenant') + '</td>' +
-      '<td><span class="badge badge--' + resolvedTone + '">' + resolvedLabel + '</span></td>' +
-      '<td>' + Utils.escapeHtml(flag.resolved_source || '-') + '</td>' +
-      '</tr>';
+  function buildFeatureFlagSummaryHtml(flags) {
+    var total = flags.length;
+    var onCount = 0;
+    var overrideCount = 0;
+    var i;
+    var overrides;
+    for (i = 0; i < flags.length; i++) {
+      if (parseInt(flags[i].resolved_enabled, 10) === 1) onCount++;
+      overrides = flags[i].overrides || {};
+      if (overrides.global) overrideCount++;
+      if (overrides.cell) overrideCount++;
+      if (overrides.tenant) overrideCount++;
+    }
+
+    return '<div class="feature-flag-summary">' +
+      '<div class="feature-flag-summary__item"><div class="feature-flag-summary__label">Total</div><div class="feature-flag-summary__value">' + Utils.escapeHtml(String(total)) + '</div></div>' +
+      '<div class="feature-flag-summary__item"><div class="feature-flag-summary__label">Resolved ON</div><div class="feature-flag-summary__value">' + Utils.escapeHtml(String(onCount)) + '</div></div>' +
+      '<div class="feature-flag-summary__item"><div class="feature-flag-summary__label">Resolved OFF</div><div class="feature-flag-summary__value">' + Utils.escapeHtml(String(total - onCount)) + '</div></div>' +
+      '<div class="feature-flag-summary__item"><div class="feature-flag-summary__label">Overrides</div><div class="feature-flag-summary__value">' + Utils.escapeHtml(String(overrideCount)) + '</div></div>' +
+      '</div>';
+  }
+
+  function buildFeatureFlagCardHtml(flag) {
+    var resolvedOn = parseInt(flag.resolved_enabled, 10) === 1;
+    var resolvedTone = resolvedOn ? 'active' : 'inactive';
+    var resolvedLabel = resolvedOn ? 'ON' : 'OFF';
+    var desc = flag.description ? '<div class="feature-flag-card__desc">' + Utils.escapeHtml(flag.description) + '</div>' : '';
+
+    return '<section class="feature-flag-card feature-flag-card--' + (resolvedOn ? 'on' : 'off') + '">' +
+      '<div class="feature-flag-card__head">' +
+        '<div>' +
+          '<div class="feature-flag-card__title">' + Utils.escapeHtml(flag.label || flag.feature_key) + '</div>' +
+          '<div class="feature-flag-card__key">' + Utils.escapeHtml(flag.feature_key || '-') + '</div>' +
+        '</div>' +
+        '<div class="tenant-contract">' +
+          '<span class="badge badge--' + resolvedTone + '">' + resolvedLabel + '</span>' +
+          '<span class="status-pill status-pill--info">' + Utils.escapeHtml(flag.resolved_source || 'default') + '</span>' +
+        '</div>' +
+      '</div>' +
+      desc +
+      '<div class="feature-flag-scope-chain">' +
+        buildFeatureFlagScopeHtml(flag, 'default') +
+        buildFeatureFlagScopeHtml(flag, 'global') +
+        buildFeatureFlagScopeHtml(flag, 'cell') +
+        buildFeatureFlagScopeHtml(flag, 'tenant') +
+      '</div>' +
+    '</section>';
+  }
+
+  function buildFeatureFlagScopeHtml(flag, scopeType) {
+    var overrides = flag.overrides || {};
+    var override = scopeType === 'default' ? null : overrides[scopeType];
+    var isResolved = (flag.resolved_source || 'default') === scopeType;
+    var value;
+    var meta = '';
+
+    if (scopeType === 'default') {
+      value = buildFeatureFlagBadge(flag.default_enabled);
+      meta = 'base setting';
+    } else if (override) {
+      value = buildFeatureFlagBadge(override.enabled);
+      if (override.reason) meta += Utils.escapeHtml(override.reason);
+      if (override.updated_at) meta += (meta ? '<br>' : '') + Utils.escapeHtml(override.updated_at);
+    } else {
+      value = '<span style="color:var(--text-muted);">未設定</span>';
+      meta = 'inherits previous scope';
+    }
+
+    return '<div class="feature-flag-scope' + (isResolved ? ' is-resolved' : '') + '">' +
+      '<div class="feature-flag-scope__label">' + Utils.escapeHtml(scopeType) + '</div>' +
+      value +
+      '<div class="feature-flag-scope__meta">' + meta + '</div>' +
+      '</div>';
   }
 
   function buildFeatureFlagBadge(value) {
     var on = parseInt(value, 10) === 1;
     return '<span class="badge badge--' + (on ? 'active' : 'inactive') + '">' + (on ? 'ON' : 'OFF') + '</span>';
-  }
-
-  function buildFeatureFlagOverrideHtml(flag, scopeType) {
-    var overrides = flag.overrides || {};
-    var override = overrides[scopeType];
-    if (!override) {
-      return '<span style="color:var(--text-muted);">-</span>';
-    }
-
-    var reason = override.reason ? '<br><small>' + Utils.escapeHtml(override.reason) + '</small>' : '';
-    return buildFeatureFlagBadge(override.enabled) + reason;
   }
 
   function getSelectedFeatureFlagTenantId() {
@@ -890,6 +937,7 @@
   function buildTenantHealthHtml(tenant) {
     var tone = getHealthTone(tenant.health_status);
     var flags = tenant.health_flags || [];
+    var cellMeta = buildTenantCellMetaText(tenant);
     return '<div class="tenant-health">' +
       '<div class="tenant-health__top">' +
         '<span class="status-pill status-pill--' + tone + '">' + escapeHtml(tenant.health_label || '要確認') + '</span>' +
@@ -897,7 +945,25 @@
       '</div>' +
       buildProgressBar(tenant.health_score || 0, tone === 'danger' ? 'alert' : tone) +
       '<div class="tenant-health__flags">' + escapeHtml(flags.join(' / ')) + '</div>' +
+      (cellMeta ? '<div class="tenant-health__flags">' + escapeHtml(cellMeta) + '</div>' : '') +
       '</div>';
+  }
+
+  function buildTenantCellMetaText(tenant) {
+    var parts = [];
+    if (!tenant || !tenant.cell_id) {
+      return '';
+    }
+
+    parts.push('cell: ' + tenant.cell_id);
+    if (tenant.cell_snapshot_status) {
+      parts.push('snapshot: ' + tenant.cell_snapshot_status);
+    }
+    if (tenant.cell_tier0_status) {
+      parts.push('tier0: ' + tenant.cell_tier0_status);
+    }
+
+    return parts.join(' / ');
   }
 
   function buildTenantProgressHtml(tenant) {
@@ -963,7 +1029,14 @@
         '<div class="tenant-modal-summary__label">監視イベント</div>' +
         '<div class="tenant-modal-summary__value"><span class="status-pill status-pill--' + incidentTone + '">' + escapeHtml(incidentValue) + '</span></div>' +
         '<div class="tenant-modal-summary__meta">' + escapeHtml(incidentMeta) + '</div>' +
-      '</div>';
+      '</div>' +
+      (tenant.cell_id ? (
+        '<div class="tenant-modal-summary__card">' +
+          '<div class="tenant-modal-summary__label">Cell</div>' +
+          '<div class="tenant-modal-summary__value"><code>' + escapeHtml(tenant.cell_id || '-') + '</code></div>' +
+          '<div class="tenant-modal-summary__meta">' + escapeHtml(buildTenantCellMetaText(tenant) || 'cell registry 未連携') + '</div>' +
+        '</div>'
+      ) : '');
   }
 
   function buildTenantInvestigationSummaryHtml(view) {
@@ -1345,16 +1418,18 @@
       return;
     }
 
-    html = '';
+    html = '<div class="cell-provisioning-stack">';
     for (i = 0; i < items.length; i++) {
       item = items[i];
       html += buildCellProvisioningItemHtml(item, i);
     }
+    html += '</div>';
     listEl.innerHTML = html;
   }
 
   function buildCellProvisioningItemHtml(item, index) {
     var registryTone = item.registry_status === 'active' ? 'ok' : (item.registry_status === 'failed' ? 'danger' : 'warn');
+    var itemTone = item.status === 'active' ? 'active' : (item.status === 'failed' ? 'failed' : 'queue');
     var target = item.suggested_target || {};
     var commands = item.commands || [];
     var commandHtml = '';
@@ -1362,16 +1437,18 @@
     var i;
 
     for (i = 0; i < commands.length; i++) {
-      commandHtml += '<div class="settings-test-result" style="margin-top:0.75rem;">' +
-        '<div style="display:flex;justify-content:space-between;gap:0.75rem;align-items:center;">' +
-          '<strong>' + Utils.escapeHtml(commands[i].label || ('step ' + (i + 1))) + '</strong>' +
+      commandHtml += '<div class="cell-command-block">' +
+        '<div class="cell-command-block__head">' +
+          '<span class="cell-command-block__label">' + Utils.escapeHtml(commands[i].label || ('step ' + (i + 1))) + '</span>' +
           '<button class="btn btn-secondary btn-sm" type="button" data-cell-command-copy="' + index + ':' + i + '">コピー</button>' +
         '</div>' +
-        '<pre style="white-space:pre-wrap;word-break:break-word;margin:0.75rem 0 0;"><code>' + Utils.escapeHtml(commands[i].command || '') + '</code></pre>' +
+        '<pre><code>' + Utils.escapeHtml(commands[i].command || '') + '</code></pre>' +
       '</div>';
     }
     if (!commands.length) {
       commandHtml = '<div class="settings-test-result" style="margin-top:0.75rem;color:var(--text-muted);">この状態では実行コマンドはありません。</div>';
+    } else {
+      commandHtml = '<div class="cell-command-list">' + commandHtml + '</div>';
     }
 
     if (item.status === 'ready_for_cell') {
@@ -1390,30 +1467,28 @@
       actionHtml = '<span style="color:var(--text-muted);font-size:0.85rem;">支払い確認または申込確認後に作業対象になります。</span>';
     }
 
-    return '<section class="card table-card" style="margin-bottom:1rem;">' +
-      '<div class="card__header">' +
+    return '<section class="cell-provisioning-item cell-provisioning-item--' + itemTone + '">' +
+      '<div class="cell-provisioning-item__head">' +
         '<div>' +
-          '<h3 class="section-title" style="margin-bottom:0;">' + Utils.escapeHtml(item.tenant_name || '-') + '</h3>' +
-          '<p class="card-intro"><code>' + Utils.escapeHtml(item.cell_id || '-') + '</code> / ' + Utils.escapeHtml(item.tenant_slug || '-') + '</p>' +
+          '<div class="cell-provisioning-item__title">' + Utils.escapeHtml(item.tenant_name || '-') + '</div>' +
+          '<div class="cell-provisioning-item__meta"><code>' + Utils.escapeHtml(item.cell_id || '-') + '</code> / ' + Utils.escapeHtml(item.tenant_slug || '-') + '</div>' +
         '</div>' +
         '<div class="tenant-contract">' +
           buildCellOnboardingStatusBadge(item.status || '-') +
           '<span class="status-pill status-pill--' + registryTone + '">registry: ' + Utils.escapeHtml(item.registry_status || 'missing') + '</span>' +
         '</div>' +
       '</div>' +
-      '<div class="card__body">' +
-        '<div class="metric-list">' +
-          buildMetricRow('次アクション', Utils.escapeHtml(item.next_action || '-'), '') +
-          buildMetricRow('顧客 / 店舗', Utils.escapeHtml(item.tenant_name || '-') + ' / ' + Utils.escapeHtml(item.store_name || '-'), 'tenant_id: ' + (item.tenant_id || '-')) +
-          buildMetricRow('Owner', Utils.escapeHtml(item.owner_username || '-'), item.owner_display_name || '') +
-          buildMetricRow('App URL', '<code>' + Utils.escapeHtml(item.app_base_url || target.app_base_url || '-') + '</code>', 'health: ' + (item.health_url || target.health_url || '-')) +
-          buildMetricRow('DB / uploads', '<code>' + Utils.escapeHtml(target.db_host || '-') + '</code>', target.db_name ? ('db: ' + target.db_name + ' / uploads: ' + target.uploads_path) : '') +
-        '</div>' +
-        '<div class="settings-inline-actions">' +
-          actionHtml +
-        '</div>' +
-        commandHtml +
+      '<div class="metric-list">' +
+        buildMetricRow('次アクション', Utils.escapeHtml(item.next_action || '-'), '') +
+        buildMetricRow('顧客 / 店舗', Utils.escapeHtml(item.tenant_name || '-') + ' / ' + Utils.escapeHtml(item.store_name || '-'), 'tenant_id: ' + (item.tenant_id || '-')) +
+        buildMetricRow('Owner', Utils.escapeHtml(item.owner_username || '-'), item.owner_display_name || '') +
+        buildMetricRow('App URL', '<code>' + Utils.escapeHtml(item.app_base_url || target.app_base_url || '-') + '</code>', 'health: ' + (item.health_url || target.health_url || '-')) +
+        buildMetricRow('DB / uploads', '<code>' + Utils.escapeHtml(target.db_host || '-') + '</code>', target.db_name ? ('db: ' + target.db_name + ' / uploads: ' + target.uploads_path) : '') +
       '</div>' +
+      '<div class="settings-inline-actions">' +
+        actionHtml +
+      '</div>' +
+      commandHtml +
     '</section>';
   }
 

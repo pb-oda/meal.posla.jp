@@ -5,7 +5,7 @@
 
 require_once __DIR__ . '/admin-audit-helper.php';
 
-function posla_fetch_tenant_insights(PDO $pdo, ?string $tenantId = null): array
+function posla_fetch_tenant_insights(PDO $pdo, ?string $tenantId = null, bool $includeCellSnapshots = true): array
 {
     $where = '';
     $params = [];
@@ -117,7 +117,255 @@ function posla_fetch_tenant_insights(PDO $pdo, ?string $tenantId = null): array
         $result[] = posla_build_tenant_insight($rows[$i]);
     }
 
+    if ($includeCellSnapshots) {
+        $result = posla_enrich_tenant_insights_from_cell_snapshots($pdo, $result);
+    }
+
     return $result;
+}
+
+function posla_enrich_tenant_insights_from_cell_snapshots(PDO $pdo, array $tenants): array
+{
+    if (empty($tenants) || !posla_insights_table_exists($pdo, 'posla_cell_registry')) {
+        return $tenants;
+    }
+
+    $registryByTenant = posla_fetch_cell_registry_by_tenant($pdo);
+    if (empty($registryByTenant)) {
+        return $tenants;
+    }
+
+    $secret = getenv('POSLA_OPS_READ_SECRET') ?: getenv('POSLA_CRON_SECRET') ?: '';
+    $snapshotCache = [];
+    $i = 0;
+    for ($i = 0; $i < count($tenants); $i++) {
+        $tenantId = (string)($tenants[$i]['id'] ?? '');
+        if ($tenantId === '' || empty($registryByTenant[$tenantId])) {
+            continue;
+        }
+
+        $registry = $registryByTenant[$tenantId];
+        $tenants[$i] = posla_attach_cell_registry_to_tenant($tenants[$i], $registry);
+        if ($secret === '' || empty($registry['app_base_url']) || ($registry['status'] ?? '') !== 'active') {
+            continue;
+        }
+
+        $cellId = (string)($registry['cell_id'] ?? '');
+        if ($cellId === '') {
+            continue;
+        }
+        if (!array_key_exists($cellId, $snapshotCache)) {
+            $snapshotCache[$cellId] = posla_fetch_cell_snapshot_for_insights((string)$registry['app_base_url'], $secret);
+        }
+
+        if (!is_array($snapshotCache[$cellId])) {
+            $tenants[$i]['cell_snapshot_status'] = 'unavailable';
+            continue;
+        }
+
+        $cellInsight = posla_find_snapshot_tenant_insight($snapshotCache[$cellId], $tenantId, (string)($tenants[$i]['slug'] ?? ''));
+        if ($cellInsight) {
+            $tenants[$i] = posla_merge_cell_tenant_insight($tenants[$i], $cellInsight, $snapshotCache[$cellId]);
+        }
+    }
+
+    return $tenants;
+}
+
+function posla_insights_table_exists(PDO $pdo, string $tableName): bool
+{
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*)
+             FROM information_schema.tables
+             WHERE table_schema = DATABASE()
+               AND table_name = ?'
+        );
+        $stmt->execute([$tableName]);
+        return (int)$stmt->fetchColumn() > 0;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+function posla_fetch_cell_registry_by_tenant(PDO $pdo): array
+{
+    try {
+        $stmt = $pdo->query(
+            'SELECT cell_id, tenant_id, tenant_slug, tenant_name, environment, status,
+                    app_base_url, health_url, deploy_version, updated_at
+             FROM posla_cell_registry
+             WHERE tenant_id IS NOT NULL
+               AND tenant_id <> \'\'
+             ORDER BY
+               CASE status
+                 WHEN "active" THEN 1
+                 WHEN "maintenance" THEN 2
+                 WHEN "provisioning" THEN 3
+                 WHEN "planned" THEN 4
+                 ELSE 9
+               END,
+               updated_at DESC'
+        );
+        $rows = $stmt ? $stmt->fetchAll() : [];
+    } catch (PDOException $e) {
+        return [];
+    }
+
+    $map = [];
+    $i = 0;
+    for ($i = 0; $i < count($rows); $i++) {
+        $tenantId = (string)($rows[$i]['tenant_id'] ?? '');
+        if ($tenantId !== '' && empty($map[$tenantId])) {
+            $map[$tenantId] = $rows[$i];
+        }
+    }
+
+    return $map;
+}
+
+function posla_attach_cell_registry_to_tenant(array $tenant, array $registry): array
+{
+    $tenant['cell_id'] = $registry['cell_id'] ?? null;
+    $tenant['cell_status'] = $registry['status'] ?? null;
+    $tenant['cell_environment'] = $registry['environment'] ?? null;
+    $tenant['cell_app_base_url'] = $registry['app_base_url'] ?? null;
+    $tenant['cell_health_url'] = $registry['health_url'] ?? null;
+    $tenant['cell_deploy_version'] = $registry['deploy_version'] ?? null;
+    $tenant['cell_registry_updated_at'] = $registry['updated_at'] ?? null;
+    $tenant['cell_snapshot_status'] = 'not_checked';
+
+    return $tenant;
+}
+
+function posla_fetch_cell_snapshot_for_insights(string $appBaseUrl, string $secret): ?array
+{
+    if (!function_exists('curl_init')) {
+        return null;
+    }
+
+    $url = rtrim(posla_build_server_side_cell_base_url($appBaseUrl), '/') . '/api/monitor/cell-snapshot.php';
+    $headers = [];
+    $opsSecret = getenv('POSLA_OPS_READ_SECRET') ?: '';
+    $cronSecret = getenv('POSLA_CRON_SECRET') ?: '';
+    if ($opsSecret !== '') {
+        $headers[] = 'X-POSLA-OPS-SECRET: ' . $opsSecret;
+    }
+    if ($cronSecret !== '') {
+        $headers[] = 'X-POSLA-CRON-SECRET: ' . $cronSecret;
+    }
+    if (empty($headers)) {
+        $headers[] = 'X-POSLA-CRON-SECRET: ' . $secret;
+    }
+
+    $ch = curl_init($url);
+    if (!$ch) {
+        return null;
+    }
+
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 400);
+    curl_setopt($ch, CURLOPT_TIMEOUT_MS, 900);
+    $raw = curl_exec($ch);
+    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($raw === false || $status < 200 || $status >= 300) {
+        return null;
+    }
+
+    $json = json_decode((string)$raw, true);
+    if (!is_array($json) || empty($json['ok']) || !isset($json['data']) || !is_array($json['data'])) {
+        return null;
+    }
+
+    return $json['data'];
+}
+
+function posla_build_server_side_cell_base_url(string $appBaseUrl): string
+{
+    $parts = parse_url($appBaseUrl);
+    if (!is_array($parts) || empty($parts['host'])) {
+        return $appBaseUrl;
+    }
+
+    $host = (string)$parts['host'];
+    if ($host !== '127.0.0.1' && $host !== 'localhost') {
+        return $appBaseUrl;
+    }
+
+    $alias = getenv('POSLA_CELL_LOCAL_HOST_ALIAS') ?: 'host.docker.internal';
+    $scheme = $parts['scheme'] ?? 'http';
+    $port = isset($parts['port']) ? ':' . (int)$parts['port'] : '';
+    $path = $parts['path'] ?? '';
+
+    return $scheme . '://' . $alias . $port . $path;
+}
+
+function posla_find_snapshot_tenant_insight(array $snapshot, string $tenantId, string $tenantSlug): ?array
+{
+    $container = $snapshot['tenant_insights'] ?? [];
+    $tenants = is_array($container) ? ($container['tenants'] ?? []) : [];
+    if (!is_array($tenants)) {
+        return null;
+    }
+
+    $i = 0;
+    for ($i = 0; $i < count($tenants); $i++) {
+        if (!is_array($tenants[$i])) {
+            continue;
+        }
+        if ((string)($tenants[$i]['id'] ?? '') === $tenantId) {
+            return $tenants[$i];
+        }
+        if ($tenantSlug !== '' && (string)($tenants[$i]['slug'] ?? '') === $tenantSlug) {
+            return $tenants[$i];
+        }
+    }
+
+    return null;
+}
+
+function posla_merge_cell_tenant_insight(array $tenant, array $cellInsight, array $snapshot): array
+{
+    $copyKeys = [
+        'store_count',
+        'active_store_count',
+        'user_count',
+        'active_user_count',
+        'owner_count',
+        'manager_count',
+        'staff_count',
+        'device_count',
+        'settings_count',
+        'category_count',
+        'menu_count',
+        'active_menu_count',
+        'table_count',
+        'active_table_count',
+        'incident_count_24h',
+        'open_incident_count',
+        'critical_open_count',
+        'last_incident_at',
+    ];
+    $i = 0;
+    for ($i = 0; $i < count($copyKeys); $i++) {
+        $key = $copyKeys[$i];
+        if (array_key_exists($key, $cellInsight)) {
+            $tenant[$key] = $cellInsight[$key];
+        }
+    }
+
+    $tenant = posla_build_tenant_insight($tenant);
+    $tenant['insight_source'] = 'cell_snapshot';
+    $tenant['cell_snapshot_status'] = !empty($snapshot['ok']) ? 'ok' : 'warn';
+    $tenant['cell_snapshot_at'] = $snapshot['time'] ?? null;
+    $tenant['cell_tier0_status'] = $snapshot['tier0']['status'] ?? null;
+    $tenant['cell_cron_status'] = $snapshot['cron']['status'] ?? null;
+    $tenant['cell_cron_lag_sec'] = $snapshot['cron']['lag_sec'] ?? null;
+
+    return $tenant;
 }
 
 function posla_build_tenant_insight(array $tenant): array
