@@ -151,7 +151,7 @@ owner-dashboard の「決済設定」で管理するものです。
 | `POSLA_DB_NAME` | ✅ | DB 名 |
 | `POSLA_DB_USER` | ✅ | DB ユーザー |
 | `POSLA_DB_PASS` | ✅ | DB パスワード |
-| `POSLA_APP_BASE_URL` | ✅ | 正規 URL / callback / メール導線 |
+| `POSLA_APP_BASE_URL` | ✅ | 正規 URL / callback / メール導線。本番では public `https://<production-domain>` 必須 |
 | `POSLA_FROM_EMAIL` | ✅ | 送信元メール |
 | `POSLA_SUPPORT_EMAIL` | ✅ | 問い合わせ先 |
 | `POSLA_ALLOWED_ORIGINS` | ✅ | CORS origin |
@@ -179,14 +179,17 @@ owner-dashboard の「決済設定」で管理するものです。
 
 ```bash
 cp docker/env/db.env.example docker/env/db.env
-cp docker/env/app.env.example docker/env/app.env
+cp docker/env/app.production.env.example docker/env/app.env
 ```
 
 ### 9-2. 切替前に必ず確認すること
 
-- `POSLA_APP_BASE_URL=https://meal.posla.jp`
-- `POSLA_ALLOWED_ORIGINS=https://meal.posla.jp`
-- `POSLA_ALLOWED_HOSTS=meal.posla.jp`
+- `POSLA_ENVIRONMENT=production`
+- `POSLA_APP_BASE_URL=https://<production-domain>`
+- `POSLA_ALLOWED_ORIGINS=https://<production-domain>`
+- `POSLA_ALLOWED_HOSTS=<production-domain>`
+- `POSLA_PROVISIONER_TRIGGER_URL=http://127.0.0.1:19091/run` または本番内到達可能な内部URL
+- `POSLA_CELL_APP_URL_PATTERN=https://{tenant_slug}.<production-domain>`
 - `POSLA_PHP_ERROR_LOG` が書ける
 - `uploads/` が永続化される
 - `docker/php/startup.sh` が cron loop を起動する
@@ -195,23 +198,23 @@ cp docker/env/app.env.example docker/env/app.env
 
 | サービス | URL |
 |---|---|
-| Stripe signup webhook | `https://meal.posla.jp/api/signup/webhook.php` |
-| Stripe subscription webhook | `https://meal.posla.jp/api/subscription/webhook.php` |
-| Stripe Connect callback | `https://meal.posla.jp/api/connect/callback.php` |
-| Smaregi callback | `https://meal.posla.jp/api/smaregi/callback.php` |
-| health check | `https://meal.posla.jp/api/monitor/ping.php` |
+| Stripe signup webhook | `https://<production-domain>/api/signup/webhook.php` |
+| Stripe subscription webhook | `https://<production-domain>/api/subscription/webhook.php` |
+| Stripe Connect callback | `https://<production-domain>/api/connect/callback.php` |
+| Smaregi callback | `https://<production-domain>/api/smaregi/callback.php` |
+| health check | `https://<production-domain>/api/monitor/ping.php` |
 
 ### 9-4. smoke test
 
 ```bash
-curl -sf https://meal.posla.jp/api/monitor/ping.php
-curl -I https://meal.posla.jp/admin/
-curl -I https://meal.posla.jp/customer/menu.html
-curl -I https://meal.posla.jp/handy/
-curl -I https://meal.posla.jp/kds/
-curl -I https://meal.posla.jp/posla-admin/
-curl -I https://meal.posla.jp/docs-tenant/
-curl -I https://meal.posla.jp/docs-internal/
+curl -sf https://<production-domain>/api/monitor/ping.php
+curl -I https://<production-domain>/admin/
+curl -I https://<production-domain>/customer/menu.html
+curl -I https://<production-domain>/handy/
+curl -I https://<production-domain>/kds/
+curl -I https://<production-domain>/posla-admin/
+curl -I https://<production-domain>/docs-tenant/
+curl -I https://<production-domain>/docs-internal/
 ```
 
 機能 smoke:

@@ -84,6 +84,8 @@ POSLA_DEPLOY_VERSION=<image-or-git-sha>
 POSLA_CRON_ENABLED=1
 ```
 
+control stack の本番 env は `docker/env/app.production.env.example` を雛形にし、`POSLA_APP_BASE_URL` / `POSLA_ALLOWED_ORIGINS` / `POSLA_ALLOWED_HOSTS` を必ず本番ドメインへ置換します。`POSLA_ENVIRONMENT=production` では `localhost` / `127.0.0.1` / `host.docker.internal` の公開URL設定を起動時に拒否します。
+
 `cell.env` では同一ホスト上で衝突しない port と image artifact を指定します。
 
 ```bash
