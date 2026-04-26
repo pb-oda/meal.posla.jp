@@ -29,6 +29,29 @@ function posla_onboarding_table_exists(PDO $pdo): bool
     return $exists;
 }
 
+function posla_onboarding_cell_registry_exists(PDO $pdo): bool
+{
+    static $exists = null;
+    if ($exists !== null) {
+        return $exists;
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*)
+             FROM information_schema.tables
+             WHERE table_schema = DATABASE()
+               AND table_name = ?'
+        );
+        $stmt->execute(['posla_cell_registry']);
+        $exists = (int)$stmt->fetchColumn() > 0;
+    } catch (PDOException $e) {
+        $exists = false;
+    }
+
+    return $exists;
+}
+
 function posla_onboarding_generate_request_id(): string
 {
     if (function_exists('generate_uuid')) {
@@ -53,6 +76,31 @@ function posla_onboarding_status(string $status): string
         'canceled',
     ];
     return in_array($status, $allowed, true) ? $status : 'received';
+}
+
+function posla_onboarding_cell_id_from_slug(string $tenantSlug): string
+{
+    $cellId = strtolower(trim($tenantSlug));
+    $cellId = preg_replace('/[^a-z0-9-]+/', '-', $cellId);
+    $cellId = trim((string)$cellId, '-');
+    return $cellId !== '' ? substr($cellId, 0, 80) : ('cell-' . bin2hex(random_bytes(4)));
+}
+
+function posla_onboarding_registry_status(string $status): string
+{
+    if ($status === 'cell_provisioning') {
+        return 'provisioning';
+    }
+    if ($status === 'active') {
+        return 'active';
+    }
+    if ($status === 'failed') {
+        return 'failed';
+    }
+    if ($status === 'canceled') {
+        return 'retired';
+    }
+    return 'planned';
 }
 
 function posla_onboarding_string(array $data, string $key, string $default = ''): string
@@ -87,6 +135,10 @@ function posla_record_tenant_onboarding_request(PDO $pdo, array $data): ?string
     }
 
     $status = posla_onboarding_status(posla_onboarding_string($data, 'status', 'received'));
+    $cellId = posla_onboarding_string($data, 'cell_id');
+    if ($cellId === '') {
+        $cellId = posla_onboarding_cell_id_from_slug($tenantSlug);
+    }
     $source = posla_onboarding_string($data, 'request_source', 'manual');
     if (!in_array($source, ['lp_signup', 'posla_admin', 'manual'], true)) {
         $source = 'manual';
@@ -167,7 +219,7 @@ function posla_record_tenant_onboarding_request(PDO $pdo, array $data): ?string
         posla_onboarding_nullable($data, 'owner_display_name'),
         max(1, (int)($data['requested_store_count'] ?? 1)),
         !empty($data['hq_menu_broadcast']) ? 1 : 0,
-        posla_onboarding_nullable($data, 'cell_id'),
+        $cellId,
         $signupTokenHash,
         posla_onboarding_nullable($data, 'stripe_customer_id'),
         posla_onboarding_nullable($data, 'stripe_subscription_id'),
@@ -179,7 +231,56 @@ function posla_record_tenant_onboarding_request(PDO $pdo, array $data): ?string
         posla_onboarding_nullable($data, 'activated_at'),
     ]);
 
+    posla_upsert_onboarding_cell_registry($pdo, [
+        'status' => $status,
+        'cell_id' => $cellId,
+        'tenant_id' => posla_onboarding_nullable($data, 'tenant_id'),
+        'tenant_slug' => $tenantSlug,
+        'tenant_name' => $tenantName,
+        'notes' => 'Dedicated cell reserved by POSLA onboarding ledger.',
+    ]);
+
     return $requestId;
+}
+
+function posla_upsert_onboarding_cell_registry(PDO $pdo, array $data): void
+{
+    if (!posla_onboarding_cell_registry_exists($pdo)) {
+        return;
+    }
+
+    $cellId = posla_onboarding_string($data, 'cell_id');
+    $tenantSlug = posla_onboarding_string($data, 'tenant_slug');
+    $tenantName = posla_onboarding_string($data, 'tenant_name');
+    if ($cellId === '' || $tenantSlug === '' || $tenantName === '') {
+        return;
+    }
+
+    $environment = defined('APP_ENVIRONMENT') ? APP_ENVIRONMENT : (getenv('POSLA_ENVIRONMENT') ?: 'production');
+    $registryStatus = posla_onboarding_registry_status(posla_onboarding_string($data, 'status', 'received'));
+    $stmt = $pdo->prepare(
+        'INSERT INTO posla_cell_registry
+            (cell_id, tenant_id, tenant_slug, tenant_name, environment, status, cron_enabled, notes)
+         VALUES
+            (?, ?, ?, ?, ?, ?, 0, ?)
+         ON DUPLICATE KEY UPDATE
+            tenant_id = VALUES(tenant_id),
+            tenant_slug = VALUES(tenant_slug),
+            tenant_name = VALUES(tenant_name),
+            environment = VALUES(environment),
+            status = CASE WHEN status = \'active\' THEN status ELSE VALUES(status) END,
+            notes = COALESCE(VALUES(notes), notes),
+            updated_at = CURRENT_TIMESTAMP'
+    );
+    $stmt->execute([
+        $cellId,
+        posla_onboarding_nullable($data, 'tenant_id'),
+        $tenantSlug,
+        $tenantName,
+        $environment,
+        $registryStatus,
+        posla_onboarding_nullable($data, 'notes'),
+    ]);
 }
 
 function posla_update_tenant_onboarding_status(PDO $pdo, string $tenantId, string $status, array $data = []): void
@@ -215,6 +316,36 @@ function posla_update_tenant_onboarding_status(PDO $pdo, string $tenantId, strin
          WHERE tenant_id = ?'
     );
     $stmt->execute($params);
+
+    posla_sync_onboarding_cell_registry_for_tenant($pdo, $tenantId);
+}
+
+function posla_sync_onboarding_cell_registry_for_tenant(PDO $pdo, string $tenantId): void
+{
+    if ($tenantId === '' || !posla_onboarding_table_exists($pdo)) {
+        return;
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT status, cell_id, tenant_id, tenant_slug, tenant_name
+         FROM posla_tenant_onboarding_requests
+         WHERE tenant_id = ?
+         LIMIT 1'
+    );
+    $stmt->execute([$tenantId]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        return;
+    }
+
+    posla_upsert_onboarding_cell_registry($pdo, [
+        'status' => (string)($row['status'] ?? 'received'),
+        'cell_id' => (string)($row['cell_id'] ?? ''),
+        'tenant_id' => (string)($row['tenant_id'] ?? ''),
+        'tenant_slug' => (string)($row['tenant_slug'] ?? ''),
+        'tenant_name' => (string)($row['tenant_name'] ?? ''),
+        'notes' => 'Dedicated cell synchronized from POSLA onboarding ledger.',
+    ]);
 }
 
 function posla_fetch_onboarding_snapshot(PDO $pdo): array
