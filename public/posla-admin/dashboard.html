@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3f51b5">
   <title>POSLA管理画面</title>
-  <link rel="stylesheet" href="../admin/css/admin.css?v=20260424-posla-shell1">
+  <link rel="stylesheet" href="../admin/css/admin.css?v=20260426-ui-p2">
   <style>
     /* POSLA管理画面固有スタイル */
     .posla-admin-page .admin-content {
@@ -968,18 +968,30 @@
       </div>
 
       <nav class="tab-nav" id="posla-tab-nav">
-        <button class="tab-nav__btn" data-tab="overview">ダッシュボード</button>
-        <button class="tab-nav__btn" data-tab="tenants">テナント管理</button>
-        <button class="tab-nav__btn" data-tab="create-tenant">テナント作成</button>
-        <button class="tab-nav__btn" data-tab="cell-provisioning">Cell配備</button>
-        <button class="tab-nav__btn" data-tab="feature-flags">Feature Flags</button>
-        <button class="tab-nav__btn" data-tab="api-settings">API設定</button>
-        <button class="tab-nav__btn" data-tab="ops-source">OP連携</button>
-        <button class="tab-nav__btn" data-tab="pwa-push">PWA / Web Push</button>
-        <button class="tab-nav__btn" data-tab="admin-users">管理者ユーザー</button>
-        <button class="tab-nav__btn" data-tab="customer-support">顧客サポート</button>
-        <button class="tab-nav__btn" data-tab="support">サポートセンター</button>
-        <button class="tab-nav__btn" data-tab="ops">運用補助センター</button>
+        <div class="posla-nav-section">
+          <div class="posla-nav-section__label">監視・顧客</div>
+          <button class="tab-nav__btn" data-tab="overview">ダッシュボード</button>
+          <button class="tab-nav__btn" data-tab="tenants">テナント管理</button>
+          <button class="tab-nav__btn" data-tab="customer-support">顧客サポート</button>
+        </div>
+        <div class="posla-nav-section">
+          <div class="posla-nav-section__label">配備・反映</div>
+          <button class="tab-nav__btn" data-tab="create-tenant">テナント作成</button>
+          <button class="tab-nav__btn" data-tab="cell-provisioning">Cell配備</button>
+          <button class="tab-nav__btn" data-tab="feature-flags">Feature Flags</button>
+        </div>
+        <div class="posla-nav-section">
+          <div class="posla-nav-section__label">基盤設定</div>
+          <button class="tab-nav__btn" data-tab="api-settings">API設定</button>
+          <button class="tab-nav__btn" data-tab="ops-source">OP連携</button>
+          <button class="tab-nav__btn" data-tab="pwa-push">PWA / Web Push</button>
+        </div>
+        <div class="posla-nav-section">
+          <div class="posla-nav-section__label">内部運用</div>
+          <button class="tab-nav__btn" data-tab="admin-users">管理者ユーザー</button>
+          <button class="tab-nav__btn" data-tab="support">サポートセンター</button>
+          <button class="tab-nav__btn" data-tab="ops">運用補助センター</button>
+        </div>
       </nav>
 
       <div class="admin-sidebar__footer">
