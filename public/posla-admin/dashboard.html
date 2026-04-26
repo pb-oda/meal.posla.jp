@@ -564,6 +564,32 @@
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
     }
+    .posla-admin-page .table-card .data-table {
+      min-width: 880px;
+    }
+    .posla-admin-page #tenants-list .data-table {
+      min-width: 1240px;
+    }
+    .posla-admin-page #tenants-list .data-table td:nth-child(1),
+    .posla-admin-page #tenants-list .data-table td:nth-child(2),
+    .posla-admin-page #tenants-list .data-table td:nth-child(6),
+    .posla-admin-page #tenants-list .data-table td:nth-child(7),
+    .posla-admin-page #tenants-list .data-table td:nth-child(8),
+    .posla-admin-page #tenants-list .data-table td:nth-child(9),
+    .posla-admin-page #tenants-list .data-table td:nth-child(10),
+    .posla-admin-page #tenants-list .data-table td:nth-child(11),
+    .posla-admin-page #tenants-list .data-table td:nth-child(12) {
+      white-space: nowrap;
+    }
+    .posla-admin-page #tenants-list .data-table td:nth-child(3),
+    .posla-admin-page #tenants-list .data-table td:nth-child(4),
+    .posla-admin-page #tenants-list .data-table td:nth-child(5) {
+      min-width: 150px;
+    }
+    .posla-admin-page #feature-flags-list .data-table,
+    .posla-admin-page #settings-audit-list .data-table {
+      min-width: 980px;
+    }
     .card-intro {
       color: var(--text-secondary);
       font-size: 0.84rem;
@@ -1037,7 +1063,7 @@
       <div class="panel-header">
         <div class="panel-header__eyebrow">Operations Overview</div>
         <h2 class="panel-header__title">ダッシュボード</h2>
-        <p class="panel-header__lead">擬似本番で現在見えている全体像を素早く把握するための入口です。テナント数、店舗数、利用状況の偏りをここで確認し、必要なら各管理タブに移動します。</p>
+        <p class="panel-header__lead">POSLA全体の稼働状況を素早く把握するための入口です。テナント数、店舗数、利用状況の偏りをここで確認し、必要なら各管理タブに移動します。</p>
         <div class="panel-header__actions">
           <button class="btn btn-secondary" type="button" data-tab-jump="tenants">テナント管理へ</button>
           <button class="btn btn-secondary" type="button" data-tab-jump="api-settings">API設定へ</button>
@@ -1135,7 +1161,7 @@
       <div class="panel-header">
         <div class="panel-header__eyebrow">Provisioning</div>
         <h2 class="panel-header__title">テナント新規作成</h2>
-        <p class="panel-header__lead">擬似本番で新しいテナントを追加し、同時にテスト用の店舗とログインIDまで立ち上げる入口です。作成直後から owner / manager / staff / device で検証を始められます。</p>
+        <p class="panel-header__lead">新しいテナントを追加し、同時に初期店舗と初期ログインIDまで立ち上げる入口です。作成直後から owner / manager / staff / device で初期確認を始められます。</p>
       </div>
       <div class="panel-grid panel-grid--two">
         <div class="card card--tint panel-shell panel-shell--narrow">
@@ -1175,8 +1201,8 @@
           <div class="card__body">
             <h3 class="section-title">作成時の前提</h3>
             <ul class="helper-list">
-              <li>作成時に既定店舗 `main` と `store_settings`、テスト用ログイン `owner / manager / staff / device` を同時に作成します。</li>
-              <li>初期パスワードは共通で `Demo1234` です。結果カードに生成済み username を表示します。</li>
+              <li>作成時に既定店舗 `main` と `store_settings`、初期ログイン `owner / manager / staff / device` を同時に作成します。</li>
+              <li>一時パスワードは作成ごとにランダム生成します。結果カードに username と一時パスワードを表示します。</li>
               <li>作成直後は Stripe・Connect・Google Chat・PWA などの外部連携は未設定でも構いません。</li>
               <li>契約差分は `hq_menu_broadcast` オプションだけです。旧 `plan` は表示互換のためだけに保持しています。</li>
             </ul>
@@ -1624,7 +1650,7 @@
     <div class="posla-tab-panel" id="posla-panel-support">
       <div class="panel-header">
         <div class="panel-header__eyebrow">Support Knowledge</div>
-        <h2 class="panel-header__title">📚 サポートセンター</h2>
+        <h2 class="panel-header__title">サポートセンター</h2>
         <p class="panel-header__lead">テナント問い合わせ時の一次回答と誘導先をまとめた運用ナレッジです。AI ではなく固定ナレッジベースとして扱います。</p>
       </div>
       <div id="posla-support-root"></div>
@@ -1634,7 +1660,7 @@
     <div class="posla-tab-panel" id="posla-panel-ops">
       <div class="panel-header">
         <div class="panel-header__eyebrow">Ops Readonly</div>
-        <h2 class="panel-header__title">🛠️ 運用補助センター</h2>
+        <h2 class="panel-header__title">運用補助センター</h2>
         <p class="panel-header__lead">障害切り分けや日次確認のための read-only 支援ビューです。本番修正や強制操作はここでは行いません。</p>
       </div>
       <div id="posla-ops-root"></div>
@@ -1954,8 +1980,8 @@
   })();
   </script>
 
-  <script src="js/posla-supportdesk.js?v=20260424-pathfix1"></script>
+  <script src="js/posla-supportdesk.js?v=20260426-content1"></script>
   <script src="js/posla-support-console.js?v=20260424-admin-users1"></script>
-  <script src="../shared/js/posla-ops-center.js?v=20260424-pathfix1"></script>
+  <script src="../shared/js/posla-ops-center.js?v=20260426-content1"></script>
 </body>
 </html>

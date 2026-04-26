@@ -18,7 +18,7 @@ var PoslaOpsCenter = (function () {
 
   var DATA_URL = '/shared/data/internal-ops-center.json';
   var PING_URL = '/api/monitor/ping.php';
-  var BRAND = '#ff6f00';
+  var BRAND = 'var(--primary)';
 
   var _mounted = false;
   var _loaded = false;
@@ -48,19 +48,19 @@ var PoslaOpsCenter = (function () {
   function _injectStyle() {
     if (document.getElementById('posla-ops-center-style')) return;
     var css =
-      '.posla-opc{display:flex;flex-direction:column;background:#fff;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;}'
-      + '.posla-opc__tabs{display:flex;border-bottom:1px solid #eee;background:#fafafa;}'
-      + '.posla-opc__tab{flex:1;padding:0.7rem 0.4rem;font-size:0.85rem;background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;color:#555;font-family:inherit;}'
+      '.posla-opc{display:flex;flex-direction:column;background:#fff;border:1px solid #dde3f5;border-radius:8px;overflow:hidden;}'
+      + '.posla-opc__tabs{display:flex;border-bottom:1px solid #dde3f5;background:#f8faff;}'
+      + '.posla-opc__tab{flex:1;padding:0.7rem 0.4rem;font-size:0.85rem;background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;color:var(--text-secondary);font-family:inherit;}'
       + '.posla-opc__tab.active{color:' + BRAND + ';border-bottom-color:' + BRAND + ';font-weight:bold;background:#fff;}'
-      + '.posla-opc__tab:hover{background:#f0f0f0;}'
+      + '.posla-opc__tab:hover{background:#eef2ff;}'
       + '.posla-opc__body{padding:1rem 1.2rem;min-height:320px;max-height:720px;overflow-y:auto;font-size:0.9rem;line-height:1.55;}'
       + '.posla-opc__body h4{margin:0.9rem 0 0.4rem;font-size:0.92rem;color:#222;}'
       + '.posla-opc__body h4:first-child{margin-top:0;}'
-      + '.posla-opc__notice{background:#fff8e1;border-left:3px solid #ffb300;padding:0.6rem 0.85rem;margin-bottom:0.85rem;color:#555;font-size:0.82rem;line-height:1.5;}'
-      + '.posla-opc__search{width:100%;padding:0.6rem 0.75rem;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;font-family:inherit;box-sizing:border-box;margin-bottom:0.75rem;}'
+      + '.posla-opc__notice{background:#f8faff;border-left:3px solid var(--primary);padding:0.6rem 0.85rem;margin-bottom:0.85rem;color:var(--text-secondary);font-size:0.82rem;line-height:1.5;}'
+      + '.posla-opc__search{width:100%;padding:0.6rem 0.75rem;border:1px solid #dfe4f5;border-radius:6px;font-size:0.9rem;font-family:inherit;box-sizing:border-box;margin-bottom:0.75rem;}'
       + '.posla-opc__search:focus{outline:none;border-color:' + BRAND + ';}'
       + '.posla-opc__health-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.7rem;margin-bottom:0.9rem;}'
-      + '.posla-opc__health{background:#fff;border:1px solid #e5e5e5;border-left:4px solid #9e9e9e;border-radius:6px;padding:0.65rem 0.85rem;}'
+      + '.posla-opc__health{background:#fff;border:1px solid #e3e8f7;border-left:4px solid #9e9e9e;border-radius:6px;padding:0.65rem 0.85rem;}'
       + '.posla-opc__health.ok{border-left-color:#2e7d32;}'
       + '.posla-opc__health.warn{border-left-color:#ef6c00;}'
       + '.posla-opc__health.ng{border-left-color:#c62828;}'
@@ -69,9 +69,9 @@ var PoslaOpsCenter = (function () {
       + '.posla-opc__health-note{color:#666;font-size:0.78rem;margin-top:0.3rem;line-height:1.4;}'
       + '.posla-opc__reload{margin-bottom:0.9rem;}'
       + '.posla-opc__reload button{background:' + BRAND + ';color:#fff;border:none;padding:0.45rem 0.95rem;border-radius:6px;cursor:pointer;font-size:0.85rem;font-family:inherit;}'
-      + '.posla-opc__reload button:hover{background:#ff8a1f;}'
+      + '.posla-opc__reload button:hover{filter:brightness(1.05);}'
       + '.posla-opc__reload button:disabled{background:#ccc;cursor:not-allowed;}'
-      + '.posla-opc__card{background:#fff;border:1px solid #e5e5e5;border-radius:6px;padding:0.7rem 0.9rem;margin:0.5rem 0;cursor:pointer;}'
+      + '.posla-opc__card{background:#fff;border:1px solid #e3e8f7;border-radius:6px;padding:0.7rem 0.9rem;margin:0.5rem 0;cursor:pointer;}'
       + '.posla-opc__card:hover{border-color:' + BRAND + ';}'
       + '.posla-opc__card-title{font-weight:bold;color:#222;font-size:0.9rem;}'
       + '.posla-opc__card-body{margin-top:0.5rem;color:#333;font-size:0.85rem;display:none;}'
@@ -85,13 +85,13 @@ var PoslaOpsCenter = (function () {
       + '.posla-opc__err-title{font-weight:bold;margin-left:0.5rem;color:#333;}'
       + '.posla-opc__err-msg{color:#666;font-size:0.82rem;margin:0.25rem 0;white-space:pre-wrap;}'
       + '.posla-opc__err-action{color:#333;font-size:0.85rem;white-space:pre-wrap;}'
-      + '.posla-opc__doc-card{display:flex;gap:0.75rem;background:#fff;border:1px solid #e5e5e5;border-radius:6px;padding:0.75rem 0.9rem;margin:0.45rem 0;text-decoration:none;color:inherit;}'
+      + '.posla-opc__doc-card{display:flex;gap:0.75rem;background:#fff;border:1px solid #e3e8f7;border-radius:6px;padding:0.75rem 0.9rem;margin:0.45rem 0;text-decoration:none;color:inherit;}'
       + '.posla-opc__doc-card:hover{border-color:' + BRAND + ';}'
       + '.posla-opc__doc-main{flex:1;min-width:0;}'
       + '.posla-opc__doc-title{font-weight:bold;color:#222;font-size:0.9rem;}'
       + '.posla-opc__doc-summary{color:#666;font-size:0.82rem;margin-top:0.3rem;line-height:1.45;}'
       + '.posla-opc__doc-arrow{color:' + BRAND + ';font-weight:bold;align-self:center;}'
-      + '.posla-opc__checklist{background:#fff;border:1px solid #e5e5e5;border-radius:6px;padding:0.9rem 1.1rem;margin:0.7rem 0;}'
+      + '.posla-opc__checklist{background:#fff;border:1px solid #e3e8f7;border-radius:6px;padding:0.9rem 1.1rem;margin:0.7rem 0;}'
       + '.posla-opc__checklist-title{font-weight:bold;color:#222;font-size:0.95rem;margin-bottom:0.55rem;}'
       + '.posla-opc__checklist-list{list-style:none;padding-left:0;margin:0;}'
       + '.posla-opc__checklist-list li{padding:0.3rem 0;font-size:0.88rem;color:#333;display:flex;align-items:flex-start;gap:0.55rem;}'
@@ -172,9 +172,9 @@ var PoslaOpsCenter = (function () {
   // ── 運用状況 (ping + health cards) ──
   function _renderStatus() {
     var html = ''
-      + '<div class="posla-opc__notice">📘 この画面は <strong>read-only</strong> です。書き込み操作・本番修正は含みません。障害時の本命調査ツールは別系統 (外部運用支援)、ここは平常時 / 軽障害時の一次確認向けです。</div>'
+      + '<div class="posla-opc__notice">この画面は <strong>read-only</strong> です。書き込み操作・本番修正は含みません。障害時の本命調査ツールは別系統 (外部運用支援)、ここは平常時 / 軽障害時の一次確認向けです。</div>'
       + '<h4>稼働状態 (/api/monitor/ping.php)</h4>'
-      + '<div class="posla-opc__reload"><button id="posla-opc-reload" type="button">最新情報を取得 🔄</button></div>'
+      + '<div class="posla-opc__reload"><button id="posla-opc-reload" type="button">最新情報を取得</button></div>'
       + '<div id="posla-opc-health-grid" class="posla-opc__health-grid"><div class="posla-opc__empty">クリックして読み込み</div></div>'
       + '<h4>health 閾値の目安</h4>';
     var i;
@@ -364,7 +364,7 @@ var PoslaOpsCenter = (function () {
 
   // ── 運用ドキュメント ──
   function _renderDocs() {
-    var html = '<div class="posla-opc__notice">📚 クリックで VitePress / 原本ドキュメントを新しいタブで開きます。</div>';
+    var html = '<div class="posla-opc__notice">クリックで VitePress / 原本ドキュメントを新しいタブで開きます。</div>';
     var docs = _data.doc_links || [];
     var i;
     for (i = 0; i < docs.length; i++) {

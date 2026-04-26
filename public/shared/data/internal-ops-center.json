@@ -74,7 +74,7 @@
         "エラーメッセージ / コード (E3xxx or RATE_LIMITED) を確認",
         "POSLA管理画面 > テナント管理で該当 tenant の is_active を確認",
         "tenants.status = active / POSLA 側に is_active=1 ユーザーがいるか",
-        "5 分以内に 10 回失敗で RATE_LIMITED ロック (sandbox は /tmp/posla_rate_limit/*.json 削除で即解除)",
+        "5 分以内に 10 回失敗で RATE_LIMITED ロック (検証環境では /tmp/posla_rate_limit/*.json 削除で即解除)",
         "パスワードリセットはテナント側 owner/manager から行ってもらう (POSLA 運営は直接 reset しない方針)"
       ],
       "doc_link": "/docs-internal/internal/06-troubleshoot.html"
@@ -113,21 +113,21 @@
         "reservation_notifications テーブルで送信ログ (sent_at / status / error_message)",
         "mb_send_mail エラーを POSLA_PHP_ERROR_LOG で検索",
         "LINE 通知も併用している場合は tenants.line_channel_access_token 有効期限切れを確認",
-        "SPF/DKIM が新ドメインで有効か (メールサービス側で確認)",
+        "SPF/DKIM が本番ドメインで有効か (メールサービス側で確認)",
         "手動再送: reservation-notify.php endpoint を owner dashboard から発火"
       ],
       "doc_link": "/docs-internal/internal/05-operations.html"
     },
     {
       "id": "opf-migration-precheck",
-      "title": "新サーバ移行前の最終チェック",
+      "title": "本番環境移行前の最終チェック",
       "steps": [
         "production-api-checklist §9-0 cutover 8 step overview を確認",
         "env 13 種を `.htaccess` + cron env 両方で明示設定 (fallback 依存禁止)",
         "§5.3.8 SQL 実行確認リストで schema health + 直近 migration 11 項目 + posla_settings 19 キー完全性",
         "HTTPS 証明書 / X-Forwarded-Proto / SPF DKIM / uploads/menu 永続化 / /tmp 書込 の 5 項目",
         "smoke test: /api/monitor/ping.php + /api/auth/me.php + /api/posla/me.php",
-        "DNS / SSL / Stripe webhook URL / smaregi redirect_uri を切替"
+        "DNS / SSL / Stripe webhook URL / smaregi redirect_uri を本番ドメインへ切替"
       ],
       "doc_link": "/docs-internal/internal/production-api-checklist.html"
     }
@@ -160,7 +160,7 @@
     {
       "id": "dl-internal-index",
       "title": "internal docs トップ",
-      "summary": "全 internal 章の入口。hero に新サーバ移行チェック導線あり",
+      "summary": "全 internal 章の入口。本番環境移行チェック導線あり",
       "url": "/docs-internal/"
     },
     {
@@ -192,11 +192,11 @@
       "title": "対応前チェックリスト (本番切替前)",
       "items": [
         "env 13 種を .htaccess + cron env 両方に設定済",
-        "HTTPS 証明書が新ドメインで有効 (Let's Encrypt or 商用)",
+        "HTTPS 証明書が本番ドメインで有効 (Let's Encrypt or 商用)",
         "DB dump restore 済 + 直近 migration 11 項目適用済 (§5.3.8)",
         "posla_settings 19 必須キー完全性確認 (§5.3.8 ③)",
-        "Stripe Webhook URL 新ドメイン対応 (signup / billing / reservation-deposit)",
-        "smaregi OAuth redirect_uri 新ドメイン登録",
+        "Stripe Webhook URL 本番ドメイン対応 (signup / billing / reservation-deposit)",
+        "smaregi OAuth redirect_uri 本番ドメイン登録",
         "/tmp/posla_rate_limit/ が書込可",
         "uploads/menu/ 永続化 volume 確保",
         "mb_send_mail / SMTP 動作確認 (SPF/DKIM 含む)",

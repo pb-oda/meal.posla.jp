@@ -1207,7 +1207,7 @@
         buildMetricRow('契約', buildTenantContractHtml(data.tenant || {}), '') +
         buildMetricRow('初期店舗', escapeHtml((bootstrap.store && bootstrap.store.name) || '-'), (bootstrap.store && bootstrap.store.slug) ? ('store slug: ' + bootstrap.store.slug) : '') +
         buildMetricRow('ログイン画面', '<code>' + escapeHtml(bootstrap.login_url || (window.location.origin + '/admin/')) + '</code>', 'owner / manager / staff / device 共通') +
-        buildMetricRow('初期パスワード', '<code>' + escapeHtml(bootstrap.common_password || 'Demo1234') + '</code>', '必要に応じてログイン後に変更') +
+        buildMetricRow('一時パスワード', '<code>' + escapeHtml(bootstrap.common_password || '作成結果で確認') + '</code>', '作成ごとにランダム生成。初回ログイン後に変更') +
       '</div>' +
       '<div class="data-table-wrap" style="margin-top:1rem;"><table class="data-table"><thead><tr><th>ロール</th><th>username</th><th>表示名</th></tr></thead><tbody>' +
         rows +

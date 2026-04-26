@@ -17,7 +17,7 @@ var PoslaSupportdesk = (function () {
   'use strict';
 
   var DATA_URL = '/shared/data/internal-supportdesk.json';
-  var BRAND_ORANGE = '#ff6f00';
+  var BRAND_ORANGE = 'var(--primary)';
 
   var _mounted = false;
   var _loaded = false;
@@ -48,21 +48,21 @@ var PoslaSupportdesk = (function () {
   function _injectStyle() {
     if (document.getElementById('posla-supportdesk-admin-style')) return;
     var css =
-      '.posla-sdp{display:flex;flex-direction:column;background:#fff;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;}'
-      + '.posla-sdp__tabs{display:flex;border-bottom:1px solid #eee;background:#fafafa;}'
-      + '.posla-sdp__tab{flex:1;padding:0.7rem 0.4rem;font-size:0.85rem;background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;color:#555;font-family:inherit;}'
+      '.posla-sdp{display:flex;flex-direction:column;background:#fff;border:1px solid #dde3f5;border-radius:8px;overflow:hidden;}'
+      + '.posla-sdp__tabs{display:flex;border-bottom:1px solid #dde3f5;background:#f8faff;}'
+      + '.posla-sdp__tab{flex:1;padding:0.7rem 0.4rem;font-size:0.85rem;background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;color:var(--text-secondary);font-family:inherit;}'
       + '.posla-sdp__tab.active{color:' + BRAND_ORANGE + ';border-bottom-color:' + BRAND_ORANGE + ';font-weight:bold;background:#fff;}'
-      + '.posla-sdp__tab:hover{background:#f0f0f0;}'
+      + '.posla-sdp__tab:hover{background:#eef2ff;}'
       + '.posla-sdp__body{padding:1rem 1.2rem;min-height:320px;max-height:640px;overflow-y:auto;font-size:0.9rem;line-height:1.55;}'
       + '.posla-sdp__body h4{margin:0.8rem 0 0.4rem;font-size:0.92rem;color:#222;}'
       + '.posla-sdp__body h4:first-child{margin-top:0;}'
-      + '.posla-sdp__search{width:100%;padding:0.6rem 0.75rem;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;font-family:inherit;box-sizing:border-box;margin-bottom:0.75rem;}'
+      + '.posla-sdp__search{width:100%;padding:0.6rem 0.75rem;border:1px solid #dfe4f5;border-radius:6px;font-size:0.9rem;font-family:inherit;box-sizing:border-box;margin-bottom:0.75rem;}'
       + '.posla-sdp__search:focus{outline:none;border-color:' + BRAND_ORANGE + ';}'
       + '.posla-sdp__chip-row{display:flex;flex-wrap:wrap;gap:0.35rem;margin:0.5rem 0 0.8rem;}'
-      + '.posla-sdp__chip{background:#fff;border:1px solid #ddd;color:#555;padding:0.3rem 0.7rem;border-radius:14px;font-size:0.8rem;cursor:pointer;font-family:inherit;}'
+      + '.posla-sdp__chip{background:#fff;border:1px solid #dfe4f5;color:var(--text-secondary);padding:0.3rem 0.7rem;border-radius:14px;font-size:0.8rem;cursor:pointer;font-family:inherit;}'
       + '.posla-sdp__chip:hover{background:' + BRAND_ORANGE + ';color:#fff;border-color:' + BRAND_ORANGE + ';}'
       + '.posla-sdp__chip.active{background:' + BRAND_ORANGE + ';color:#fff;border-color:' + BRAND_ORANGE + ';}'
-      + '.posla-sdp__card{background:#fff;border:1px solid #e5e5e5;border-radius:6px;padding:0.7rem 0.9rem;margin:0.5rem 0;cursor:pointer;}'
+      + '.posla-sdp__card{background:#fff;border:1px solid #e3e8f7;border-radius:6px;padding:0.7rem 0.9rem;margin:0.5rem 0;cursor:pointer;}'
       + '.posla-sdp__card:hover{border-color:' + BRAND_ORANGE + ';}'
       + '.posla-sdp__card-title{font-weight:bold;color:#222;margin-bottom:0.2rem;font-size:0.9rem;}'
       + '.posla-sdp__card-body{margin-top:0.5rem;color:#333;font-size:0.85rem;white-space:pre-wrap;display:none;}'
@@ -77,7 +77,7 @@ var PoslaSupportdesk = (function () {
       + '.posla-sdp__err-msg{color:#666;font-size:0.82rem;margin:0.25rem 0;white-space:pre-wrap;}'
       + '.posla-sdp__err-action{color:#333;font-size:0.85rem;white-space:pre-wrap;}'
       + '.posla-sdp__empty{color:#999;text-align:center;padding:1.5rem 0;font-size:0.9rem;}'
-      + '.posla-sdp__footer{padding:0.65rem 1rem;background:#fff8e1;color:#555;font-size:0.82rem;border-top:1px solid #ffe082;line-height:1.45;}'
+      + '.posla-sdp__footer{padding:0.65rem 1rem;background:#f8faff;color:var(--text-secondary);font-size:0.82rem;border-top:1px solid #dde3f5;line-height:1.45;}'
       + '.posla-sdp__footer a{color:' + BRAND_ORANGE + ';text-decoration:none;}'
       + '.posla-sdp__footer a:hover{text-decoration:underline;}';
     var s = document.createElement('style');

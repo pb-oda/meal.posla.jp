@@ -6,7 +6,7 @@
     { "id": "onboarding", "label": "テナント作成 / オンボーディング" },
     { "id": "billing", "label": "課金 / Stripe / Connect" },
     { "id": "ops", "label": "運用監視 / cron / error_log" },
-    { "id": "migration", "label": "新サーバ移行" },
+    { "id": "migration", "label": "本番環境移行" },
     { "id": "reservation", "label": "予約 (L-9)" },
     { "id": "line", "label": "LINE 連携 (L-17)" },
     { "id": "support", "label": "テナント問い合わせ対応" }
@@ -23,7 +23,7 @@
     {
       "id": "ifq-login-rate-limited",
       "title": "POSLA管理者ログインで RATE_LIMITED 429 が返る",
-      "answer": "1 IP あたり 10 回/5 分の failure-only brute force 防御 (SEC-HOTFIX-20260423-B)。成功ログインはカウントされない。\n(1) 正しい email/password を確認 (typo ロックの可能性)\n(2) 5 分待機で自動解除\n(3) 緊急解除: sandbox では `/tmp/posla_rate_limit/<md5(IP:posla-login)>.json` を削除。本番 VPS でも `sys_get_temp_dir()/posla_rate_limit/` 配下で同じ",
+      "answer": "1 IP あたり 10 回/5 分の failure-only brute force 防御 (SEC-HOTFIX-20260423-B)。成功ログインはカウントされない。\n(1) 正しい email/password を確認 (typo ロックの可能性)\n(2) 5 分待機で自動解除\n(3) 緊急解除: 検証環境では `/tmp/posla_rate_limit/<md5(IP:posla-login)>.json` を削除。本番環境でも `sys_get_temp_dir()/posla_rate_limit/` 配下で同じ",
       "keywords": ["RATE_LIMITED", "429", "ログイン", "brute force", "ロック"],
       "category": "login",
       "doc_link": "/docs-internal/internal/05-operations.html"
@@ -71,16 +71,16 @@
     {
       "id": "ifq-ops-error-log-path",
       "title": "POSLA_PHP_ERROR_LOG の出力先が想定と違う",
-      "answer": "(1) env 未設定時 fallback は `/home/odah/log/php_errors.log` (sandbox path)\n(2) 新サーバでは env で明示上書き必須 (§5.3.4 canonical / §9-0 production-api-checklist)\n(3) 指定 path が書込可か: `test -w $POSLA_PHP_ERROR_LOG && echo OK`\n(4) `.htaccess` + cron env 両方で同じ値を供給する",
+      "answer": "(1) env 未設定時 fallback は現行検証環境の既定 path\n(2) 本番環境では env で明示上書き必須 (§5.3.4 canonical / §9-0 production-api-checklist)\n(3) 指定 path が書込可か: `test -w $POSLA_PHP_ERROR_LOG && echo OK`\n(4) `.htaccess` + cron env 両方で同じ値を供給する",
       "keywords": ["POSLA_PHP_ERROR_LOG", "error_log", "path", "fallback"],
       "category": "ops",
       "doc_link": "/docs-internal/internal/05-operations.html"
     },
     {
       "id": "ifq-migration-first-page",
-      "title": "新サーバ移行時の最初に確認するページ",
-      "answer": "最上位の canonical は `docs/production-api-checklist.md §9-0` (新サーバ移行で設定すべき環境変数一覧 + cutover 8 step overview)。internal docs 入口 (`internal/index.md`) の hero action 「🚀 新サーバ移行チェックを見る」から `internal/05-operations §5.3.4 / §5.3.7 / §5.3.8` に誘導される。SQL migration 実行確認は §5.3.8、hotfix 運用インパクトは §5.3.7。",
-      "keywords": ["移行", "cutover", "新サーバ", "production", "canonical"],
+      "title": "本番環境移行時の最初に確認するページ",
+      "answer": "最上位の canonical は `docs/production-api-checklist.md §9-0` (本番環境移行で設定すべき環境変数一覧 + cutover 8 step overview)。internal docs 入口 (`internal/index.md`) の hero action 「本番移行チェックを見る」から `internal/05-operations §5.3.4 / §5.3.7 / §5.3.8` に誘導される。SQL migration 実行確認は §5.3.8、hotfix 運用インパクトは §5.3.7。",
+      "keywords": ["移行", "cutover", "本番環境", "production", "canonical"],
       "category": "migration",
       "doc_link": "/docs-internal/internal/05-operations.html"
     },
@@ -125,7 +125,7 @@
       "steps": [
         "エラー画面の code が `RATE_LIMITED` か `INVALID_CREDENTIALS` を確認",
         "RATE_LIMITED なら 5 分待機 (自動解除)",
-        "緊急時: SSH で sandbox に入り `ls /tmp/posla_rate_limit/*.json` を削除",
+        "緊急時: 検証環境で `ls /tmp/posla_rate_limit/*.json` を確認し、対象ロックファイルを削除",
         "INVALID_CREDENTIALS なら別 admin から DB 直接 UPDATE でパスワードリセット (password_hash を bcrypt で新規生成)",
         "それでも解決しない場合: schema.sql / posla_admins テーブルの is_active を DB 直叩きで確認"
       ],
@@ -154,13 +154,13 @@
         "crontab の実行 user で `env | grep POSLA_` して env 供給を目視確認",
         "`.htaccess` の SetEnv は CLI で読まれない点を再確認 (§5.3.5 / §5.3.6)",
         "DB credentials ローテーション直後なら web と cron の両方の env を同時更新",
-        "上記で出ない場合は sandbox コンパネ「環境変数一覧」または systemd EnvironmentFile を確認"
+        "上記で出ない場合は検証環境の環境変数画面または systemd EnvironmentFile を確認"
       ],
       "doc_link": "/docs-internal/internal/05-operations.html"
     },
     {
       "id": "iflow-migration-cutover",
-      "title": "新サーバ cutover の手順 (省略版)",
+      "title": "本番環境 cutover の手順 (省略版)",
       "category": "migration",
       "steps": [
         "production-api-checklist §9-0 cutover 8 step overview で必須 5 項目 (env / HTTPS / /tmp 書込 / uploads 永続化 / mail 基盤) を満たす",
@@ -192,7 +192,7 @@
     { "code": "RATE_LIMITED", "title": "リクエスト過多", "message": "POSLA 管理者ログインは 10回/5分 の failure-only 制限", "action": "5 分程度待機で自動解除。緊急時は /tmp/posla_rate_limit/*.json 削除", "category": "login" },
     { "code": "AI_NOT_CONFIGURED", "title": "Gemini APIキー未設定", "message": "posla_settings.gemini_api_key が空", "action": "POSLA管理画面 > API設定タブで Gemini APIキー入力", "category": "ops" },
     { "code": "FORBIDDEN_ORIGIN", "title": "Origin / Host 検証失敗", "message": "許可されていないドメインや Host からのリクエスト", "action": "POSLA_ALLOWED_ORIGINS / POSLA_ALLOWED_HOSTS を現在の環境に合わせて確認し、legacy fallback に依存しない", "category": "migration" },
-    { "code": "FETCH_FAILED", "title": "外部 API 呼び出し失敗", "message": "Gemini / Stripe / LINE 等への HTTP リクエストが timeout or 502", "action": "外部サービスステータスを確認 (status.stripe.com, etc.)。本サーバの egress firewall も確認", "category": "ops" },
+    { "code": "FETCH_FAILED", "title": "外部 API 呼び出し失敗", "message": "Gemini / Stripe / LINE 等への HTTP リクエストが timeout or 502", "action": "外部サービスステータスを確認 (status.stripe.com, etc.)。POSLAサーバの egress firewall も確認", "category": "ops" },
     { "code": "PARSE_FAILED", "title": "レスポンス解析失敗", "message": "外部 API レスポンスが JSON でない or 空", "action": "POSLA_PHP_ERROR_LOG で raw body を確認。多くは外部側の一時エラー", "category": "ops" },
     { "code": "STRIPE_MISMATCH", "title": "Stripe metadata 整合性違反 (P0#5)", "message": "Webhook の metadata と DB の状態が一致しない (tenant_id / store_id / amount / currency 等)", "action": "POSLA_PHP_ERROR_LOG の `[P0#5]` ログで具体的な差分を特定。手動修正は Stripe 側を正とする", "category": "billing" },
     { "code": "TENANT_NOT_FOUND", "title": "テナント不一致", "message": "Stripe webhook 等で stripe_customer_id / stripe_subscription_id に該当する tenant が無い", "action": "tenants テーブルで該当 ID を検索。event_log に tenant_not_found が残る。手動で tenant を link する", "category": "billing" },

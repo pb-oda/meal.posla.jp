@@ -49,6 +49,35 @@ function build_bootstrap_username(PDO $pdo, string $slug, string $suffix): strin
     }
 }
 
+function build_bootstrap_password(int $length = 16): string
+{
+    $groups = [
+        'ABCDEFGHJKLMNPQRSTUVWXYZ',
+        'abcdefghijkmnopqrstuvwxyz',
+        '23456789',
+    ];
+    $alphabet = implode('', $groups);
+    $passwordChars = [];
+    $targetLength = max($length, count($groups));
+
+    foreach ($groups as $group) {
+        $passwordChars[] = $group[random_int(0, strlen($group) - 1)];
+    }
+
+    for ($i = count($passwordChars); $i < $targetLength; $i++) {
+        $passwordChars[] = $alphabet[random_int(0, strlen($alphabet) - 1)];
+    }
+
+    for ($i = count($passwordChars) - 1; $i > 0; $i--) {
+        $j = random_int(0, $i);
+        $tmp = $passwordChars[$i];
+        $passwordChars[$i] = $passwordChars[$j];
+        $passwordChars[$j] = $tmp;
+    }
+
+    return implode('', $passwordChars);
+}
+
 function build_tenant_audit_value(array $tenant): array
 {
     return [
@@ -197,7 +226,7 @@ if ($method === 'POST') {
     $storeSlug = 'main';
     $storeName = $name . ' 本店';
     $loginUrl = '/admin/';
-    $commonPassword = 'Demo1234';
+    $commonPassword = build_bootstrap_password();
     $passwordHash = password_hash($commonPassword, PASSWORD_DEFAULT);
     if ($passwordHash === false) {
         json_error('PASSWORD_HASH_FAILED', '初期パスワードの生成に失敗しました', 500);
