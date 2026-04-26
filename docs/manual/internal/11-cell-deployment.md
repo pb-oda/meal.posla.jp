@@ -369,7 +369,9 @@ curl -H "X-POSLA-OPS-SECRET: <shared-read-secret>" \
 | `cell_id` / `deploy_version` / `environment` | 現在の app metadata |
 | `db` | DB接続状態 |
 | `cron` | `monitor_last_heartbeat` と遅延秒数 |
-| `registry` | `posla_cell_registry` の対象 cell 行 |
+| `registry.cell` | 現在の app が顧客 cell の場合だけ、その顧客 cell 行 |
+| `registry.control_cell` | 現在の app / control / 擬似本番 source の cell 行 |
+| `registry.cells` | `tenant_id` / `tenant_slug` を持つ顧客専用 cell 一覧。`pseudo-prod-local` のような control cell は含めない |
 | `deployments` | `posla_cell_deployments` の直近履歴 |
 | `migrations` | `schema_migrations` の直近履歴と24h失敗数 |
 | `feature_flags` | `global/cell` 解決後の flag 状態 |

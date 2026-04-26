@@ -144,7 +144,7 @@ function build_cron_health(PDO $pdo): array
 function build_registry_snapshot(PDO $pdo, string $cellId): array
 {
     if (!table_exists($pdo, 'posla_cell_registry')) {
-        return ['available' => false, 'cell' => null, 'cells' => []];
+        return ['available' => false, 'cell' => null, 'control_cell' => null, 'cells' => []];
     }
 
     try {
@@ -160,13 +160,20 @@ function build_registry_snapshot(PDO $pdo, string $cellId): array
              LIMIT 1'
         );
         $stmt->execute([$cellId]);
-        $row = $stmt->fetch();
-        if ($row) {
-            $row['cron_enabled'] = !empty($row['cron_enabled']) ? 1 : 0;
+        $controlRow = $stmt->fetch();
+        if ($controlRow) {
+            $controlRow['cron_enabled'] = !empty($controlRow['cron_enabled']) ? 1 : 0;
+        }
+
+        $customerCell = null;
+        if ($controlRow && !empty($controlRow['tenant_id']) && !empty($controlRow['tenant_slug'])) {
+            $customerCell = $controlRow;
         }
 
         $allStmt = $pdo->query(
             $selectSql . '
+             WHERE tenant_id IS NOT NULL
+               AND tenant_slug IS NOT NULL
              ORDER BY
                CASE status
                  WHEN "active" THEN 1
@@ -184,9 +191,14 @@ function build_registry_snapshot(PDO $pdo, string $cellId): array
             $cells[$i]['cron_enabled'] = !empty($cells[$i]['cron_enabled']) ? 1 : 0;
         }
 
-        return ['available' => true, 'cell' => $row ?: null, 'cells' => $cells];
+        return [
+            'available' => true,
+            'cell' => $customerCell,
+            'control_cell' => $controlRow ?: null,
+            'cells' => $cells,
+        ];
     } catch (PDOException $e) {
-        return ['available' => true, 'cell' => null, 'cells' => []];
+        return ['available' => true, 'cell' => null, 'control_cell' => null, 'cells' => []];
     }
 }
 

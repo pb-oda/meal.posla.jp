@@ -8,7 +8,9 @@
 
 POSLA は **cell architecture** で開始する。
 
-MVP では **1 tenant / 1 cell** を原則にする。これは single-tenant deployment と同じ blast radius を持たせるための運用ポリシーであり、コードベースは分けない。将来、運用成熟後に低リスク tenant を 1 cell に複数収容できる余地を残す。
+MVP では **1 tenant / 1 cell** を原則にする。これは single-tenant deployment と同じ blast radius を持たせるための運用ポリシーであり、コードベースは分けない。顧客向け cell に他 tenant を同居させない。
+
+`pseudo-prod-local` のような擬似本番 / control 用 cell は顧客 cell ではない。codex-ops-platform が registry を読む入口として使うことはあるが、`registry.cells` に出す一覧は `tenant_id` / `tenant_slug` を持つ顧客専用 cell だけにする。
 
 採用しないもの:
 
