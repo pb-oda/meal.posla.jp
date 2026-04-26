@@ -277,7 +277,13 @@ function get_error_no(string $code): ?string {
         'WEAK_PASSWORD' => 'E3038',
         'WEAK_PIN' => 'E3039',
     ];
-    return $map[$code] ?? null;
+    if (isset($map[$code])) {
+        return $map[$code];
+    }
+
+    // 未カタログ code でも問い合わせ番号を必ず返す。
+    // E1xxx-E9xxx は正式カタログ用に残し、E0xxx を暫定番号として使う。
+    return 'E0' . str_pad((string)(abs(crc32($code)) % 1000), 3, '0', STR_PAD_LEFT);
 }
 
 /**

@@ -111,6 +111,9 @@ MVP では **1 tenant / 1 cell** を原則にする。これは single-tenant de
 - `cell-onboardtest` で init -> deploy -> migration -> register-db -> onboard-tenant -> smoke -> login API を確認済み。
 - `test-01` で control DB の onboarding request / registry と専用cellを同期し、`http://127.0.0.1:18081` / `posla_test_01` として 1 tenant / 1 cell を作成済み。
 - `test-01` で backup -> rollback-plan -> restore guard -> rollback -> strict smoke -> owner login を確認済み。rollback は `POSLA_CELL_RESTORE_CONFIRM=test-01` がない場合に停止し、確認付き実行後は対象cellだけ復元・再deployされた。
+- `json_error()` は未カタログ code でも `E0xxx` の暫定問い合わせ番号を返すため、顧客画面から `errorNo` が欠落しない。
+- `/api/monitor/cell-snapshot.php` は Tier0 詳細に `tenant_name` / `store_name` と対象IDを含める。op側は `pending_payment_orders`, `pending_refunds`, `gateway_problem_payments`, `emergency_unresolved_items` を顧客名付きで表示できる。
+- Feature Flag は `test-01` tenant に対する `tenant_preview_release` の一時ON/OFFをAPI経由で確認済み。`codex_ops_write` は default OFF のまま。
 
 ## Git 作業識別名
 
