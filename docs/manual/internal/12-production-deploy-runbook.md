@@ -233,6 +233,7 @@ docker compose exec -T db mysql \
 | API設定 | AI / Places / 通知 / 決済 provider / Smaregi |
 | PWA / Web Push | VAPID 公開鍵 / 秘密鍵 |
 | 監視・通知 | Google Chat、内部 heartbeat、monitor health、外部運用基盤側の外形監視 |
+| OP / runner連携 | alert endpoint、case endpoint、runner疎通、Google Chat通知 |
 | 管理者ユーザー | 管理者アカウント、不要管理者の削除 |
 
 API設定で本番前に必ず入れる値:
@@ -473,7 +474,25 @@ deploy 後 30 分は次を確認します。
 | 決済 | provider webhook delivery |
 | rollback | backup が取得済みか |
 
-## 12.17 Go / No-Go
+## 12.17 OP / runner E2E
+
+POSLA本体のsmoke後、OP / runner 連携を本番値で確認します。
+
+1. `https://<op-domain>/api/status.php` が200
+2. OPから `https://<production-domain>/api/monitor/ping.php` が読める
+3. OPから `cell-snapshot.php` が `X-POSLA-OPS-SECRET` 付きで読める
+4. OPのDB read-onlyが成功
+5. runner health がOP画面で `ok`
+6. runner repo sync が成功し、POSLA repoのcommitが表示される
+7. POSLA管理画面から監視テスト通知を送信
+8. OP Alert に入る
+9. runner / Codex調査が作成される
+10. Google Chat に短文通知が届く
+11. テスト `monitor_event` を `resolved=1` にする
+
+詳細な運用は [14. OP / runner 連携運用](./13-op-runner-integration.md) を参照します。
+
+## 12.18 Go / No-Go
 
 Go 条件:
 

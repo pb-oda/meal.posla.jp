@@ -46,4 +46,7 @@ features:
   - title: Stripe・スマレジ連携
     details: テナント側・POSLA側の両方の設定手順を完全収録
     link: /internal/03-billing
+  - title: OP / runner 連携運用
+    details: POSLA alert、障害報告、runner調査、Codex CLI、Google Chat通知、monitor_event解決までの社内運用
+    link: /internal/13-op-runner-integration
 ---

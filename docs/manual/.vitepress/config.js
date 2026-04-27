@@ -115,6 +115,9 @@ var tenantSidebar = [
   ]},
   { text: '26. プリンタ連携', collapsed: false, items: [
     { text: 'レシート・領収書・キッチン伝票', link: '/tenant/26-printer' }
+  ]},
+  { text: '27. 障害報告窓口', collapsed: false, items: [
+    { text: 'お問い合わせコード・障害報告', link: '/tenant/27-incident-report' }
   ]}
 ]
 
@@ -148,7 +151,8 @@ var internalSidebar = [
     { text: '10. 新サーバ移行ハンドオフ', link: '/internal/10-server-migration' },
     { text: '11. Cell配備運用', link: '/internal/11-cell-deployment' },
     { text: '12. 本番デプロイ手順書', link: '/internal/12-production-deploy-runbook' },
-    { text: '13. 本番切替 API チェックリスト (canonical)', link: '/internal/production-api-checklist' }
+    { text: '13. 本番切替 API チェックリスト (canonical)', link: '/internal/production-api-checklist' },
+    { text: '14. OP / runner 連携運用', link: '/internal/13-op-runner-integration' }
   ]}
 ]
 

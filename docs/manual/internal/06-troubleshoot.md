@@ -624,7 +624,7 @@ POSLA の全 API エラー（233 件、Phase A + B + CB1）には **E1xxx〜E9xx
 | エラーレジストリ | E 番号 ↔ コード文字列 ↔ メッセージの対応表 | `api/lib/error-codes.php` |
 | 自動記録 | `json_error()` 呼び出し時に全エラーを `error_log` テーブルに INSERT | `api/lib/response.php` |
 | 集計 API | テナント側「エラー監視」サブタブのバックエンド | `api/store/error-stats.php` |
-| 監視 cron | 5 分ごとに `error_log` を集計、閾値超過で `monitor_events` 昇格 + Slack 通知 | `api/cron/monitor-health.php` |
+| 監視 cron | 5 分ごとに `error_log` を集計、閾値超過で `monitor_events` 昇格 + Google Chat / OP 通知 | `api/cron/monitor-health.php` |
 | カタログ生成 | 全エラーを Markdown 一覧に出力 | `scripts/generate_error_catalog.py` → `docs/manual/tenant/99-error-catalog.md` |
 
 ### 6.9-b.2 error_log テーブルの参照
@@ -668,7 +668,7 @@ ORDER BY created_at DESC;
    - **POSLA管理画面 → サポートタブ → エラーコード** で `E2017` を直引き（2026-04-23 以降、非AI の `posla-supportdesk.js` + `internal-supportdesk.json` 経由。代表 10 件は即表示、全件は上記カタログへ誘導）
 2. カタログ記載の対処方法をお客様に案内
 3. 対処不能なら error_log を SQL で確認 → 詳細コンテキスト把握
-4. 多発しているなら monitor_events を確認、Slack 通知で既知化されているか確認
+4. 多発しているなら monitor_events を確認、Google Chat / OP 通知で既知化されているか確認
 
 ### 6.9-b.5 monitor-health cron
 
@@ -954,7 +954,7 @@ created_at           | message
 | `info` | 通常イベント（heartbeat 等） | 監視のみ |
 | `warn` | 警告（同一エラー多発、Webhook 失敗等） | 1 時間以内に対応、根本原因調査 |
 | `error` | 5xx エラー多発、外部 API 障害 | 30 分以内に対応、必要なら緊急メンテ |
-| `critical` | サービス停止級（DB ダウン、認証完全停止等） | 即時対応、全運営に Slack 通知 + 電話 |
+| `critical` | サービス停止級（DB ダウン、認証完全停止等） | 即時対応、全運営に Google Chat / OP 通知 + 電話 |
 
 ### 6.12.2 確認クエリ
 
@@ -1155,7 +1155,7 @@ POSLA 運営チーム / プラスビリーフ株式会社
 - 重大度: critical / error / warn / info
 
 ## 検知経緯
-- monitor-health による Slack 通知
+- monitor-health による Google Chat / OP 通知
 - テナントからの問い合わせ
 - 自社モニタリング
 
@@ -1225,8 +1225,8 @@ A. 攻撃 or バグ多発の可能性。`SELECT error_no, COUNT(*) FROM error_lo
 ### Q5. monitor_events に同じ警告が連発する
 A. 重複防止の 30 分ウィンドウを通り抜けている可能性。タイトル微妙に違う or 30 分超えている。`monitor-health.php` の `_logEvent` 周辺確認。
 
-### Q6. Slack 通知が来ない
-A. `posla_settings.slack_webhook_url` が設定されているか確認。`curl -X POST -H "Content-Type:application/json" -d '{"text":"test"}' <webhook_url>` で疎通テスト。
+### Q6. Google Chat / OP 通知が来ない
+A. `posla_settings.google_chat_webhook_url` と OP 側の Alert ingest 設定を確認。`curl -X POST -H "Content-Type:application/json" -d '{"text":"test"}' <webhook_url>` で Google Chat の疎通を確認し、OP は `docs/17-operator-runbook.md` の受信テストを実行。
 
 ### Q7. cron が動いていない
 A. `posla_settings.monitor_last_heartbeat` を確認。5 分以上更新されていなければ monitor-health が止まっている。`docker compose logs php` と `docker/php/cron-loop.sh` を確認。
@@ -1304,6 +1304,6 @@ A. `orders.refund_status` を確認。Stripe Refund API のエラーは `error_l
 
 ## X.X 更新履歴
 - **2026-04-19**: フル粒度化（6.0 前提チェックリスト・6.2 問い合わせ別対応フロー 7 件・6.10.3/4 メンテ手順詳細・6.11 error_log 調査クエリ集・6.12 monitor_events 見方・6.13 audit_log 調査クエリ・6.15 Sakura 障害対応・6.16 トラブルシューティング表・6.17 インシデントレポート・6.20 FAQ 30 件 を追加）
-- **2026-04-19**: 6.9-b「エラーカタログと error_log」を新設。`api/lib/error-codes.php` レジストリ・`api/cron/monitor-health.php` 5 分 cron・Slack 通知運用、お客様から E 番号を聞かれた際の対応フローを追加
+- **2026-04-19**: 6.9-b「エラーカタログと error_log」を新設。`api/lib/error-codes.php` レジストリ・`api/cron/monitor-health.php` 5 分 cron・通知運用、お客様から E 番号を聞かれた際の対応フローを追加
 - **2026-04-19**: 6.8 障害判別フロー、6.9 問い合わせテンプレート、6.10 メンテナンス手順 追加
 - **2026-04-18**: frontmatter 追加、AIヘルプデスク knowledge base として整備

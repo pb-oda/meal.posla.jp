@@ -437,7 +437,7 @@ POSLA 運営チーム（プラスビリーフ株式会社）
 ### 8.10.3 メール送信失敗
 
 - `monitor_events` に `mail_send_failure` 記録
-- 連続失敗で運営に Slack 通知
+- 連続失敗で運営に Google Chat / OP 通知
 - 手動でメール再送する手順は `internal/06-troubleshoot.md` 参照
 
 ---

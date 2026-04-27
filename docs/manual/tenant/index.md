@@ -31,4 +31,7 @@ features:
   - title: レポート・AI
     details: 売上、ABC分析、回転率、スタッフ評価、併売分析、AIアシスタントの活用方法を確認できます。
     link: /tenant/13-reports
+  - title: 障害報告とお問い合わせコード
+    details: エラーが出た時に控える情報、障害報告窓口の使い方、緊急時の代替運用を確認できます。
+    link: /tenant/27-incident-report
 ---

@@ -869,7 +869,7 @@ A. テナント側の操作は同じ。サーバー側のみ `terminal-intent.ph
 A. 4.10 の 4 クエリ（Pattern 一覧 / 決済件数 / 返金一覧 / Connect 稼働状況）。月次レポートに含めることを推奨。
 
 **Q26. 大きな金額の返金（10万円超など）はアラート通知できますか？**
-A. 現状未実装。希望があれば cron で `payments.refund_amount > 100000` を検出し Slack 通知する仕組みを追加可能。
+A. 現状未実装。希望があれば cron で `payments.refund_amount > 100000` を検出し Google Chat / OP 通知する仕組みを追加可能。
 
 **Q27. テスト環境で Stripe Terminal を動かしたい**
 A. Stripe Dashboard > Terminal でテストモードに切替 → simulator reader を使う。S700 実機は本番モード専用。
