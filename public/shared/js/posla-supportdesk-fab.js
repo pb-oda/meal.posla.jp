@@ -1,5 +1,5 @@
 /**
- * POSLA サポートガイド FAB (非AI、tenant 向け)
+ * POSLA 障害報告窓口 FAB (非AI、tenant 向け)
  *
  * tenant 側の dashboard / owner-dashboard からのみ参照。
  * AI API は一切叩かず、静的 JSON (tenant-supportdesk.json) を読み込んで
@@ -115,8 +115,8 @@
     var fab = document.createElement('button');
     fab.id = 'posla-supportdesk-fab';
     fab.type = 'button';
-    fab.title = 'サポートガイドを開く';
-    fab.setAttribute('aria-label', 'サポートガイドを開く');
+    fab.title = '障害報告窓口を開く';
+    fab.setAttribute('aria-label', '障害報告窓口を開く');
     fab.innerHTML = '<span style="font-size:1.4rem;">?</span>';
     fab.addEventListener('click', _toggle);
 
@@ -124,7 +124,7 @@
     panel.id = 'posla-supportdesk-panel';
     panel.innerHTML =
       '<div class="posla-sd__header">'
-      +   '<div class="posla-sd__title">📚 サポートガイド</div>'
+      +   '<div class="posla-sd__title">障害報告窓口</div>'
       +   '<button class="posla-sd__close" type="button" aria-label="閉じる">×</button>'
       + '</div>'
       + '<div class="posla-sd__tabs">'
@@ -133,10 +133,10 @@
       +   '<button class="posla-sd__tab" type="button" data-tab="search">キーワード</button>'
       +   '<button class="posla-sd__tab" type="button" data-tab="flow">症状から</button>'
       +   '<button class="posla-sd__tab" type="button" data-tab="error">エラー番号</button>'
-      +   '<button class="posla-sd__tab" type="button" data-tab="contact">問合せ</button>'
+      +   '<button class="posla-sd__tab" type="button" data-tab="contact">障害報告</button>'
       + '</div>'
       + '<div class="posla-sd__body" id="posla-sd-body"></div>'
-      + '<div class="posla-sd__footer">解決しない場合: 画面名・操作内容・エラー番号・発生時刻を控えて <strong>POSLAサポート</strong> に連絡してください。</div>';
+      + '<div class="posla-sd__footer">障害が疑われる場合: 画面名・操作内容・エラー番号・発生時刻を添えて <strong>障害報告窓口</strong> へ送信してください。</div>';
 
     document.body.appendChild(fab);
     document.body.appendChild(panel);
@@ -540,7 +540,7 @@
 
   function _renderContact() {
     var html = ''
-      + '<h4>POSLAサポートへ問い合わせ</h4>'
+      + '<h4>障害報告窓口</h4>'
       + '<form id="posla-sd-contact-form">'
       +   '<div class="posla-sd__field">'
       +     '<label class="posla-sd__label" for="posla-sd-contact-error">エラー番号</label>'
@@ -551,11 +551,11 @@
       +     '<input type="text" class="posla-sd__search" id="posla-sd-contact-screen" value="' + _escapeHtml(document.title || location.pathname) + '">'
       +   '</div>'
       +   '<div class="posla-sd__field">'
-      +     '<label class="posla-sd__label" for="posla-sd-contact-message">内容</label>'
-      +     '<textarea class="posla-sd__textarea" id="posla-sd-contact-message" placeholder="発生した操作、困っている内容、再現できる手順"></textarea>'
+      +     '<label class="posla-sd__label" for="posla-sd-contact-message">障害内容</label>'
+      +     '<textarea class="posla-sd__textarea" id="posla-sd-contact-message" placeholder="発生した操作、止まっている業務、再現できる手順"></textarea>'
       +   '</div>'
-      +   '<button class="posla-sd__button" type="submit">送信</button>'
-      +   '<div class="posla-sd__status" id="posla-sd-contact-status">画面URL・ログインユーザー・テナント情報を添えて送信します。</div>'
+      +   '<button class="posla-sd__button" type="submit">障害を報告</button>'
+      +   '<div class="posla-sd__status" id="posla-sd-contact-status">画面URL・ログインユーザー・テナント情報を添えて障害報告を送信します。</div>'
       + '</form>';
     _bodyEl.innerHTML = html;
     var form = _bodyEl.querySelector('#posla-sd-contact-form');
@@ -581,7 +581,7 @@
     var errorNo = errEl ? (errEl.value || '').trim() : '';
 
     if (!message && !errorNo) {
-      _setContactStatus('問い合わせ内容またはエラー番号を入力してください。', 'bad');
+      _setContactStatus('障害内容またはエラー番号を入力してください。', 'bad');
       return;
     }
 
@@ -614,7 +614,7 @@
         });
       })
       .then(function () {
-        _setContactStatus('問い合わせを送信しました。POSLA運営側で確認します。', 'ok');
+        _setContactStatus('障害報告を送信しました。POSLA運営側で確認します。', 'ok');
         if (msgEl) msgEl.value = '';
       })
       .catch(function (err) {

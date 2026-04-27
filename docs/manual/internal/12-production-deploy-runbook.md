@@ -144,8 +144,13 @@ MYSQL_ROOT_PASSWORD=<root-password>
 MYSQL_DATABASE=<production-db-name>
 MYSQL_USER=<production-db-user>
 MYSQL_PASSWORD=<production-db-password>
+POSLA_OPS_DB_READONLY_USER=posla_ops_ro
+POSLA_OPS_DB_READONLY_PASSWORD=<ops-readonly-password>
+POSLA_OPS_DB_READONLY_HOST=<ops-runner-db-source-host>
 TZ=Asia/Tokyo
 ```
+
+`POSLA_OPS_DB_READONLY_*` は、【AI運用支援】codex-ops-platform / runner がDBをread-onlyで確認するための資格情報です。DB初期化時に `docker/db/init/02-ops-readonly-user.sh` が `SELECT` のみを付与します。本番ではDBポートを公開せず、`POSLA_OPS_DB_READONLY_HOST` とネットワーク/Firewallの両方でOP/runnerの接続元に限定します。
 
 placeholder 残りを確認します。
 
@@ -236,10 +241,12 @@ API設定で本番前に必ず入れる値:
 |---|---|
 | 決済 provider | 本番 provider 確定後の live key / webhook secret / Price ID |
 | Google Chat / 運用通知 | 本番の通知先 |
-| OP問い合わせ連携 Endpoint | `https://<op-domain>/api/cases.php` |
-| OP問い合わせ連携 Token | op 側 `OPS_CASE_INGEST_TOKEN` と同じ値 |
+| OP障害報告連携 Endpoint | `https://<op-domain>/api/cases.php` |
+| OP障害報告連携 Token | op 側 `OPS_CASE_INGEST_TOKEN` と同じ値 |
+| OP監視アラート連携 Endpoint | `https://<op-domain>/api/alerts.php` |
+| OP監視アラート連携 Token | op 側 `OPS_ALERT_INGEST_TOKEN` と同じ値 |
 
-`POSLA_OP_CASE_ENDPOINT` / `POSLA_OP_CASE_TOKEN` を env で設定した場合は、env が POSLA管理画面の値より優先されます。
+`POSLA_OP_CASE_ENDPOINT` / `POSLA_OP_CASE_TOKEN` / `POSLA_OP_ALERT_ENDPOINT` / `POSLA_OP_ALERT_TOKEN` を env で設定した場合は、env が POSLA管理画面の値より優先されます。
 
 ## 12.10 決済 provider 設定
 

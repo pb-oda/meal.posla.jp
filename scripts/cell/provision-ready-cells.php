@@ -527,6 +527,9 @@ function provision_request(PDO $pdo, array $row, array &$usedPorts, bool $dryRun
     $initEnv = [
         'POSLA_CELL_DB_PASSWORD' => random_secret(),
         'POSLA_CELL_DB_ROOT_PASSWORD' => random_secret(),
+        'POSLA_OPS_DB_READONLY_PASSWORD' => random_secret(),
+        'POSLA_OPS_DB_READONLY_USER' => env_or('POSLA_OPS_DB_READONLY_USER', 'posla_ops_ro'),
+        'POSLA_OPS_DB_READONLY_HOST' => env_or('POSLA_OPS_DB_READONLY_HOST', '%'),
         'POSLA_CELL_DB_NAME' => $dbName,
         'POSLA_CELL_DB_USER' => $dbUser,
         'POSLA_ENVIRONMENT' => $environment,

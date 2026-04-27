@@ -243,45 +243,15 @@ docker compose down
 <claude-mem-context>
 # Memory Context
 
-# [【擬似本番環境】meal.posla.jp] recent context, 2026-04-25 10:19pm GMT+9
+# [【擬似本番環境】meal.posla.jp] recent context, 2026-04-27 5:08pm GMT+9
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (11,211t read) | 898,180t work | 99% savings
+Stats: 50 obs (12,959t read) | 813,091t work | 98% savings
 
 ### Apr 25, 2026
-1454 8:41p 🟣 schema_migrations テーブルが擬似本番 DB に適用済み確認 — cell migration ledger 稼働
-1455 " 🟣 cells/example/cell.env.example 追加 — cell ごとのホストポート分離設定を整備
-1456 8:44p 🟣 cell.sh に build/deploy コマンドと POSLA_PHP_IMAGE 対応を追加 — CI イメージ artifact フロー整備
-1458 " 🟣 cell.sh に migrate コマンドを追加 — cell 単位の SQL migration 適用が可能に
-1461 8:45p 🔵 posla_php_cell:dev イメージが未ビルド — cell 起動前に build コマンドが必要
-1462 8:49p 🟣 POSLA cell-local Docker イメージビルド開始 — posla_php_cell:dev 初回ビルド実行
-1464 8:50p 🟣 posla_php_cell:dev Docker イメージビルド成功 — 10ステップ構成の PHP+Apache イメージ完成
-1465 " 🟣 POSLA cell-local コンテナ起動成功 — db + php の2コンテナ構成で cell-local が稼働
-1466 8:52p 🔵 POSLA cell-local 動作確認 — DB接続・Apache稼働・curl疎通の3状態判明
-1467 " 🔵 cell-local cron 起動時競合 — monitor-health.php が DB 準備完了前に実行され Connection Refused
-1470 8:53p 🔵 cell-local Apache アクセスログ・エラーログが空 — curl タイムアウトはネットワーク層での問題と確定
-1476 8:55p 🔴 api/.htaccess の SetEnv が cell isolation を破壊していた — HTTP リクエスト時に本番 Sakura DB 認証情報が注入される問題を修正
-1477 " 🟣 POSLA cell-local ping 疎通確認成功 — HTTP 200 + db:ok + cron_lag_sec:6 を確認
-1478 " 🔴 cell.sh deploy の ping 確認を wait_ping() 関数でリトライ付きに改良
-1479 8:58p 🔵 2つの独立 cell が同一ホストで同時稼働確認 — port 8081 と 18081 が完全分離
-1480 " 🟣 cell.sh deploy の wait_ping リトライが正常動作 — exit code 0 で ping JSON を出力して完了
-1481 " 🟣 docs/manual/internal/11-cell-deployment.md 新規作成 — Cell配備運用マニュアルを社内ドキュメントに追加
-1485 8:59p 🟣 VitePress build:internal で 11-cell-deployment.md を含む社内マニュアルのビルド成功
-1486 " ✅ POSLA cell architecture 実装完了 — 今セッションの未コミット変更全量確認
-1492 " 🔵 Docker コンテナ最終状態確認 — cell-local 停止済み・擬似本番継続稼働・invoice stack 影響なし
-1497 9:13p 🔵 POSLA cell.sh — 全コマンド構成と cells/README.md 運用手順の確認
-1499 " ⚖️ POSLA cell architecture — 完成までの残タスク計画確定
-1500 " 🔵 POSLA sql/ ディレクトリ — migration ファイル全量確認（80本以上）
-1501 9:16p 🟣 P1-41: posla_cell_registry / posla_cell_deployments テーブル追加
-1505 9:17p 🟣 cell.sh — init / registry コマンド追加・migrate に ledger 記録を統合
-1507 9:19p 🟣 cell.sh register-db コマンド追加 — posla_cell_registry への cell metadata Upsert
-1508 " 🟣 cell.sh init / registry / migrate / register-db — cell-regtest でフル動作確認完了
-1510 9:21p 🟣 cell architecture — init/migrate/register-db/重複防止 の全フロー DB レベル検証完了
-1512 9:24p ✅ 擬似本番 DB — P1-41 cell registry テーブル追加・pseudo-prod-local 行登録
-1513 " ✅ cell architecture ドキュメント — init/register-db/P1-41 対応に更新
 1514 9:26p 🟣 POSLA cell architecture 完成 — P1-41 registry まで全タスク完了
 1517 " ⚖️ POSLA cell architecture 次フェーズ — deploy 時 backup と posla_cell_deployments 履歴記録の実装計画
 1522 9:28p 🟣 cell.sh — backup コマンド・deploy 前自動 backup・posla_cell_deployments 記録・rollback ヒント追加
@@ -302,6 +272,37 @@ Stats: 50 obs (11,211t read) | 898,180t work | 99% savings
 1590 10:08p 🟣 onboard-tenant → login API エンドツーエンド検証完了
 1596 " 🔵 api/config/database.php — DB認証情報は環境変数のみ。フォールバックは空文字列 (H-01 Phase 4)
 1597 10:10p 🟣 docker/php/Dockerfile.cell — アプリコードを image に焼き込む cell artifact Dockerfile を新設
+1606 10:20p 🟣 POSLA cell architecture — git commit 完了 (meal.posla.jp/cell-architecture)
+1607 " 🔵 POSLA リポジトリ — cell commit 後の残変更全体像把握
+1610 10:21p 🔵 リポジトリに *no_deploy/ ディレクトリが存在 — 未追跡ファイル524件の全体像判明
+1615 10:40p ✅ AGENTS.md — 末尾改行追加（未コミット変更として残存）
+1616 " 🔵 POSLA Feature Flag 現状構造確認 — α-1 単一プラン + アドオン方式
+1617 10:41p 🔵 POSLA管理画面 UI 構造確認 — テナント管理・作成フローの全量
+1619 " 🔵 Feature Flag 実装前調査 — 既存の設定・DB・認証パターンの全量把握
+1625 10:43p 🔵 cell DB インフラテーブル確認 — schema_migrations / posla_cell_registry / posla_cell_deployments
+1626 10:44p ⚖️ Feature Flag 設計方針決定 — check_plan_feature() と分離した運用フラグ専用実装
+1631 10:48p 🟣 POSLA Feature Flag control plane 実装完了 — P1-42
+1632 10:49p 🔴 Feature Flag API — bool 入力バリデーションと migration の ON DUPLICATE KEY 修正
+1635 10:50p 🔵 Feature Flag 実装の構文チェック全パス — Docker 環境稼働確認
+### Apr 26, 2026
+1637 7:20p 🔵 POSLA 決済・QR コード機能の全体スコープ確認
+1639 7:21p 🔵 POSLA 決済 API・UI アーキテクチャ全量確認 — process-payment.php 詳細
+1640 " 🔵 POSLA 緊急会計 (emergency_payments) — external_method_type カラムと migration 構造確認
+1641 " 🔵 POSLA 決済関連ファイル全体マップ確認
+1643 7:25p 🔵 POSLA 低手数料決済オプション調査 — ユーザーが決済手数料の安い選択肢を検討
+1644 7:39p 🔵 POSLA セルフレジ決済構造の全量確認 — Stripe 専用実装・代替決済なし
+1646 7:41p 🔵 POSLA get-bill.php — payment_available 判定ロジックの詳細確認
+1648 7:44p 🔵 POSLA セルフレジ決済フロー完全構造 — checkout-session/confirm 2段階処理とP0#5整合性チェック
+1650 7:45p 🔵 checkout-confirm.php — Stripe Connect session retrieve の context 不一致バグ修正済み（2026-04-21）
+1652 7:50p ⚖️ POSLA 決済戦略 — 飲食市場の手数料破壊による大規模獲得構想
+1654 7:55p 🔵 POSLA 擬似本番環境 — git status 全量確認（決済戦略調査開始時点）
+1655 7:57p ✅ docs/stripe-posla-restaurant-proposal.md — POSLA x Stripe 飲食店決済共同提案書を新規作成
+1657 8:00p ✅ stripe-posla-restaurant-proposal.md — 飲食店キャッシュレス決済TAM試算を追記
+1659 8:03p ✅ stripe-posla-restaurant-proposal.md — POSLA Pay 構想と段階的GTM戦略を追加（大規模改訂）
+1661 8:11p ⚖️ POSLA経済圏構想 — 飲食店仕入れキャッシュレス化まで視野に入れたエコシステム拡張戦略
+1663 " 🔵 posla-economic-zone-roadmap.pptx — POSLA経済圏ロードマップPPTX存在確認
+1664 8:12p 🔵 posla-economic-zone-roadmap.pptx 全スライド内容確認 — 20スライド構成のPOSLA飲食店経済圏ロードマップ
+1666 " ✅ stripe-posla-restaurant-proposal.md — POSLA経済圏ビジョン（Section 8）とB2B決済拡張を追加
 
-Access 898k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 813k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

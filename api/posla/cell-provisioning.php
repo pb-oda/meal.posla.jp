@@ -229,6 +229,9 @@ function cell_provisioning_command_plan(array $row, int $index): array
     $initEnvParts = [
         'POSLA_CELL_DB_PASSWORD=' . cell_provisioning_shell_quote('<secure-db-password>'),
         'POSLA_CELL_DB_ROOT_PASSWORD=' . cell_provisioning_shell_quote('<secure-root-password>'),
+        'POSLA_OPS_DB_READONLY_PASSWORD=' . cell_provisioning_shell_quote('<secure-ops-readonly-password>'),
+        'POSLA_OPS_DB_READONLY_USER=' . cell_provisioning_shell_quote('posla_ops_ro'),
+        'POSLA_OPS_DB_READONLY_HOST=' . cell_provisioning_shell_quote('%'),
     ];
 
     $envParts = [];

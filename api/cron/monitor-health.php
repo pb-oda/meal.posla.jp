@@ -31,7 +31,7 @@ require_once __DIR__ . '/../config/app.php';
 $pdo = get_db();
 
 $now = date('Y-m-d H:i:s');
-$result = ['php_errors' => 0, 'stripe_failed' => 0, 'reserve_mail_failed' => 0, 'api_errors' => 0, 'alert_sent' => 0, 'slack_sent' => 0];
+$result = ['php_errors' => 0, 'stripe_failed' => 0, 'reserve_mail_failed' => 0, 'api_errors' => 0, 'alert_sent' => 0, 'slack_sent' => 0, 'op_alert_sent' => 0, 'op_alert_failed' => 0];
 
 // posla_settings から通知先を取得
 $settings = [];
@@ -63,7 +63,9 @@ if (is_readable($logFile)) {
     if (!empty($recentErrors)) {
         $detail = implode("\n", array_slice($recentErrors, 0, 5));
         $destination = _notifyOpsAlert($settings, '⚠️ POSLA: PHP エラー ' . count($recentErrors) . ' 件', $detail);
-        _logEvent($pdo, 'php_error', 'error', 'php_errors.log', 'PHP エラーを検知 (' . count($recentErrors) . ' 件)', $detail, null, null, $destination !== '');
+        _logEvent($pdo, 'php_error', 'error', 'php_errors.log', 'PHP エラーを検知 (' . count($recentErrors) . ' 件)', $detail, null, null, $destination !== '', [
+            'count_5m' => count($recentErrors),
+        ]);
         $result['php_errors'] = count($recentErrors);
         if ($destination !== '') {
             $result['alert_sent']++;
@@ -89,7 +91,10 @@ try {
     foreach ($rows as $r) $total += (int)$r['cnt'];
     if ($total > 0) {
         $destination = _notifyOpsAlert($settings, '⚠️ POSLA: Stripe Webhook 失敗 ' . $total . ' 件 (直近5分)', '詳細は subscription_events テーブル参照');
-        _logEvent($pdo, 'stripe_webhook_fail', 'warn', 'subscription_events', 'Stripe Webhook 失敗 (' . $total . ' 件) 直近5分', null, null, null, $destination !== '');
+        _logEvent($pdo, 'stripe_webhook_fail', 'warn', 'subscription_events', 'Stripe Webhook 失敗 (' . $total . ' 件) 直近5分', null, null, null, $destination !== '', [
+            'code' => 'STRIPE_WEBHOOK_FAIL',
+            'count_5m' => $total,
+        ]);
         foreach ($rows as $r) {
             if (!empty($r['tenant_id'])) {
                 _pushImportantError(
@@ -115,7 +120,10 @@ try {
     $stmt->execute();
     $n = (int)$stmt->fetchColumn();
     if ($n > 0) {
-        _logEvent($pdo, 'custom', 'warn', 'reservation_notifications_log', '予約メール送信失敗 (' . $n . ' 件) 直近5分', null);
+        _logEvent($pdo, 'custom', 'warn', 'reservation_notifications_log', '予約メール送信失敗 (' . $n . ' 件) 直近5分', null, null, null, false, [
+            'code' => 'RESERVATION_NOTIFICATION_FAILED',
+            'count_5m' => $n,
+        ]);
         $result['reserve_mail_failed'] = $n;
     }
 } catch (PDOException $e) { /* 未存在は無視 */ }
@@ -170,7 +178,14 @@ try {
         $dup->execute([$title, $tenantId, $storeId, '%経路: ' . $requestPathLabel . '%']);
         if ((int)$dup->fetchColumn() === 0) {
             $destination = _notifyOpsAlert($settings, ($sev === 'error' ? '🔴' : '⚠️') . ' POSLA: ' . $title, $detail);
-            _logEvent($pdo, 'custom', $sev, 'error_log', $title, $detail, $tenantId, $storeId, $destination !== '');
+            _logEvent($pdo, 'custom', $sev, 'error_log', $title, $detail, $tenantId, $storeId, $destination !== '', [
+                'error_no' => $tag,
+                'errorNo' => $tag,
+                'code' => (string)$r['code'],
+                'http_status' => (int)$r['http_status'],
+                'request_path' => $requestPath,
+                'count_5m' => (int)$r['cnt'],
+            ]);
             if ($destination !== '') {
                 $result['alert_sent']++;
                 if ($destination === 'slack_legacy') $result['slack_sent']++;
@@ -214,7 +229,7 @@ function _tail($filepath, $lines) {
     return array_slice($arr, -$lines);
 }
 
-function _logEvent($pdo, $type, $severity, $source, $title, $detail, $tenantId = null, $storeId = null, $notifiedWebhook = false) {
+function _logEvent($pdo, $type, $severity, $source, $title, $detail, $tenantId = null, $storeId = null, $notifiedWebhook = false, $extra = []) {
     try {
         $id = bin2hex(random_bytes(18));
         $pdo->prepare(
@@ -232,9 +247,91 @@ function _logEvent($pdo, $type, $severity, $source, $title, $detail, $tenantId =
             $storeId,
             $notifiedWebhook ? 1 : 0,
         ]);
+        $opResult = _notifyOpsPlatformAlert([
+            'source_event_id' => $id,
+            'source' => 'posla_monitor_health',
+            'event_type' => $type,
+            'severity' => $severity,
+            'source_table' => $source,
+            'title' => mb_substr($title, 0, 250),
+            'message' => mb_substr($detail ?? '', 0, 1000),
+            'tenant_id' => $tenantId,
+            'store_id' => $storeId,
+            'cell_id' => getenv('POSLA_CELL_ID') ?: getenv('POSLA_OPS_SOURCE_ID') ?: '',
+            'environment' => getenv('POSLA_ENVIRONMENT') ?: getenv('POSLA_ENV') ?: '',
+            'deploy_version' => getenv('POSLA_DEPLOY_VERSION') ?: '',
+            'occurred_at' => date('c'),
+        ] + (is_array($extra) ? $extra : []));
+        global $result;
+        if (is_array($result) && ($opResult['status'] ?? '') !== 'skipped') {
+            if (!empty($opResult['ok'])) $result['op_alert_sent']++;
+            else $result['op_alert_failed']++;
+        }
     } catch (PDOException $e) {
         error_log('[I-1][monitor] log_event_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
+}
+
+function _notifyOpsPlatformAlert($payload) {
+    global $settings;
+    $endpoint = trim((string)(getenv('POSLA_OP_ALERT_ENDPOINT') ?: ''));
+    $token = trim((string)(getenv('POSLA_OP_ALERT_TOKEN') ?: ''));
+    if ($endpoint === '' && is_array($settings)) {
+        $endpoint = trim((string)($settings['codex_ops_alert_endpoint'] ?? ''));
+    }
+    if ($token === '' && is_array($settings)) {
+        $token = trim((string)($settings['codex_ops_alert_token'] ?? ''));
+    }
+    if ($endpoint === '') {
+        return ['ok' => true, 'status' => 'skipped'];
+    }
+    if (!preg_match('/^https?:\/\//', $endpoint)) {
+        error_log('[I-1][monitor] op_alert_invalid_endpoint', 3, POSLA_PHP_ERROR_LOG);
+        return ['ok' => false, 'status' => 'invalid_endpoint'];
+    }
+
+    $payload['action'] = 'ingest';
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        return ['ok' => false, 'status' => 'json_encode_failed'];
+    }
+
+    $headers = ['Content-Type: application/json; charset=utf-8', 'Accept: application/json'];
+    if ($token !== '') {
+        $headers[] = 'X-OPS-ALERT-TOKEN: ' . $token;
+    }
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $json,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_TIMEOUT => 4,
+            CURLOPT_RETURNTRANSFER => true,
+        ]);
+        $raw = @curl_exec($ch);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+        if ($raw !== false && $httpCode >= 200 && $httpCode < 300) {
+            return ['ok' => true, 'status' => 'sent', 'http_status' => $httpCode];
+        }
+        error_log('[I-1][monitor] op_alert_failed status=' . $httpCode . ' error=' . $error, 3, POSLA_PHP_ERROR_LOG);
+        return ['ok' => false, 'status' => 'failed', 'http_status' => $httpCode, 'error' => $error];
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => implode("\r\n", $headers),
+            'content' => $json,
+            'timeout' => 4,
+            'ignore_errors' => true,
+        ],
+    ]);
+    $raw = @file_get_contents($endpoint, false, $context);
+    return ['ok' => $raw !== false, 'status' => $raw !== false ? 'sent' : 'failed'];
 }
 
 function _notifyOpsAlert($settings, $title, $detail) {

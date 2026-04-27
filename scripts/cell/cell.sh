@@ -39,6 +39,9 @@ Commands:
 Environment:
   POSLA_CELL_HTTP_PORT  Host HTTP port for this cell (default: read from cells/<cell-id>/cell.env or 8081)
   POSLA_CELL_DB_PORT    Host DB port for this cell (default: read from cells/<cell-id>/cell.env or 3306)
+  POSLA_OPS_DB_READONLY_USER     DB read-only user for OP monitoring created during cell DB init
+  POSLA_OPS_DB_READONLY_PASSWORD DB read-only password for OP monitoring; init auto-generates when omitted
+  POSLA_OPS_DB_READONLY_HOST     MySQL host part for the OP read-only user (default: %)
   POSLA_PHP_IMAGE        PHP image artifact to run for this cell
   POSLA_DEPLOY_VERSION   Deploy version recorded in generated app.env
   POSLA_CELL_BACKUP_UPLOADS=1 archives uploads during backup
@@ -314,6 +317,9 @@ init_cell() {
   db_user="${POSLA_CELL_DB_USER:-posla_app}"
   db_password="${POSLA_CELL_DB_PASSWORD:-__REPLACE_DB_PASSWORD__}"
   db_root_password="${POSLA_CELL_DB_ROOT_PASSWORD:-__REPLACE_ROOT_PASSWORD__}"
+  ops_db_readonly_user="${POSLA_OPS_DB_READONLY_USER:-posla_ops_ro}"
+  ops_db_readonly_host="${POSLA_OPS_DB_READONLY_HOST:-%}"
+  ops_db_readonly_password="${POSLA_OPS_DB_READONLY_PASSWORD:-$(generate_hex_id)}"
   environment="${POSLA_ENVIRONMENT:-production}"
   deploy_version="${POSLA_DEPLOY_VERSION:-dev}"
   php_image="${POSLA_PHP_IMAGE:-posla_php_cell:dev}"
@@ -336,6 +342,9 @@ init_cell() {
   set_env_value "$cell_dir/db.env" "MYSQL_DATABASE" "$db_name"
   set_env_value "$cell_dir/db.env" "MYSQL_USER" "$db_user"
   set_env_value "$cell_dir/db.env" "MYSQL_PASSWORD" "$db_password"
+  set_env_value "$cell_dir/db.env" "POSLA_OPS_DB_READONLY_USER" "$ops_db_readonly_user"
+  set_env_value "$cell_dir/db.env" "POSLA_OPS_DB_READONLY_PASSWORD" "$ops_db_readonly_password"
+  set_env_value "$cell_dir/db.env" "POSLA_OPS_DB_READONLY_HOST" "$ops_db_readonly_host"
 
   set_env_value "$cell_dir/cell.env" "POSLA_CELL_HTTP_PORT" "$http_port"
   set_env_value "$cell_dir/cell.env" "POSLA_CELL_DB_PORT" "$db_port"

@@ -1689,15 +1689,23 @@
         <div class="card settings-card">
           <div class="card__body">
             <div class="settings-card__eyebrow">Operations Bridge</div>
-            <div class="settings-card__title">OP問い合わせ連携</div>
-            <div class="settings-card__note">テナント画面の問い合わせを codex-ops-platform の Support Cases に送る設定です。トークンは空欄送信では変更しません。</div>
+            <div class="settings-card__title">OP障害報告 / 監視アラート連携</div>
+            <div class="settings-card__note">テナント画面の障害報告と monitor-health の監視アラートを codex-ops-platform へ送る設定です。トークンは空欄送信では変更しません。</div>
             <div class="form-group">
-              <label class="form-label" for="posla-codex-ops-case-endpoint">Support Case Endpoint</label>
+              <label class="form-label" for="posla-codex-ops-case-endpoint">障害報告 Endpoint</label>
               <input class="form-input" type="url" id="posla-codex-ops-case-endpoint" placeholder="http://127.0.0.1:8091/api/cases.php">
             </div>
             <div class="form-group">
-              <label class="form-label" for="posla-codex-ops-case-token">Support Case Token</label>
+              <label class="form-label" for="posla-codex-ops-case-token">障害報告 Token</label>
               <input class="form-input" type="password" id="posla-codex-ops-case-token" placeholder="OP側 OPS_CASE_INGEST_TOKEN と同じ値">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-codex-ops-alert-endpoint">監視アラート Endpoint</label>
+              <input class="form-input" type="url" id="posla-codex-ops-alert-endpoint" placeholder="http://127.0.0.1:8091/api/alerts.php">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-codex-ops-alert-token">監視アラート Token</label>
+              <input class="form-input" type="password" id="posla-codex-ops-alert-token" placeholder="OP側 OPS_ALERT_INGEST_TOKEN と同じ値">
             </div>
           </div>
         </div>

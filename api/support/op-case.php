@@ -1,6 +1,6 @@
 <?php
 /**
- * Tenant support inquiry -> codex-ops-platform Support Case bridge.
+ * Tenant incident report -> codex-ops-platform incident case bridge.
  *
  * POSLA tenant screens call this endpoint with the current page/error context.
  * This endpoint enriches the request with authenticated tenant/store/user/cell
@@ -152,7 +152,7 @@ $pdo = get_db();
 $message = posla_support_text($input, 'message', 3000);
 $errorNo = strtoupper(posla_support_text($input, 'error_no', 40));
 if ($message === '' && $errorNo === '') {
-    json_error('VALIDATION', '問い合わせ内容またはエラー番号を入力してください', 400);
+    json_error('VALIDATION', '障害内容またはエラー番号を入力してください', 400);
 }
 
 $storeId = posla_support_text($input, 'store_id', 36);
@@ -166,10 +166,10 @@ if ($storeId !== '') {
 $endpoint = posla_support_setting($pdo, 'codex_ops_case_endpoint', 'POSLA_OP_CASE_ENDPOINT');
 $token = posla_support_setting($pdo, 'codex_ops_case_token', 'POSLA_OP_CASE_TOKEN');
 if ($endpoint === '') {
-    json_error('NOT_CONFIGURED', 'OP問い合わせ送信先が未設定です', 503);
+    json_error('NOT_CONFIGURED', 'OP障害報告送信先が未設定です', 503);
 }
 if (!preg_match('/^https?:\/\//', $endpoint)) {
-    json_error('VALIDATION', 'OP問い合わせ送信先URLが不正です', 400);
+    json_error('VALIDATION', 'OP障害報告送信先URLが不正です', 400);
 }
 
 $tenant = posla_support_fetch_tenant($pdo, (string)$user['tenant_id']);
@@ -178,7 +178,7 @@ $cell = posla_support_fetch_cell($pdo, (string)$user['tenant_id']);
 $meta = function_exists('app_deployment_metadata') ? app_deployment_metadata() : [];
 
 $payload = [
-    'source' => 'posla_support_form',
+    'source' => 'posla_incident_report_form',
     'customer_name' => $tenant['name'] ?? '',
     'tenant_id' => (string)$user['tenant_id'],
     'tenant_slug' => $tenant['slug'] ?? '',
@@ -191,7 +191,7 @@ $payload = [
     'error_no' => $errorNo,
     'occurred_at' => date('c'),
     'contact_name' => (string)($user['username'] ?? ''),
-    'contact_channel' => 'posla_support_form',
+    'contact_channel' => 'posla_incident_report_form',
     'message' => $message,
     'page_url' => posla_support_text($input, 'page_url', 500),
     'screen_name' => posla_support_text($input, 'screen_name', 160),
@@ -205,11 +205,11 @@ $payload = [
 $result = posla_support_post_json($endpoint, $payload, $token);
 if (!$result['ok']) {
     error_log('[support/op-case] failed status=' . $result['status'] . ' error=' . $result['error']);
-    json_error('GATEWAY_ERROR', 'OPへの問い合わせ送信に失敗しました', 502);
+    json_error('GATEWAY_ERROR', 'OPへの障害報告送信に失敗しました', 502);
 }
 
 $opBody = json_decode($result['body'], true);
 json_response([
-    'message' => '問い合わせを送信しました',
+    'message' => '障害報告を送信しました',
     'case' => is_array($opBody) && isset($opBody['case']) ? $opBody['case'] : null,
 ]);
