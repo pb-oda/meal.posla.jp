@@ -84,6 +84,8 @@ POSLA_DEPLOY_VERSION=<image-or-git-sha>
 POSLA_CRON_ENABLED=1
 ```
 
+`POSLA_DEPLOY_VERSION` は `scripts/cell/cell.sh <cell-id> build` が未指定時に現在の Git commit から自動更新します。手動で固定したい場合だけ、コマンド実行時の環境変数で明示します。
+
 control stack の本番 env は `docker/env/app.production.env.example` を雛形にし、`POSLA_APP_BASE_URL` / `POSLA_ALLOWED_ORIGINS` / `POSLA_ALLOWED_HOSTS` を必ず本番ドメインへ置換します。`POSLA_ENVIRONMENT=production` では `localhost` / `127.0.0.1` / `host.docker.internal` の公開URL設定を起動時に拒否します。
 
 `cell.env` では同一ホスト上で衝突しない port と image artifact を指定します。
@@ -93,6 +95,8 @@ POSLA_CELL_HTTP_PORT=18081
 POSLA_CELL_DB_PORT=13306
 POSLA_PHP_IMAGE=posla_php_cell:dev
 ```
+
+`POSLA_PHP_IMAGE` も `build` 時に未指定なら `posla_php_cell:<deploy-version>` へ自動更新します。本番registryのimage名を使う場合は、`POSLA_PHP_IMAGE` を明示してbuildします。
 
 `init` は password が未指定の場合だけ placeholder password を残します。本番cellでは `POSLA_CELL_DB_PASSWORD` / `POSLA_CELL_DB_ROOT_PASSWORD` を付けて作成し、`app.env` / `db.env` に `__REPLACE_*` が残っていないことを確認してから `deploy` します。
 
@@ -264,6 +268,8 @@ scripts/cell/cell.sh acme-prod config
 scripts/cell/cell.sh acme-prod build
 ```
 
+`build` は現在の Git commit を `cells/acme-prod/app.env` の `POSLA_DEPLOY_VERSION` に刻印し、`cells/acme-prod/cell.env` の `POSLA_PHP_IMAGE` も同じversionのtagへ更新します。これにより `ping.php` と OP の Cell 一覧で、対象cellに入っているコードversionを確認できます。
+
 対象 cell だけを更新:
 
 ```bash
@@ -333,14 +339,13 @@ Cell registry:
 
 1. 問題が出ている cell を特定する。
 2. 修正 branch を作り、POSLA コードを修正する。
-3. 同一 artifact を build する。
-4. 対象 cell のみ `POSLA_PHP_IMAGE` / `POSLA_DEPLOY_VERSION` を更新する。
-5. 対象 cell を `backup` する。
-6. 必要な migration を対象 cell だけに適用する。
-7. `register-db` で対象 cell の deploy metadata を更新する。
-8. 対象 cell だけ `deploy` する。
-9. `ping` と業務 smoke test を実行する。
-10. 問題なければ他 cell へ ring deploy する。
+3. `scripts/cell/cell.sh <cell-id> build` で同一 artifact を build し、対象 cell の `POSLA_PHP_IMAGE` / `POSLA_DEPLOY_VERSION` を刻印する。
+4. 対象 cell を `backup` する。
+5. 必要な migration を対象 cell だけに適用する。
+6. `register-db` で対象 cell の deploy metadata を更新する。
+7. 対象 cell だけ `deploy` する。
+8. `ping` と業務 smoke test を実行する。
+9. 問題なければ他 cell へ ring deploy する。
 
 ## 11.9 Rollback
 

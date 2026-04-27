@@ -14,7 +14,7 @@ Commands:
   init     Create cells/<cell-id>/ env files and append cells/registry.tsv
   registry Show local cell registry
   config   Validate docker compose config for the cell
-  build    Build/tag the PHP image artifact for this cell config
+  build    Stamp current Git version, then build/tag the PHP image artifact
   backup   Create DB/env backup for this cell
   backups  List backups for this cell
   up       Start or update the cell using an existing image artifact
@@ -42,8 +42,8 @@ Environment:
   POSLA_OPS_DB_READONLY_USER     DB read-only user for OP monitoring created during cell DB init
   POSLA_OPS_DB_READONLY_PASSWORD DB read-only password for OP monitoring; init auto-generates when omitted
   POSLA_OPS_DB_READONLY_HOST     MySQL host part for the OP read-only user (default: %)
-  POSLA_PHP_IMAGE        PHP image artifact to run for this cell
-  POSLA_DEPLOY_VERSION   Deploy version recorded in generated app.env
+  POSLA_PHP_IMAGE        PHP image artifact to run for this cell; build auto-generates when omitted
+  POSLA_DEPLOY_VERSION   Deploy version recorded in app.env; build auto-generates from Git when omitted
   POSLA_CELL_BACKUP_UPLOADS=1 archives uploads during backup
   POSLA_CELL_INIT_OVERWRITE=1 allows init to overwrite existing env files
   POSLA_CELL_RESTORE_CONFIRM=<cell-id> required for restore-env / restore-db
@@ -374,6 +374,8 @@ validate_cell_id "$CELL_ID"
 
 CELL_DIR="$ROOT_DIR/cells/$CELL_ID"
 CELL_ENV="$CELL_DIR/cell.env"
+REQUESTED_POSLA_DEPLOY_VERSION="${POSLA_DEPLOY_VERSION:-}"
+REQUESTED_POSLA_PHP_IMAGE="${POSLA_PHP_IMAGE:-}"
 
 if [ ! -f "$CELL_DIR/app.env" ] || [ ! -f "$CELL_DIR/db.env" ]; then
   echo "Cell env files are missing: $CELL_DIR/app.env and/or $CELL_DIR/db.env" >&2
@@ -418,6 +420,42 @@ wait_ping() {
   done
   curl -sf "http://127.0.0.1:${POSLA_CELL_HTTP_PORT}/api/monitor/ping.php"
   printf '\n'
+}
+
+git_deploy_version() {
+  sha="$(git -C "$ROOT_DIR" rev-parse --short=12 HEAD 2>/dev/null || true)"
+  if [ -n "$sha" ]; then
+    if [ -n "$(git -C "$ROOT_DIR" status --porcelain --untracked-files=no -- api public scripts sql docker docker-compose.cell.yml composer.json composer.lock 2>/dev/null || true)" ]; then
+      printf '%s-dirty' "$sha"
+    else
+      printf '%s' "$sha"
+    fi
+    return 0
+  fi
+  date '+%Y%m%d%H%M%S'
+}
+
+image_tag_from_version() {
+  printf '%s' "$1" | sed 's/[^A-Za-z0-9_.-]/_/g'
+}
+
+stamp_deploy_metadata() {
+  deploy_version="$REQUESTED_POSLA_DEPLOY_VERSION"
+  php_image="$REQUESTED_POSLA_PHP_IMAGE"
+  if [ -z "$deploy_version" ]; then
+    deploy_version="$(git_deploy_version)"
+  fi
+  if [ -z "$php_image" ]; then
+    php_image="posla_php_cell:$(image_tag_from_version "$deploy_version")"
+  fi
+
+  set_env_value "$CELL_DIR/app.env" "POSLA_DEPLOY_VERSION" "$deploy_version"
+  set_env_value "$CELL_DIR/cell.env" "POSLA_PHP_IMAGE" "$php_image"
+  POSLA_DEPLOY_VERSION="$deploy_version"
+  POSLA_PHP_IMAGE="$php_image"
+  export POSLA_DEPLOY_VERSION POSLA_PHP_IMAGE
+  echo "Stamped deploy version: $POSLA_DEPLOY_VERSION"
+  echo "Stamped PHP image: $POSLA_PHP_IMAGE"
 }
 
 checksum_file() {
@@ -1267,6 +1305,7 @@ case "$COMMAND" in
     compose config -q
     ;;
   build)
+    stamp_deploy_metadata
     compose build php
     ;;
   backup)

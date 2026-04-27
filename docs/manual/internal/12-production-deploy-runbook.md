@@ -358,6 +358,8 @@ scripts/cell/cell.sh <cell-id> register-db
 POSLA_CELL_SMOKE_STRICT=1 scripts/cell/cell.sh <cell-id> smoke
 ```
 
+`build` は未指定時に現在の Git commit を `POSLA_DEPLOY_VERSION` と image tag へ刻印します。`deploy` 後は `ping.php` の `deploy_version` と OP の Deploy記録で、対象cellに入ったcommit / artifact / smoke結果 / rollback候補を確認します。
+
 tenant 初期化が必要な場合:
 
 ```bash
