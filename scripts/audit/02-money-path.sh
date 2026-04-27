@@ -29,7 +29,8 @@ fi
 echo
 echo "[2] process-payment FOR UPDATE + rowCount check"
 if grep -q 'FOR UPDATE' "$ROOT/api/store/process-payment.php" && \
-   grep -q 'rowCount.*order_update_rowcount_mismatch' "$ROOT/api/store/process-payment.php"; then
+   grep -q 'rowCount()' "$ROOT/api/store/process-payment.php" && \
+   grep -q 'order_update_rowcount_mismatch' "$ROOT/api/store/process-payment.php"; then
   echo "PASS: process-payment has FOR UPDATE + rowCount check"
 else
   echo "FAIL: process-payment FOR UPDATE / rowCount check missing"
