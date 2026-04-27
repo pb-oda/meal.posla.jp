@@ -23,6 +23,9 @@
 
   // ── 初期化 ──
   function initApp(admin) {
+    updateOpLinks('');
+    refreshOpLinksFromSettings();
+
     // ヘッダー
     var userEl = document.getElementById('posla-header-user');
     if (userEl) userEl.textContent = admin.displayName || admin.email;
@@ -214,9 +217,42 @@
     if (tabId === 'ops-source') loadOpsSource();
     if (tabId === 'pwa-push') loadPushStatus();
     if (tabId === 'admin-users') loadAdminUsers();
-    if (tabId === 'customer-support') loadCustomerSupport();
-    if (tabId === 'support') loadSupport();
-    if (tabId === 'ops') loadOpsCenter();
+    if (tabId === 'customer-support' || tabId === 'support' || tabId === 'ops') updateOpLinks('');
+  }
+
+  function deriveOpBaseUrl(endpoint) {
+    if (!endpoint) return '';
+    var anchor = document.createElement('a');
+    anchor.href = endpoint;
+    if (!anchor.protocol || !anchor.host) return '';
+    return anchor.protocol + '//' + anchor.host + '/';
+  }
+
+  function buildOpUrl(baseUrl, path) {
+    var base = baseUrl || 'http://127.0.0.1:8091/';
+    var suffix = path || '';
+    if (base.charAt(base.length - 1) !== '/') base += '/';
+    if (suffix.charAt(0) === '/') suffix = suffix.substring(1);
+    return base + suffix;
+  }
+
+  function updateOpLinks(baseUrl) {
+    var links = document.querySelectorAll('[data-op-link]');
+    for (var i = 0; i < links.length; i++) {
+      links[i].setAttribute('href', buildOpUrl(baseUrl, links[i].getAttribute('data-op-path') || ''));
+    }
+  }
+
+  function refreshOpLinksFromSettings() {
+    if (!PoslaApi || !PoslaApi.getSettings) return;
+    PoslaApi.getSettings().then(function(data) {
+      var s = (data && data.settings) ? data.settings : {};
+      var caseEndpoint = _getPlainValue(s, 'codex_ops_case_endpoint');
+      var alertEndpoint = _getPlainValue(s, 'codex_ops_alert_endpoint');
+      updateOpLinks(deriveOpBaseUrl(caseEndpoint) || deriveOpBaseUrl(alertEndpoint));
+    }).catch(function() {
+      updateOpLinks('');
+    });
   }
 
   // ── Feature Flags ──
@@ -2196,6 +2232,7 @@
       var heartbeatVal = _getPlainValue(s, 'monitor_last_heartbeat');
       var opsCaseEndpointVal = _getPlainValue(s, 'codex_ops_case_endpoint');
       var opsAlertEndpointVal = _getPlainValue(s, 'codex_ops_alert_endpoint');
+      updateOpLinks(deriveOpBaseUrl(opsCaseEndpointVal) || deriveOpBaseUrl(opsAlertEndpointVal));
 
       statusEl.innerHTML =
         _buildSummaryCard('AI / MAPS', 'Gemini・Places', [

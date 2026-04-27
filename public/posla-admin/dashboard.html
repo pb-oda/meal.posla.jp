@@ -1081,6 +1081,22 @@
       justify-content: flex-start;
       line-height: 1.45;
     }
+    .posla-admin-page .admin-sidebar .tab-nav__link {
+      display: flex;
+      text-decoration: none;
+    }
+    .op-route-note {
+      background: #eef6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      color: #1e3a8a;
+      font-size: 0.86rem;
+      line-height: 1.7;
+      padding: 0.9rem 1rem;
+    }
+    .op-route-note strong {
+      color: #1d4ed8;
+    }
     .ai-guide-layout {
       display: grid;
       grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
@@ -1242,13 +1258,12 @@
           <div class="posla-nav-section__label">監視・顧客</div>
           <button class="tab-nav__btn" data-tab="overview">ダッシュボード</button>
           <button class="tab-nav__btn" data-tab="tenants">テナント管理</button>
-          <button class="tab-nav__btn" data-tab="customer-support">顧客サポート</button>
         </div>
         <div class="posla-nav-section">
           <div class="posla-nav-section__label">配備・反映</div>
           <button class="tab-nav__btn" data-tab="create-tenant">テナント作成</button>
           <button class="tab-nav__btn" data-tab="cell-provisioning">Cell配備</button>
-          <button class="tab-nav__btn" data-tab="feature-flags">Feature Flags</button>
+          <button class="tab-nav__btn" data-tab="feature-flags">Feature Flags（顧客向け）</button>
         </div>
         <div class="posla-nav-section">
           <div class="posla-nav-section__label">基盤設定</div>
@@ -1257,10 +1272,12 @@
           <button class="tab-nav__btn" data-tab="pwa-push">PWA / Web Push</button>
         </div>
         <div class="posla-nav-section">
-          <div class="posla-nav-section__label">内部運用</div>
+          <div class="posla-nav-section__label">権限</div>
           <button class="tab-nav__btn" data-tab="admin-users">管理者ユーザー</button>
-          <button class="tab-nav__btn" data-tab="support">サポートセンター</button>
-          <button class="tab-nav__btn" data-tab="ops">運用補助センター</button>
+        </div>
+        <div class="posla-nav-section">
+          <div class="posla-nav-section__label">AI運用支援</div>
+          <a class="tab-nav__btn tab-nav__link" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>
         </div>
       </nav>
 
@@ -1268,6 +1285,7 @@
         <div class="admin-sidebar__footer-title">運用リンク</div>
         <div class="header-shortcuts">
           <a class="header-shortcut" href="/docs-internal/" target="_blank" rel="noopener">運営マニュアル</a>
+          <a class="header-shortcut" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OP</a>
           <a class="header-shortcut" href="/docs-tenant/" target="_blank" rel="noopener">テナント docs</a>
           <a class="header-shortcut" href="/api/monitor/ping.php" target="_blank" rel="noopener">監視エンドポイント <code>/api/monitor/ping.php</code></a>
         </div>
@@ -1311,6 +1329,7 @@
         <div class="panel-header__actions">
           <button class="btn btn-secondary" type="button" data-tab-jump="tenants">テナント管理へ</button>
           <button class="btn btn-secondary" type="button" data-tab-jump="api-settings">API設定へ</button>
+          <a class="btn btn-primary" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>
         </div>
       </div>
       <div id="overview-stats" class="stat-grid"></div>
@@ -1344,7 +1363,7 @@
           <div class="card__header">
             <div>
               <h3 class="section-title" style="margin-bottom:0;">危険テナント上位</h3>
-              <p class="card-intro">健全性スコアが低いか、直近で未解決異常を抱えているテナントを優先表示します。</p>
+              <p class="card-intro">ここでは概要だけを表示します。監視、Alert、障害報告、AI調査はOPで扱います。</p>
             </div>
           </div>
           <div class="card__body">
@@ -1487,7 +1506,11 @@
       <div class="panel-header">
         <div class="panel-header__eyebrow">Rollout Control</div>
         <h2 class="panel-header__title">Feature Flags</h2>
-        <p class="panel-header__lead">global / cell / tenant 単位で運用機能の表示・書き込み許可を切り替えます。契約アドオンの `hq_menu_broadcast` とは分離して扱います。</p>
+        <p class="panel-header__lead">顧客に見せる機能の表示制御を扱います。AI運用、runner、deploy許可に関わる操作はOP側で管理します。</p>
+      </div>
+      <div class="op-route-note" style="margin-bottom:1rem;">
+        <strong>運用系Feature FlagはOPへ移管します。</strong>
+        `codex_ops_write` などのAI運用・deploy許可系は、POSLA本体の機能表示とは分けてOPで確認します。
       </div>
 
       <div class="panel-grid panel-grid--two">
@@ -1648,10 +1671,10 @@
           <div class="card__body">
             <div class="settings-card__eyebrow">Monitoring</div>
             <div class="settings-card__title">運用監視 / Google Chat</div>
-            <div class="settings-card__note">Google Chat webhook と運用通知メールを管理します。テスト通知は `error_log` を経由して現在の監視ルートを実行します。</div>
+            <div class="settings-card__note">Google Chat webhook と運用通知メールの保存場所です。監視実行、Alert確認、通知確認はOPで行います。</div>
             <div class="settings-monitor-status" id="posla-monitor-status"></div>
             <div class="settings-card__eyebrow" style="margin-top:0.9rem;">Notification Center</div>
-            <div class="settings-card__note">Google Chat / 運用通知メール / Web Push の現在ルートとテスト導線をまとめた read-only センターです。</div>
+            <div class="settings-card__note">POSLA側では設定有無だけを確認します。運用判断と調査はOPへ集約します。</div>
             <div class="settings-health-grid" id="posla-notification-center"></div>
             <div class="form-group">
               <label class="form-label" for="posla-google-chat-webhook">Google Chat Webhook URL</label>
@@ -1661,28 +1684,11 @@
               <label class="form-label" for="posla-ops-notify-email">運用通知メール</label>
               <input class="form-input" type="email" id="posla-ops-notify-email" placeholder="support@posla.jp">
             </div>
-            <div class="form-group">
-              <label class="form-label" for="posla-monitor-message">テスト通知メッセージ</label>
-              <textarea class="form-input" id="posla-monitor-message" rows="3" placeholder="Google Chat / 運用通知メールで使う確認文面"></textarea>
-              <span class="form-hint">tenant / store は未入力なら自動採番します。</span>
-            </div>
-            <div class="settings-test-grid">
-              <div class="form-group" style="margin-bottom:0;">
-                <label class="form-label" for="posla-monitor-tenant">テナントID（任意）</label>
-                <input class="form-input" type="text" id="posla-monitor-tenant" placeholder="tenant-monitor-test-...">
-              </div>
-              <div class="form-group" style="margin-bottom:0;">
-                <label class="form-label" for="posla-monitor-store">店舗ID（任意）</label>
-                <input class="form-input" type="text" id="posla-monitor-store" placeholder="store-monitor-test-...">
-              </div>
-            </div>
             <div class="settings-inline-actions">
-              <button class="btn btn-secondary" id="btn-run-monitor-health" type="button">監視を再実行</button>
-              <button class="btn" id="btn-send-monitor-test" type="button" style="border:1px solid var(--primary);color:var(--primary);">Google Chat テスト通知</button>
-              <button class="btn" id="btn-send-ops-mail-test" type="button" style="border:1px solid var(--primary);color:var(--primary);">運用通知メール テスト</button>
+              <a class="btn btn-primary" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPで監視・通知を確認</a>
               <button class="btn btn-secondary" type="button" data-tab-jump="pwa-push">PWA / Web Push を開く</button>
             </div>
-            <div class="settings-test-result" id="posla-notify-test-result">テスト結果はここに表示します。Google Chat は監視経路を通して送信、メールは `ops_notify_email` へ直接送信します。Web Push は PWA / Web Push タブで詳細確認します。</div>
+            <div class="settings-test-result" id="posla-notify-test-result">Google Chat / 運用通知メールの実送信確認はOP側で行います。Web Push は PWA / Web Push タブで詳細確認します。</div>
           </div>
         </div>
 
@@ -1916,9 +1922,16 @@
       <div class="panel-header">
         <div class="panel-header__eyebrow">Customer Assist</div>
         <h2 class="panel-header__title">顧客サポート</h2>
-        <p class="panel-header__lead">顧客側セッションの状態を読み取り専用で確認する運用ビューです。店舗操作や注文送信の代行は行わず、現状把握に限定します。</p>
+        <p class="panel-header__lead">この運用ビューはOPへ移管しました。顧客からの障害報告、エラー番号、調査状況はOPで確認します。</p>
       </div>
-      <div id="posla-customer-support-root"></div>
+      <div class="card">
+        <div class="card__body">
+          <div class="op-route-note"><strong>OPで確認してください。</strong> POSLA管理画面ではテナント作成・契約・接続設定だけを扱い、顧客問い合わせの運用はOPへ集約します。</div>
+          <div class="settings-inline-actions" style="margin-top:1rem;">
+            <a class="btn btn-primary" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- サポートセンター (HELPDESK-P2-NONAI-ALL-20260423、非AI) -->
@@ -1926,9 +1939,16 @@
       <div class="panel-header">
         <div class="panel-header__eyebrow">Support Knowledge</div>
         <h2 class="panel-header__title">サポートセンター</h2>
-        <p class="panel-header__lead">テナント問い合わせ時の一次回答と誘導先をまとめた運用ナレッジです。AI ではなく固定ナレッジベースとして扱います。</p>
+        <p class="panel-header__lead">問い合わせ対応はOPへ移管しました。障害報告、AI調査、Google Chat通知をOPで一元管理します。</p>
       </div>
-      <div id="posla-support-root"></div>
+      <div class="card">
+        <div class="card__body">
+          <div class="op-route-note"><strong>OPで確認してください。</strong> 固定ナレッジをPOSLA管理画面に増やさず、障害報告と調査履歴に紐づけてOPで扱います。</div>
+          <div class="settings-inline-actions" style="margin-top:1rem;">
+            <a class="btn btn-primary" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 運用補助センター (OPS-CENTER-P1-READONLY-20260423、非AI、read-only) -->
@@ -1936,9 +1956,16 @@
       <div class="panel-header">
         <div class="panel-header__eyebrow">Ops Readonly</div>
         <h2 class="panel-header__title">運用補助センター</h2>
-        <p class="panel-header__lead">障害切り分けや日次確認のための read-only 支援ビューです。外形 ping と全 cell 健全性確認は op 側から実行し、本番修正や強制操作はここでは行いません。</p>
+        <p class="panel-header__lead">運用補助センターはOPへ移管しました。外部監視、Alert、runner調査、AIレポート、Deploy記録はOPで確認します。</p>
       </div>
-      <div id="posla-ops-root"></div>
+      <div class="card">
+        <div class="card__body">
+          <div class="op-route-note"><strong>OPで確認してください。</strong> POSLA本体が停止しても外側から検知できるよう、監視と調査はOP側で実行します。</div>
+          <div class="settings-inline-actions" style="margin-top:1rem;">
+            <a class="btn btn-primary" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>
+          </div>
+        </div>
+      </div>
     </div>
 
       </div><!-- /.admin-content -->
