@@ -11,7 +11,7 @@ POSLA は **cell architecture** で開始する。
 
 MVP では **1 tenant / 1 cell** を原則にする。これは single-tenant deployment と同じ blast radius を持たせるための運用ポリシーであり、コードベースは分けない。顧客向け cell に他 tenant を同居させない。
 
-`posla-control-local` のような擬似本番 / control 用 source は顧客 cell ではない。codex-ops-platform が snapshot を読む入口として使うが、`registry.cells` に出す一覧は `tenant_id` / `tenant_slug` を持つ顧客専用 cell だけにする。source 自体は `posla_ops_sources` で管理し、`posla_cell_registry` には入れない。
+`posla-control-local` のような擬似本番 / control 用 source は顧客 cell ではない。外部運用基盤が snapshot を読む入口として使うが、`registry.cells` に出す一覧は `tenant_id` / `tenant_slug` を持つ顧客専用 cell だけにする。source 自体は `posla_ops_sources` で管理し、`posla_cell_registry` には入れない。
 
 採用しないもの:
 
@@ -80,7 +80,7 @@ MVP では **1 tenant / 1 cell** を原則にする。これは single-tenant de
 3. cell ごとの env template を作る。最低限 `POSLA_DB_*`, `POSLA_APP_BASE_URL`, `POSLA_ALLOWED_*`, `POSLA_PHP_ERROR_LOG`, `POSLA_CRON_SECRET` を cell 単位にする。
 4. migration ledger を追加する。各 cell に「どの migration をいつ適用したか」を記録し、cell 単位で backup -> migrate -> smoke -> promote できるようにする。
 5. uploads を cell 専用 volume / prefix に分ける。
-6. codex-ops-platform 側の target descriptor を cell 単位にする。`base_url`, DB 接続, docs root, verify pack を `cell_id` で束ねる。
+6. 外部運用基盤側の target descriptor を cell 単位にする。`base_url`, DB 接続, docs root, verify pack を `cell_id` で束ねる。
 7. POSLA 管理画面の扱いを決める。MVP は各 cell の POSLA 管理画面で手動管理でもよいが、早期に中央 control plane へ寄せる。
 
 2026-04-25 時点の実装状況:
@@ -94,7 +94,7 @@ MVP では **1 tenant / 1 cell** を原則にする。これは single-tenant de
 - `sql/migration-p1-41-cell-registry.sql` で cell registry / deployment history の初期テーブルを追加済み。
 - `scripts/cell/cell.sh init` で `cells/<cell-id>/` の env 生成と `cells/registry.tsv` 記録が可能。
 - `scripts/cell/cell.sh register-db` で対象 cell DB の `posla_cell_registry` へ自己メタデータを upsert 可能。
-- `posla_ops_sources` で codex-ops-platform が読む POSLA control/source endpoint を管理する。source は顧客 cell ではないため `posla_cell_registry` と分離する。
+- `posla_ops_sources` で外部運用基盤が読む POSLA control/source endpoint を管理する。source は顧客 cell ではないため `posla_cell_registry` と分離する。
 - `scripts/cell/cell.sh migrate` は `schema_migrations` に checksum / cell_id / deploy_version を記録し、二重適用を防止する。
 - `scripts/cell/cell.sh backup` は cell 単位で DB dump / env snapshot / uploads manifest を作る。
 - `scripts/cell/cell.sh deploy` は pre-deploy backup を作り、`posla_cell_deployments` に `planned` / `deployed` / `failed` を記録する。
@@ -116,7 +116,7 @@ MVP では **1 tenant / 1 cell** を原則にする。これは single-tenant de
 - `json_error()` は未カタログ code でも `E0xxx` の暫定問い合わせ番号を返すため、顧客画面から `errorNo` が欠落しない。
 - `public/shared/js/utils.js` は API エラーを `[E3035] メッセージ（発生時刻: YYYY-MM-DD HH:MM）` に整形する。予約・注文・会計・テイクアウト・ライブ表示・管理APIクライアントはこの形式を利用する。
 - Cell配備タブの推奨 port は既存 registry を見て衝突を避ける。LP申込が Stripe customer / checkout 作成前段で失敗した場合は `canceled` として扱い、配備待ちに残さない。
-- `/api/monitor/cell-snapshot.php` は Tier0 詳細に `tenant_name` / `store_name` と対象IDを含める。op側は `pending_payment_orders`, `pending_refunds`, `gateway_problem_payments`, `emergency_unresolved_items` を顧客名付きで表示できる。
+- `/api/monitor/cell-snapshot.php` は Tier0 詳細に `tenant_name` / `store_name` と対象IDを含める。外部運用基盤側は `pending_payment_orders`, `pending_refunds`, `gateway_problem_payments`, `emergency_unresolved_items` を顧客名付きで表示できる。
 - Feature Flag は `test-01` tenant に対する `tenant_preview_release` の一時ON/OFFをAPI経由で確認済み。`codex_ops_write` は default OFF のまま。
 - POSLA管理画面ダッシュボードにリリース準備状況を追加済み。active tenant の cell registry / snapshot / Tier0 / onboarding / health / 未解決異常をまとめて確認できる。
 
@@ -167,7 +167,7 @@ feature flag:
 tenant onboarding:
 
 - cell 作成 -> DB 初期化 -> env 設定 -> tenant 初期作成 -> smoke -> DNS / webhook 有効化の順にする。
-- onboarding 完了時に codex-ops-platform の target registry に cell を登録する。
+- onboarding 完了時に外部運用基盤の target registry に cell を登録する。
 
 rollback:
 
@@ -193,7 +193,7 @@ shared -> cell:
 
 - POSLA 管理画面と `posla_settings` は現在グローバル DB 前提なので、cell 分割時は設定同期または中央 control plane が必要。
 - Stripe / Smaregi / LINE など webhook は、どの cell に配送するかを明確にする必要がある。
-- cell 数が増えると運用対象は増えるため、codex-ops-platform の target registry / probe / verify が必須になる。
+- cell 数が増えると運用対象は増えるため、外部運用基盤の target registry / probe / verify が必須になる。
 - cross-cell analytics は単一 DB の SQL では取れない。将来は集計 DB / ETL が必要。
 
 ## 判断

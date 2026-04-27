@@ -29,7 +29,7 @@ features:
     details: サーバ移行担当者が最初に読む専用ページ。着手前に必要な情報、web+cron の env、永続化、SQL、smoke test、ロールバックまで 1 枚で確認できます。
     link: /internal/10-server-migration
   - title: Cell配備運用
-    details: 1 tenant / 1 cell の配備単位、build artifact、deploy、migration、rollback、codex-ops-platform 接続方針を確認
+    details: 1 tenant / 1 cell の配備単位、build artifact、deploy、migration、rollback、外部運用基盤への接続方針を確認
     link: /internal/11-cell-deployment
   - title: POSLA全体リファレンス
     details: アーキテクチャ、API、DB、テナント境界、決済、AI、PWA、監視、スモークテストを横断整理

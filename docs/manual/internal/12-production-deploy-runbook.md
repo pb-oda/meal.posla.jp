@@ -146,11 +146,11 @@ MYSQL_USER=<production-db-user>
 MYSQL_PASSWORD=<production-db-password>
 POSLA_OPS_DB_READONLY_USER=posla_ops_ro
 POSLA_OPS_DB_READONLY_PASSWORD=<ops-readonly-password>
-POSLA_OPS_DB_READONLY_HOST=<ops-runner-db-source-host>
+POSLA_OPS_DB_READONLY_HOST=<ops-db-source-host>
 TZ=Asia/Tokyo
 ```
 
-`POSLA_OPS_DB_READONLY_*` は、【AI運用支援】codex-ops-platform / runner がDBをread-onlyで確認するための資格情報です。DB初期化時に `docker/db/init/02-ops-readonly-user.sh` が `SELECT` のみを付与します。本番ではDBポートを公開せず、`POSLA_OPS_DB_READONLY_HOST` とネットワーク/Firewallの両方でOP/runnerの接続元に限定します。
+`POSLA_OPS_DB_READONLY_*` は、外部運用基盤がDBをread-onlyで確認するための資格情報です。DB初期化時に `docker/db/init/02-ops-readonly-user.sh` が `SELECT` のみを付与します。本番ではDBポートを公開せず、`POSLA_OPS_DB_READONLY_HOST` とネットワーク/Firewallの両方で外部運用基盤の接続元に限定します。
 
 placeholder 残りを確認します。
 
@@ -232,7 +232,7 @@ docker compose exec -T db mysql \
 | Feature Flags | tenant / cell 単位の表示制御 |
 | API設定 | AI / Places / 通知 / 決済 provider / Smaregi |
 | PWA / Web Push | VAPID 公開鍵 / 秘密鍵 |
-| 監視・通知 | Google Chat、内部 heartbeat、monitor health、op 側外形監視 |
+| 監視・通知 | Google Chat、内部 heartbeat、monitor health、外部運用基盤側の外形監視 |
 | 管理者ユーザー | 管理者アカウント、不要管理者の削除 |
 
 API設定で本番前に必ず入れる値:
@@ -241,10 +241,10 @@ API設定で本番前に必ず入れる値:
 |---|---|
 | 決済 provider | 本番 provider 確定後の live key / webhook secret / Price ID |
 | Google Chat / 運用通知 | 本番の通知先 |
-| OP障害報告連携 Endpoint | `https://<op-domain>/api/cases.php` |
-| OP障害報告連携 Token | op 側 `OPS_CASE_INGEST_TOKEN` と同じ値 |
-| OP監視アラート連携 Endpoint | `https://<op-domain>/api/alerts.php` |
-| OP監視アラート連携 Token | op 側 `OPS_ALERT_INGEST_TOKEN` と同じ値 |
+| 外部障害報告連携 Endpoint | `https://<ops-domain>/api/cases.php` |
+| 外部障害報告連携 Token | 接続先側の ingest token と同じ値 |
+| 外部監視アラート連携 Endpoint | `https://<ops-domain>/api/alerts.php` |
+| 外部監視アラート連携 Token | 接続先側の ingest token と同じ値 |
 
 `POSLA_OP_CASE_ENDPOINT` / `POSLA_OP_CASE_TOKEN` / `POSLA_OP_ALERT_ENDPOINT` / `POSLA_OP_ALERT_TOKEN` を env で設定した場合は、env が POSLA管理画面の値より優先されます。
 
@@ -358,7 +358,7 @@ scripts/cell/cell.sh <cell-id> register-db
 POSLA_CELL_SMOKE_STRICT=1 scripts/cell/cell.sh <cell-id> smoke
 ```
 
-`build` は未指定時に現在の Git commit を `POSLA_DEPLOY_VERSION` と image tag へ刻印します。`deploy` 後は `ping.php` の `deploy_version` と OP の Deploy記録で、対象cellに入ったcommit / artifact / smoke結果 / rollback候補を確認します。
+`build` は未指定時に現在の Git commit を `POSLA_DEPLOY_VERSION` と image tag へ刻印します。`deploy` 後は `ping.php` の `deploy_version` と外部運用基盤のDeploy記録で、対象cellに入ったcommit / artifact / smoke結果 / rollback候補を確認します。
 
 tenant 初期化が必要な場合:
 
@@ -464,7 +464,7 @@ deploy 後 30 分は次を確認します。
 
 | 項目 | 見るもの |
 |---|---|
-| app ping | codex-ops-platform から `/api/monitor/ping.php` |
+| app ping | 外部運用基盤から `/api/monitor/ping.php` |
 | DB | read-only 接続、migration ledger |
 | signup | onboarding request の停滞 |
 | cell | `posla_cell_registry.status`、cell smoke |
