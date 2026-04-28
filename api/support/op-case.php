@@ -84,6 +84,7 @@ function posla_support_fetch_cell(PDO $pdo, string $tenantId): array
 
 function posla_support_post_json(string $url, array $payload, string $token): array
 {
+    $timeoutSec = 180;
     $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     if ($json === false) {
         return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'json_encode_failed'];
@@ -103,7 +104,7 @@ function posla_support_post_json(string $url, array $payload, string $token): ar
         curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeoutSec);
         $body = curl_exec($ch);
         $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $error = curl_error($ch);
@@ -121,7 +122,7 @@ function posla_support_post_json(string $url, array $payload, string $token): ar
             'method' => 'POST',
             'header' => implode("\r\n", $headers),
             'content' => $json,
-            'timeout' => 8,
+            'timeout' => $timeoutSec,
             'ignore_errors' => true,
         ],
     ]);
