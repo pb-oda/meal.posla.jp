@@ -13,6 +13,7 @@
  */
 
 require_once __DIR__ . '/response.php';
+require_once __DIR__ . '/session-store.php';
 
 /**
  * SEC-HOTFIX-20260423-B: 現リクエストが HTTPS 経由か判定
@@ -40,6 +41,7 @@ function _is_https_request(): bool
 function start_auth_session(): void
 {
     if (session_status() === PHP_SESSION_NONE) {
+        posla_configure_session_store();
         session_set_cookie_params([
             'lifetime' => 28800, // 8時間
             'path'     => '/',
@@ -47,7 +49,7 @@ function start_auth_session(): void
             'httponly'  => true,
             'samesite' => 'Lax',
         ]);
-        session_start();
+        posla_start_session_or_fail();
     }
 }
 

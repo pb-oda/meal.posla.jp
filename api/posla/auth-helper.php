@@ -19,6 +19,7 @@ require_once __DIR__ . '/../lib/auth.php';  // SEC-HOTFIX-20260423-B: _is_https_
 function start_posla_session(): void
 {
     if (session_status() === PHP_SESSION_NONE) {
+        posla_configure_session_store();
         session_set_cookie_params([
             'lifetime' => 28800, // 8時間
             'path'     => '/',
@@ -26,7 +27,7 @@ function start_posla_session(): void
             'httponly'  => true,
             'samesite' => 'Lax',
         ]);
-        session_start();
+        posla_start_session_or_fail();
     }
 }
 

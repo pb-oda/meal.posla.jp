@@ -41,6 +41,10 @@ RUN docker-php-ext-configure intl \
         bcmath \
         opcache
 
+# Redis-backed PHP sessions (keeps login sessions across app container rebuilds).
+RUN printf "\n" | pecl install redis \
+    && docker-php-ext-enable redis
+
 # Apache: mod_rewrite + AllowOverride All
 RUN a2enmod rewrite headers
 

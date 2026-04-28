@@ -40,7 +40,7 @@ POSLAシステムの運用に関する技術的な情報です。本章は **POS
 | データベース | MySQL 5.7 |
 | 実行基盤 | Docker Compose（`php` + `db`） |
 | ビルドツール | なし（PHP/JS をそのまま配信） |
-| セッション管理 | PHP セッション（コンテナ内ファイルベース） |
+| セッション管理 | PHP セッション（Redis保存） + DB セッション台帳 |
 | キャッシュ | OPcache（PHP 標準） + Service Worker（staff 画面のみ） |
 | HTTPS | 本番サーバ側 reverse proxy で termination |
 
@@ -1156,6 +1156,28 @@ expect eof
 
 ## 5.12 セッション管理
 
+POSLA は `$_SESSION` の実データを Redis に保存します。これにより、PHP app コンテナの rebuild / replace / deploy でログインセッションを失いにくくします。
+
+一方で、セッションの有効性・失効・最終操作時刻は DB 側の台帳で管理します。
+
+| 用途 | 保存先 |
+|------|--------|
+| PHP セッション本体 (`$_SESSION`) | Redis (`POSLA_SESSION_STORE=redis`) |
+| テナントユーザーの有効性台帳 | `user_sessions` |
+| POSLA管理者の有効性台帳 | `posla_admin_sessions` |
+
+Redis 接続設定は `docker/env/app.env` で管理します。
+
+| 環境変数 | 用途 |
+|------|------|
+| `POSLA_SESSION_STORE=redis` | PHP セッション保存先を Redis にする |
+| `POSLA_SESSION_REDIS_REQUIRED=1` | Redis/session extension 不備時に fail-closed |
+| `POSLA_SESSION_GC_MAXLIFETIME_SEC=28800` | Redis 側の PHP セッション有効期間 |
+| `POSLA_REDIS_HOST=redis` | Redis host |
+| `POSLA_REDIS_PORT=6379` | Redis port |
+| `POSLA_REDIS_DATABASE=0` | Redis DB |
+| `POSLA_REDIS_SESSION_PREFIX` | cell ごとの session key prefix |
+
 ### テナントユーザーのセッション
 
 | 設定 | 値 |
@@ -1164,6 +1186,8 @@ expect eof
 | 無操作タイムアウト | 30分（25分で警告） |
 | セッション再生成 | ログイン成功時 |
 | マルチデバイス | 同時ログイン許可（警告表示） |
+| セッション本体 | Redis |
+| 有効性台帳 | `user_sessions` |
 
 ### POSLA管理者のセッション
 
@@ -1172,6 +1196,8 @@ expect eof
 | 有効時間 | 8時間 |
 | Cookie属性 | HttpOnly、SameSite=Lax |
 | セッション再生成 | ログイン成功時 |
+| セッション本体 | Redis |
+| 有効性台帳 | `posla_admin_sessions` |
 
 ---
 

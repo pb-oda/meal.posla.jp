@@ -132,10 +132,19 @@ POSLA_FROM_EMAIL=<no-reply-address>
 POSLA_SUPPORT_EMAIL=<support-address>
 POSLA_PHP_ERROR_LOG=/var/log/posla/php-error.log
 POSLA_CRON_SECRET=<secret>
+POSLA_SESSION_STORE=redis
+POSLA_SESSION_REDIS_REQUIRED=1
+POSLA_SESSION_GC_MAXLIFETIME_SEC=28800
+POSLA_REDIS_HOST=redis
+POSLA_REDIS_PORT=6379
+POSLA_REDIS_DATABASE=0
+POSLA_REDIS_SESSION_PREFIX=posla:posla-control:sess:
 POSLA_PROVISIONER_TRIGGER_URL=http://127.0.0.1:19091/run
 POSLA_PROVISIONER_TRIGGER_SECRET=<secret>
 POSLA_CELL_APP_URL_PATTERN=https://{tenant_slug}.<production-domain>
 ```
+
+`POSLA_SESSION_STORE=redis` は本番必須です。PHP コンテナを rebuild / replace してもログインセッションを維持するため、PHP の `$_SESSION` 本体を Redis に置きます。`user_sessions` / `posla_admin_sessions` は引き続き DB 側の有効性台帳として使います。
 
 db env の必須確認:
 
@@ -178,6 +187,7 @@ grep -R "__REPLACE\\|<production" /etc/posla/<production-domain>.*.env
 ```bash
 cd <deploy-root>
 docker compose config -q
+docker compose up -d redis
 docker compose up -d db
 docker compose ps
 docker compose up -d --build
@@ -188,8 +198,20 @@ docker compose logs --tail=100 php
 期待状態:
 
 - `db` と `php` が `Up`
+- `redis` が `Up` かつ `healthy`
 - `php` log に致命的な `Fatal error` がない
 - production guard が `localhost` public URL を理由に停止していない
+
+Redis session 設定確認:
+
+```bash
+docker compose exec -T php php -r 'require "/var/www/html/api/lib/session-store.php"; posla_configure_session_store(); echo ini_get("session.save_handler"), "\n", ini_get("session.save_path"), "\n";'
+```
+
+期待値:
+
+- `session.save_handler` が `redis`
+- `session.save_path` が `tcp://redis:6379?...prefix=posla%3A...%3Asess%3A`
 
 ## 12.8 DB restore / migration
 

@@ -177,6 +177,9 @@ internet
 | `POSLA_ALLOWED_HOSTS` | Host / Origin 検証 |
 | `POSLA_PHP_ERROR_LOG` | PHP error_log 出力先 |
 | `POSLA_CRON_SECRET` | HTTP cron / 手動監視実行の共有秘密 |
+| `POSLA_SESSION_STORE` | PHP セッション保存先。production は `redis` |
+| `POSLA_REDIS_HOST` | Redis 接続先 |
+| `POSLA_REDIS_SESSION_PREFIX` | cell ごとの session key prefix |
 
 例:
 
@@ -196,6 +199,16 @@ POSLA_ALLOWED_HOSTS=<production-domain>
 
 POSLA_PHP_ERROR_LOG=/var/log/posla/php_errors.log
 POSLA_CRON_SECRET=__REPLACE_CRON_SECRET__
+
+POSLA_SESSION_STORE=redis
+POSLA_SESSION_REDIS_REQUIRED=1
+POSLA_SESSION_GC_MAXLIFETIME_SEC=28800
+POSLA_REDIS_HOST=redis
+POSLA_REDIS_PORT=6379
+POSLA_REDIS_DATABASE=0
+POSLA_REDIS_SESSION_PREFIX=posla:posla-control:sess:
+POSLA_REDIS_TIMEOUT_SEC=1.5
+POSLA_REDIS_READ_TIMEOUT_SEC=1.5
 ```
 
 注意:
@@ -203,6 +216,7 @@ POSLA_CRON_SECRET=__REPLACE_CRON_SECRET__
 - `POSLA_LOCAL_DB_*` と `POSLA_ENV=local` はローカル Docker 擬似本番専用です。本番では通常使いません
 - `POSLA_APP_BASE_URL` と `POSLA_ALLOWED_ORIGINS` / `POSLA_ALLOWED_HOSTS` はセットで合わせる
 - `api/.htaccess` に secrets を置く運用は採らない
+- Redis は PHP セッション本体を保持します。`user_sessions` / `posla_admin_sessions` は DB 側の失効台帳として引き続き使います
 
 ### 6.2 db env の正本
 
@@ -360,6 +374,7 @@ docker compose logs --tail=100 php
 期待通りだった場合:
 
 - `db` が healthy
+- `redis` が healthy
 - `php` が起動し、Apache が listen している
 - ログに `scheduler started` が出る
 
