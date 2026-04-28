@@ -17,7 +17,7 @@ iPad/Safariでも一部画面は表示できますが、音声コマンドや通
 | 用途 | 標準環境 | 推奨環境 | サポート対象外 |
 |---|---|---|---|
 | KDS | Androidタブレット 10インチ以上、横置き、給電運用、Chrome最新版 | — | iPad/Safari、Fireタブレット、Chromeを更新できない端末、メーカー独自ブラウザ、アプリ内ブラウザ |
-| レジ | Androidタブレット + Chrome最新版、決済端末（Stripe Reader）と安定接続できるもの | PC（Windows/Mac）+ Chrome最新版 | iPad/Safari、Fireタブレット |
+| レジ | Androidタブレット + Chrome最新版 | PC（Windows/Mac）+ Chrome最新版 | iPad/Safari、Fireタブレット |
 | ハンディ | Androidスマホ/小型Androidタブレット + Chrome最新版 | — | iPhone/Safari、Fireタブレット、古いAndroid端末 |
 | プリンタ連携 | 店舗ネットワークに常時接続できる端末 | — | — |
 

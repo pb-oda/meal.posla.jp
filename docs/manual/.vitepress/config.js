@@ -99,7 +99,7 @@ var tenantSidebar = [
     { text: '満足度評価・レビュー誘導', link: '/tenant/20-google-review' }
   ]},
   { text: '21. 決済設定', collapsed: false, items: [
-    { text: '月額契約・カード決済・カードリーダー', link: '/tenant/21-stripe-full' }
+    { text: '月額契約・POSLA決済', link: '/tenant/21-stripe-full' }
   ]},
   { text: '22. スマレジ連携', collapsed: false, items: [
     { text: '店舗・商品・売上連携', link: '/tenant/22-smaregi-full' }

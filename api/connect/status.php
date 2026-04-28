@@ -37,8 +37,8 @@ try {
 $connectInfo = get_tenant_connect_info($pdo, $tenantId);
 
 if (!$connectInfo) {
-    // Connect 未登録 — Pattern A 判定のみ
-    $terminalPattern = $tenantStripeConfigured ? 'A' : null;
+    // Connect 未登録。通常レジの Stripe Terminal は廃止し、セルフ会計/テイクアウトだけで Stripe を使う。
+    $terminalPattern = null;
     json_response([
         'connected' => false,
         'account_id' => null,
@@ -68,13 +68,8 @@ if ($secretKey) {
     }
 }
 
-// terminal_pattern 判定: Pattern B（Connect 完了 + charges_enabled）優先 > Pattern A（テナント自前）
+// terminal_pattern は後方互換フィールドとして残すが、通常レジでは Stripe Terminal を初期化しない。
 $terminalPattern = null;
-if ($onboardingComplete === 1 && $chargesEnabled) {
-    $terminalPattern = 'B';
-} elseif ($tenantStripeConfigured) {
-    $terminalPattern = 'A';
-}
 
 json_response([
     'connected' => true,

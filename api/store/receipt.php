@@ -135,10 +135,11 @@ if ($method === 'GET') {
             ],
             'items' => $responseItems,
             'payment' => [
-                'payment_method'  => $payment['payment_method'],
-                'received_amount' => isset($payment['received_amount']) ? (int)$payment['received_amount'] : null,
-                'change_amount'   => isset($payment['change_amount']) ? (int)$payment['change_amount'] : null,
-                'paid_at'         => $payment['paid_at'],
+                'payment_method'        => $payment['payment_method'],
+                'payment_method_detail' => array_key_exists('payment_method_detail', $payment) ? $payment['payment_method_detail'] : null,
+                'received_amount'       => isset($payment['received_amount']) ? (int)$payment['received_amount'] : null,
+                'change_amount'         => isset($payment['change_amount']) ? (int)$payment['change_amount'] : null,
+                'paid_at'               => $payment['paid_at'],
             ],
         ]);
     }
@@ -387,10 +388,11 @@ if ($method === 'POST') {
         ],
         'items' => $responseItems,
         'payment' => [
-            'payment_method'  => $payment['payment_method'],
-            'received_amount' => isset($payment['received_amount']) ? (int)$payment['received_amount'] : null,
-            'change_amount'   => isset($payment['change_amount']) ? (int)$payment['change_amount'] : null,
-            'paid_at'         => $payment['paid_at'],
+            'payment_method'        => $payment['payment_method'],
+            'payment_method_detail' => array_key_exists('payment_method_detail', $payment) ? $payment['payment_method_detail'] : null,
+            'received_amount'       => isset($payment['received_amount']) ? (int)$payment['received_amount'] : null,
+            'change_amount'         => isset($payment['change_amount']) ? (int)$payment['change_amount'] : null,
+            'paid_at'               => $payment['paid_at'],
         ],
     ]);
 }

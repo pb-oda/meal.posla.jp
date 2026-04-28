@@ -365,21 +365,16 @@ SELECT id, @store_id FROM users WHERE tenant_id = @tenant_id AND role = 'owner';
 
 ### 2.2.8 ステップ 8：決済設定（Stripe Connect）
 
-Stripe 決済を有効にする場合、以下のいずれかの方式を選択します。
+POSLA決済（セルフ会計・テイクアウト）を有効にする場合、Stripe Connect を設定します。通常レジのカード/QRは店舗既存決済の記録専用であり、この設定とは別です。
 
-**パターン A：テナントが自前の Stripe アカウントを持っている場合**
-1. オーナーダッシュボードの「決済設定」タブを開く
-2. 「Stripe Secret Key」欄にテナントの Secret Key を入力して保存
-3. レジの Stripe Terminal が直ちに利用可能（`terminal_pattern=A`）
-
-**パターン B：テナントが自前の Stripe アカウントを持っていない場合（推奨）**
+**Stripe Connect（推奨・現行方針）**
 1. オーナーダッシュボードの「決済設定」タブを開く
 2. 「Stripe Connect に登録して決済を開始する」をクリック
 3. Stripe のオンボーディング画面で必要情報を入力（個人事業主 or 法人）
    - 法人名 / 代表者氏名
    - 銀行口座情報
    - 本人確認書類（運転免許証等）
-4. `connect_onboarding_complete=1` になり、レジの Stripe Terminal が利用可能（`terminal_pattern=B`、application_fee 1.0% を POSLA が取得）
+4. `connect_onboarding_complete=1` になり、セルフ会計・テイクアウトのPOSLA決済が利用可能になる
 
 **API：**
 - `POST /api/connect/onboard.php` — Connect オンボーディング開始

@@ -49,6 +49,13 @@ try {
     $hasGatewayCols = true;
 } catch (PDOException $e) {}
 
+// P1-46: 通常レジの支払い詳細
+$hasPaymentDetailCol = false;
+try {
+    $pdo->query('SELECT payment_method_detail FROM payments LIMIT 0');
+    $hasPaymentDetailCol = true;
+} catch (PDOException $e) {}
+
 // Phase 4d-5a: void 系カラム検出
 $hasVoidCols = false;
 try {
@@ -59,6 +66,7 @@ try {
 $extraCols = '';
 if ($hasGatewayCols) $extraCols .= ', p.gateway_name, p.external_payment_id, p.gateway_status';
 if ($hasRefundCols) $extraCols .= ', p.refund_status, p.refund_amount, p.refunded_at';
+if ($hasPaymentDetailCol) $extraCols .= ', p.payment_method_detail';
 // Phase 4d-5a: void_status 系フィールドを動的追加 (voided 行も一覧に表示し、UI で「取消済み」バッジを出す)
 if ($hasVoidCols)   $extraCols .= ', p.void_status, p.voided_at, p.void_reason';
 

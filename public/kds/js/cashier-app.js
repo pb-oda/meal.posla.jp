@@ -34,7 +34,36 @@
   var _salesSummary = null;  // 本日売上サマリー
   var _salesPollTimer = null;
   var _isSubmitting = false; // 決済送信中フラグ
-  var _PAY_LABELS = { cash: '現金', card: 'クレカ', qr: 'QR' };
+  var _PAY_LABELS = { cash: '現金', card: 'カード', qr: 'QR' };
+  var _paymentDetail = '';
+  var _PAY_DETAIL_OPTIONS = {
+    card: [
+      { value: 'card_credit', label: 'クレジット' },
+      { value: 'card_debit', label: 'デビット' },
+      { value: 'card_other', label: 'その他カード' }
+    ],
+    qr: [
+      { value: 'qr_paypay', label: 'PayPay' },
+      { value: 'qr_rakuten_pay', label: '楽天ペイ' },
+      { value: 'qr_dbarai', label: 'd払い' },
+      { value: 'qr_au_pay', label: 'au PAY' },
+      { value: 'qr_merpay', label: 'メルペイ' },
+      { value: 'qr_line_pay', label: 'LINE Pay' },
+      { value: 'qr_alipay', label: 'Alipay' },
+      { value: 'qr_wechat_pay', label: 'WeChat Pay' },
+      { value: 'emoney_transport_ic', label: '交通系IC' },
+      { value: 'emoney_id', label: 'iD' },
+      { value: 'emoney_quicpay', label: 'QUICPay' },
+      { value: 'qr_other', label: 'その他QR' },
+      { value: 'emoney_other', label: 'その他電子マネー' }
+    ]
+  };
+  var _PAY_DETAIL_LABELS = {};
+  Object.keys(_PAY_DETAIL_OPTIONS).forEach(function (method) {
+    _PAY_DETAIL_OPTIONS[method].forEach(function (opt) {
+      _PAY_DETAIL_LABELS[opt.value] = opt.label;
+    });
+  });
 
   // 新機能状態
   var _clockTimer = null;
@@ -84,8 +113,7 @@
         _bindKeyboard();
         _renderRegister();
 
-        // L-13: Stripe Terminal 初期化（Connect対応店舗のみ）
-        _initStripeTerminal();
+        // 通常レジは店舗既存の決済端末 / QR を使い、POSLA は記録のみ行う。
       });
     });
   };
@@ -146,6 +174,32 @@
       btn.classList.add('active');
     } else {
       btn.classList.remove('active');
+    }
+  }
+
+  function _defaultPaymentDetail(method) {
+    if (_PAY_DETAIL_OPTIONS[method] && _PAY_DETAIL_OPTIONS[method][0]) {
+      return _PAY_DETAIL_OPTIONS[method][0].value;
+    }
+    return '';
+  }
+
+  function _paymentLabel(method, detail) {
+    if (detail && _PAY_DETAIL_LABELS[detail]) return _PAY_DETAIL_LABELS[detail];
+    return _PAY_LABELS[method] || method || '';
+  }
+
+  function _currentPaymentLabel() {
+    return _paymentLabel(_paymentMethod, _paymentDetail);
+  }
+
+  function _setPaymentMethod(method) {
+    _paymentMethod = method;
+    _paymentDetail = _defaultPaymentDetail(method);
+    _receivedInput = '';
+    if (_paymentMethod !== 'cash') {
+      var calc = _calcTotal();
+      _receivedInput = String(calc.finalTotal);
     }
   }
 
@@ -360,6 +414,7 @@
         if (json.ok && json.data) regData = json.data;
         _salesSummary = _buildSalesSummary(salesData, regData);
         _renderSalesSummary();
+        if (_openPanel === 'register-ctrl') _renderRegisterCtrl();
       })
       .catch(function (err) {
         console.error('Sales summary error:', err);
@@ -442,8 +497,8 @@
 
     html += '<div class="ca-sales-summary__divider"></div>';
     html += '<div class="ca-sales-summary__row"><span>現金</span><span>' + Utils.formatYen(s.cash) + '</span></div>';
-    html += '<div class="ca-sales-summary__row"><span>クレカ</span><span>' + Utils.formatYen(s.card) + '</span></div>';
-    html += '<div class="ca-sales-summary__row"><span>QR</span><span>' + Utils.formatYen(s.qr) + '</span></div>';
+    html += '<div class="ca-sales-summary__row"><span>カード</span><span>' + Utils.formatYen(s.card) + '</span></div>';
+    html += '<div class="ca-sales-summary__row"><span>QR/電子</span><span>' + Utils.formatYen(s.qr) + '</span></div>';
     html += '<div class="ca-sales-summary__divider"></div>';
     html += '<div class="ca-sales-summary__row ca-sales-summary__row--balance"><span>予想在高</span><span>' + Utils.formatYen(s.expectedBalance) + '</span></div>';
 
@@ -511,7 +566,19 @@
   function _renderTableList() {
     var body = document.getElementById('ca-table-body');
     var countEl = document.getElementById('ca-table-count');
+    var alertEl = document.getElementById('ca-table-alert-count');
     countEl.textContent = _tableGroups.length;
+
+    var alertCount = 0;
+    _tableGroups.forEach(function (t) {
+      var s = _sessions[t.tableId];
+      var elapsed = _calcElapsedMin(s);
+      if (elapsed !== null && elapsed >= 60 && (parseInt(t.total, 10) || 0) > 0) alertCount++;
+    });
+    if (alertEl) {
+      alertEl.textContent = alertCount > 0 ? '注意 ' + alertCount : '';
+      alertEl.style.display = alertCount > 0 ? '' : 'none';
+    }
 
     // 合流トグルボタン
     var mergeBtn = document.getElementById('ca-btn-merge-toggle');
@@ -545,21 +612,32 @@
       // 経過時間
       var elapsed = _calcElapsedMin(session);
       var elapsedHtml = '';
+      var alertLabel = '';
       if (elapsed !== null) {
         var eCls = 'ca-table-card__elapsed';
         if (elapsed >= 60) eCls += ' ca-table-card__elapsed--danger';
         else if (elapsed >= 30) eCls += ' ca-table-card__elapsed--warn';
         elapsedHtml = '<span class="' + eCls + '">' + elapsed + '分</span>';
+        if ((parseInt(t.total, 10) || 0) > 0 && elapsed >= 90) {
+          cls += ' ca-table-card--unpaid-danger';
+          alertLabel = '<span class="ca-table-card__alert-badge ca-table-card__alert-badge--danger">長時間</span>';
+        } else if ((parseInt(t.total, 10) || 0) > 0 && elapsed >= 60) {
+          cls += ' ca-table-card--unpaid-warn';
+          alertLabel = '<span class="ca-table-card__alert-badge">会計注意</span>';
+        }
       }
 
       html += '<div class="' + cls + '" data-group-key="' + Utils.escapeHtml(t.groupKey) + '">';
       html += '<div class="ca-table-card__top">';
       html += '<span class="ca-table-card__code">' + Utils.escapeHtml(t.tableCode) + '</span>';
+      html += '<span class="ca-table-card__badges">';
+      html += alertLabel;
       if (t.isTakeout) {
         html += '<span class="ca-table-card__badge">TO</span>';
       } else {
         html += '<span class="ca-table-card__type-badge">店内</span>';
       }
+      html += '</span>';
       html += '</div>';
 
       if (hasPlan) {
@@ -729,7 +807,38 @@
       h += '<button class="' + cls + '" data-method="' + method + '">' + _PAY_LABELS[method] + '</button>';
     });
     h += '</div>';
+    if (_paymentMethod !== 'cash') {
+      var opts = _PAY_DETAIL_OPTIONS[_paymentMethod] || [];
+      h += '<div class="ca-pay-detail">';
+      h += '<div class="ca-pay-detail__label">支払い詳細</div>';
+      h += '<div class="ca-pay-detail__grid">';
+      opts.forEach(function (opt) {
+        var cls = 'ca-pay-detail__btn';
+        if (_paymentDetail === opt.value) cls += ' ca-pay-detail__btn--active';
+        h += '<button class="' + cls + '" data-payment-detail="' + Utils.escapeHtml(opt.value) + '">' + Utils.escapeHtml(opt.label) + '</button>';
+      });
+      h += '</div>';
+      h += '</div>';
+    }
+    h += _renderManualPaymentNoticeHtml();
     return h;
+  }
+
+  function _renderManualPaymentNoticeHtml() {
+    if (_paymentMethod === 'cash') return '';
+    if (_paymentMethod === 'card') {
+      return '<div class="ca-pay-notice ca-pay-notice--card">'
+        + '<div class="ca-pay-notice__title">外部カード端末で決済完了後に記録</div>'
+        + '<div class="ca-pay-notice__text">POSLAからカード決済・返金は実行されません。端末側の完了控えを確認してから会計してください。</div>'
+        + '</div>';
+    }
+    if (_paymentMethod === 'qr') {
+      return '<div class="ca-pay-notice ca-pay-notice--qr">'
+        + '<div class="ca-pay-notice__title">店舗契約QR/電子マネーで支払い完了後に記録</div>'
+        + '<div class="ca-pay-notice__text">POSLAは決済結果の記録のみ行います。PayPay等の端末・アプリ側で完了を確認してください。</div>'
+        + '</div>';
+    }
+    return '';
   }
 
   function _renderAmountHtml(calc) {
@@ -1102,7 +1211,7 @@
     html += '<div class="ca-receipt__divider"></div>';
 
     // 支払
-    html += '<div class="ca-receipt__payment-row"><span>支払方法</span><span>' + (_PAY_LABELS[_paymentMethod] || '') + '</span></div>';
+    html += '<div class="ca-receipt__payment-row"><span>支払方法</span><span>' + Utils.escapeHtml(_currentPaymentLabel()) + '</span></div>';
     if (_paymentMethod === 'cash') {
       html += '<div class="ca-receipt__payment-row"><span>預かり</span><span>' + Utils.formatYen(received) + '</span></div>';
       html += '<div class="ca-receipt__change-row"><span>お釣り</span><span>' + Utils.formatYen(change) + '</span></div>';
@@ -1252,8 +1361,8 @@
     h += '<div class="divider"></div>';
     h += '<div class="row bold" style="font-size:14px;"><span>合計</span><span>&yen;' + r.total_amount.toLocaleString() + '</span></div>';
 
-    var methodLabel = {cash:'現金',card:'カード',qr:'QR決済',terminal:'カード'}[pay.payment_method] || pay.payment_method;
-    h += '<div class="row"><span>支払方法</span><span>' + methodLabel + '</span></div>';
+    var methodLabel = _paymentLabel(pay.payment_method, pay.payment_method_detail);
+    h += '<div class="row"><span>支払方法</span><span>' + _escPrint(methodLabel) + '</span></div>';
 
     h += '<div class="divider"></div>';
     h += '<div class="center small">No. ' + _escPrint(r.receipt_number) + '</div>';
@@ -1336,7 +1445,13 @@
     }
 
     // 確認ダイアログ
-    var confirmMsg = Utils.formatYen(calc.finalTotal) + ' を ' + _PAY_LABELS[_paymentMethod] + ' で会計しますか？';
+    var payLabel = _currentPaymentLabel();
+    var confirmMsg = Utils.formatYen(calc.finalTotal) + ' を ' + payLabel + ' で会計しますか？';
+    if (_paymentMethod === 'card') {
+      confirmMsg = '外部カード端末（' + payLabel + '）で決済完了を確認済みとして、' + Utils.formatYen(calc.finalTotal) + ' をPOSLAに記録しますか？';
+    } else if (_paymentMethod === 'qr') {
+      confirmMsg = '店舗契約の' + payLabel + 'で支払い完了を確認済みとして、' + Utils.formatYen(calc.finalTotal) + ' をPOSLAに記録しますか？';
+    }
     if (isPartial) confirmMsg = '【個別会計】' + confirmMsg;
     if (!confirm(confirmMsg)) return;
 
@@ -1427,11 +1542,12 @@
    */
   function _submitPaymentWithPin(group, isPartial, calc, pin) {
     var isMerged = _mergeMode && _mergedGroupKeys.length >= 2;
-    var isManualNonCash = false;
+    var isManualNonCash = (_paymentMethod !== 'cash');
 
     var body = {
       store_id: _storeId,
       payment_method: _paymentMethod,
+      payment_method_detail: _paymentDetail || '',
       staff_pin: pin   // CP1: 担当スタッフ PIN
     };
 
@@ -1456,18 +1572,8 @@
 
     if (_paymentMethod === 'cash') {
       body.received_amount = parseInt(_receivedInput, 10) || 0;
-    } else if (_paymentMethod === 'qr') {
+    } else {
       body.payment_entry_mode = 'manual';
-      isManualNonCash = true;
-    } else if (_paymentMethod === 'card' && !(_terminal && _terminalConnected)) {
-      if (!confirm('カードリーダーが未接続です。\n外部カード端末で決済済みの取引として手動記録しますか？')) {
-        _isSubmitting = false;
-        _startPolling();
-        _renderRegister();
-        return;
-      }
-      body.payment_entry_mode = 'manual';
-      isManualNonCash = true;
     }
 
     // 個別会計 or 割引ありの場合は selected_items + total_override
@@ -1493,12 +1599,6 @@
     _isSubmitting = true;
     if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
     _renderRegister();
-
-    // L-13: Stripe Terminal 経由（Connect + 物理カードリーダー）
-    if (_terminal && _terminalConnected && _paymentMethod === 'card') {
-      _processTerminalPayment(body, calc);
-      return;
-    }
 
     // カード/QR決済時はローディング表示
     var gwOverlay = null;
@@ -1548,7 +1648,7 @@
 
       _playSuccess();
       var toastMsg = '会計完了: ' + Utils.formatYen(d.totalAmount);
-      if (d.gatewayName === 'stripe') toastMsg += ' (Stripe決済完了)';
+      if (_paymentMethod !== 'cash') toastMsg += ' (' + _currentPaymentLabel() + '記録)';
       _showToast(toastMsg, 'success');
       _lastPaymentId = d.payment_id;
       _showReceiptPreview();
@@ -1718,7 +1818,7 @@
       html += '<div class="' + rowClass + '">';
       html += '<span class="ca-journal__item-time">' + Utils.escapeHtml(timeStr) + '</span>';
       html += '<span class="ca-journal__item-table">' + Utils.escapeHtml(tableCode) + (isPartial ? ' *' : '') + '</span>';
-      html += '<span class="ca-journal__item-method ca-journal__item-method--' + method + '">' + (_PAY_LABELS[method] || method) + '</span>';
+      html += '<span class="ca-journal__item-method ca-journal__item-method--' + method + '">' + Utils.escapeHtml(_paymentLabel(method, p.payment_method_detail)) + '</span>';
       html += '<span class="ca-journal__item-staff">' + Utils.escapeHtml(staffName) + '</span>';
       html += '<span class="ca-journal__item-amount">' + Utils.formatYen(amount) + '</span>';
       if (isVoided) {
@@ -1887,6 +1987,7 @@
   // ── レジ開閉 ──
   function _openRegisterCtrl() {
     _openSlidePanel('register-ctrl');
+    _fetchSalesSummary();
     _fetchCashLog();
   }
 
@@ -1964,6 +2065,13 @@
       // レジ閉め
       html += '<div class="ca-register-ctrl__form" style="margin-top:0.5rem;">';
       html += '<div class="ca-register-ctrl__form-title">レジ閉め</div>';
+      var closeSummary = _getCloseReconcileSummary();
+      html += '<div class="ca-register-ctrl__reconcile">';
+      html += '<div class="ca-register-ctrl__reconcile-row"><span>予想現金</span><strong>' + Utils.formatYen(closeSummary.expectedCash) + '</strong></div>';
+      html += '<div class="ca-register-ctrl__reconcile-row"><span>現金売上</span><strong>' + Utils.formatYen(closeSummary.cashSales) + '</strong></div>';
+      html += '<div class="ca-register-ctrl__reconcile-row"><span>カード売上</span><strong>' + Utils.formatYen(closeSummary.cardSales) + '</strong></div>';
+      html += '<div class="ca-register-ctrl__reconcile-row"><span>QR/電子</span><strong>' + Utils.formatYen(closeSummary.qrSales) + '</strong></div>';
+      html += '</div>';
       html += '<div class="ca-register-ctrl__input-group">';
       html += '<label class="ca-register-ctrl__input-label">実際の現金額（円）</label>';
       html += '<input type="text" class="ca-register-ctrl__input" id="ca-reg-close-amount" inputmode="numeric" placeholder="0" oninput="CashierApp._onCloseAmountInput()">';
@@ -1974,6 +2082,10 @@
       html += '<div class="ca-register-ctrl__input-group">';
       html += '<label class="ca-register-ctrl__input-label">予想在高: ' + Utils.formatYen(expected) + '</label>';
       html += '<div class="ca-register-ctrl__diff" id="ca-reg-close-diff">--</div>';
+      html += '</div>';
+      html += '<div class="ca-register-ctrl__input-group">';
+      html += '<label class="ca-register-ctrl__input-label">差額理由・締めメモ</label>';
+      html += '<input type="text" class="ca-register-ctrl__input ca-register-ctrl__input--text" id="ca-reg-close-note" maxlength="120" placeholder="例: 100円硬貨不足">';
       html += '</div>';
 
       html += '<button class="ca-register-ctrl__btn ca-register-ctrl__btn--close" id="ca-reg-close-btn">レジを閉める</button>';
@@ -2001,6 +2113,10 @@
         html += '<span class="ca-register-ctrl__log-time">' + time + '</span>';
         html += '<span class="' + typeCls + '">' + (typeLabels[entry.type] || entry.type) + '</span>';
         if (entry.note) html += '<span class="ca-register-ctrl__log-note">' + Utils.escapeHtml(entry.note) + '</span>';
+        if (entry.type === 'close' && entry.difference_amount !== null && typeof entry.difference_amount !== 'undefined') {
+          var closeDiff = parseInt(entry.difference_amount, 10) || 0;
+          html += '<span class="ca-register-ctrl__log-note">' + (closeDiff >= 0 ? '+' : '') + Utils.formatYen(closeDiff) + '</span>';
+        }
         html += '<span class="ca-register-ctrl__log-amount">' + Utils.formatYen(parseInt(entry.amount, 10) || 0) + '</span>';
         html += '</div>';
       });
@@ -2020,6 +2136,21 @@
       }
     });
     return balance;
+  }
+
+  function _getCloseReconcileSummary() {
+    var cashFromLog = 0;
+    _cashLogEntries.forEach(function (e) {
+      if (e.type === 'cash_sale') cashFromLog += parseInt(e.amount, 10) || 0;
+    });
+    var s = _salesSummary || {};
+    return {
+      expectedCash: _calcExpectedBalance(),
+      cashSales: parseInt(s.cash, 10) || cashFromLog,
+      cardSales: parseInt(s.card, 10) || 0,
+      qrSales: parseInt(s.qr, 10) || 0,
+      totalRevenue: parseInt(s.totalRevenue, 10) || 0
+    };
   }
 
   // レジ閉め金額入力時の差額リアルタイム計算
@@ -2042,7 +2173,7 @@
     }
   };
 
-  function _postCashLog(type, amount, note, pin, callback) {
+  function _postCashLog(type, amount, note, pin, callback, extra) {
     // 後方互換: 旧シグネチャ (type, amount, note, callback) を許容
     if (typeof pin === 'function') { callback = pin; pin = null; }
     // Phase 3: オフライン中の金銭ログ書き込みは絶対に実行しない
@@ -2053,16 +2184,22 @@
       }
       return;
     }
+    var payload = {
+      store_id: _storeId,
+      type: type,
+      amount: amount,
+      note: note || '',
+      staff_pin: pin || ''
+    };
+    if (extra) {
+      Object.keys(extra).forEach(function (key) {
+        payload[key] = extra[key];
+      });
+    }
     fetch('../../api/kds/cash-log.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        store_id: _storeId,
-        type: type,
-        amount: amount,
-        note: note || '',
-        staff_pin: pin || ''
-      }),
+      body: JSON.stringify(payload),
       credentials: 'same-origin'
     }).then(function (r) {
       return r.text().then(function (t) {
@@ -2143,26 +2280,21 @@
       // F1/F2/F3: 決済方法切替
       if (e.key === 'F1') {
         e.preventDefault();
-        _paymentMethod = 'cash';
-        _receivedInput = '';
+        _setPaymentMethod('cash');
         _playClick();
         _renderRegister();
         return;
       }
       if (e.key === 'F2') {
         e.preventDefault();
-        _paymentMethod = 'card';
-        var calc2 = _calcTotal();
-        _receivedInput = String(calc2.finalTotal);
+        _setPaymentMethod('card');
         _playClick();
         _renderRegister();
         return;
       }
       if (e.key === 'F3') {
         e.preventDefault();
-        _paymentMethod = 'qr';
-        var calc3 = _calcTotal();
-        _receivedInput = String(calc3.finalTotal);
+        _setPaymentMethod('qr');
         _playClick();
         _renderRegister();
         return;
@@ -2275,12 +2407,15 @@
       // 支払方法
       var payBtn = e.target.closest('.ca-pay-btn');
       if (payBtn) {
-        _paymentMethod = payBtn.dataset.method;
-        _receivedInput = '';
-        if (_paymentMethod !== 'cash') {
-          var calc = _calcTotal();
-          _receivedInput = String(calc.finalTotal);
-        }
+        _setPaymentMethod(payBtn.dataset.method);
+        _playClick();
+        _renderRegister();
+        return;
+      }
+
+      var payDetailBtn = e.target.closest('.ca-pay-detail__btn');
+      if (payDetailBtn) {
+        _paymentDetail = payDetailBtn.getAttribute('data-payment-detail') || _defaultPaymentDetail(_paymentMethod);
         _playClick();
         _renderRegister();
         return;
@@ -2478,18 +2613,43 @@
         // レジ閉め (CB1d: PIN 必須)
         if (e.target.closest('#ca-reg-close-btn')) {
           var closeInput = document.getElementById('ca-reg-close-amount');
+          var closeNoteInput = document.getElementById('ca-reg-close-note');
           var closeAmt = closeInput ? (parseInt(closeInput.value, 10) || 0) : 0;
-          var expected = _calcExpectedBalance();
+          var closeNote = closeNoteInput ? closeNoteInput.value.replace(/^\s+|\s+$/g, '') : '';
+          var closeSummary = _getCloseReconcileSummary();
+          var expected = closeSummary.expectedCash;
           var diff = closeAmt - expected;
           var diffStr = diff >= 0 ? '+' + Utils.formatYen(diff) : Utils.formatYen(diff);
-          if (!confirm('レジを閉めますか？\n実際: ' + Utils.formatYen(closeAmt) + '\n予想: ' + Utils.formatYen(expected) + '\n差額: ' + diffStr)) return;
+          if (diff !== 0 && !closeNote) {
+            _showToast('差額がある場合は理由メモを入力してください', 'error');
+            if (closeNoteInput) closeNoteInput.focus();
+            return;
+          }
+          var closeNoteText = 'レジ閉め（差額: ' + diffStr + '）';
+          if (closeNote) closeNoteText += ' ' + closeNote;
+          closeNoteText = closeNoteText.slice(0, 180);
+          var confirmMsg = 'レジを閉めますか？'
+            + '\n実際現金: ' + Utils.formatYen(closeAmt)
+            + '\n予想現金: ' + Utils.formatYen(expected)
+            + '\n差額: ' + diffStr
+            + '\n現金売上: ' + Utils.formatYen(closeSummary.cashSales)
+            + '\nカード売上: ' + Utils.formatYen(closeSummary.cardSales)
+            + '\nQR/電子: ' + Utils.formatYen(closeSummary.qrSales);
+          if (!confirm(confirmMsg)) return;
           _promptCashierPin(function (pin) {
             if (pin === null) return;
-            _postCashLog('close', closeAmt, 'レジ閉め（差額: ' + diffStr + '）', pin, function (ok) {
+            _postCashLog('close', closeAmt, closeNoteText, pin, function (ok) {
               if (ok) {
                 _showToast('レジを閉めました', 'success');
                 _fetchSalesSummary();
               }
+            }, {
+              expected_amount: expected,
+              difference_amount: diff,
+              cash_sales_amount: closeSummary.cashSales,
+              card_sales_amount: closeSummary.cardSales,
+              qr_sales_amount: closeSummary.qrSales,
+              reconciliation_note: closeNote
             });
           });
           return;
@@ -2501,258 +2661,6 @@
   // querySelectorAll forEach polyfill (ES5)
   if (!NodeList.prototype.forEach) {
     NodeList.prototype.forEach = Array.prototype.forEach;
-  }
-
-  // ═══════════════════════════════════
-  // L-13 + P1-1: Stripe Terminal（Pattern A: 自前キー / Pattern B: Connect 両対応）
-  // ═══════════════════════════════════
-  var _terminal = null;
-  var _terminalConnected = false;
-
-  function _initStripeTerminal() {
-    if (typeof StripeTerminal === 'undefined') return;
-
-    fetch('../../api/connect/status.php', { credentials: 'same-origin' })
-      .then(function (res) { return res.text(); })
-      .then(function (text) {
-        var json;
-        try { json = JSON.parse(text); } catch (e) { return; }
-        if (!json.ok || !json.data) return;
-        // Pattern A or B のいずれかが有効な場合のみ初期化
-        if (!json.data.terminal_pattern) return;
-
-        _terminal = StripeTerminal.create({
-          onFetchConnectionToken: _fetchConnectionToken,
-          onUnexpectedReaderDisconnect: _onReaderDisconnect
-        });
-
-        _discoverReaders();
-      })
-      .catch(function (err) {
-        console.error('Terminal init skipped:', err.message || err);
-      });
-  }
-
-  function _fetchConnectionToken() {
-    return fetch('../../api/connect/terminal-token.php', {
-      method: 'POST',
-      credentials: 'same-origin'
-    })
-    .then(function (res) { return res.text(); })
-    .then(function (text) {
-      var json;
-      try { json = JSON.parse(text); } catch (e) { throw new Error('Token応答の解析に失敗'); }
-      if (!json.ok) throw ((window.Utils && Utils.createApiError) ? Utils.createApiError(json, 'Token取得失敗') : new Error((json.error && json.error.message) || 'Token取得失敗'));
-      return json.data.secret;
-    });
-  }
-
-  function _onReaderDisconnect() {
-    _terminalConnected = false;
-    _showToast('カードリーダーが切断されました', 'error');
-    _updateTerminalStatusUI();
-  }
-
-  function _discoverReaders() {
-    if (!_terminal) return;
-
-    _terminal.discoverReaders({ simulated: false }).then(function (result) {
-      if (result.error) {
-        console.error('リーダー検出エラー:', result.error.message);
-        _updateTerminalStatusUI();
-        return;
-      }
-
-      var readers = result.discoveredReaders;
-      if (readers.length === 0) {
-        console.warn('リーダーが見つかりません');
-        _updateTerminalStatusUI();
-        return;
-      }
-
-      _connectReader(readers[0]);
-    });
-  }
-
-  function _connectReader(reader) {
-    _terminal.connectReader(reader).then(function (result) {
-      if (result.error) {
-        _showToast('リーダー接続失敗: ' + result.error.message, 'error');
-        _terminalConnected = false;
-      } else {
-        _terminalConnected = true;
-        _showToast('カードリーダーに接続しました', 'success');
-      }
-      _updateTerminalStatusUI();
-    });
-  }
-
-  function _updateTerminalStatusUI() {
-    var statusEl = document.getElementById('terminal-status');
-    if (!statusEl) return;
-
-    if (!_terminal) {
-      statusEl.style.display = 'none';
-      return;
-    }
-
-    statusEl.style.display = '';
-
-    if (_terminalConnected) {
-      statusEl.innerHTML = '<span style="color:#22c55e;">&#9679; リーダー接続中</span>';
-    } else {
-      statusEl.innerHTML = '<span style="color:#ef4444;">&#9679; リーダー未接続</span>'
-        + ' <button id="ca-btn-rediscover" style="margin-left:4px;font-size:0.85em;padding:1px 6px;cursor:pointer;background:transparent;border:1px solid #888;color:#ccc;border-radius:3px;">再検出</button>';
-      var rediscBtn = document.getElementById('ca-btn-rediscover');
-      if (rediscBtn) {
-        rediscBtn.addEventListener('click', function () {
-          _discoverReaders();
-        });
-      }
-    }
-  }
-
-  /**
-   * Terminal経由の決済実行:
-   * 1. サーバーでPaymentIntent作成 → client_secret取得
-   * 2. Terminal SDK で collectPaymentMethod(client_secret) → カード読取
-   * 3. Terminal SDK で processPayment(pi) → 決済実行
-   * 4. process-payment.php で記録（payment_method=terminal + PI ID）
-   */
-  function _processTerminalPayment(body, calc) {
-    // Phase 3: オフライン中の Stripe Terminal 決済は絶対に実行しない
-    if (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isOfflineOrStale && OfflineStateBanner.isOfflineOrStale()) {
-      _showToast('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u306F\u30AB\u30FC\u30C9\u6C7A\u6E08\u3067\u304D\u307E\u305B\u3093\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002', 'error');
-      return;
-    }
-    // オーバーレイ表示
-    var gwOverlay = document.createElement('div');
-    gwOverlay.id = 'ca-gw-overlay';
-    gwOverlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;';
-    gwOverlay.innerHTML = '<div style="background:#fff;padding:2rem 3rem;border-radius:12px;text-align:center;">'
-      + '<div style="font-size:2rem;margin-bottom:0.5rem;">&#128179;</div>'
-      + '<div id="ca-terminal-msg" style="font-size:1.1rem;font-weight:600;color:#333;">カードリーダーで決済準備中...</div>'
-      + '<div style="font-size:0.85rem;color:#888;margin-top:0.5rem;">カードをリーダーにかざしてください</div>'
-      + '<div style="margin-top:1rem;"><button id="ca-terminal-cancel" style="padding:6px 16px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fff;">キャンセル</button></div>'
-      + '</div>';
-    document.body.appendChild(gwOverlay);
-
-    var _cancelCollect = null;
-    var cancelBtn = document.getElementById('ca-terminal-cancel');
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', function () {
-        if (_cancelCollect) {
-          _cancelCollect();
-          _cancelCollect = null;
-        }
-        _terminalPaymentCleanup('キャンセルしました');
-      });
-    }
-
-    var totalAmount = calc.finalTotal;
-
-    // S2 P0 #4: order 紐付け情報を渡してサーバー側で金額検証 + metadata 埋込
-    var intentOrderIds = (body && body.order_ids) ? body.order_ids : [];
-    if ((!intentOrderIds || intentOrderIds.length === 0) && _orders) {
-      intentOrderIds = Object.keys(_orders || {});
-    }
-    var intentTableId = (body && body.table_id) ? body.table_id : (_selectedTableId || '');
-    if (intentTableId === '_merged_') intentTableId = '';
-
-    // Step 1: サーバーで PaymentIntent 作成
-    fetch('../../api/store/terminal-intent.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: totalAmount,
-        store_id: _storeId,
-        table_id: intentTableId,
-        order_ids: intentOrderIds
-      }),
-      credentials: 'same-origin'
-    })
-    .then(function (res) { return res.text(); })
-    .then(function (text) {
-      var json;
-      try { json = JSON.parse(text); } catch (e) { throw new Error('応答の解析に失敗'); }
-      if (!json.ok) throw ((window.Utils && Utils.createApiError) ? Utils.createApiError(json, 'PaymentIntent作成失敗') : new Error((json.error && json.error.message) || 'PaymentIntent作成失敗'));
-      return json.data;
-    })
-    .then(function (piData) {
-      var msgEl = document.getElementById('ca-terminal-msg');
-      if (msgEl) msgEl.textContent = 'カードをリーダーにかざしてください';
-
-      // Step 2: Terminal SDK でカード読取
-      var collectResult = _terminal.collectPaymentMethod(piData.client_secret);
-      _cancelCollect = function () { _terminal.cancelCollectPaymentMethod(); };
-      return collectResult;
-    })
-    .then(function (result) {
-      _cancelCollect = null;
-      if (result.error) throw new Error('カード読取エラー: ' + result.error.message);
-
-      var msgEl = document.getElementById('ca-terminal-msg');
-      if (msgEl) msgEl.textContent = '決済処理中...';
-
-      // Step 3: Terminal SDK で決済実行
-      return _terminal.processPayment(result.paymentIntent);
-    })
-    .then(function (result) {
-      if (result.error) throw new Error('決済処理エラー: ' + result.error.message);
-
-      var piId = result.paymentIntent.id;
-
-      // Step 4: process-payment.php で記録
-      body.payment_method = 'terminal';
-      body.terminal_payment_id = piId;
-
-      return fetch('../../api/store/process-payment.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        credentials: 'same-origin'
-      });
-    })
-    .then(function (r) {
-      return r.text().then(function (text) {
-        try { return JSON.parse(text); }
-        catch (e) { throw new Error(text.substring(0, 200)); }
-      });
-    })
-    .then(function (json) {
-      _isSubmitting = false;
-      var ov = document.getElementById('ca-gw-overlay');
-      if (ov) ov.parentNode.removeChild(ov);
-
-      if (!json.ok) {
-        _playError();
-        var errMsg = (window.Utils && Utils.formatError) ? Utils.formatError(json) : ((json.error && json.error.message) || 'エラー');
-        _showToast(errMsg, 'error');
-        _startPolling();
-        _renderRegister();
-        return;
-      }
-
-      var d = json.data;
-      _playSuccess();
-      _showToast('会計完了: ' + Utils.formatYen(d.totalAmount) + ' (Terminal決済)', 'success');
-      _lastPaymentId = d.payment_id;
-      _showReceiptPreview();
-      // リセットは _closeReceiptModal() 内で実行
-    })
-    .catch(function (err) {
-      _terminalPaymentCleanup(err.message || '通信エラー');
-    });
-  }
-
-  function _terminalPaymentCleanup(errMsg) {
-    _isSubmitting = false;
-    var ov = document.getElementById('ca-gw-overlay');
-    if (ov) ov.parentNode.removeChild(ov);
-    _playError();
-    _showToast(errMsg, 'error');
-    _startPolling();
-    _renderRegister();
   }
 
   /**

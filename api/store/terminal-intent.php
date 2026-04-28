@@ -40,6 +40,12 @@ if (!$tableId && empty($orderIds)) {
 }
 require_store_access($storeId);
 
+// 2026-04-28 方針変更:
+// 通常レジでは店舗既存の決済端末 / QR を使い、POSLA は記録のみ行う。
+// Stripe Terminal の PaymentIntent を新規作成すると、古いクライアントで
+// 「決済済みだが POSLA に記録できない」状態を生むため、入口で停止する。
+json_error('PAYMENT_NOT_AVAILABLE', '通常レジのカード決済は店舗の外部決済端末で完了し、POSLAには記録のみ残してください。', 400);
+
 // S2 P0 #4: サーバー側で正規金額を再計算してクライアント送信値と照合
 $expectedAmount = 0;
 if (!empty($orderIds)) {

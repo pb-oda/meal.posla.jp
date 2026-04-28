@@ -241,6 +241,13 @@ docker compose exec -T db mysql \
 - cell DB の migration は対象 cell ごとに実行し、migration ledger を残す
 - 日本語 tenant / store 名を扱うため `utf8mb4` を明示する
 
+通常レジ方針変更を含む release では、少なくとも以下の migration 適用を確認する。
+
+| migration | 目的 | 確認カラム |
+|---|---|---|
+| `sql/migration-p1-46-register-payment-detail.sql` | 通常レジのカード / QR / 電子マネー詳細を保存 | `payments.payment_method_detail`, `orders.payment_method_detail` |
+| `sql/migration-p1-47-register-close-reconciliation.sql` | レジ締め照合情報を保存 | `cash_log.expected_amount`, `cash_log.difference_amount`, `cash_log.cash_sales_amount`, `cash_log.card_sales_amount`, `cash_log.qr_sales_amount`, `cash_log.reconciliation_note` |
+
 ## 12.9 POSLA管理画面 初期設定
 
 `https://<production-domain>/posla-admin/` にアクセスし、POSLA管理者でログインします。

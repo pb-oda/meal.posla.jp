@@ -54,7 +54,20 @@ Web service では以下を必ず守る:
 
 Cloud Storage bucket は `/var/www/html/uploads` に mount する。POSLA は `uploads/menu/...` をURLとして返すため、Apache の `/uploads` Alias がこの mount を配信する。
 
-## 4. Cron jobs
+## 4. DB migration
+
+Cloud Run service の切替前に、対象DBへ未適用 migration を適用する。
+
+今回の通常レジ方針変更で最低限必要な migration:
+
+- `sql/migration-p1-46-register-payment-detail.sql`
+  - 通常レジのカード / QR / 電子マネー詳細を `payments` / `orders` に保存する
+- `sql/migration-p1-47-register-close-reconciliation.sql`
+  - レジ締め時の予想現金 / 実際現金 / 差額 / 支払い別売上 / 締めメモを `cash_log` に保存する
+
+適用後、`payments.payment_method_detail`、`orders.payment_method_detail`、`cash_log.expected_amount`、`cash_log.difference_amount`、`cash_log.cash_sales_amount`、`cash_log.card_sales_amount`、`cash_log.qr_sales_amount`、`cash_log.reconciliation_note` が存在することを確認する。
+
+## 5. Cron jobs
 
 同じ image を Cloud Run Jobs でも使う。command は以下。
 
@@ -86,7 +99,7 @@ POSLA_CRON_TASK=hourly
 
 Cloud Scheduler は Cloud Run Jobs の実行APIを叩く。Scheduler の認証は専用 service account で行い、公開HTTP endpointを増やさない。
 
-## 5. Mail
+## 6. Mail
 
 Cloud Run では `mail()` / `mb_send_mail()` に依存しない。
 
@@ -99,7 +112,7 @@ POSLA_MAIL_FROM_NAME=POSLA
 
 送信元ドメインは SPF / DKIM / DMARC を設定する。管理画面の運用通知メールテストで疎通を確認する。
 
-## 6. Smoke test
+## 7. Smoke test
 
 デプロイ後、最低限これを確認する。
 
@@ -117,9 +130,12 @@ curl -sf https://<production-domain>/api/monitor/ping.php
 | uploads | メニュー画像 upload 後、`https://<production-domain>/uploads/menu/...` で表示できる |
 | mail | 管理画面から運用通知メールテストが成功 |
 | order | 顧客メニュー注文 → KDS 表示 → 会計確定 |
-| self checkout | Stripe 設定ありで「お会計」表示、OFF/未設定では非表示 |
+| cashier payment | 通常レジのカード/QR/電子マネーは店舗既存決済の完了後に記録のみ保存され、`gatewayName` が空、`paymentMethodDetail` が選択値で返る |
+| register close | レジ締めで予想現金 / 実際現金 / 差額 / 現金売上 / カード売上 / QR・電子マネー売上が保存され、差額ありの場合は理由メモが必須になる |
+| self checkout | Stripe Connect 設定ありで「お会計」表示、OFF/未設定では非表示 |
+| takeout payment | テイクアウトはPOSLA決済（Stripe Connect）で決済完了後に注文反映される |
 
-## 7. まだ外部設計が必要なもの
+## 8. まだ外部設計が必要なもの
 
 `scripts/cell/*` の cell provisioning は Docker Compose / host-side 実行前提が残る。Cloud Run web service から直接 Docker 作業はしないため、`POSLA_PROVISIONER_TRIGGER_URL` の先には専用VM上の `posla_provisioner` container を置く。
 

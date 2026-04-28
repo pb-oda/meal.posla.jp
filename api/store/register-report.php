@@ -49,6 +49,14 @@ $stmt = $pdo->prepare(
 $stmt->execute([$storeId, 'paid', $range['start'], $range['end']]);
 $paymentBreakdown = $stmt->fetchAll();
 
+$hasPaymentDetailColForReport = false;
+try { $pdo->query('SELECT payment_method_detail FROM payments LIMIT 0'); $hasPaymentDetailColForReport = true; }
+catch (PDOException $e) {}
+
+$hasGatewayColsForReport = false;
+try { $pdo->query('SELECT gateway_name FROM payments LIMIT 0'); $hasGatewayColsForReport = true; }
+catch (PDOException $e) {}
+
 // Phase 4d-3: 外部分類別集計 (payments.external_method_type ベース)
 //   Phase 4d-2b で追加した payments.external_method_type を使い、緊急会計転記分の
 //   voucher / bank_transfer / accounts_receivable / point / other を内訳として別返却する。
@@ -62,6 +70,30 @@ $paymentBreakdown = $stmt->fetchAll();
 $hasVoidColsForReport = false;
 try { $pdo->query('SELECT void_status FROM payments LIMIT 0'); $hasVoidColsForReport = true; }
 catch (PDOException $e) {}
+
+$hasRefundColsForReport = false;
+try { $pdo->query('SELECT refund_status FROM payments LIMIT 0'); $hasRefundColsForReport = true; }
+catch (PDOException $e) {}
+
+$paymentDetailBreakdown = [];
+if ($hasPaymentDetailColForReport) {
+    try {
+        $voidClause = $hasVoidColsForReport ? " AND void_status <> 'voided'" : '';
+        $detailStmt = $pdo->prepare(
+            'SELECT payment_method, payment_method_detail, COUNT(*) AS count, COALESCE(SUM(total_amount), 0) AS total
+               FROM payments
+              WHERE store_id = ?
+                AND payment_method_detail IS NOT NULL
+                AND paid_at >= ? AND paid_at < ?' . $voidClause . '
+              GROUP BY payment_method, payment_method_detail
+              ORDER BY payment_method, total DESC'
+        );
+        $detailStmt->execute([$storeId, $range['start'], $range['end']]);
+        $paymentDetailBreakdown = $detailStmt->fetchAll();
+    } catch (PDOException $e) {
+        $paymentDetailBreakdown = [];
+    }
+}
 
 $externalMethodBreakdown = [];
 try {
@@ -79,6 +111,96 @@ try {
 } catch (PDOException $e) {
     // migration-pwa4d2b 未適用環境では external_method_type カラムがないので silent 空返却
     $externalMethodBreakdown = [];
+}
+
+$paymentAdjustments = [];
+if ($hasVoidColsForReport || $hasRefundColsForReport) {
+    $adjustConditions = [];
+    $adjustParams = [$storeId];
+    if ($hasVoidColsForReport) {
+        $adjustConditions[] = "(p.void_status = 'voided' AND p.voided_at >= ? AND p.voided_at < ?)";
+        $adjustParams[] = $range['start'];
+        $adjustParams[] = $range['end'];
+    }
+    if ($hasRefundColsForReport) {
+        $adjustConditions[] = "(p.refund_status IS NOT NULL AND p.refund_status <> 'none' AND p.refunded_at >= ? AND p.refunded_at < ?)";
+        $adjustParams[] = $range['start'];
+        $adjustParams[] = $range['end'];
+    }
+    if (!empty($adjustConditions)) {
+        try {
+            $detailSelect = $hasPaymentDetailColForReport ? ', p.payment_method_detail' : ", NULL AS payment_method_detail";
+            $gatewaySelect = $hasGatewayColsForReport ? ', p.gateway_name' : ', NULL AS gateway_name';
+            $refundSelect = $hasRefundColsForReport
+                ? ', p.refund_status, p.refund_amount, p.refund_reason, p.refunded_at, refund_user.display_name AS refunded_by_name'
+                : ", 'none' AS refund_status, 0 AS refund_amount, NULL AS refund_reason, NULL AS refunded_at, NULL AS refunded_by_name";
+            $voidSelect = $hasVoidColsForReport
+                ? ', p.void_status, p.voided_at, p.void_reason, void_user.display_name AS voided_by_name'
+                : ", 'active' AS void_status, NULL AS voided_at, NULL AS void_reason, NULL AS voided_by_name";
+            $refundJoin = $hasRefundColsForReport ? ' LEFT JOIN users refund_user ON refund_user.id = p.refunded_by' : '';
+            $voidJoin = $hasVoidColsForReport ? ' LEFT JOIN users void_user ON void_user.id = p.voided_by' : '';
+            $adjustOrderExpr = 'p.paid_at';
+            if ($hasVoidColsForReport && $hasRefundColsForReport) {
+                $adjustOrderExpr = 'COALESCE(p.voided_at, p.refunded_at, p.paid_at)';
+            } elseif ($hasVoidColsForReport) {
+                $adjustOrderExpr = 'COALESCE(p.voided_at, p.paid_at)';
+            } elseif ($hasRefundColsForReport) {
+                $adjustOrderExpr = 'COALESCE(p.refunded_at, p.paid_at)';
+            }
+            $adjustStmt = $pdo->prepare(
+                'SELECT p.id, p.table_id, t.table_code, p.total_amount, p.payment_method' . $detailSelect . ',
+                        p.paid_at' . $gatewaySelect . $refundSelect . $voidSelect . '
+                   FROM payments p
+                   LEFT JOIN tables t ON t.id = p.table_id' . $refundJoin . $voidJoin . '
+                  WHERE p.store_id = ?
+                    AND (' . implode(' OR ', $adjustConditions) . ')
+                  ORDER BY ' . $adjustOrderExpr . ' DESC'
+            );
+            $adjustStmt->execute($adjustParams);
+            $adjustRows = $adjustStmt->fetchAll();
+            foreach ($adjustRows as $row) {
+                if (isset($row['void_status']) && $row['void_status'] === 'voided') {
+                    $paymentAdjustments[] = [
+                        'type' => 'void',
+                        'paymentId' => $row['id'],
+                        'tableCode' => $row['table_code'] ?? null,
+                        'amount' => (int)$row['total_amount'],
+                        'paymentMethod' => $row['payment_method'],
+                        'paymentMethodDetail' => $row['payment_method_detail'] ?? null,
+                        'gatewayName' => $row['gateway_name'] ?? null,
+                        'paidAt' => $row['paid_at'],
+                        'adjustedAt' => $row['voided_at'],
+                        'reason' => $row['void_reason'] ?? null,
+                        'userName' => $row['voided_by_name'] ?? null,
+                    ];
+                }
+                $refundStatus = isset($row['refund_status']) ? (string)$row['refund_status'] : 'none';
+                if ($refundStatus !== 'none' && $refundStatus !== '' && $row['refunded_at'] !== null) {
+                    $refundAmount = isset($row['refund_amount']) ? (int)$row['refund_amount'] : 0;
+                    if ($refundAmount <= 0) $refundAmount = (int)$row['total_amount'];
+                    $paymentAdjustments[] = [
+                        'type' => 'refund',
+                        'paymentId' => $row['id'],
+                        'tableCode' => $row['table_code'] ?? null,
+                        'amount' => $refundAmount,
+                        'paymentMethod' => $row['payment_method'],
+                        'paymentMethodDetail' => $row['payment_method_detail'] ?? null,
+                        'gatewayName' => $row['gateway_name'] ?? null,
+                        'paidAt' => $row['paid_at'],
+                        'adjustedAt' => $row['refunded_at'],
+                        'reason' => $row['refund_reason'] ?? null,
+                        'userName' => $row['refunded_by_name'] ?? null,
+                        'refundStatus' => $refundStatus,
+                    ];
+                }
+            }
+            usort($paymentAdjustments, function ($a, $b) {
+                return strcmp((string)($b['adjustedAt'] ?? ''), (string)($a['adjustedAt'] ?? ''));
+            });
+        } catch (PDOException $e) {
+            $paymentAdjustments = [];
+        }
+    }
 }
 
 // cash_logエントリ
@@ -114,10 +236,99 @@ foreach ($cashLog as $entry) {
 
 $overshort = $closeAmount !== null ? $closeAmount - $expectedBalance : null;
 
+$nullableInt = function ($row, $key) {
+    return array_key_exists($key, $row) && $row[$key] !== null ? (int)$row[$key] : null;
+};
+
+$closeReconciliations = [];
+foreach ($cashLog as $entry) {
+    if ($entry['type'] !== 'close') continue;
+
+    $expectedAtClose = $nullableInt($entry, 'expected_amount');
+    $differenceAtClose = $nullableInt($entry, 'difference_amount');
+    if ($expectedAtClose === null && $entry['amount'] !== null) {
+        $expectedAtClose = $expectedBalance;
+    }
+    if ($differenceAtClose === null && $expectedAtClose !== null) {
+        $differenceAtClose = (int)$entry['amount'] - $expectedAtClose;
+    }
+
+    $closeReconciliations[] = [
+        'createdAt'          => $entry['created_at'],
+        'userName'           => $entry['user_name'] ?? null,
+        'actualAmount'       => (int)$entry['amount'],
+        'expectedAmount'     => $expectedAtClose,
+        'differenceAmount'   => $differenceAtClose,
+        'cashSalesAmount'    => $nullableInt($entry, 'cash_sales_amount'),
+        'cardSalesAmount'    => $nullableInt($entry, 'card_sales_amount'),
+        'qrSalesAmount'      => $nullableInt($entry, 'qr_sales_amount'),
+        'reconciliationNote' => array_key_exists('reconciliation_note', $entry) ? $entry['reconciliation_note'] : null,
+        'note'               => $entry['note'] ?? null,
+    ];
+}
+$latestCloseReconciliation = !empty($closeReconciliations)
+    ? $closeReconciliations[count($closeReconciliations) - 1]
+    : null;
+
+$hasOpen = false;
+$hasClose = false;
+$latestOpenAt = null;
+$latestCloseAt = null;
+$lastRegisterAction = null;
+$lastRegisterActionAt = null;
+$lastRegisterActionUserName = null;
+foreach ($cashLog as $entry) {
+    if ($entry['type'] === 'open') {
+        $hasOpen = true;
+        $latestOpenAt = $entry['created_at'];
+        $lastRegisterAction = 'open';
+        $lastRegisterActionAt = $entry['created_at'];
+        $lastRegisterActionUserName = $entry['user_name'] ?? null;
+    } elseif ($entry['type'] === 'close') {
+        $hasClose = true;
+        $latestCloseAt = $entry['created_at'];
+        $lastRegisterAction = 'close';
+        $lastRegisterActionAt = $entry['created_at'];
+        $lastRegisterActionUserName = $entry['user_name'] ?? null;
+    }
+}
+$isRegisterOpen = $lastRegisterAction === 'open';
+$needsClose = $hasOpen && $isRegisterOpen;
+$latestDifference = $latestCloseReconciliation
+    ? $latestCloseReconciliation['differenceAmount']
+    : $overshort;
+$overshortLevel = null;
+if ($latestDifference !== null) {
+    $absDiff = abs((int)$latestDifference);
+    if ($absDiff >= 500) {
+        $overshortLevel = 'alert';
+    } elseif ($absDiff > 0) {
+        $overshortLevel = 'notice';
+    } else {
+        $overshortLevel = 'ok';
+    }
+}
+
 json_response([
     'paymentBreakdown' => $paymentBreakdown,
+    'paymentDetailBreakdown' => $paymentDetailBreakdown,
     'externalMethodBreakdown' => $externalMethodBreakdown,
+    'paymentAdjustments' => $paymentAdjustments,
     'cashLog'          => $cashLog,
+    'closeReconciliations' => $closeReconciliations,
+    'registerStatus' => [
+        'hasOpen' => $hasOpen,
+        'hasClose' => $hasClose,
+        'isOpen' => $isRegisterOpen,
+        'needsClose' => $needsClose,
+        'latestOpenAt' => $latestOpenAt,
+        'latestCloseAt' => $latestCloseAt,
+        'lastAction' => $lastRegisterAction,
+        'lastActionAt' => $lastRegisterActionAt,
+        'lastActionUserName' => $lastRegisterActionUserName,
+        'latestDifference' => $latestDifference,
+        'overshortLevel' => $overshortLevel,
+    ],
     'registerSummary'  => [
         'openAmount'      => $openAmount,
         'cashSales'       => $cashSales,
@@ -126,6 +337,7 @@ json_response([
         'expectedBalance' => $expectedBalance,
         'closeAmount'     => $closeAmount,
         'overshort'       => $overshort,
+        'latestCloseReconciliation' => $latestCloseReconciliation,
     ],
     'period' => ['from' => $from, 'to' => $to],
 ]);

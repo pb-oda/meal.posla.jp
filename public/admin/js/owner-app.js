@@ -839,10 +839,11 @@
     var gwVal = t.payment_gateway || 'none';
 
     container.innerHTML = ''
-      // 決済ゲートウェイ設定（P1-2 で Square 削除済み）
-      + '<h4 style="margin:0 0 1rem;font-size:1rem;color:#333;">決済ゲートウェイ設定</h4>'
+      // POSLA決済設定（P1-2 で Square 削除済み）
+      + '<h4 style="margin:0 0 1rem;font-size:1rem;color:#333;">POSLA決済設定（セルフ会計 / テイクアウト）</h4>'
+      + '<p style="margin:0 0 1rem;color:#666;font-size:0.85rem;">通常レジのカード/QRは店舗既存決済の記録専用です。ここではお客様画面で決済まで完了するPOSLA決済を設定します。</p>'
       + '<div style="margin-bottom:1rem;">'
-      +   '<label style="display:block;font-weight:600;margin-bottom:0.5rem;font-size:0.9rem;color:#333;">使用する決済サービス</label>'
+      +   '<label style="display:block;font-weight:600;margin-bottom:0.5rem;font-size:0.9rem;color:#333;">POSLA決済の利用</label>'
       +   '<div style="display:flex;gap:1rem;flex-wrap:wrap;">'
       +     '<label style="cursor:pointer;"><input type="radio" name="payment-gateway" value="none"' + (gwVal === 'none' ? ' checked' : '') + '> なし</label>'
       +     '<label style="cursor:pointer;"><input type="radio" name="payment-gateway" value="stripe"' + (gwVal === 'stripe' ? ' checked' : '') + '> Stripe</label>'
@@ -850,7 +851,7 @@
       + '</div>'
       // Stripe Secret Key
       + '<div>'
-      +   '<label style="display:block;font-weight:600;margin-bottom:0.5rem;font-size:0.9rem;color:#333;">Stripe Secret Key</label>'
+      +   '<label style="display:block;font-weight:600;margin-bottom:0.5rem;font-size:0.9rem;color:#333;">Stripe Secret Key（移行互換）</label>'
       +   '<div id="ak-stripe-current" style="margin-bottom:0.5rem;">'
       +     (t.stripe_secret_key_set
               ? '<span style="font-family:monospace;font-size:0.9rem;color:#555;">' + Utils.escapeHtml(t.stripe_secret_key_masked || '') + '</span>'
@@ -866,7 +867,7 @@
       // L-13: Stripe Connect セクション
       + '<hr style="margin:2rem 0;">'
       + '<h3>Stripe Connect（POSLA経由決済）</h3>'
-      + '<p style="color:#666;font-size:0.9em;">自前の決済アカウントをお持ちでない場合、POSLAが決済を代行します。手数料は決済金額の一定割合がかかります。</p>'
+      + '<p style="color:#666;font-size:0.9em;">セルフ会計・テイクアウトでPOSLA決済を使う場合の推奨設定です。通常レジのカード/QR会計には影響しません。</p>'
       + '<div id="connect-status-area"><p style="color:#888;">読み込み中...</p></div>';
 
     // イベント登録
@@ -991,7 +992,7 @@
         + '<span style="font-size:0.85rem;color:#666;">決済・入金状況はStripeダッシュボードで確認できます</span>'
         + '</div>'
         + '<button class="btn btn-secondary" id="connect-disconnect-btn" style="margin-top:0.5rem;">Stripe Connectを解除</button>'
-        + '<div style="font-size:0.75rem;color:#888;margin-top:0.25rem;">解除後は自前のStripe Secret Keyで決済できます。Stripeダッシュボード上のアカウント自体は残るため、再接続も可能です。完全に削除する場合はStripeダッシュボードから手動で行ってください。</div>';
+        + '<div style="font-size:0.75rem;color:#888;margin-top:0.25rem;">解除後、セルフ会計・テイクアウトのPOSLA決済は利用できなくなります。Stripeダッシュボード上のアカウント自体は残るため、再接続も可能です。完全に削除する場合はStripeダッシュボードから手動で行ってください。</div>';
       // 自前決済エリアへのinfo（既存エリアにはDOM的にアクセスしにくいのでConnect側に表示）
     } else if (data.connected && !data.charges_enabled) {
       // パターンB: オンボーディング途中
@@ -1006,7 +1007,7 @@
       // パターンA: 未登録
       if (hasOwnGateway) {
         html += '<div style="margin:0.5rem 0 1rem;padding:0.5rem 0.75rem;background:#e3f2fd;border-radius:4px;font-size:0.85rem;color:#1565c0;">'
-          + '&#9432; 自前の決済アカウントが設定されています。Stripe Connectは自前決済アカウントをお持ちでない店舗向けです。'
+          + '&#9432; Stripe Secret Key が設定されています。新規導入では Stripe Connect を推奨します。通常レジのカード/QR会計には影響しません。'
           + '</div>';
       }
       html += '<button class="btn btn-primary" id="btn-connect-start" style="margin-top:0.5rem;">Stripe Connectに登録して決済を開始する</button>';
@@ -1018,7 +1019,7 @@
       if (infoTarget) {
         var infoDiv = document.createElement('div');
         infoDiv.style.cssText = 'margin:0.5rem 0 1rem;padding:0.5rem 0.75rem;background:#e3f2fd;border-radius:4px;font-size:0.85rem;color:#1565c0;';
-        infoDiv.innerHTML = '&#9432; 現在POSLA経由のStripe Connectで決済しています。自前決済に切り替える場合は、Stripe Connectを解除してから設定してください。';
+        infoDiv.innerHTML = '&#9432; 現在セルフ会計・テイクアウトはStripe Connectで決済します。通常レジのカード/QR会計は店舗既存決済の記録専用です。';
         infoTarget.parentNode.insertBefore(infoDiv, infoTarget.nextSibling);
       }
     }
@@ -1046,7 +1047,7 @@
     }
     if (disconnectBtn) {
       disconnectBtn.addEventListener('click', function () {
-        if (!confirm('Stripe Connectを解除します。解除後は自前のStripeキーで決済できます。Stripeダッシュボードのアカウント自体は残るので、再接続も可能です。解除しますか？')) return;
+        if (!confirm('Stripe Connectを解除します。解除後、セルフ会計・テイクアウトのPOSLA決済は利用できなくなります。Stripeダッシュボードのアカウント自体は残るので、再接続も可能です。解除しますか？')) return;
         disconnectBtn.disabled = true;
         disconnectBtn.textContent = '解除中...';
         fetch(CONNECT_API + '/disconnect.php', {

@@ -46,6 +46,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $amount   = isset($data['amount']) ? (int)$data['amount'] : 0;
     $note     = trim($data['note'] ?? '');
     $staffPin = isset($data['staff_pin']) ? trim((string)$data['staff_pin']) : '';
+    $expectedAmount = isset($data['expected_amount']) ? (int)$data['expected_amount'] : null;
+    $differenceAmount = isset($data['difference_amount']) ? (int)$data['difference_amount'] : null;
+    $cashSalesAmount = isset($data['cash_sales_amount']) ? (int)$data['cash_sales_amount'] : null;
+    $cardSalesAmount = isset($data['card_sales_amount']) ? (int)$data['card_sales_amount'] : null;
+    $qrSalesAmount = isset($data['qr_sales_amount']) ? (int)$data['qr_sales_amount'] : null;
+    $reconciliationNote = trim((string)($data['reconciliation_note'] ?? ''));
+    if (function_exists('mb_substr')) {
+        $note = mb_substr($note, 0, 200);
+        $reconciliationNote = mb_substr($reconciliationNote, 0, 255);
+    } else {
+        $note = substr($note, 0, 200);
+        $reconciliationNote = substr($reconciliationNote, 0, 255);
+    }
 
     if (!$storeId || !$type) json_error('MISSING_FIELDS', 'store_id と type は必須です', 400);
     require_store_access($storeId);
@@ -105,6 +118,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     );
     $stmt->execute([$id, $storeId, $cashierUserId, $type, $amount, $note]);
 
+    $hasReconciliationCols = false;
+    try {
+        $pdo->query('SELECT expected_amount, difference_amount, cash_sales_amount, card_sales_amount, qr_sales_amount, reconciliation_note FROM cash_log LIMIT 0');
+        $hasReconciliationCols = true;
+    } catch (PDOException $e) {}
+
+    if ($type === 'close' && $hasReconciliationCols) {
+        $reconcileStmt = $pdo->prepare(
+            'UPDATE cash_log
+                SET expected_amount = ?,
+                    difference_amount = ?,
+                    cash_sales_amount = ?,
+                    card_sales_amount = ?,
+                    qr_sales_amount = ?,
+                    reconciliation_note = ?
+              WHERE id = ? AND store_id = ?'
+        );
+        $reconcileStmt->execute([
+            $expectedAmount,
+            $differenceAmount,
+            $cashSalesAmount,
+            $cardSalesAmount,
+            $qrSalesAmount,
+            $reconciliationNote !== '' ? $reconciliationNote : null,
+            $id,
+            $storeId,
+        ]);
+    }
+
     // 監査ログ（cash_sale は process-payment.php 側で payment_complete として記録されるので除外）
     if ($type !== 'cash_sale') {
         $actionMap = [
@@ -114,14 +156,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'cash_out' => 'cash_out',
         ];
         if (isset($actionMap[$type])) {
-            @write_audit_log($pdo, $user, $storeId, $actionMap[$type], 'cash_log', $id, null, [
+            $auditPayload = [
                 'amount'            => $amount,
                 'note'              => $note,
                 'type'              => $type,
                 'cashier_user_id'   => $cashierUserId,
                 'cashier_user_name' => $cashierUserName,
                 'pin_verified'      => 1,
-            ], $note ?: null);
+            ];
+            if ($type === 'close') {
+                $auditPayload['expected_amount'] = $expectedAmount;
+                $auditPayload['difference_amount'] = $differenceAmount;
+                $auditPayload['cash_sales_amount'] = $cashSalesAmount;
+                $auditPayload['card_sales_amount'] = $cardSalesAmount;
+                $auditPayload['qr_sales_amount'] = $qrSalesAmount;
+                $auditPayload['reconciliation_note'] = $reconciliationNote;
+            }
+            @write_audit_log($pdo, $user, $storeId, $actionMap[$type], 'cash_log', $id, null, $auditPayload, $note ?: null);
         }
     }
 
@@ -130,5 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'id' => $id,
         'cashierUserId'   => $cashierUserId,
         'cashierUserName' => $cashierUserName,
+        'expectedAmount' => $expectedAmount,
+        'differenceAmount' => $differenceAmount,
     ], 201);
 }

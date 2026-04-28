@@ -81,14 +81,14 @@
     },
     {
       "id": "opf-payment-failed",
-      "title": "決済できない (カード / 現金 / Stripe Terminal)",
+      "title": "決済できない (通常レジ / POSLA決済)",
       "steps": [
-        "エラーコード (E6xxx) を確認",
-        "Stripe Dashboard で直近 charge attempt を検索",
-        "テナントの stripe_secret_key が live key か (test key なら live 不可)",
-        "Connect パターン (A/B/C) なら connect_onboarding_complete=1 と charges_enabled=true を確認",
-        "Stripe Terminal なら端末接続ランプ + PaymentIntent 作成ログ (api/store/terminal-intent.php)",
-        "解決不能なら Stripe 側の incident (status.stripe.com) を確認"
+        "通常レジか、セルフ会計/テイクアウトのPOSLA決済かを切り分ける",
+        "通常レジのカード/QRなら、店舗契約の外部決済端末・QRアプリ側を確認する",
+        "POSLA決済なら Stripe Dashboard で直近 charge attempt を検索",
+        "Connect は connect_onboarding_complete=1 と charges_enabled=true を確認",
+        "api/store/terminal-intent.php は現行方針で PAYMENT_NOT_AVAILABLE を返すのが正常",
+        "解決不能なら Stripe 側の incident (status.stripe.com) も確認"
       ],
       "doc_link": "/docs-internal/internal/04-payment.html"
     },

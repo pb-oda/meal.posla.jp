@@ -28,7 +28,7 @@ POSLAは、あえて小さな構成で作っています。フレームワーク
 | ドキュメント | VitePress |
 | 認証 | PHPセッション |
 | APIレスポンス | `ok / data / error / serverTime` の統一形式 |
-| 決済 | Stripe Billing、Stripe Connect、Stripe Terminal |
+| 決済 | Stripe Billing、Stripe Connect、通常レジの外部決済記録 |
 | AI | Gemini、Google PlacesはPOSLA共通キーで管理 |
 
 守るべき制約:
@@ -283,8 +283,8 @@ DBで特に注意すること:
 | 系統 | 用途 | 主な入口 |
 |---|---|---|
 | Stripe Billing | POSLA月額利用料 | `api/subscription/*`, `api/signup/*` |
-| Stripe Connect | 店舗のカード売上を店舗側へ入金 | `api/connect/*`, `api/lib/stripe-connect.php` |
-| Stripe Terminal | 店頭カードリーダー決済 | `api/connect/terminal-token.php`, `api/store/terminal-intent.php`, `api/store/process-payment.php` |
+| Stripe Connect | セルフ会計・テイクアウトのPOSLA決済 | `api/connect/*`, `api/lib/stripe-connect.php`, `api/customer/checkout-session.php`, `api/customer/takeout-payment.php` |
+| 通常レジの外部決済記録 | 店舗既存のカード端末・QR決済をPOSLAに記録 | `api/store/process-payment.php` |
 
 注意点:
 

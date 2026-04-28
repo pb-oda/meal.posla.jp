@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0f1923">
   <title>POSレジ - Cashier</title>
-  <link rel="stylesheet" href="css/cashier.css?v=20260425-cashierfix1">
-  <script src="https://js.stripe.com/terminal/v1/"></script>
+  <link rel="stylesheet" href="css/cashier.css?v=20260429-manual-pay-notice1">
   <!-- PWA -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -42,6 +41,7 @@
       <div class="ca-table-list__header">
         <span class="ca-table-list__title">会計待ちテーブル</span>
         <button class="ca-merge-toggle" id="ca-btn-merge-toggle">合流会計</button>
+        <span class="ca-table-list__alert" id="ca-table-alert-count" style="display:none;"></span>
         <span class="ca-table-list__count" id="ca-table-count">0</span>
       </div>
       <div class="ca-table-list__body" id="ca-table-body"></div>
@@ -87,7 +87,7 @@
   <!-- Phase 3: オフライン時の表示耐性 helpers (cashier-app.js の前にロードする) -->
   <script src="../shared/js/offline-snapshot.js?v=20260420-pwa3"></script>
   <script src="../shared/js/offline-state-banner.js?v=20260420-pwa3b"></script>
-  <script src="js/cashier-app.js?v=20260425-cashierfix2"></script>
+  <script src="js/cashier-app.js?v=20260429-manual-pay-notice1"></script>
   <!-- Phase 4: 緊急レジモード (IndexedDB 台帳 + 同期 API) -->
   <script src="js/emergency-register-store.js?v=20260420-pwa4"></script>
   <script src="js/emergency-register.js?v=20260421-pwa4d-2-hotfix1"></script>

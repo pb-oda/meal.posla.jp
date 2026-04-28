@@ -177,6 +177,8 @@ html { font-size: 16px; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.35rem;
+  flex-wrap: wrap;
   padding: 0.75rem 0.875rem;
   background: var(--ca-bg-elevated);
   border-bottom: 1px solid var(--ca-border);
@@ -184,6 +186,7 @@ html { font-size: 16px; }
 }
 
 .ca-table-list__title {
+  flex: 1 1 auto;
   font-size: 0.8125rem;
   font-weight: 700;
   color: var(--ca-text-muted);
@@ -199,6 +202,17 @@ html { font-size: 16px; }
   border-radius: 10px;
   min-width: 1.5rem;
   text-align: center;
+}
+
+.ca-table-list__alert {
+  background: rgba(255, 193, 7, 0.16);
+  color: var(--ca-warn);
+  border: 1px solid rgba(255, 193, 7, 0.35);
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 0.125rem 0.375rem;
+  border-radius: 10px;
+  white-space: nowrap;
 }
 
 /* ── 売上サマリー ── */
@@ -311,6 +325,15 @@ html { font-size: 16px; }
   box-shadow: 0 0 0 1px rgba(0, 200, 150, 0.2), 0 0 12px rgba(0, 200, 150, 0.08);
 }
 
+.ca-table-card--unpaid-warn {
+  border-left-color: var(--ca-warn);
+}
+
+.ca-table-card--unpaid-danger {
+  border-left-color: var(--ca-danger);
+  box-shadow: inset 0 0 0 1px rgba(255, 107, 107, 0.14);
+}
+
 .ca-table-card__top {
   display: flex;
   align-items: center;
@@ -321,6 +344,13 @@ html { font-size: 16px; }
 .ca-table-card__code {
   font-size: 1rem;
   font-weight: 700;
+}
+
+.ca-table-card__badges {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
 }
 
 .ca-table-card__badge {
@@ -341,6 +371,21 @@ html { font-size: 16px; }
   background: var(--ca-border-light);
   color: var(--ca-text-muted);
   letter-spacing: 0.05em;
+}
+
+.ca-table-card__alert-badge {
+  font-size: 0.55rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  background: rgba(255, 193, 7, 0.16);
+  color: var(--ca-warn);
+  letter-spacing: 0.05em;
+}
+
+.ca-table-card__alert-badge--danger {
+  background: rgba(255, 107, 107, 0.18);
+  color: var(--ca-danger);
 }
 
 .ca-table-card__plan {
@@ -829,6 +874,80 @@ html { font-size: 16px; }
   background: rgba(179, 136, 255, 0.1);
   color: var(--ca-purple);
   box-shadow: 0 0 12px rgba(179, 136, 255, 0.15);
+}
+
+.ca-pay-detail {
+  border: 1px solid var(--ca-border);
+  border-radius: var(--ca-radius-md);
+  background: var(--ca-bg-sunken);
+  padding: 0.5rem;
+}
+
+.ca-pay-detail__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--ca-text-faint);
+  margin-bottom: 0.4rem;
+}
+
+.ca-pay-detail__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.ca-pay-detail__btn {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.3rem;
+  border: 1px solid var(--ca-border-light);
+  border-radius: var(--ca-radius-sm);
+  background: var(--ca-bg-card);
+  color: var(--ca-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--ca-transition);
+}
+
+.ca-pay-detail__btn:hover {
+  border-color: var(--ca-text-faint);
+  color: var(--ca-text);
+}
+
+.ca-pay-detail__btn--active {
+  border-color: var(--ca-accent);
+  background: rgba(0, 200, 150, 0.12);
+  color: var(--ca-accent);
+}
+
+.ca-pay-notice {
+  border: 1px solid var(--ca-border-light);
+  border-radius: var(--ca-radius-md);
+  background: rgba(255, 183, 77, 0.08);
+  padding: 0.55rem 0.65rem;
+  line-height: 1.45;
+}
+
+.ca-pay-notice--card {
+  border-color: rgba(66, 165, 245, 0.45);
+  background: rgba(66, 165, 245, 0.08);
+}
+
+.ca-pay-notice--qr {
+  border-color: rgba(179, 136, 255, 0.45);
+  background: rgba(179, 136, 255, 0.08);
+}
+
+.ca-pay-notice__title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--ca-text);
+  margin-bottom: 0.2rem;
+}
+
+.ca-pay-notice__text {
+  font-size: 0.7rem;
+  color: var(--ca-text-muted);
 }
 
 /* 金額表示 */
@@ -1336,6 +1455,30 @@ html { font-size: 16px; }
 
 .ca-register-ctrl__input--text {
   font-family: var(--ca-font-sans);
+}
+
+.ca-register-ctrl__reconcile {
+  border: 1px solid var(--ca-border-light);
+  border-radius: 4px;
+  background: var(--ca-bg-primary);
+  padding: 0.5rem;
+  margin-bottom: 0.625rem;
+}
+
+.ca-register-ctrl__reconcile-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--ca-text-muted);
+  padding: 0.25rem 0;
+}
+
+.ca-register-ctrl__reconcile-row strong {
+  color: var(--ca-text);
+  font-family: var(--ca-font-mono);
+  font-size: 0.8125rem;
 }
 
 .ca-register-ctrl__btn {
