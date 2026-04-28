@@ -37,7 +37,7 @@ $result = ['php_errors' => 0, 'stripe_failed' => 0, 'reserve_mail_failed' => 0, 
 // posla_settings から通知先を取得
 $settings = [];
 try {
-    $stmt = $pdo->query("SELECT setting_key, setting_value FROM posla_settings WHERE setting_key IN ('google_chat_webhook_url','slack_webhook_url','ops_notify_email')");
+    $stmt = $pdo->query("SELECT setting_key, setting_value FROM posla_settings WHERE setting_key IN ('google_chat_webhook_url','slack_webhook_url','ops_notify_email','codex_ops_alert_endpoint','codex_ops_alert_token')");
     foreach ($stmt->fetchAll() as $r) $settings[$r['setting_key']] = $r['setting_value'];
 } catch (PDOException $e) { /* テーブル未存在は無視 */ }
 
@@ -308,7 +308,7 @@ function _notifyOpsPlatformAlert($payload) {
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $json,
             CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_TIMEOUT => 4,
+            CURLOPT_TIMEOUT => 180,
             CURLOPT_RETURNTRANSFER => true,
         ]);
         $raw = @curl_exec($ch);
@@ -327,7 +327,7 @@ function _notifyOpsPlatformAlert($payload) {
             'method' => 'POST',
             'header' => implode("\r\n", $headers),
             'content' => $json,
-            'timeout' => 4,
+            'timeout' => 180,
             'ignore_errors' => true,
         ],
     ]);
