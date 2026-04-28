@@ -240,10 +240,23 @@ runner は Cloud Run web/API の一部ではない。
 runnerをCloud Runに載せるのは次フェーズ扱い。
 理由は、runnerがworkspace、Codex HOME、read-only source、ログ参照を持つため、永続化・権限分離・secret遮断の設計が別途必要になるため。
 
-2026-04-28のローカル確認では、runner health上はCodex CLI実行可能。
-ただし、OPからrunner `/api/investigate.php` への自動経路は DB read-only 接続エラー時に runner がPHP Fatal error HTMLを返し、OP側で `invalid_json_response` になった。
-この状態ではCodex CLIへの指示まで到達していない。
-本番前に runner repo 側で `runner_db_probe()` の例外をJSON error化し、`docs/op-runner-codex-e2e-runbook.md` のE2E smokeで `data.status=codex_cli_executed` まで確認する。
+2026-04-28 20:14 JST のローカル詳細smokeでは、POSLA障害報告 -> OP case -> runner -> Codex CLI まで完走済み。
+同日、POSLA監視cron -> OP alert -> runner -> Google Chat の経路も完走確認済み。
+
+確認済みの修正:
+
+- runner DB read-only 接続失敗時も Fatal HTML ではなくJSONで返す
+- runner repo sync が後から変更した `RUNNER_REPO_REF` のbranchをfetchできる
+- POSLA `monitor-health.php` が `codex_ops_alert_endpoint` / `codex_ops_alert_token` をDB設定から読む
+- POSLA `monitor-health.php` のOP alert timeoutを runner / Codex 同期処理に耐える値へ延長
+
+本番前に残す確認:
+
+- `OPS_CASE_INGEST_TOKEN` / `OPS_ALERT_INGEST_TOKEN` と POSLA側 token が一致している
+- `OPS_ALLOW_UNTOKENED_INGEST=1` を本番に残していない
+- `RUNNER_REPO_REF` が実際にデプロイしたPOSLA branch / tag / commitを指している
+- `RUNNER_LOG_FILES` が本番ログを読め、runner result が `logs.status=skipped` ではない
+- `docs/op-runner-codex-e2e-runbook.md` のE2E smokeで `data.status=codex_cli_executed` まで確認する
 
 ## 6. 各コンポーネントの役割
 
@@ -669,6 +682,17 @@ OPS_RUNNER_TOKEN=<OPS_RUNNER_TOKEN>
 
 案Bの場合、composeのvolumeを本番配置先へ置き換える。
 
+runner envで必ず合わせる値:
+
+```text
+RUNNER_REPO_REF=<deployed-posla-branch-or-tag-or-commit>
+RUNNER_LOG_FILES=<comma-separated-readable-log-files>
+```
+
+`RUNNER_REPO_REF` は、POSLA control / cell に実際に入れた commit と合わせる。
+OPの Code / runner repo sync 結果で、runnerが読んでいる commit と deploy manifest の commit が一致することを確認する。
+`RUNNER_LOG_FILES` が未設定だと、runner調査はコードとDBだけになり `logs.status=skipped` になる。
+
 ### Step 8. 接続確認する
 
 POSLA:
@@ -713,7 +737,11 @@ curl -sf https://<op-domain>/api/runner-repo.php
 - OPからPOSLA snapshotを読める
 - OPからrunner healthを読める
 - runnerがPOSLA repoをsyncできる
+- runnerが読んでいるPOSLA commitがデプロイ済みcommitと一致する
 - runnerがDB SELECTだけできる
+- runnerが本番ログを読める。ログ未接続の場合は `logs.status=skipped` を残タスクにする
+- POSLA障害報告 -> OP case -> runner -> Codex CLI で `auto_investigation.status=ai_report_ready`
+- POSLA監視cron -> OP alert -> runner -> Google Chat で `op_alert_sent=1`
 - provisionerが `/health` を返す
 - 実申込から `ready_for_cell` を経てcell作成できる
 - 作成cellの `ping.php` が `ok`
@@ -796,7 +824,7 @@ SENDGRID_API_KEY
 - OP/runner本番配置
 - 実申込E2E smoke
 - OP -> runner -> Codex E2E smoke
-- runner DB read-only probe のFatal error対策
+- runner本番ログ `RUNNER_LOG_FILES` 設定
 
 ## 12. 残タスク
 
@@ -814,8 +842,9 @@ SENDGRID_API_KEY
 - OPの本番配置方式を確定する
 - runnerの本番配置方式を確定する
 - OP/runnerのprivate接続を確認する
-- runner repoで `runner_db_probe()` のFatal errorをJSON error化する
 - runner DB read-only credential / 接続元許可を本番値で確定する
+- runner `RUNNER_REPO_REF` とPOSLA deploy commitの一致確認を運用手順に入れる
+- runner `RUNNER_LOG_FILES` を本番ログへ接続する
 - OP -> runner -> Codex E2Eで `data.status=codex_cli_executed` を確認する
 - `{tenant_slug}.<production-domain>` のDNS / reverse proxy / TLSを設定する
 - backup / snapshot / log rotate / 監視通知を設定する

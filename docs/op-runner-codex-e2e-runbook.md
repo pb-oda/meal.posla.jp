@@ -18,8 +18,7 @@ POSLA Cloud Run
   -> Google Chat等へ短い初動通知
 ```
 
-2026-04-28 時点のローカル確認では、runner自体は Codex CLI 実行可能状態です。
-ただし、OPからの自動経路はまだ完走していません。
+2026-04-28 20:14 JST のローカル詳細smokeでは、OPからの自動経路は完走済みです。
 
 確認結果:
 
@@ -28,23 +27,30 @@ runner health:
   codex_cli_available=true
   codex_cli_execute_enabled=true
   codex_home_state=home_ready
+  repo_ref=meal.posla.jp/worktree-management-20260425
+  repo_commit=fd6afc6b86dd24425b4d840f1f7b44d613e06b93
 
 OP case ingest:
   case作成=true
   investigation作成=true
-  runner呼び出し=failed
-  ai_report=disabled
+  runner呼び出し=completed
+  ai_report=codex_cli_executed
+
+OP alert ingest:
+  POSLA monitor-health -> OP alert=true
+  runner呼び出し=completed
+  google_chat=sent
 ```
 
-失敗理由:
+残る注意点:
 
 ```text
-runner /api/investigate.php が DB read-only 接続エラー時に JSON ではなく PHP Fatal error HTML を返した。
-OP は runner response を JSON として読めず invalid_json_response になった。
+RUNNER_LOG_FILES が未設定の場合、runner結果は logs.status=skipped になる。
+本番では OPS_CASE_INGEST_TOKEN / OPS_ALERT_INGEST_TOKEN を必ず設定し、OPS_ALLOW_UNTOKENED_INGEST=1 を残さない。
+RUNNER_REPO_REF はデプロイ済みPOSLA branch / tag / commitと一致させる。
 ```
 
-つまり、現状は **「Codexへ指示している実感がない」のは正しい**。
-Codex実行以前に、runner調査のDB probeで止まっている。
+過去に発生した `invalid_json_response` は、runner DB probe のJSON error化とDB read-only接続設定の修正で解消済み。
 
 ## 2. 本番のGitHub repo分割
 
@@ -286,12 +292,11 @@ auto_investigation.runner.ok=true
 auto_investigation.ai_report.ok=true
 ```
 
-## 7. 現在見つかったblocker
+## 7. 対応済みblockerと本番確認
 
-ローカルテストで次を確認した。
+2026-04-28 19:28 JST のローカルテストでは、次のblockerがあった。
 
 ```text
-日時: 2026-04-28 19:28 JST
 test: OP /api/cases.php に手動caseをPOST
 result:
   case created
@@ -303,14 +308,19 @@ reason:
   OP auto runner は JSON を期待するため invalid_json_response になった
 ```
 
-修正方針:
+対応済み:
 
-- runner の DB read-only credential / 接続元許可を本番値で正しく設定する
-- runner の `runner_db_probe()` は `mysqli_sql_exception` をcatchし、必ずJSONで `db.status=error` を返すようにする
-- DB read-only が失敗しても、code search / log check / ai-report へ進める設計にする
-- 修正後、6.2 -> 6.3 -> 6.4 の順で再テストする
+- runner の `runner_db_probe()` は接続失敗時もJSONで `db.status=error` を返す
+- DB read-only が失敗しても、runner API がFatal HTMLを返さない
+- runner repo sync は既存cloneでも全branch refをfetchできる
+- 6.2 -> 6.3 -> 6.4 の順で再テストし、`codex_cli_executed` まで確認済み
 
-このblockerが残っている間は、POSLAから障害報告が来ても「Codexへ正常に指示できている」とは言わない。
+本番で確認すること:
+
+- runner DB read-only credential / 接続元許可が本番値で正しい
+- `RUNNER_REPO_REF` がデプロイ済みPOSLA commitと一致する
+- `RUNNER_LOG_FILES` が設定済みで、調査結果が `logs.status=skipped` ではない
+- POSLA障害報告とPOSLA監視alertの両方で、OP -> runner -> Codex CLI が完走する
 
 ## 8. 本番導入時の最小env
 
@@ -343,6 +353,7 @@ RUNNER_CODEX_HOME=codex-home
 RUNNER_CODEX_EXECUTE=0
 RUNNER_CODEX_CONTROL_PATH=data/codex-control.json
 RUNNER_CODEX_TIMEOUT_SEC=120
+RUNNER_LOG_FILES=<comma-separated-readable-log-files>
 ```
 
 Codexまで通すE2E確認時、または本番で自動AIレポートを許可した後だけ `RUNNER_CODEX_EXECUTE=1` にする。
@@ -359,8 +370,9 @@ POSLA_OP_ALERT_TOKEN=<OPS_ALERT_INGEST_TOKEN>
 
 ## 9. 残タスク
 
-- runner repoで `runner_db_probe()` のFatal errorをJSON error化する
 - runner DB read-only credential / 接続元許可を本番用に確定する
+- runner `RUNNER_REPO_REF` とデプロイ済みPOSLA commitの一致確認を本番手順に入れる
+- runner `RUNNER_LOG_FILES` を本番ログへ接続する
 - runner Codex CLI login / `codex-home/` 永続化方式を確定する
 - OP / runner の本番private networkを確定する
 - GitHub repo 3本のbranch/tag運用を確定する
