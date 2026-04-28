@@ -148,6 +148,29 @@ GCE VM or private container host: OP / runner
 runnerは外部公開しない。OPからprivate / same-hostで呼ぶ。
 Phase 1 の OP / runner は runtime data、read-only source mount、runner専用 Codex HOME を持つため、まずはVMまたはprivate container hostが現実的。Cloud Runへ載せる場合は、runtime data永続化とsource参照方式を別途設計する。
 
+## 5.0 Redis / Memorystore の方針
+
+Redisは session / rate limit の共有先として使う。
+
+方針:
+
+| 構成 | Redisの置き場所 | 判断 |
+|---|---|---|
+| POSLA webをCloud Runで動かす | Memorystore Redis / Valkey | 推奨。Cloud Runから安全にprivate接続する |
+| POSLA webもVPSで動かす初期構成 | VPS内Redis同居 | 初期は可。コストと構成を抑えられる |
+| Cloud Run webからVPS同居Redisを使う | 原則避ける | VPC/VPN/private接続、firewall、認証、監視まで設計できる場合のみ |
+| OP / runner / provisionerだけをVPSに置く | Redis同居は必須ではない | POSLA webのsession用途にはならない |
+
+サーバエンジニアからの提案どおり、**VPSでPOSLA webも動かすなら、初期はRedis同居でよい**。
+ただし、今回の主案である **Cloud Run web + Cloud SQL + GCS** では、RedisはMemorystoreを使う前提にする。
+
+やってはいけないこと:
+
+- Redis portをpublic internetへ開ける
+- Cloud Runからpublic IPのRedisへ平文接続する
+- Redis passwordをGit / docs / OP UIに保存する
+- 本番でRedis永続化・backup・監視なしにsession正本として扱う
+
 ## 5.1 GitHub / Artifact Registry / GitLab の役割
 
 本番では次の役割分担にする。

@@ -19,6 +19,13 @@
 | mail | SendGrid API transport |
 | secret | Secret Manager |
 
+Redisについて:
+
+- POSLA webをCloud Runで動かす場合は、Memorystore Redis / Valkey を使う
+- POSLA web自体をVPSで動かす初期構成なら、VPS内Redis同居でもよい
+- Cloud Run webからVPS上Redisを使う構成は、VPC/VPN/private接続、firewall、認証、監視まで設計できる場合だけにする
+- Redis portをpublic internetへ開けない
+
 ## 2. Image build
 
 ```bash
