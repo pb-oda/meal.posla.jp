@@ -13,6 +13,7 @@
 
 require_once __DIR__ . '/auth-helper.php';
 require_once __DIR__ . '/admin-audit-helper.php';
+require_once __DIR__ . '/../lib/mail.php';
 
 $admin = require_posla_admin();
 $method = require_method(['GET', 'PATCH']);
@@ -385,7 +386,7 @@ function _build_notification_center(PDO $pdo, array $settingsMap): array
     $googleChatSet = _setting_is_present($settingsMap, 'google_chat_webhook_url');
     $slackSet = _setting_is_present($settingsMap, 'slack_webhook_url');
     $opsMail = _setting_value($settingsMap, 'ops_notify_email');
-    $mailTransport = function_exists('mb_send_mail') ? 'mb_send_mail' : (function_exists('mail') ? 'mail' : 'none');
+    $mailTransport = posla_mail_transport_label();
     $vapidReady = _setting_is_present($settingsMap, 'web_push_vapid_public') && _setting_is_present($settingsMap, 'web_push_vapid_private_pem');
     $pushEnabledCount = (int)_count_rows_or_default(
         $pdo,

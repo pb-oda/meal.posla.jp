@@ -14,7 +14,12 @@ if (PHP_SAPI !== 'cli') {
     exit;
 }
 
-$rootDir = dirname(__DIR__, 2);
+$rootDir = getenv('POSLA_PROVISIONER_ROOT_DIR') ?: dirname(__DIR__, 2);
+$rootDir = rtrim(str_replace('\\', '/', (string)$rootDir), '/');
+if ($rootDir === '' || !is_dir($rootDir . '/scripts/cell')) {
+    fwrite(STDERR, "Invalid POSLA_PROVISIONER_ROOT_DIR: {$rootDir}\n");
+    exit(2);
+}
 
 function trigger_env($key, $default = '') {
     $value = getenv($key);

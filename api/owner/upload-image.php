@@ -9,6 +9,7 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/uploads.php';
 
 require_method(['POST']);
 $user = require_role('manager');
@@ -34,17 +35,17 @@ if ($file['size'] > 5 * 1024 * 1024) {
 $ext = ['image/jpeg' => '.jpg', 'image/png' => '.png', 'image/webp' => '.webp', 'image/gif' => '.gif'];
 $filename = generate_uuid() . ($ext[$mime] ?? '.jpg');
 
-$uploadDir = __DIR__ . '/../../uploads/menu/';
-if (!is_dir($uploadDir)) {
-    mkdir($uploadDir, 0755, true);
+$uploadDir = posla_uploads_path('menu');
+if (!posla_uploads_ensure_dir($uploadDir)) {
+    json_error('SAVE_FAILED', 'アップロード先ディレクトリを作成できません', 500);
 }
 
-$dest = $uploadDir . $filename;
+$dest = $uploadDir . '/' . $filename;
 if (!move_uploaded_file($file['tmp_name'], $dest)) {
     json_error('SAVE_FAILED', 'ファイルの保存に失敗しました', 500);
 }
 
 json_response([
     'ok'  => true,
-    'url' => 'uploads/menu/' . $filename
+    'url' => posla_uploads_public_url('menu/' . $filename)
 ]);

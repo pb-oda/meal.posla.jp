@@ -1,0 +1,77 @@
+# ============================================================
+# POSLA — PHP 8.2 + Apache for Google Cloud Run
+# ============================================================
+# Build context must be the repository root:
+#   docker build -f docker/php/Dockerfile.cloudrun -t posla-cloudrun:local .
+#
+# Runtime differences must come from Cloud Run env / Secret Manager.
+# App code is baked into the image. uploads are not baked into the image.
+# ============================================================
+ARG POSLA_IMAGE_PLATFORM=linux/amd64
+FROM --platform=${POSLA_IMAGE_PLATFORM} php:8.2-apache
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libicu-dev \
+        libzip-dev \
+        libonig-dev \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        zip \
+        unzip \
+        git \
+        curl \
+        default-mysql-client \
+        ca-certificates \
+        tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV TZ=Asia/Tokyo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+RUN docker-php-ext-configure intl \
+    && docker-php-ext-install -j$(nproc) \
+        pdo_mysql \
+        mbstring \
+        intl \
+        zip \
+        bcmath \
+        opcache
+
+RUN printf "\n" | pecl install redis \
+    && docker-php-ext-enable redis
+
+RUN a2enmod rewrite headers
+
+RUN { \
+        echo "display_errors = Off"; \
+        echo "display_startup_errors = Off"; \
+        echo "error_reporting = E_ALL"; \
+        echo "log_errors = On"; \
+        echo "error_log = /proc/self/fd/2"; \
+        echo "date.timezone = Asia/Tokyo"; \
+        echo "post_max_size = 32M"; \
+        echo "upload_max_filesize = 32M"; \
+        echo "memory_limit = 256M"; \
+        echo "default_charset = UTF-8"; \
+    } > /usr/local/etc/php/conf.d/zz-posla-cloudrun.ini
+
+WORKDIR /var/www/html
+
+COPY api /var/www/html/api
+COPY public /var/www/html/public
+COPY scripts /var/www/html/scripts
+COPY sql /var/www/html/sql
+COPY privacy /var/www/html/privacy
+COPY terms /var/www/html/terms
+COPY docker/php/apache-cloudrun.conf.template /etc/apache2/sites-available/000-default-cloudrun.conf.template
+COPY docker/php/cron-loop.sh /usr/local/bin/posla-cron-loop.sh
+COPY docker/php/cron-job-cloudrun.sh /usr/local/bin/posla-cron-job-cloudrun.sh
+COPY docker/php/startup-cloudrun.sh /usr/local/bin/posla-startup-cloudrun.sh
+
+RUN mkdir -p /var/www/html/uploads \
+    && chmod +x /usr/local/bin/posla-cron-loop.sh /usr/local/bin/posla-cron-job-cloudrun.sh /usr/local/bin/posla-startup-cloudrun.sh \
+    && chown -R www-data:www-data /var/www/html
+
+EXPOSE 8080
+
+CMD ["/usr/local/bin/posla-startup-cloudrun.sh"]

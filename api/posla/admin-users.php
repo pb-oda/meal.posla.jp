@@ -16,6 +16,7 @@
 require_once __DIR__ . '/auth-helper.php';
 require_once __DIR__ . '/admin-audit-helper.php';
 require_once __DIR__ . '/../lib/password-policy.php';
+require_once __DIR__ . '/../lib/mail.php';
 
 $admin = require_posla_admin();
 $method = require_method(['GET', 'POST', 'PATCH', 'DELETE']);
@@ -55,11 +56,6 @@ function _posla_admin_users_send_invite_mail($to, $displayName, $password, $acto
         return false;
     }
 
-    if (function_exists('mb_language')) {
-        mb_language('Japanese');
-        mb_internal_encoding('UTF-8');
-    }
-
     $subject = '【POSLA】POSLA管理者アカウントが追加されました';
     $loginUrl = app_url('/posla-admin/index.html');
     $actorLabel = $actorName ? $actorName : 'POSLA 管理者';
@@ -73,18 +69,11 @@ function _posla_admin_users_send_invite_mail($to, $displayName, $password, $acto
           . "ご不明な点は " . APP_SUPPORT_EMAIL . " までお問い合わせください。\n\n"
           . "--\nPOSLA 運営チーム";
 
-    $fromName = 'POSLA';
-    $fromHeader = '=?UTF-8?B?' . base64_encode($fromName) . '?= <' . APP_FROM_EMAIL . '>';
-    $headers = "From: " . $fromHeader . "\r\n"
-             . "MIME-Version: 1.0\r\n"
-             . "Content-Type: text/plain; charset=UTF-8\r\n"
-             . "Content-Transfer-Encoding: 8bit\r\n";
-
-    if (function_exists('mb_send_mail')) {
-        return (bool)@mb_send_mail($to, $subject, $body, $headers);
-    }
-
-    return (bool)@mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, $headers);
+    $result = posla_send_mail($to, $subject, $body, [
+        'from_name' => 'POSLA',
+        'from_email' => APP_FROM_EMAIL,
+    ]);
+    return !empty($result['success']);
 }
 
 if ($method === 'GET') {

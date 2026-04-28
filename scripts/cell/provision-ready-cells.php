@@ -98,6 +98,27 @@ function env_or(string $key, string $default = ''): string
     return ($value !== false && $value !== '') ? $value : $default;
 }
 
+function acquire_provisioner_lock(string $rootDir)
+{
+    $lockFile = env_or('POSLA_PROVISIONER_LOCK_FILE', $rootDir . '/cells/.provisioner.lock');
+    $lockDir = dirname($lockFile);
+    if (!is_dir($lockDir)) {
+        mkdir($lockDir, 0755, true);
+    }
+
+    $handle = fopen($lockFile, 'c');
+    if (!$handle) {
+        throw new RuntimeException('Failed to open provisioner lock: ' . $lockFile);
+    }
+
+    flock($handle, LOCK_EX);
+    ftruncate($handle, 0);
+    fwrite($handle, 'pid=' . getmypid() . "\nstarted_at=" . date('c') . "\n");
+    fflush($handle);
+
+    return $handle;
+}
+
 function running_inside_container(): bool
 {
     return is_file('/.dockerenv');
@@ -447,15 +468,14 @@ function update_registry_failed(PDO $pdo, array $row, string $cellId, string $er
 
 function send_ready_mail(array $row, array $target): void
 {
+    global $rootDir;
+
     $to = sql_string($row['owner_email'] ?? '');
     if ($to === '') {
         return;
     }
 
-    if (function_exists('mb_language')) {
-        mb_language('Japanese');
-        mb_internal_encoding('UTF-8');
-    }
+    require_once $rootDir . '/api/lib/mail.php';
 
     $displayName = sql_string($row['owner_display_name'] ?? '') ?: sql_string($row['owner_username'] ?? '');
     $tenantName = sql_string($row['tenant_name'] ?? '');
@@ -473,17 +493,13 @@ function send_ready_mail(array $row, array $target): void
           . "30日間無料トライアル中です。期間内のキャンセルで請求は発生しません。\n\n"
           . "ログインできない場合は {$support} までご連絡ください。\n\n"
           . "--\nPOSLA 運営チーム";
-    $fromName = 'POSLA';
-    $fromHeader = '=?UTF-8?B?' . base64_encode($fromName) . '?= <' . $fromEmail . '>';
-    $headers = "From: " . $fromHeader . "\r\n"
-             . "MIME-Version: 1.0\r\n"
-             . "Content-Type: text/plain; charset=UTF-8\r\n"
-             . "Content-Transfer-Encoding: 8bit\r\n";
-
-    if (function_exists('mb_send_mail')) {
-        @mb_send_mail($to, $subject, $body, $headers);
-    } else {
-        @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, $headers);
+    $result = posla_send_mail($to, $subject, $body, [
+        'from_name' => 'POSLA',
+        'from_email' => $fromEmail,
+    ]);
+    if (empty($result['success'])) {
+        echo "Ready mail failed for {$to}: " . ($result['error'] ?? 'unknown') . "\n";
+        return;
     }
     echo "Ready mail queued for {$to}\n";
 }
@@ -574,6 +590,7 @@ $envFile = env_or('POSLA_CELL_PROVISIONER_ENV_FILE', $rootDir . '/docker/env/app
 load_env_file($envFile);
 
 try {
+    $lockHandle = acquire_provisioner_lock($rootDir);
     $pdo = control_pdo();
     $rows = fetch_ready_requests($pdo, $opts);
     if (!$rows) {

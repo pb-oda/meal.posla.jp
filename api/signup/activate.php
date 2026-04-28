@@ -21,6 +21,7 @@ require_once __DIR__ . '/../lib/rate-limiter.php';
 require_once __DIR__ . '/../lib/stripe-billing.php';
 require_once __DIR__ . '/../lib/tenant-onboarding.php';
 require_once __DIR__ . '/../lib/provisioner-trigger.php';
+require_once __DIR__ . '/../lib/mail.php';
 require_once __DIR__ . '/../config/app.php';
 
 require_method(['POST']);
@@ -157,7 +158,6 @@ function _a5_find_subscription_by_token($secretKey, $customerId, $token) {
 }
 
 function _a5_send_welcome($to, $displayName, $username, $storeName, $signupToken) {
-    if (function_exists('mb_language')) { mb_language('Japanese'); mb_internal_encoding('UTF-8'); }
     $subject = '【POSLA】お申込みありがとうございます';
     $statusUrl = app_url('/signup-complete.html') . '?t=' . urlencode((string)$signupToken);
     $body = "{$displayName} 様\n\nPOSLAにご登録ありがとうございます。\n\n"
@@ -168,10 +168,11 @@ function _a5_send_welcome($to, $displayName, $username, $storeName, $signupToken
           . "現在、専用環境を準備しています。通常 3〜5 分ほどで完了します。\n\n"
           . "準備状況はこちらで確認できます:\n{$statusUrl}\n\n"
           . "準備完了後、ログインURLをメールでお送りします。\n\n--\nPOSLA 運営チーム";
-    $fromName = 'POSLA';
-    $fromEmail = APP_FROM_EMAIL;
-    $fromHeader = '=?UTF-8?B?' . base64_encode($fromName) . '?= <' . $fromEmail . '>';
-    $headers = "From: " . $fromHeader . "\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n";
-    if (function_exists('mb_send_mail')) @mb_send_mail($to, $subject, $body, $headers);
-    else @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, $headers);
+    $result = posla_send_mail($to, $subject, $body, [
+        'from_name' => 'POSLA',
+        'from_email' => APP_FROM_EMAIL,
+    ]);
+    if (empty($result['success'])) {
+        error_log('[A5][activate] welcome_mail_failed: ' . ($result['error'] ?? 'unknown'), 3, POSLA_PHP_ERROR_LOG);
+    }
 }

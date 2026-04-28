@@ -15,6 +15,7 @@
  */
 
 require_once __DIR__ . '/auth-helper.php';
+require_once __DIR__ . '/../lib/mail.php';
 
 $method = require_method(['POST']);
 $admin = require_posla_admin();
@@ -157,7 +158,7 @@ function _run_monitor_health_internal()
     _assert_monitor_runner_ready();
 
     $secret = getenv('POSLA_CRON_SECRET') ?: '';
-    $url = 'http://127.0.0.1/api/cron/monitor-health.php';
+    $url = _internal_monitor_health_url();
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
@@ -206,6 +207,16 @@ function _assert_monitor_runner_ready()
     }
 }
 
+function _internal_monitor_health_url()
+{
+    $base = trim((string)(getenv('POSLA_INTERNAL_BASE_URL') ?: ''));
+    if ($base === '') {
+        $port = trim((string)(getenv('PORT') ?: ''));
+        $base = $port !== '' ? 'http://127.0.0.1:' . $port : 'http://127.0.0.1';
+    }
+    return rtrim($base, '/') . '/api/cron/monitor-health.php';
+}
+
 function _resolve_monitor_destination($pdo)
 {
     $settings = _fetch_monitor_settings($pdo);
@@ -239,34 +250,14 @@ function _fetch_monitor_settings($pdo)
 
 function _resolve_mail_transport()
 {
-    if (function_exists('mb_send_mail')) {
-        return 'mb_send_mail';
-    }
-    if (function_exists('mail')) {
-        return 'mail';
-    }
-
-    return 'none';
+    return posla_mail_transport_label();
 }
 
 function _send_ops_mail_test($to, $subject, $body, $transport)
 {
-    if (function_exists('mb_language')) {
-        mb_language('Japanese');
-        mb_internal_encoding('UTF-8');
-    }
-
-    $fromName = 'POSLA 通知テスト';
-    $fromEmail = defined('APP_FROM_EMAIL') ? APP_FROM_EMAIL : 'noreply@meal.posla.jp';
-    $fromHeader = '=?UTF-8?B?' . base64_encode($fromName) . '?= <' . $fromEmail . '>';
-    $headers = "From: " . $fromHeader . "\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n";
-
-    if ($transport === 'mb_send_mail') {
-        return (bool)@mb_send_mail($to, $subject, $body, $headers);
-    }
-    if ($transport === 'mail') {
-        return (bool)@mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, $headers);
-    }
-
-    return false;
+    $result = posla_send_mail($to, $subject, $body, [
+        'from_name' => 'POSLA 通知テスト',
+        'from_email' => defined('APP_FROM_EMAIL') ? APP_FROM_EMAIL : 'noreply@meal.posla.jp',
+    ]);
+    return !empty($result['success']);
 }

@@ -22,6 +22,7 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/tenant-onboarding.php';
 require_once __DIR__ . '/../lib/provisioner-trigger.php';
+require_once __DIR__ . '/../lib/mail.php';
 require_once __DIR__ . '/../config/app.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -144,10 +145,6 @@ function _a5_verify_stripe_sig($payload, $header, $secret) {
 }
 
 function _a5_send_welcome_mail($to, $displayName, $username, $storeName, $signupToken) {
-    if (function_exists('mb_language')) {
-        mb_language('Japanese');
-        mb_internal_encoding('UTF-8');
-    }
     $subject = '【POSLA】お申込みありがとうございます — 専用環境を準備しています';
     $statusUrl = app_url('/signup-complete.html') . '?t=' . urlencode((string)$signupToken);
     $body = "{$displayName} 様\n\n"
@@ -162,17 +159,11 @@ function _a5_send_welcome_mail($to, $displayName, $username, $storeName, $signup
           . "期間内のキャンセルで請求は発生しません。\n\n"
           . "ご不明な点は " . APP_SUPPORT_EMAIL . " までお気軽にお問い合わせください。\n\n"
           . "--\nPOSLA 運営チーム";
-    $fromName = 'POSLA';
-    $fromEmail = APP_FROM_EMAIL;
-    $fromHeader = '=?UTF-8?B?' . base64_encode($fromName) . '?= <' . $fromEmail . '>';
-    $headers = "From: " . $fromHeader . "\r\n"
-             . "MIME-Version: 1.0\r\n"
-             . "Content-Type: text/plain; charset=UTF-8\r\n"
-             . "Content-Transfer-Encoding: 8bit\r\n";
-    if (function_exists('mb_send_mail')) {
-        @mb_send_mail($to, $subject, $body, $headers);
-    } else {
-        $encoded = '=?UTF-8?B?' . base64_encode($subject) . '?=';
-        @mail($to, $encoded, $body, $headers);
+    $result = posla_send_mail($to, $subject, $body, [
+        'from_name' => 'POSLA',
+        'from_email' => APP_FROM_EMAIL,
+    ]);
+    if (empty($result['success'])) {
+        error_log('[A5][webhook] welcome_mail_failed: ' . ($result['error'] ?? 'unknown'), 3, POSLA_PHP_ERROR_LOG);
     }
 }

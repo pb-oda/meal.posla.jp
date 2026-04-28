@@ -2,9 +2,14 @@
 /**
  * データベース接続設定
  * このファイルをコピーして database.php を作成してください。
+ *
+ * Cloud Run + Cloud SQL で Unix socket 接続する場合は:
+ *   'socket' => '/cloudsql/<project>:<region>:<instance>'
+ * を指定し、host は空で構いません。
  */
 return [
     'host'     => 'localhost',
+    'socket'   => '',
     'dbname'   => 'matsunoya_mt',
     'username' => 'root',
     'password' => '',

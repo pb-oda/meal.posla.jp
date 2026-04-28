@@ -2,13 +2,13 @@
 /**
  * L-9 予約管理 — メール送信ライブラリ
  *
- * - 抽象化されたインターフェース。現在は PHP mb_send_mail() 実装、
- *   将来 SendGrid/SES 等に差し替え可能
+ * - 実送信は api/lib/mail.php に集約
  * - 送信ログは reservation_notifications_log に記録
  * - 多言語 (ja/en/zh-Hans/ko) テンプレート対応
  */
 
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/mail.php';
 // L-17 Phase 2B-1: confirm 時 LINE 並行送信用 (optional include)
 // ファイルが無い環境でも落ちないよう存在チェック付き
 if (file_exists(__DIR__ . '/line-link.php')) {
@@ -26,29 +26,15 @@ if (!function_exists('_l9_mail_send')) {
         if (!$to || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
             return array('success' => false, 'error' => 'INVALID_RECIPIENT');
         }
-        if (function_exists('mb_language')) {
-            mb_language('Japanese');
-            mb_internal_encoding('UTF-8');
-        }
-        $fromHeader = '=?UTF-8?B?' . base64_encode($fromName) . '?= <' . $fromEmail . '>';
-        $headers = "From: " . $fromHeader . "\r\n";
-        $headers .= "MIME-Version: 1.0\r\n";
-        $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
-        $headers .= "Content-Transfer-Encoding: 8bit\r\n";
-        if ($replyTo) {
-            $headers .= "Reply-To: " . $replyTo . "\r\n";
-        }
-        $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
-        $ok = false;
-        if (function_exists('mb_send_mail')) {
-            $ok = @mb_send_mail($to, $subject, $body, $headers);
-        } else {
-            $ok = @mail($to, $encodedSubject, $body, $headers);
-        }
-        if (!$ok) {
-            return array('success' => false, 'error' => 'MAIL_SEND_FAILED');
-        }
-        return array('success' => true, 'error' => null);
+        $result = posla_send_mail($to, $subject, $body, array(
+            'from_name' => $fromName,
+            'from_email' => $fromEmail,
+            'reply_to' => $replyTo,
+        ));
+        return array(
+            'success' => !empty($result['success']),
+            'error' => !empty($result['success']) ? null : ($result['error'] ?? 'MAIL_SEND_FAILED'),
+        );
     }
 }
 

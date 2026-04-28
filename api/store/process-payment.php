@@ -24,41 +24,6 @@ require_once __DIR__ . '/../lib/stripe-connect.php';
 require_once __DIR__ . '/../lib/audit-log.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
 
-/**
- * PIN 失敗回数のレートリミット状態を確認する。
- * check_rate_limit() は成功時もカウントするため、会計処理では失敗回数だけを別管理する。
- */
-function _cashier_pin_rate_limit_exceeded($endpoint, $maxRequests, $windowSeconds)
-{
-    $dir = sys_get_temp_dir() . '/posla_rate_limit';
-    if (!is_dir($dir)) {
-        return false;
-    }
-
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $file = $dir . '/' . md5($ip . ':' . $endpoint) . '.json';
-    if (!is_file($file)) {
-        return false;
-    }
-
-    $raw = @file_get_contents($file);
-    if ($raw === false || $raw === '') {
-        return false;
-    }
-
-    $decoded = json_decode($raw, true);
-    if (!is_array($decoded)) {
-        return false;
-    }
-
-    $windowStart = time() - $windowSeconds;
-    $active = array_values(array_filter($decoded, function ($ts) use ($windowStart) {
-        return (int)$ts > $windowStart;
-    }));
-
-    return count($active) >= $maxRequests;
-}
-
 require_method(['POST']);
 $user = require_auth();
 
@@ -101,7 +66,7 @@ if (!preg_match('/^\d{4,8}$/', $staffPin)) {
     json_error('INVALID_PIN', '担当 PIN は 4〜8 桁の数字で入力してください', 400);
 }
 $cashierPinRateKey = 'cashier-pin:' . $storeId . ':' . ($user['user_id'] ?? 'unknown');
-if (_cashier_pin_rate_limit_exceeded($cashierPinRateKey, 5, 600)) {
+if (rate_limit_exceeded($cashierPinRateKey, 5, 600)) {
     json_error('PIN_RATE_LIMITED', 'PIN の試行回数が上限に達しました。10分後に再度お試しください。', 429);
 }
 // 出勤中スタッフの PIN ハッシュを取得

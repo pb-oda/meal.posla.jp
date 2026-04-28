@@ -16,20 +16,63 @@ function get_db(): PDO
 
     $config_path = __DIR__ . '/../config/database.php';
 
-    if (!file_exists($config_path)) {
-        http_response_code(500);
-        echo json_encode(['ok' => false, 'error' => ['code' => 'DB_CONFIG_MISSING', 'message' => 'Database configuration not found']]);
-        exit;
+    if (file_exists($config_path)) {
+        $config = require $config_path;
+    } else {
+        $envOr = function ($key, $default) {
+            $value = getenv($key);
+            return ($value !== false && $value !== '') ? $value : $default;
+        };
+        $localOr = function ($localKey, $key, $default) use ($envOr) {
+            $value = getenv($localKey);
+            if ($value !== false && $value !== '') {
+                return $value;
+            }
+            return $envOr($key, $default);
+        };
+
+        if ($envOr('POSLA_ENV', '') === 'local') {
+            $config = [
+                'host'     => $localOr('POSLA_LOCAL_DB_HOST', 'POSLA_DB_HOST', ''),
+                'socket'   => '',
+                'dbname'   => $localOr('POSLA_LOCAL_DB_NAME', 'POSLA_DB_NAME', ''),
+                'username' => $localOr('POSLA_LOCAL_DB_USER', 'POSLA_DB_USER', ''),
+                'password' => $localOr('POSLA_LOCAL_DB_PASS', 'POSLA_DB_PASS', ''),
+                'charset'  => 'utf8mb4',
+            ];
+        } else {
+            $config = [
+                'host'     => $envOr('POSLA_DB_HOST', ''),
+                'socket'   => $envOr('POSLA_DB_SOCKET', ''),
+                'dbname'   => $envOr('POSLA_DB_NAME', ''),
+                'username' => $envOr('POSLA_DB_USER', ''),
+                'password' => $envOr('POSLA_DB_PASS', ''),
+                'charset'  => 'utf8mb4',
+            ];
+        }
+
+        if ($config['dbname'] === '' || $config['username'] === '') {
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'error' => ['code' => 'DB_CONFIG_MISSING', 'message' => 'Database configuration not found']]);
+            exit;
+        }
     }
 
-    $config = require $config_path;
-
-    $dsn = sprintf(
-        'mysql:host=%s;dbname=%s;charset=%s',
-        $config['host'],
-        $config['dbname'],
-        $config['charset'] ?? 'utf8mb4'
-    );
+    if (!empty($config['socket'])) {
+        $dsn = sprintf(
+            'mysql:unix_socket=%s;dbname=%s;charset=%s',
+            $config['socket'],
+            $config['dbname'],
+            $config['charset'] ?? 'utf8mb4'
+        );
+    } else {
+        $dsn = sprintf(
+            'mysql:host=%s;dbname=%s;charset=%s',
+            $config['host'],
+            $config['dbname'],
+            $config['charset'] ?? 'utf8mb4'
+        );
+    }
 
     $pdo = new PDO($dsn, $config['username'], $config['password'], [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,

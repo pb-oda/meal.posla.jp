@@ -27,6 +27,7 @@ if (php_sapi_name() !== 'cli') {
 
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/push.php';
+require_once __DIR__ . '/../lib/mail.php';
 require_once __DIR__ . '/../config/app.php';
 $pdo = get_db();
 
@@ -429,11 +430,11 @@ function _pushImportantError($pdo, $tenantId, $type, $title, $detail) {
 }
 
 function _sendOpsMail($to, $subject, $body) {
-    if (function_exists('mb_language')) { mb_language('Japanese'); mb_internal_encoding('UTF-8'); }
-    $fromName = 'POSLA 運用監視';
-    $fromEmail = APP_FROM_EMAIL;
-    $fromHeader = '=?UTF-8?B?' . base64_encode($fromName) . '?= <' . $fromEmail . '>';
-    $headers = "From: " . $fromHeader . "\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n";
-    if (function_exists('mb_send_mail')) @mb_send_mail($to, $subject, $body, $headers);
-    else @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, $headers);
+    $result = posla_send_mail($to, $subject, $body, [
+        'from_name' => 'POSLA 運用監視',
+        'from_email' => APP_FROM_EMAIL,
+    ]);
+    if (empty($result['success'])) {
+        error_log('[I-1][monitor] ops_mail_failed: ' . ($result['error'] ?? 'unknown'), 3, POSLA_PHP_ERROR_LOG);
+    }
 }

@@ -1,0 +1,68 @@
+# ============================================================
+# POSLA — provisioner runner on a dedicated VM
+# ============================================================
+# Usage:
+#   cp docker/env/provisioner.env.example docker/env/provisioner.env
+#   edit docker/env/provisioner.env
+#   set -a && . docker/env/provisioner.env && set +a
+#   docker compose -f docker-compose.provisioner.yml up -d --build
+#
+# Important:
+# - This service mounts /var/run/docker.sock and can control the host Docker
+#   daemon. Run it only on a POSLA provisioner dedicated VM.
+# - POSLA_PROVISIONER_ROOT_DIR must be the same absolute path on the VM host
+#   and inside this container, because docker compose bind mounts are resolved
+#   by the host Docker daemon.
+# ============================================================
+
+services:
+  provisioner:
+    build:
+      context: .
+      dockerfile: docker/provisioner/Dockerfile
+      args:
+        POSLA_PROVISIONER_PLATFORM: ${POSLA_PROVISIONER_PLATFORM:-linux/amd64}
+    image: posla_provisioner:local
+    platform: ${POSLA_PROVISIONER_PLATFORM:-linux/amd64}
+    container_name: posla_provisioner
+    restart: unless-stopped
+    working_dir: ${POSLA_PROVISIONER_ROOT_DIR:-/srv/posla}
+    command: ["php", "${POSLA_PROVISIONER_ROOT_DIR:-/srv/posla}/scripts/cell/provisioner-trigger-server.php"]
+    environment:
+      POSLA_PROVISIONER_ROOT_DIR: ${POSLA_PROVISIONER_ROOT_DIR:-/srv/posla}
+      POSLA_PROVISIONER_TRIGGER_HOST: 0.0.0.0
+      POSLA_PROVISIONER_TRIGGER_ALLOW_NONLOCAL_BIND: "1"
+      POSLA_PROVISIONER_TRIGGER_PORT: ${POSLA_PROVISIONER_TRIGGER_PORT:-19091}
+      POSLA_PROVISIONER_TRIGGER_SECRET: ${POSLA_PROVISIONER_TRIGGER_SECRET:?POSLA_PROVISIONER_TRIGGER_SECRET is required}
+      POSLA_PROVISIONER_TRIGGER_LOG: ${POSLA_PROVISIONER_TRIGGER_LOG:-/srv/posla/cells/provisioner-trigger.log}
+      POSLA_PROVISIONER_LOCK_FILE: ${POSLA_PROVISIONER_LOCK_FILE:-/srv/posla/cells/.provisioner.lock}
+      POSLA_CELL_PROVISIONER_ENV_FILE: ${POSLA_CELL_PROVISIONER_ENV_FILE:-/srv/posla/docker/env/provisioner.env}
+      POSLA_PROVISIONER_TRIGGER_DRY_RUN: ${POSLA_PROVISIONER_TRIGGER_DRY_RUN:-0}
+
+      POSLA_CELL_PROVISIONER_DB_HOST: ${POSLA_CELL_PROVISIONER_DB_HOST:?POSLA_CELL_PROVISIONER_DB_HOST is required}
+      POSLA_CELL_PROVISIONER_DB_PORT: ${POSLA_CELL_PROVISIONER_DB_PORT:-3306}
+      POSLA_CELL_PROVISIONER_DB_NAME: ${POSLA_CELL_PROVISIONER_DB_NAME:?POSLA_CELL_PROVISIONER_DB_NAME is required}
+      POSLA_CELL_PROVISIONER_DB_USER: ${POSLA_CELL_PROVISIONER_DB_USER:?POSLA_CELL_PROVISIONER_DB_USER is required}
+      POSLA_CELL_PROVISIONER_DB_PASS: ${POSLA_CELL_PROVISIONER_DB_PASS:?POSLA_CELL_PROVISIONER_DB_PASS is required}
+
+      POSLA_CELL_PROVISIONER_ENVIRONMENT: ${POSLA_CELL_PROVISIONER_ENVIRONMENT:-production}
+      POSLA_ENVIRONMENT: ${POSLA_ENVIRONMENT:-production}
+      POSLA_DEPLOY_VERSION: ${POSLA_DEPLOY_VERSION:-dev}
+      POSLA_PHP_IMAGE: ${POSLA_PHP_IMAGE:-posla_php_cell:dev}
+      POSLA_CELL_APP_URL_PATTERN: ${POSLA_CELL_APP_URL_PATTERN:?POSLA_CELL_APP_URL_PATTERN is required}
+      POSLA_CELL_HTTP_PORT_BASE: ${POSLA_CELL_HTTP_PORT_BASE:-18081}
+      POSLA_CELL_DB_PORT_BASE: ${POSLA_CELL_DB_PORT_BASE:-13306}
+      POSLA_CELL_DB_USER: ${POSLA_CELL_DB_USER:-posla_app}
+      POSLA_OPS_DB_READONLY_USER: ${POSLA_OPS_DB_READONLY_USER:-posla_ops_ro}
+      POSLA_OPS_DB_READONLY_HOST: ${POSLA_OPS_DB_READONLY_HOST:-%}
+
+      POSLA_FROM_EMAIL: ${POSLA_FROM_EMAIL:-noreply@<production-domain>}
+      POSLA_SUPPORT_EMAIL: ${POSLA_SUPPORT_EMAIL:-support@<production-domain>}
+      POSLA_MAIL_TRANSPORT: ${POSLA_MAIL_TRANSPORT:-sendgrid}
+      POSLA_SENDGRID_API_KEY: ${POSLA_SENDGRID_API_KEY:-}
+      POSLA_MAIL_FROM_NAME: ${POSLA_MAIL_FROM_NAME:-POSLA}
+    ports:
+      - "${POSLA_PROVISIONER_BIND_ADDR:-127.0.0.1}:${POSLA_PROVISIONER_TRIGGER_PORT:-19091}:${POSLA_PROVISIONER_TRIGGER_PORT:-19091}"
+    volumes:
+      - ${POSLA_PROVISIONER_ROOT_DIR:-/srv/posla}:${POSLA_PROVISIONER_ROOT_DIR:-/srv/posla}
+      - /var/run/docker.sock:/var/run/docker.sock

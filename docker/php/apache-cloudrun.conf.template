@@ -1,17 +1,11 @@
 # ============================================================
-# POSLA — Apache vhost (ローカル開発専用)
+# POSLA — Apache vhost for Google Cloud Run
 # ============================================================
-# /public を URL のプレフィックスから外すため、DocumentRoot を
-# /var/www/html/public に設定。/api は Alias で /var/www/html/api
-# を直接参照する。
-# 例:
-#   http://127.0.0.1:8081/posla-admin/dashboard.html
-#   http://127.0.0.1:8081/admin/
-#   http://127.0.0.1:8081/docs-tenant/
-#   http://127.0.0.1:8081/api/monitor/ping.php
+# Cloud Run injects PORT at runtime. startup-cloudrun.sh renders __PORT__
+# before Apache starts.
 # ============================================================
 
-<VirtualHost *:80>
+<VirtualHost *:__PORT__>
     ServerName localhost
     DocumentRoot /var/www/html/public
 
@@ -22,14 +16,12 @@
         DirectoryIndex index.html index.php
     </Directory>
 
-    # /api → /var/www/html/api (DocumentRoot の外)
     Alias /api /var/www/html/api
     <Directory /var/www/html/api>
         AllowOverride All
         Require all granted
     </Directory>
 
-    # /uploads → shared runtime storage (DocumentRoot の外)
     Alias /uploads /var/www/html/uploads
     <Directory /var/www/html/uploads>
         Options -Indexes
@@ -40,7 +32,6 @@
         </FilesMatch>
     </Directory>
 
-    # /privacy, /terms も DocumentRoot の外にマウントされているため Alias で公開
     Alias /privacy /var/www/html/privacy
     <Directory /var/www/html/privacy>
         AllowOverride All
@@ -53,9 +44,8 @@
         Require all granted
     </Directory>
 
-    # customer ディレクトリのルート直アクセスは一覧ではなく 404 に統一
     RedirectMatch 404 ^/customer/?$
 
-    ErrorLog ${APACHE_LOG_DIR}/posla_error.log
-    CustomLog ${APACHE_LOG_DIR}/posla_access.log combined
+    ErrorLog /proc/self/fd/2
+    CustomLog /proc/self/fd/1 combined
 </VirtualHost>
