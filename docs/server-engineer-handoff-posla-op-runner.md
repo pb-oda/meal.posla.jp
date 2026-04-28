@@ -148,6 +148,71 @@ GCE VM or private container host: OP / runner
 runnerは外部公開しない。OPからprivate / same-hostで呼ぶ。
 Phase 1 の OP / runner は runtime data、read-only source mount、runner専用 Codex HOME を持つため、まずはVMまたはprivate container hostが現実的。Cloud Runへ載せる場合は、runtime data永続化とsource参照方式を別途設計する。
 
+## 5.1 GitHub / Artifact Registry / GitLab の役割
+
+本番では次の役割分担にする。
+
+| 置き場 | 役割 | 本番での扱い |
+|---|---|---|
+| GitHub | コードの正本 | 継続利用する。サーバエンジニアはGitHubからclone/fetchする |
+| Artifact Registry | build済みcontainer imageの置き場 | Cloud Run / VM がpullするimageを置く |
+| GitLab | 社内用・停止してもよい環境向け | 今回の本番正本にはしない。必要ならmirror用途に限定する |
+
+つまり、GitHubかArtifact Registryの二択ではない。
+
+```text
+GitHub
+  -> source code
+  -> docker build
+  -> Artifact Registry
+  -> Cloud Run / VM / private container host
+```
+
+## 5.2 本番で扱うcontainer image
+
+Artifact Registry の想定:
+
+```text
+<region>-docker.pkg.dev/<gcp-project>/<artifact-repo>/<image-name>:<git-sha>
+```
+
+例:
+
+```text
+asia-northeast1-docker.pkg.dev/<gcp-project>/posla/posla-web:<git-sha>
+```
+
+| image名 | build元 | push先 | 起動先 | 用途 |
+|---|---|---|---|---|
+| `posla-web:<git-sha>` | `【擬似本番環境】meal.posla.jp/docker/php/Dockerfile.cloudrun` | Artifact Registry | Cloud Run service | POSLA web/API |
+| `posla-web:<git-sha>` | 同上 | Artifact Registry | Cloud Run Jobs | POSLA cron。imageはwebと同じでcommandだけ変える |
+| `posla-provisioner:<git-sha>` | `【擬似本番環境】meal.posla.jp/docker/provisioner/Dockerfile` | Artifact Registryまたはprovisioner VM local build | GCE provisioner VM | Cloud Runからtriggerを受けてcell作成を実行 |
+| `posla-php-cell:<git-sha>` | `【擬似本番環境】meal.posla.jp/docker/php/Dockerfile.cell` | Artifact Registryまたはprovisioner VM local build | GCE provisioner VM上のcell app container | 顧客cell app |
+| `mysql:5.7` | official image | Docker Hubまたはmirror | GCE provisioner VM上のcell db container | 顧客cell DB |
+| `posla-op-runtime:<git-sha>` | `【AI運用支援】codex-ops-platform/docker/ops-agent/Dockerfile` | OP host local build推奨 | private VM/container host | OP実行用runtime。現状はrepo内 `public/` / `scripts/` / `data/` をvolume mountする |
+| `posla-runner:<git-sha>` | `【エージェント】runner.posla.jp/Dockerfile` | Artifact Registryまたはrunner host local build | private VM/container host | OPから呼ばれるread-only調査runner |
+
+最初の本番では最低限 `posla-web:<git-sha>` をArtifact Registryへpushする。
+`posla-provisioner` / `posla-php-cell` / `posla-runner` は、運用を揃えるならArtifact Registryへpushする。初期構築を急ぐ場合は、それぞれのVM上でlocal buildでも起動できる。
+OPは現状、image単体では完結せず、repo内の `public/` / `scripts/` / `data/` をvolume mountして動かす構成。まずはOP host上でrepoを配置し、`docker compose up -d --build` で起動する。
+
+## 5.3 runnerの方針
+
+runner は Cloud Run web/API の一部ではない。
+
+本番初期方針:
+
+- runnerはOPと同じprivate VM、または同じprivate network内のcontainer hostに置く
+- `127.0.0.1:8094` またはprivate URLでOPからだけ呼ぶ
+- internetへ公開しない
+- DB接続はSELECT専用ユーザーだけ使う
+- POSLA sourceは `RUNNER_REPO_URL=<posla-git-repo-url>` でGitHubからclone/fetchする方式を第一候補にする
+- `RUNNER_CODEX_EXECUTE=0` で開始する
+- Codex CLIを使う場合は、runner専用 `codex-home/` とOPの一時ゲートで制御する
+
+runnerをCloud Runに載せるのは次フェーズ扱い。
+理由は、runnerがworkspace、Codex HOME、read-only source、ログ参照を持つため、永続化・権限分離・secret遮断の設計が別途必要になるため。
+
 ## 6. 各コンポーネントの役割
 
 ### 6.1 POSLA本体
@@ -264,6 +329,8 @@ docs/provisioner-runner.md
 - DBユーザーはSELECT専用
 - 初期状態では `RUNNER_CODEX_EXECUTE=0`
 - Codex CLIを有効化する場合も、OPの一時ゲートとrunner専用Codex HOMEを使う
+- Cloud Runではなく、当面はOPと同じprivate VMまたはprivate container hostで常時起動する
+- OPから `OPS_RUNNER_BASE_URL` で呼ぶ。外部ユーザーやPOSLA webからは直接呼ばない
 
 ## 7. サーバエンジニアへの依頼文
 
@@ -346,6 +413,79 @@ OP / runner用:
 - reverse proxy
 - private network
 - backup / log rotate
+
+Artifact Registryはcontainer imageの置き場。GitHubはsource codeの正本。
+本番ではGitHubを継続利用し、Cloud RunやVMが使うimageをArtifact Registryへpushする。
+
+想定image:
+
+```text
+posla-web:<git-sha>
+posla-provisioner:<git-sha>
+posla-php-cell:<git-sha>
+posla-op-runtime:<git-sha>
+posla-runner:<git-sha>
+```
+
+最低限、Cloud Runに載せる `posla-web:<git-sha>` はArtifact Registryへpushする。
+
+### Step 2.1. Artifact Registryへimageをpushする
+
+POSLA web image は必須。
+
+```bash
+cd <deploy-root>/meal.posla.jp
+
+export GCP_PROJECT_ID=<gcp-project>
+export GCP_REGION=asia-northeast1
+export ARTIFACT_REPO=posla
+export IMAGE_TAG="$(git rev-parse --short=12 HEAD)"
+export IMAGE_BASE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPO}"
+
+docker build \
+  -f docker/php/Dockerfile.cloudrun \
+  -t "${IMAGE_BASE}/posla-web:${IMAGE_TAG}" \
+  .
+
+docker push "${IMAGE_BASE}/posla-web:${IMAGE_TAG}"
+```
+
+Cloud Run service と Cloud Run Jobs は同じ image を使う。
+Jobs側はcommandを `docker/php/cron-job-cloudrun.sh` 相当に差し替える。
+
+provisioner / cell / runner image もArtifact Registryへ寄せる場合:
+
+```bash
+cd <deploy-root>/meal.posla.jp
+
+docker build \
+  -f docker/provisioner/Dockerfile \
+  -t "${IMAGE_BASE}/posla-provisioner:${IMAGE_TAG}" \
+  .
+
+docker build \
+  -f docker/php/Dockerfile.cell \
+  -t "${IMAGE_BASE}/posla-php-cell:${IMAGE_TAG}" \
+  .
+
+docker push "${IMAGE_BASE}/posla-provisioner:${IMAGE_TAG}"
+docker push "${IMAGE_BASE}/posla-php-cell:${IMAGE_TAG}"
+```
+
+```bash
+cd <deploy-root>/runner.posla.jp
+export IMAGE_TAG="$(git rev-parse --short=12 HEAD)"
+
+docker build \
+  -t "${IMAGE_BASE}/posla-runner:${IMAGE_TAG}" \
+  .
+
+docker push "${IMAGE_BASE}/posla-runner:${IMAGE_TAG}"
+```
+
+OPは現状、Artifact Registryへpushするself-contained imageではなく、VM上のrepoとcompose volume mountで動かす。
+runner / provisioner は、初期構築では各VM上のlocal buildでもよい。
+ただし、複数VM運用や再現性を重視する場合はArtifact Registryへpushする。
 
 ### Step 3. POSLA Cloud Run webをデプロイする
 
