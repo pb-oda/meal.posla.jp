@@ -21,9 +21,10 @@
 
 Redisについて:
 
-- POSLA webをCloud Runで動かす場合は、Memorystore Redis / Valkey を使う
-- POSLA web自体をVPSで動かす初期構成なら、VPS内Redis同居でもよい
-- Cloud Run webからVPS上Redisを使う構成は、VPC/VPN/private接続、firewall、認証、監視まで設計できる場合だけにする
+- POSLA webはCloud Runで確定
+- POSLA web/API の session / rate limit は Memorystore Redis / Valkey を使う
+- Cloud Run webからVPS上Redisを使う構成は採用しない
+- VPSは provisioner / OP / runner の配置先として使う可能性があるが、POSLA session用Redisとは別論点にする
 - Redis portをpublic internetへ開けない
 
 ## 2. Image build

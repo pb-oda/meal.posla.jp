@@ -152,22 +152,24 @@ Phase 1 の OP / runner は runtime data、read-only source mount、runner専用
 
 Redisは session / rate limit の共有先として使う。
 
+POSLA本体はCloud Runで確定。したがって、POSLA web/API の session / rate limit 用Redisは **Memorystore Redis / Valkey** を採用する。
+
 方針:
 
 | 構成 | Redisの置き場所 | 判断 |
 |---|---|---|
-| POSLA webをCloud Runで動かす | Memorystore Redis / Valkey | 推奨。Cloud Runから安全にprivate接続する |
-| POSLA webもVPSで動かす初期構成 | VPS内Redis同居 | 初期は可。コストと構成を抑えられる |
-| Cloud Run webからVPS同居Redisを使う | 原則避ける | VPC/VPN/private接続、firewall、認証、監視まで設計できる場合のみ |
+| POSLA web/API | Memorystore Redis / Valkey | 採用。Cloud Runからprivate接続する |
+| Cloud Run webからVPS同居Redisを使う | 採用しない | private接続・監視・可用性の設計負荷が高い |
 | OP / runner / provisionerだけをVPSに置く | Redis同居は必須ではない | POSLA webのsession用途にはならない |
 
-サーバエンジニアからの提案どおり、**VPSでPOSLA webも動かすなら、初期はRedis同居でよい**。
-ただし、今回の主案である **Cloud Run web + Cloud SQL + GCS** では、RedisはMemorystoreを使う前提にする。
+サーバエンジニアの「VPSならRedis同居でよい」という提案は、POSLA webもVPSで動かす場合は妥当。
+ただし今回はPOSLA本体がCloud Run確定なので、POSLA本体用Redisとしては採用しない。
+VPSは provisioner / OP / runner の配置先として使う可能性があり、その場合のRedis同居はPOSLA sessionとは別論点にする。
 
 やってはいけないこと:
 
 - Redis portをpublic internetへ開ける
-- Cloud Runからpublic IPのRedisへ平文接続する
+- Cloud RunからVPS上Redisへpublic IP経由で接続する
 - Redis passwordをGit / docs / OP UIに保存する
 - 本番でRedis永続化・backup・監視なしにsession正本として扱う
 
