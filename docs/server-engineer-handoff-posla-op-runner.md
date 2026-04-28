@@ -14,6 +14,8 @@
 - OP: POSLAを監視・調査する内部運用画面
 - runner: OPから呼ばれ、コード・DB・ログをread-only調査する実行基盤
 
+OP alert / case から runner、Codex CLI までのE2E確認は、別紙 `docs/op-runner-codex-e2e-runbook.md` を正にする。
+
 この資料で扱わないもの:
 
 - secret実値
@@ -237,6 +239,11 @@ runner は Cloud Run web/API の一部ではない。
 
 runnerをCloud Runに載せるのは次フェーズ扱い。
 理由は、runnerがworkspace、Codex HOME、read-only source、ログ参照を持つため、永続化・権限分離・secret遮断の設計が別途必要になるため。
+
+2026-04-28のローカル確認では、runner health上はCodex CLI実行可能。
+ただし、OPからrunner `/api/investigate.php` への自動経路は DB read-only 接続エラー時に runner がPHP Fatal error HTMLを返し、OP側で `invalid_json_response` になった。
+この状態ではCodex CLIへの指示まで到達していない。
+本番前に runner repo 側で `runner_db_probe()` の例外をJSON error化し、`docs/op-runner-codex-e2e-runbook.md` のE2E smokeで `data.status=codex_cli_executed` まで確認する。
 
 ## 6. 各コンポーネントの役割
 
@@ -760,6 +767,7 @@ SENDGRID_API_KEY
 - [ ] `{tenant_slug}.<production-domain>` のDNS方針が決まっている
 - [ ] provisioner VMの配置が決まっている
 - [ ] OP/runnerの配置が決まっている
+- [ ] OP -> runner -> Codex E2Eで `data.status=codex_cli_executed` を確認している
 - [ ] backup / snapshot / log rotate が決まっている
 
 ## 11. 現時点の状態
@@ -774,6 +782,8 @@ SENDGRID_API_KEY
 - provisioner `/health` OK
 - `scripts/cloudrun/cron-runner.php` 構文OK
 - `api/lib/db.php` / `api/lib/rate-limiter.php` 構文OK
+- runner health は Codex CLI 実行可能状態
+- OP case ingest は case / investigation 作成までOK
 
 未完了:
 
@@ -785,11 +795,13 @@ SENDGRID_API_KEY
 - provisioner VM作成
 - OP/runner本番配置
 - 実申込E2E smoke
+- OP -> runner -> Codex E2E smoke
+- runner DB read-only probe のFatal error対策
 
 ## 12. 残タスク
 
 - 未コミット変更をGit branch / commitにまとめる
-- POSLA / OP / runner のrepo URLまたは渡し方を確定する
+- POSLA / OP / runner のGitHub repo branch / tag運用を確定する
 - GCP Project / region / Artifact Registry を確定する
 - Cloud SQL / Memorystore / GCS bucket を作成する
 - Secret Managerへ本番secretを登録する
@@ -802,6 +814,9 @@ SENDGRID_API_KEY
 - OPの本番配置方式を確定する
 - runnerの本番配置方式を確定する
 - OP/runnerのprivate接続を確認する
+- runner repoで `runner_db_probe()` のFatal errorをJSON error化する
+- runner DB read-only credential / 接続元許可を本番値で確定する
+- OP -> runner -> Codex E2Eで `data.status=codex_cli_executed` を確認する
 - `{tenant_slug}.<production-domain>` のDNS / reverse proxy / TLSを設定する
 - backup / snapshot / log rotate / 監視通知を設定する
 - 実申込からcell作成までE2E smokeを行う
