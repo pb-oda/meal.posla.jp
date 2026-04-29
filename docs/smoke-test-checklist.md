@@ -16,8 +16,8 @@
   - POSLA 管理者: `oda@plusbelief.co.jp` (POSLA管理画面 `/public/posla-admin/`、email ログイン)
   - 松乃家 owner: `matsunoya-owner` (owner-dashboard)
   - 渋谷店 manager: `matsunoya-manager-shibuya` (dashboard)
-  - 渋谷店 staff: `test1` (dashboard 一部 + handy。email 未設定のユーザー名ログイン)
-  - device (KDS): `kds-test` (device ロール、渋谷店、handy/kds/cashier 直行)
+  - 渋谷店 staff: `test1` (dashboard 一部、シフト/勤怠確認。email 未設定のユーザー名ログイン)
+  - device (KDS/レジ): `kds-test` (device ロール、渋谷店、visible_tools に応じて KDS/レジ/ハンディへ直行)
   - device (handy): device-editor で別途作成 (visible_tools=handy)
 
 ---
