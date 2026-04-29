@@ -13,6 +13,26 @@ require_once __DIR__ . '/../../lib/auth.php';
 require_once __DIR__ . '/../../lib/response.php';
 require_once __DIR__ . '/../../lib/audit-log.php';
 
+function shift_template_role_allowed($pdo, $tenantId, $storeId, $role)
+{
+    if ($role === null || $role === '') {
+        return true;
+    }
+    if (!preg_match('/^[a-z0-9_-]{1,20}$/', (string)$role)) {
+        return false;
+    }
+    if (in_array($role, ['kitchen', 'hall'], true)) {
+        return true;
+    }
+    $stmt = $pdo->prepare(
+        'SELECT 1 FROM shift_work_positions
+         WHERE tenant_id = ? AND store_id = ? AND code = ? AND is_active = 1
+         LIMIT 1'
+    );
+    $stmt->execute([$tenantId, $storeId, $role]);
+    return (bool)$stmt->fetch();
+}
+
 start_auth_session();
 handle_preflight();
 $method = require_method(['GET', 'POST', 'PATCH', 'DELETE']);
@@ -24,7 +44,7 @@ $tenantId = $user['tenant_id'];
 
 // プランチェック
 if (!check_plan_feature($pdo, $tenantId, 'shift_management')) {
-    json_error('PLAN_REQUIRED', 'シフト管理はProプラン以上で利用できます', 403);
+    json_error('PLAN_REQUIRED', 'この機能は現在の契約では利用できません', 403);
 }
 
 $storeId = require_store_param();
@@ -88,8 +108,8 @@ if ($method === 'POST') {
     }
 
     $roleHint = isset($body['role_hint']) && $body['role_hint'] !== '' ? $body['role_hint'] : null;
-    if ($roleHint !== null && !in_array($roleHint, ['kitchen', 'hall'], true)) {
-        json_error('INVALID_ROLE', 'role_hint は kitchen / hall のいずれかです', 400);
+    if (!shift_template_role_allowed($pdo, $tenantId, $storeId, $roleHint)) {
+        json_error('INVALID_ROLE', 'role_hint は登録済みの持ち場から選択してください', 400);
     }
 
     $id = generate_uuid();
@@ -198,8 +218,8 @@ if ($method === 'PATCH') {
     // role_hint
     if (array_key_exists('role_hint', $body)) {
         $rh = $body['role_hint'];
-        if ($rh !== null && $rh !== '' && !in_array($rh, ['kitchen', 'hall'], true)) {
-            json_error('INVALID_ROLE', 'role_hint は kitchen / hall のいずれかです', 400);
+        if (!shift_template_role_allowed($pdo, $tenantId, $storeId, $rh)) {
+            json_error('INVALID_ROLE', 'role_hint は登録済みの持ち場から選択してください', 400);
         }
         $updates[] = 'role_hint = ?';
         $params[]  = ($rh === '' ? null : $rh);

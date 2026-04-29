@@ -95,11 +95,61 @@
         storeId: null,
         userRole: null,
         currentView: 'calendar',
+        positions: [],
 
         init: function(storeId, userRole) {
             this.storeId = storeId;
             this.userRole = userRole || 'staff';
             this._bindSubTabs();
+            this._loadPositions();
+        },
+
+        _loadPositions: function(callback) {
+            var self = this;
+            apiGet('positions.php', { store_id: self.storeId }, function(data, err) {
+                if (!err && data && data.positions) {
+                    self.positions = data.positions;
+                } else {
+                    self.positions = [
+                        { code: 'hall', label: 'ホール', is_active: 1 },
+                        { code: 'kitchen', label: 'キッチン', is_active: 1 }
+                    ];
+                }
+                if (callback) callback();
+            });
+        },
+
+        _roleOptionsHtml: function(selected) {
+            var html = '<option value="">指定なし</option>';
+            var seen = {};
+            var positions = this.positions && this.positions.length ? this.positions : [
+                { code: 'hall', label: 'ホール', is_active: 1 },
+                { code: 'kitchen', label: 'キッチン', is_active: 1 }
+            ];
+            for (var i = 0; i < positions.length; i++) {
+                if (positions[i].is_active === 0) continue;
+                seen[positions[i].code] = true;
+                html += '<option value="' + esc(positions[i].code) + '"' +
+                    (selected === positions[i].code ? ' selected' : '') + '>' +
+                    esc(positions[i].label || positions[i].code) + '</option>';
+            }
+            if (selected && !seen[selected]) {
+                html += '<option value="' + esc(selected) + '" selected>' + esc(selected) + '</option>';
+            }
+            return html;
+        },
+
+        _roleLabel: function(code) {
+            if (!code) return '指定なし';
+            var positions = this.positions && this.positions.length ? this.positions : [];
+            for (var i = 0; i < positions.length; i++) {
+                if (positions[i].code === code) {
+                    return positions[i].label || positions[i].code;
+                }
+            }
+            if (code === 'hall') return 'ホール';
+            if (code === 'kitchen') return 'キッチン';
+            return code;
         },
 
         // ── サブタブ切替 ──
@@ -182,7 +232,7 @@
                             '<td>' + esc(t.start_time).substring(0, 5) + '</td>' +
                             '<td>' + esc(t.end_time).substring(0, 5) + '</td>' +
                             '<td>' + t.required_staff + '人</td>' +
-                            '<td>' + esc(t.role_hint || '指定なし') + '</td>' +
+                            '<td>' + esc(self._roleLabel(t.role_hint)) + '</td>' +
                             '<td>' +
                             '<button class="btn btn-sm btn-edit-template" data-id="' + t.id + '">編集</button> ' +
                             '<button class="btn btn-sm btn-danger btn-delete-template" data-id="' + t.id + '">削除</button>' +
@@ -262,10 +312,7 @@
                 '<label>開始時刻<input type="time" id="tpl-start" value="' + (existing ? existing.start_time.substring(0, 5) : '09:00') + '"></label>' +
                 '<label>終了時刻<input type="time" id="tpl-end" value="' + (existing ? existing.end_time.substring(0, 5) : '17:00') + '"></label>' +
                 '<label>必要人数<input type="number" id="tpl-staff" min="1" max="20" value="' + (existing ? existing.required_staff : 1) + '"></label>' +
-                '<label>役割<select id="tpl-role"><option value="">指定なし</option>' +
-                '<option value="kitchen"' + (existing && existing.role_hint === 'kitchen' ? ' selected' : '') + '>kitchen</option>' +
-                '<option value="hall"' + (existing && existing.role_hint === 'hall' ? ' selected' : '') + '>hall</option>' +
-                '</select></label>' +
+                '<label>持ち場<select id="tpl-role">' + self._roleOptionsHtml(existing ? existing.role_hint : null) + '</select></label>' +
                 '<div class="shift-dialog-actions">' +
                 '<button class="btn btn-primary" id="tpl-save">保存</button>' +
                 '<button class="btn" id="tpl-cancel">キャンセル</button>' +
@@ -548,12 +595,20 @@
                     container.innerHTML = '<p class="error">読み込みに失敗しました</p>';
                     return;
                 }
-                self._renderMyShift(container, data.assignments, start, end);
+                apiGet('swap-requests.php', { store_id: self.storeId }, function(reqData) {
+                    self._renderMyShift(container, data.assignments, (reqData && reqData.requests) ? reqData.requests : [], start, end);
+                });
             });
         },
 
-        _renderMyShift: function(container, assignments, start, end) {
+        _renderMyShift: function(container, assignments, requests, start, end) {
             var self = this;
+            var pendingByAssignment = {};
+            for (var pr = 0; pr < requests.length; pr++) {
+                if (requests[pr].status === 'pending') {
+                    pendingByAssignment[requests[pr].shift_assignment_id] = requests[pr];
+                }
+            }
             var html = '<div class="shift-section-header">' +
                        '<button class="btn btn-sm" id="myshift-prev">◀ 前の週</button>' +
                        '<h3>マイシフト ' + start + ' 〜 ' + end + '</h3>' +
@@ -564,20 +619,49 @@
                 html += '<p class="empty-msg">この週のシフトはまだありません。</p>';
             } else {
                 html += '<table class="shift-table"><thead><tr>' +
-                        '<th>日付</th><th>開始</th><th>終了</th><th>休憩</th><th>役割</th><th>ステータス</th>' +
+                        '<th>日付</th><th>開始</th><th>終了</th><th>休憩</th><th>持ち場</th><th>ステータス</th><th>操作</th>' +
                         '</tr></thead><tbody>';
+                var todayStr = self._formatDate(new Date());
                 for (var i = 0; i < assignments.length; i++) {
                     var a = assignments[i];
                     var statusLabel = { draft: '下書き', published: '確定', confirmed: '確認済' };
                     var statusClass = { draft: 'status-draft', published: 'status-published', confirmed: 'status-confirmed' };
+                    var actionHtml = '';
+                    if (a.status === 'published') {
+                        actionHtml += '<button class="btn btn-sm myshift-confirm" data-id="' + esc(a.id) + '">確認</button> ';
+                    }
+                    if (a.shift_date >= todayStr && a.status !== 'draft') {
+                        if (pendingByAssignment[a.id]) {
+                            actionHtml += '<span class="shift-request-pending">申請中</span>';
+                        } else {
+                            actionHtml += '<button class="btn btn-sm myshift-swap" data-id="' + esc(a.id) + '">交代依頼</button> ' +
+                                '<button class="btn btn-sm myshift-absence" data-id="' + esc(a.id) + '">欠勤連絡</button>';
+                        }
+                    }
                     html += '<tr>' +
                             '<td>' + esc(a.shift_date) + '</td>' +
                             '<td>' + esc(a.start_time).substring(0, 5) + '</td>' +
                             '<td>' + esc(a.end_time).substring(0, 5) + '</td>' +
                             '<td>' + a.break_minutes + '分</td>' +
-                            '<td>' + esc(a.role_type || '-') + '</td>' +
+                            '<td>' + esc(self._roleLabel(a.role_type)) + '</td>' +
                             '<td><span class="' + (statusClass[a.status] || '') + '">' + (statusLabel[a.status] || esc(a.status)) + '</span></td>' +
+                            '<td>' + (actionHtml || '-') + '</td>' +
                             '</tr>';
+                }
+                html += '</tbody></table>';
+            }
+
+            if (requests.length > 0) {
+                html += '<h4>交代・欠勤申請</h4><table class="shift-table"><thead><tr>' +
+                    '<th>日付</th><th>種別</th><th>状態</th><th>候補/交代</th><th>メモ</th>' +
+                    '</tr></thead><tbody>';
+                for (var r = 0; r < Math.min(requests.length, 10); r++) {
+                    var req = requests[r];
+                    var typeLabel = req.request_type === 'absence' ? '欠勤' : '交代';
+                    var stLabel = { pending: '未対応', approved: '承認済', rejected: '却下', cancelled: 'キャンセル' }[req.status] || req.status;
+                    var person = req.replacement_name || req.candidate_name || '-';
+                    html += '<tr><td>' + esc(req.shift_date || '') + ' ' + esc((req.start_time || '').substring(0, 5)) + '-' + esc((req.end_time || '').substring(0, 5)) + '</td>' +
+                        '<td>' + typeLabel + '</td><td>' + stLabel + '</td><td>' + esc(person) + '</td><td>' + esc(req.reason || req.response_note || '') + '</td></tr>';
                 }
                 html += '</tbody></table>';
             }
@@ -591,6 +675,105 @@
             document.getElementById('myshift-next').addEventListener('click', function() {
                 self._myShiftWeekStart.setDate(self._myShiftWeekStart.getDate() + 7);
                 self.loadMyShift();
+            });
+
+            var confirmBtns = container.querySelectorAll('.myshift-confirm');
+            for (var cb = 0; cb < confirmBtns.length; cb++) {
+                (function(btn) {
+                    btn.addEventListener('click', function() {
+                        apiPost('assignments.php?action=confirm&store_id=' + encodeURIComponent(self.storeId), {
+                            id: btn.getAttribute('data-id')
+                        }, function(data, err) {
+                            if (err) { alert('確認に失敗しました: ' + (err.message || '')); return; }
+                            self.loadMyShift();
+                        });
+                    });
+                })(confirmBtns[cb]);
+            }
+
+            var swapBtns = container.querySelectorAll('.myshift-swap');
+            for (var sb = 0; sb < swapBtns.length; sb++) {
+                (function(btn) {
+                    btn.addEventListener('click', function() {
+                        self._showSwapRequestDialog(btn.getAttribute('data-id'));
+                    });
+                })(swapBtns[sb]);
+            }
+
+            var absenceBtns = container.querySelectorAll('.myshift-absence');
+            for (var ab = 0; ab < absenceBtns.length; ab++) {
+                (function(btn) {
+                    btn.addEventListener('click', function() {
+                        var reason = prompt('欠勤理由・店長へのメモを入力してください（任意）', '');
+                        if (reason === null) return;
+                        apiPost('swap-requests.php?store_id=' + encodeURIComponent(self.storeId), {
+                            shift_assignment_id: btn.getAttribute('data-id'),
+                            request_type: 'absence',
+                            reason: reason
+                        }, function(data, err) {
+                            if (err) { alert('欠勤連絡に失敗しました: ' + (err.message || '')); return; }
+                            alert('欠勤連絡を送信しました');
+                            self.loadMyShift();
+                        });
+                    });
+                })(absenceBtns[ab]);
+            }
+        },
+
+        _showSwapRequestDialog: function(assignmentId) {
+            var self = this;
+            var overlay = document.createElement('div');
+            overlay.className = 'shift-dialog-overlay';
+            overlay.innerHTML = '<div class="shift-dialog">' +
+                '<h3>交代依頼</h3>' +
+                '<div id="swap-candidates">候補を確認中...</div>' +
+                '<label>店長へのメモ<input type="text" id="swap-reason" class="form-input" placeholder="理由や補足（任意）"></label>' +
+                '<div class="shift-dialog-actions">' +
+                '<button class="btn btn-primary" id="swap-send">送信</button>' +
+                '<button class="btn" id="swap-cancel">キャンセル</button>' +
+                '</div></div>';
+            document.body.appendChild(overlay);
+
+            document.getElementById('swap-cancel').addEventListener('click', function() {
+                document.body.removeChild(overlay);
+            });
+
+            apiGet('swap-requests.php', {
+                store_id: self.storeId,
+                action: 'candidates',
+                assignment_id: assignmentId
+            }, function(data, err) {
+                var box = document.getElementById('swap-candidates');
+                if (!box) return;
+                if (err) {
+                    box.innerHTML = '<p class="error">候補を取得できませんでした</p>';
+                    return;
+                }
+                var html = '<p>交代できそうなスタッフを選ぶと、店長が承認しやすくなります。</p>' +
+                    '<label class="shift-swap-candidate"><input type="radio" name="swap-candidate" value="" checked> 候補を指定しない</label>';
+                var candidates = data.candidates || [];
+                for (var i = 0; i < Math.min(candidates.length, 8); i++) {
+                    var c = candidates[i];
+                    var sub = c.availability === 'preferred' ? '希望' : (c.availability === 'available' ? '出勤可' : '未提出');
+                    html += '<label class="shift-swap-candidate"><input type="radio" name="swap-candidate" value="' + esc(c.user_id) + '"> ' +
+                        esc(c.display_name) + ' <small>' + esc(sub + (c.role_match ? '' : ' / 持ち場要確認')) + '</small></label>';
+                }
+                box.innerHTML = html;
+            });
+
+            document.getElementById('swap-send').addEventListener('click', function() {
+                var checked = overlay.querySelector('input[name="swap-candidate"]:checked');
+                apiPost('swap-requests.php?store_id=' + encodeURIComponent(self.storeId), {
+                    shift_assignment_id: assignmentId,
+                    request_type: 'swap',
+                    candidate_user_id: checked ? checked.value : '',
+                    reason: document.getElementById('swap-reason').value
+                }, function(data, err) {
+                    if (err) { alert('交代依頼に失敗しました: ' + (err.message || '')); return; }
+                    document.body.removeChild(overlay);
+                    alert('交代依頼を送信しました');
+                    self.loadMyShift();
+                });
             });
         },
 
@@ -726,7 +909,10 @@
                     container.innerHTML = '<p class="error">設定の取得に失敗しました</p>';
                     return;
                 }
-                self._renderSettings(container, data);
+                self._loadPositions(function() {
+                    data.positions = self.positions;
+                    self._renderSettings(container, data);
+                });
             });
         },
 
@@ -752,6 +938,7 @@
             parts.push(self._renderSettingsCardGps(settings));
             // Tools カードは意図的に非表示
             parts.push(self._renderSettingsCardWage(settings));
+            parts.push(self._renderSettingsCardPositions(settings));
             parts.push('</div>');
 
             container.innerHTML = parts.join('');
@@ -817,7 +1004,8 @@
                     store_lat: latVal !== '' ? parseFloat(latVal) : null,
                     store_lng: lngVal !== '' ? parseFloat(lngVal) : null,
                     gps_radius_meters: parseInt(document.getElementById('set-radius').value, 10),
-                    default_hourly_rate: hourlyRate
+                    default_hourly_rate: hourlyRate,
+                    target_labor_cost_ratio: parseFloat(document.getElementById('set-labor-ratio').value || '30')
                 };
 
                 apiPatch('settings.php?store_id=' + self.storeId, body, function(data, err) {
@@ -829,6 +1017,39 @@
             for (var si = 0; si < saveIds.length; si++) {
                 var btn = document.getElementById(saveIds[si]);
                 if (btn) btn.addEventListener('click', handleSave);
+            }
+
+            var addPositionBtn = document.getElementById('set-position-add');
+            if (addPositionBtn) {
+                addPositionBtn.addEventListener('click', function() {
+                    var code = document.getElementById('set-position-code').value;
+                    var label = document.getElementById('set-position-label').value;
+                    if (!code || !label) { alert('コードと表示名を入力してください'); return; }
+                    apiPost('positions.php?store_id=' + encodeURIComponent(self.storeId), {
+                        store_id: self.storeId,
+                        code: code,
+                        label: label,
+                        sort_order: 100
+                    }, function(data, err) {
+                        if (err) { alert('持ち場の保存に失敗しました: ' + (err.message || '')); return; }
+                        self.loadSettings();
+                    });
+                });
+            }
+
+            var disableBtns = container.querySelectorAll('.set-position-disable');
+            for (var pi = 0; pi < disableBtns.length; pi++) {
+                (function(btn) {
+                    btn.addEventListener('click', function() {
+                        if (!confirm('この持ち場を非表示にしますか？既存シフトの履歴は残ります。')) return;
+                        apiPatch('positions.php?id=' + encodeURIComponent(btn.getAttribute('data-id')) + '&store_id=' + encodeURIComponent(self.storeId), {
+                            is_active: 0
+                        }, function(data, err) {
+                            if (err) { alert('持ち場の更新に失敗しました'); return; }
+                            self.loadSettings();
+                        });
+                    });
+                })(disableBtns[pi]);
             }
         },
 
@@ -955,10 +1176,48 @@
                       '<input class="form-field__input" type="number" id="set-hourly-rate" min="0" max="10000" value="' + (s.default_hourly_rate !== null ? s.default_hourly_rate : '') + '" placeholder="未設定">' +
                       '<p class="form-field__hint">空欄にすると人件費計算が行われません。深夜（22時〜翌5時）は自動で 1.25 倍されます。</p>' +
                     '</div>' +
+                    '<div class="form-field">' +
+                      '<label class="form-field__label" for="set-labor-ratio">目標人件費率 <span class="form-field__label-sub">%</span></label>' +
+                      '<input class="form-field__input" type="number" id="set-labor-ratio" min="1" max="80" step="0.1" value="' + (s.target_labor_cost_ratio !== null ? s.target_labor_cost_ratio : 30) + '">' +
+                      '<p class="form-field__hint">公開前チェックと集計サマリーで、予定/実績の人件費率がこの値を超えると警告します。</p>' +
+                    '</div>' +
                   '</div>' +
                   '<div class="shift-card__save">' +
                     '<span class="shift-card__save-hint">変更は翌月シフトの試算から反映</span>' +
                     '<button class="btn btn-primary" id="set-save-wage" type="button">保存</button>' +
+                  '</div>' +
+                '</section>';
+        },
+
+        _renderSettingsCardPositions: function(s) {
+            var positions = s.positions || [];
+            var rows = '';
+            if (positions.length === 0) {
+                rows = '<p class="empty-msg">持ち場がありません。</p>';
+            } else {
+                rows += '<div class="shift-position-list">';
+                for (var i = 0; i < positions.length; i++) {
+                    var p = positions[i];
+                    rows += '<div class="shift-position-row' + (p.is_active === 0 ? ' is-disabled' : '') + '">' +
+                        '<span><strong>' + esc(p.label || p.code) + '</strong><small>' + esc(p.code) + '</small></span>' +
+                        (p.is_active === 0 ? '<em>非表示</em>' : '<button type="button" class="btn btn-sm set-position-disable" data-id="' + esc(p.id) + '">非表示</button>') +
+                        '</div>';
+                }
+                rows += '</div>';
+            }
+            return '' +
+                '<section class="shift-card">' +
+                  '<div class="shift-card__head">' +
+                    '<h3 class="shift-card__title"><span class="shift-card__title-icon">▦</span>持ち場</h3>' +
+                    '<p class="shift-card__desc">ホール/キッチンだけで足りない場合に、レジ、ドリンク、洗い場、仕込みなどを追加します。公開前チェックの役割不足判定に使われます。</p>' +
+                  '</div>' +
+                  '<div class="shift-card__body">' +
+                    rows +
+                    '<div class="shift-position-add">' +
+                      '<input class="form-field__input" type="text" id="set-position-code" placeholder="code 例: drink">' +
+                      '<input class="form-field__input" type="text" id="set-position-label" placeholder="表示名 例: ドリンク">' +
+                      '<button class="btn btn-primary" id="set-position-add" type="button">追加</button>' +
+                    '</div>' +
                   '</div>' +
                 '</section>';
         },
@@ -1058,6 +1317,9 @@
             html += '<div class="shift-summary__stat"><span class="shift-summary__stat-label">総労働時間</span><span class="shift-summary__stat-value">' + data.total_hours + 'h</span></div>';
             if (data.labor_cost_total > 0) {
                 html += '<div class="shift-summary__stat"><span class="shift-summary__stat-label">総人件費</span><span class="shift-summary__stat-value">¥' + data.labor_cost_total.toLocaleString() + '</span></div>';
+            }
+            if (data.labor_cost_ratio !== null && data.labor_cost_ratio !== undefined) {
+                html += '<div class="shift-summary__stat"><span class="shift-summary__stat-label">人件費率</span><span class="shift-summary__stat-value">' + data.labor_cost_ratio + '%</span></div>';
             }
             if (data.night_premium_total > 0) {
                 html += '<div class="shift-summary__stat"><span class="shift-summary__stat-label">深夜手当合計</span><span class="shift-summary__stat-value">¥' + data.night_premium_total.toLocaleString() + '</span></div>';

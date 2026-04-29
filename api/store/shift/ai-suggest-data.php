@@ -23,7 +23,7 @@ $pdo      = get_db();
 $tenantId = $user['tenant_id'];
 
 if (!check_plan_feature($pdo, $tenantId, 'shift_management')) {
-    json_error('PLAN_REQUIRED', 'シフト管理はProプラン以上で利用できます', 403);
+    json_error('PLAN_REQUIRED', 'この機能は現在の契約では利用できません', 403);
 }
 
 $storeId = require_store_param();
@@ -101,6 +101,21 @@ $stmtSettings->execute([$storeId, $tenantId]);
 $settingsRow = $stmtSettings->fetch();
 $defaultHourlyRate = ($settingsRow && $settingsRow['default_hourly_rate'] !== null)
     ? (int)$settingsRow['default_hourly_rate'] : null;
+
+$stmtPositions = $pdo->prepare(
+    'SELECT code, label
+     FROM shift_work_positions
+     WHERE tenant_id = ? AND store_id = ? AND is_active = 1
+     ORDER BY sort_order, label'
+);
+$stmtPositions->execute([$tenantId, $storeId]);
+$positions = $stmtPositions->fetchAll();
+if (count($positions) === 0) {
+    $positions = [
+        ['code' => 'hall', 'label' => 'ホール'],
+        ['code' => 'kitchen', 'label' => 'キッチン'],
+    ];
+}
 
 // 3b: 直近4週間の勤怠実績（スタッフ別集計）
 $stmt = $pdo->prepare(
@@ -219,6 +234,7 @@ json_response([
     'availabilities' => $availabilities,
     'staffList'      => $staffList,
     'salesByDayHour' => $salesByDayHour,
+    'positions'      => $positions,
     'targetPeriod'   => [
         'start_date' => $startDate,
         'end_date'   => $endDate,

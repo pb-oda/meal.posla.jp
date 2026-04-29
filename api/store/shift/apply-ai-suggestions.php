@@ -18,6 +18,26 @@ require_once __DIR__ . '/../../lib/auth.php';
 require_once __DIR__ . '/../../lib/response.php';
 require_once __DIR__ . '/../../lib/audit-log.php';
 
+function shift_ai_role_allowed($pdo, $tenantId, $storeId, $role)
+{
+    if ($role === null || $role === '') {
+        return true;
+    }
+    if (!preg_match('/^[a-z0-9_-]{1,20}$/', (string)$role)) {
+        return false;
+    }
+    if (in_array($role, ['kitchen', 'hall'], true)) {
+        return true;
+    }
+    $stmt = $pdo->prepare(
+        'SELECT 1 FROM shift_work_positions
+         WHERE tenant_id = ? AND store_id = ? AND code = ? AND is_active = 1
+         LIMIT 1'
+    );
+    $stmt->execute([$tenantId, $storeId, $role]);
+    return (bool)$stmt->fetch();
+}
+
 start_auth_session();
 handle_preflight();
 require_method(['POST']);
@@ -28,7 +48,7 @@ $tenantId = $user['tenant_id'];
 
 // プランチェック
 if (!check_plan_feature($pdo, $tenantId, 'shift_management')) {
-    json_error('PLAN_REQUIRED', 'シフト管理はProプラン以上で利用できます', 403);
+    json_error('PLAN_REQUIRED', 'この機能は現在の契約では利用できません', 403);
 }
 
 $storeId = require_store_param();
@@ -72,9 +92,9 @@ foreach ($suggestions as $idx => $sg) {
     if ($sg['start_time'] >= $sg['end_time']) {
         json_error('INVALID_INPUT', 'suggestions[' . $idx . '] の終了時刻は開始時刻より後にしてください', 400);
     }
-    if (isset($sg['role_type']) && $sg['role_type'] !== null && $sg['role_type'] !== '' &&
-        !in_array($sg['role_type'], ['kitchen', 'hall'], true)) {
-        json_error('INVALID_INPUT', 'suggestions[' . $idx . '].role_type は kitchen / hall のいずれかです', 400);
+    $roleTypeForCheck = (isset($sg['role_type']) && $sg['role_type'] !== '') ? $sg['role_type'] : null;
+    if (!shift_ai_role_allowed($pdo, $tenantId, $storeId, $roleTypeForCheck)) {
+        json_error('INVALID_INPUT', 'suggestions[' . $idx . '].role_type は登録済みの持ち場から選択してください', 400);
     }
 }
 

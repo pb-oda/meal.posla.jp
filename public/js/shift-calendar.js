@@ -106,9 +106,13 @@
         users: [],
         availabilities: [],
         hourlyRates: null,
+        positions: [],
+        publishCheck: null,
+        publishCheckLoading: false,
         _initialized: false,
 
         init: function(containerId, storeId) {
+            var self = this;
             this.containerId = containerId;
             this.storeId = storeId;
 
@@ -121,8 +125,58 @@
                 this.weekStart.setHours(0, 0, 0, 0);
             }
 
-            this.loadWeek();
+            this._loadPositions(function() {
+                self.loadWeek();
+            });
             this._initialized = true;
+        },
+
+        _loadPositions: function(callback) {
+            var self = this;
+            apiCall('GET', 'positions.php?store_id=' + encodeURIComponent(self.storeId), null, function(data, err) {
+                if (!err && data && data.positions) {
+                    self.positions = data.positions;
+                } else {
+                    self.positions = [
+                        { code: 'hall', label: 'ホール', is_active: 1 },
+                        { code: 'kitchen', label: 'キッチン', is_active: 1 }
+                    ];
+                }
+                if (callback) callback();
+            });
+        },
+
+        _roleOptionsHtml: function(selected) {
+            var positions = this.positions && this.positions.length ? this.positions : [
+                { code: 'hall', label: 'ホール', is_active: 1 },
+                { code: 'kitchen', label: 'キッチン', is_active: 1 }
+            ];
+            var seen = {};
+            var html = '<option value="">指定なし</option>';
+            for (var i = 0; i < positions.length; i++) {
+                if (positions[i].is_active === 0) continue;
+                seen[positions[i].code] = true;
+                html += '<option value="' + esc(positions[i].code) + '"' +
+                    (selected === positions[i].code ? ' selected' : '') + '>' +
+                    esc(positions[i].label || positions[i].code) + '</option>';
+            }
+            if (selected && !seen[selected]) {
+                html += '<option value="' + esc(selected) + '" selected>' + esc(selected) + '</option>';
+            }
+            return html;
+        },
+
+        _roleLabel: function(code) {
+            if (!code) return '指定なし';
+            var positions = this.positions && this.positions.length ? this.positions : [];
+            for (var i = 0; i < positions.length; i++) {
+                if (positions[i].code === code) {
+                    return positions[i].label || positions[i].code;
+                }
+            }
+            if (code === 'hall') return 'ホール';
+            if (code === 'kitchen') return 'キッチン';
+            return code;
         },
 
         loadWeek: function() {
@@ -145,7 +199,9 @@
                 self.users = data.users || [];
                 self.availabilities = data.availabilities || [];
                 self.hourlyRates = data.hourly_rates || null;
+                self.publishCheck = null;
                 self.render();
+                self._loadPublishCheck(start, end);
             });
         },
 
@@ -169,6 +225,10 @@
                 '<button class="btn btn-sm" id="cal-apply-tpl">テンプレート適用</button> ' +
                 '<button class="btn btn-sm cal-ai-btn" id="cal-ai-suggest">AI提案</button> ' +
                 '<button class="btn btn-sm btn-primary" id="cal-publish">確定する</button>' +
+                '</div>';
+
+            html += '<div id="cal-publish-check" class="cal-publish-check">' +
+                '<div class="cal-publish-check__loading">公開前チェックを読み込み中...</div>' +
                 '</div>';
 
             // ── カレンダーテーブル ──
@@ -252,7 +312,7 @@
                             cellContent += '<div class="cal-shift ' + statusClass + helpClass + '" data-id="' + sa.id + '">' +
                                 helpBadge +
                                 esc(sa.start_time.substring(0, 5)) + '-' + esc(sa.end_time.substring(0, 5)) +
-                                (sa.role_type ? '<br><small>' + esc(sa.role_type) + '</small>' : '') +
+                                (sa.role_type ? '<br><small>' + esc(self._roleLabel(sa.role_type)) + '</small>' : '') +
                                 helperInfo +
                                 '</div>';
                         }
@@ -398,7 +458,16 @@
 
             // 公開
             document.getElementById('cal-publish').addEventListener('click', function() {
-                if (!confirm(start + ' 〜 ' + end + ' のシフトを確定しますか？\n確定するとスタッフに表示されます。')) return;
+                var confirmMsg = start + ' 〜 ' + end + ' のシフトを確定しますか？\n確定するとスタッフに表示されます。';
+                if (self.publishCheck && self.publishCheck.metrics) {
+                    var m = self.publishCheck.metrics;
+                    var alertCount = (m.error_count || 0) + (m.warning_count || 0);
+                    if (alertCount > 0) {
+                        confirmMsg += '\n\n公開前チェック: 要確認 ' + alertCount + '件';
+                        if (m.error_count > 0) confirmMsg += '\n赤の警告があります。公開前に確認してください。';
+                    }
+                }
+                if (!confirm(confirmMsg)) return;
                 apiCall('POST', 'assignments.php?action=publish&store_id=' + encodeURIComponent(self.storeId), {
                     store_id: self.storeId,
                     start_date: start,
@@ -409,6 +478,226 @@
                     self.loadWeek();
                 });
             });
+        },
+
+        _loadPublishCheck: function(startDate, endDate) {
+            var self = this;
+            self.publishCheckLoading = true;
+            apiCall('GET', 'publish-check.php?store_id=' + encodeURIComponent(self.storeId) +
+                '&start_date=' + encodeURIComponent(startDate) +
+                '&end_date=' + encodeURIComponent(endDate), null, function(data, err) {
+                self.publishCheckLoading = false;
+                if (err) {
+                    self.publishCheck = { error: err };
+                } else {
+                    self.publishCheck = data;
+                }
+                self._renderPublishCheckPanel();
+            });
+        },
+
+        _renderPublishCheckPanel: function() {
+            var self = this;
+            var panel = document.getElementById('cal-publish-check');
+            if (!panel) return;
+
+            if (!self.publishCheck) {
+                panel.innerHTML = '<div class="cal-publish-check__loading">公開前チェックを読み込み中...</div>';
+                return;
+            }
+            if (self.publishCheck.error) {
+                panel.innerHTML = '<div class="cal-publish-check__error">公開前チェックを取得できませんでした</div>';
+                return;
+            }
+
+            var data = self.publishCheck;
+            var m = data.metrics || {};
+            var warnings = data.warnings || [];
+            var coverage = data.coverage || [];
+            var missing = data.missing_availabilities || [];
+            var diffs = data.attendance_diffs || [];
+            var helps = data.help_candidates || [];
+            var laborRisks = data.labor_risks || [];
+            var unconfirmed = data.unconfirmed_assignments || [];
+            var alertCount = (m.error_count || 0) + (m.warning_count || 0);
+            var stateClass = alertCount > 0 ? ' cal-publish-check--warn' : ' cal-publish-check--ok';
+
+            var html = '<div class="cal-publish-check__head' + stateClass + '">' +
+                '<div>' +
+                '<strong>公開前チェック</strong>' +
+                '<span class="cal-publish-check__summary">' +
+                '赤 ' + (m.error_count || 0) + ' / 黄 ' + (m.warning_count || 0) + ' / 情報 ' + (m.info_count || 0) +
+                '</span>' +
+                '</div>' +
+                '<button class="btn btn-sm" id="cal-publish-check-refresh">再チェック</button>' +
+                '</div>';
+
+            html += '<div class="cal-publish-check__metrics">' +
+                '<span>スタッフ ' + (m.staff_count || 0) + '人</span>' +
+                '<span>下書き ' + (m.draft_count || 0) + '件</span>' +
+                '<span>公開済 ' + (m.published_count || 0) + '件</span>' +
+                '<span>確定確認済 ' + (m.confirmed_count || 0) + '件</span>' +
+                '<span>未確認 ' + (m.unconfirmed_count || 0) + '件</span>' +
+                (m.scheduled_labor_cost !== null && m.scheduled_labor_cost !== undefined ? '<span>予定人件費 ¥' + Number(m.scheduled_labor_cost).toLocaleString() + '</span>' : '') +
+                (m.labor_cost_ratio !== null && m.labor_cost_ratio !== undefined ? '<span>予定人件費率 ' + m.labor_cost_ratio + '%</span>' : '') +
+                '</div>';
+
+            if (warnings.length > 0) {
+                html += '<div class="cal-publish-check__warnings">';
+                for (var w = 0; w < Math.min(warnings.length, 10); w++) {
+                    var item = warnings[w];
+                    html += '<div class="cal-publish-check__warning cal-publish-check__warning--' + esc(item.level || 'info') + '">' +
+                        esc(item.message || '') +
+                        '</div>';
+                }
+                if (warnings.length > 10) {
+                    html += '<div class="cal-publish-check__more">ほか ' + (warnings.length - 10) + ' 件</div>';
+                }
+                html += '</div>';
+            } else {
+                html += '<div class="cal-publish-check__okline">人数・役割・休憩・希望提出・勤怠差分に大きな警告はありません。</div>';
+            }
+
+            html += '<div class="cal-publish-check__grid">';
+            html += '<section class="cal-publish-check__block"><h4>時間帯別</h4>';
+            var shortageRows = [];
+            for (var c = 0; c < coverage.length; c++) {
+                var roleShortage = false;
+                var reqRoles = coverage[c].required_roles || {};
+                var roleCounts = coverage[c].role_counts || {};
+                for (var rk in reqRoles) {
+                    if (reqRoles.hasOwnProperty(rk) && (reqRoles[rk] || 0) > (roleCounts[rk] || 0)) {
+                        roleShortage = true;
+                        break;
+                    }
+                }
+                if ((coverage[c].shortage_count || 0) > 0 || roleShortage) {
+                    shortageRows.push(coverage[c]);
+                }
+            }
+            if (shortageRows.length === 0) {
+                html += '<p>不足なし</p>';
+            } else {
+                html += '<table class="shift-table cal-publish-check__mini"><thead><tr><th>日時</th><th>予定/必要</th><th>予測</th></tr></thead><tbody>';
+                for (var sr = 0; sr < Math.min(shortageRows.length, 6); sr++) {
+                    var row = shortageRows[sr];
+                    html += '<tr><td>' + esc(row.date) + '<br>' + esc(row.time) + '</td>' +
+                        '<td>' + row.scheduled_count + ' / ' + row.required_count + '人</td>' +
+                        '<td>注文' + row.forecast_orders + ' / 予約' + row.reservation_party_size + '名</td></tr>';
+                }
+                html += '</tbody></table>';
+            }
+            html += '</section>';
+
+            html += '<section class="cal-publish-check__block"><h4>希望未提出</h4>';
+            if (missing.length === 0) {
+                html += '<p>未提出なし</p>';
+            } else {
+                html += '<p>' + missing.length + '人が未提出または一部未提出です。</p>' +
+                    '<button class="btn btn-sm" id="cal-copy-reminders">リマインド文コピー</button>' +
+                    '<div class="cal-publish-check__chips">';
+                for (var mi = 0; mi < Math.min(missing.length, 8); mi++) {
+                    html += '<span>' + esc(missing[mi].display_name) + ' ' + missing[mi].missing_days + '日</span>';
+                }
+                html += '</div>';
+            }
+            html += '</section>';
+
+            html += '<section class="cal-publish-check__block"><h4>未確認</h4>';
+            if (unconfirmed.length === 0) {
+                html += '<p>未確認なし</p>';
+            } else {
+                html += '<ul class="cal-publish-check__list">';
+                for (var ui = 0; ui < Math.min(unconfirmed.length, 5); ui++) {
+                    html += '<li>' + esc(unconfirmed[ui].display_name + ' ' + unconfirmed[ui].shift_date + ' ' + unconfirmed[ui].start_time + '-' + unconfirmed[ui].end_time) + '</li>';
+                }
+                html += '</ul>';
+            }
+            html += '</section>';
+
+            html += '<section class="cal-publish-check__block"><h4>実績差分</h4>';
+            if (diffs.length === 0) {
+                html += '<p>差分なし</p>';
+            } else {
+                html += '<ul class="cal-publish-check__list">';
+                for (var di = 0; di < Math.min(diffs.length, 5); di++) {
+                    html += '<li>' + esc(diffs[di].message) + '</li>';
+                }
+                html += '</ul>';
+            }
+            html += '</section>';
+
+            html += '<section class="cal-publish-check__block"><h4>労務リスク</h4>';
+            if (laborRisks.length === 0) {
+                html += '<p>大きなリスクなし</p>';
+            } else {
+                html += '<ul class="cal-publish-check__list">';
+                for (var lr = 0; lr < Math.min(laborRisks.length, 5); lr++) {
+                    html += '<li>' + esc(laborRisks[lr].message || '') + '</li>';
+                }
+                html += '</ul>';
+            }
+            html += '</section>';
+
+            html += '<section class="cal-publish-check__block"><h4>ヘルプ候補</h4>';
+            if (helps.length === 0) {
+                html += '<p>候補表示なし</p>';
+            } else {
+                html += '<ul class="cal-publish-check__list">';
+                for (var hi = 0; hi < Math.min(helps.length, 4); hi++) {
+                    var help = helps[hi];
+                    var names = [];
+                    for (var hc = 0; hc < Math.min((help.candidates || []).length, 3); hc++) {
+                        names.push((help.candidates[hc].store_name || '') + ' ' + (help.candidates[hc].display_name || ''));
+                    }
+                    html += '<li>' + esc(help.date + ' ' + help.time) + ': ' + (names.length ? esc(names.join(' / ')) : '候補なし') + '</li>';
+                }
+                html += '</ul>';
+            }
+            html += '</section></div>';
+
+            panel.innerHTML = html;
+
+            var refresh = document.getElementById('cal-publish-check-refresh');
+            if (refresh && data.period) {
+                refresh.addEventListener('click', function() {
+                    self._loadPublishCheck(data.period.start_date, data.period.end_date);
+                });
+            }
+
+            var copyBtn = document.getElementById('cal-copy-reminders');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', function() {
+                    var lines = [];
+                    for (var i = 0; i < missing.length; i++) {
+                        lines.push(missing[i].reminder_text);
+                    }
+                    self._copyText(lines.join('\n'));
+                });
+            }
+        },
+
+        _copyText: function(text) {
+            if (!text) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    alert('リマインド文をコピーしました');
+                }, function() {
+                    alert(text);
+                });
+                return;
+            }
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                alert('リマインド文をコピーしました');
+            } catch (e) {
+                alert(text);
+            }
+            document.body.removeChild(ta);
         },
 
         // ── 編集ダイアログ ──
@@ -432,9 +721,7 @@
                 '<label>開始時刻<input type="time" id="asg-start" value="' + (assignment.start_time || '09:00').substring(0, 5) + '"></label>' +
                 '<label>終了時刻<input type="time" id="asg-end" value="' + (assignment.end_time || '18:00').substring(0, 5) + '"></label>' +
                 '<label>休憩(分)<input type="number" id="asg-break" min="0" max="180" value="' + (assignment.break_minutes || 0) + '"></label>' +
-                '<label>役割<select id="asg-role"><option value="">指定なし</option>' +
-                '<option value="kitchen"' + (assignment.role_type === 'kitchen' ? ' selected' : '') + '>kitchen</option>' +
-                '<option value="hall"' + (assignment.role_type === 'hall' ? ' selected' : '') + '>hall</option></select></label>' +
+                '<label>持ち場<select id="asg-role">' + self._roleOptionsHtml(assignment.role_type || null) + '</select></label>' +
                 '<label>メモ<input type="text" id="asg-note" value="' + esc(assignment.note || '') + '"></label>' +
                 '<div class="shift-dialog-actions">' +
                 '<button class="btn btn-primary" id="asg-save">保存</button>' +
@@ -634,6 +921,9 @@
             prompt += '- スタッフ一覧に含まれる全員にシフトを割り当てること（実績がない新人も含む）\n';
             prompt += '- 時給を考慮し、人件費を最適化する（ただし繁忙時の人員不足は避ける）\n\n';
 
+            prompt += '## 店舗の持ち場\n';
+            prompt += JSON.stringify(data.positions || [{ code: 'hall', label: 'ホール' }, { code: 'kitchen', label: 'キッチン' }]) + '\n\n';
+
             prompt += '## テンプレート\n';
             prompt += JSON.stringify(data.templates) + '\n\n';
 
@@ -648,7 +938,7 @@
 
             prompt += '## 出力\n';
             prompt += '以下のJSON形式のみ出力。前置き・解説・補足は禁止。\n';
-            prompt += '{"suggestions":[{"user_id":"xxx","shift_date":"YYYY-MM-DD","start_time":"HH:MM","end_time":"HH:MM","role_type":"hall or kitchen or null","reason":"理由"}],';
+            prompt += '{"suggestions":[{"user_id":"xxx","shift_date":"YYYY-MM-DD","start_time":"HH:MM","end_time":"HH:MM","role_type":"持ち場codeまたはnull","reason":"理由"}],';
             prompt += '"summary":"全体の提案理由",';
             prompt += '"estimated_labor_cost":0,';
             prompt += '"warnings":["警告メッセージ"]}\n';

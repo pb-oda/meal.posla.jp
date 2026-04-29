@@ -22,7 +22,7 @@ $tenantId = $user['tenant_id'];
 
 // プランチェック
 if (!check_plan_feature($pdo, $tenantId, 'shift_management')) {
-    json_error('PLAN_REQUIRED', 'シフト管理はProプラン以上で利用できます', 403);
+    json_error('PLAN_REQUIRED', 'この機能は現在の契約では利用できません', 403);
 }
 
 $storeId = require_store_param();
@@ -41,6 +41,7 @@ $defaults = [
     'gps_required'               => 0,
     'staff_visible_tools'        => 'handy',
     'default_hourly_rate'        => null,
+    'target_labor_cost_ratio'    => 30.00,
 ];
 
 // =============================================
@@ -52,7 +53,7 @@ if ($method === 'GET') {
                 overtime_threshold_minutes, early_clock_in_minutes,
                 auto_clock_out_hours,
                 store_lat, store_lng, gps_radius_meters, gps_required,
-                staff_visible_tools, default_hourly_rate
+                staff_visible_tools, default_hourly_rate, target_labor_cost_ratio
          FROM shift_settings
          WHERE store_id = ? AND tenant_id = ?'
     );
@@ -81,6 +82,7 @@ if ($method === 'GET') {
     $row['gps_required']              = (int)$row['gps_required'];
     // staff_visible_tools はそのまま（string|null）
     $row['default_hourly_rate']       = $row['default_hourly_rate'] !== null ? (int)$row['default_hourly_rate'] : null;
+    $row['target_labor_cost_ratio']   = (float)$row['target_labor_cost_ratio'];
 
     json_response($row);
 }
@@ -204,6 +206,14 @@ if ($method === 'PATCH') {
         }
     }
 
+    if (array_key_exists('target_labor_cost_ratio', $body)) {
+        $v = (float)$body['target_labor_cost_ratio'];
+        if ($v < 1 || $v > 80) {
+            json_error('INVALID_VALUE', 'target_labor_cost_ratio は 1〜80 の範囲で指定してください', 400);
+        }
+        $fields['target_labor_cost_ratio'] = $v;
+    }
+
     if (empty($fields)) {
         json_error('NO_FIELDS', '更新するフィールドが指定されていません', 400);
     }
@@ -214,7 +224,7 @@ if ($method === 'PATCH') {
                 overtime_threshold_minutes, early_clock_in_minutes,
                 auto_clock_out_hours,
                 store_lat, store_lng, gps_radius_meters, gps_required,
-                staff_visible_tools, default_hourly_rate
+                staff_visible_tools, default_hourly_rate, target_labor_cost_ratio
          FROM shift_settings
          WHERE store_id = ? AND tenant_id = ?'
     );
@@ -231,8 +241,8 @@ if ($method === 'PATCH') {
              overtime_threshold_minutes, early_clock_in_minutes,
              auto_clock_out_hours,
              store_lat, store_lng, gps_radius_meters, gps_required,
-             staff_visible_tools, default_hourly_rate)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             staff_visible_tools, default_hourly_rate, target_labor_cost_ratio)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
              submission_deadline_day    = VALUES(submission_deadline_day),
              default_break_minutes     = VALUES(default_break_minutes),
@@ -244,7 +254,8 @@ if ($method === 'PATCH') {
              gps_radius_meters         = VALUES(gps_radius_meters),
              gps_required              = VALUES(gps_required),
              staff_visible_tools       = VALUES(staff_visible_tools),
-             default_hourly_rate       = VALUES(default_hourly_rate)'
+             default_hourly_rate       = VALUES(default_hourly_rate),
+             target_labor_cost_ratio   = VALUES(target_labor_cost_ratio)'
     );
 
     // 既存レコードがある場合は既存値とマージ
@@ -261,6 +272,7 @@ if ($method === 'PATCH') {
             'gps_required'              => (int)$oldRow['gps_required'],
             'staff_visible_tools'       => $oldRow['staff_visible_tools'],
             'default_hourly_rate'       => $oldRow['default_hourly_rate'] !== null ? (int)$oldRow['default_hourly_rate'] : null,
+            'target_labor_cost_ratio'   => (float)$oldRow['target_labor_cost_ratio'],
         ], $fields);
     } else {
         $merged = $allFields;
@@ -280,6 +292,7 @@ if ($method === 'PATCH') {
         $merged['gps_required'],
         $merged['staff_visible_tools'],
         $merged['default_hourly_rate'],
+        $merged['target_labor_cost_ratio'],
     ]);
 
     // 監査ログ

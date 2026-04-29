@@ -15,6 +15,26 @@ require_once __DIR__ . '/../../lib/auth.php';
 require_once __DIR__ . '/../../lib/response.php';
 require_once __DIR__ . '/../../lib/audit-log.php';
 
+function shift_assignment_role_allowed($pdo, $tenantId, $storeId, $role)
+{
+    if ($role === null || $role === '') {
+        return true;
+    }
+    if (!preg_match('/^[a-z0-9_-]{1,20}$/', (string)$role)) {
+        return false;
+    }
+    if (in_array($role, ['kitchen', 'hall'], true)) {
+        return true;
+    }
+    $stmt = $pdo->prepare(
+        'SELECT 1 FROM shift_work_positions
+         WHERE tenant_id = ? AND store_id = ? AND code = ? AND is_active = 1
+         LIMIT 1'
+    );
+    $stmt->execute([$tenantId, $storeId, $role]);
+    return (bool)$stmt->fetch();
+}
+
 start_auth_session();
 handle_preflight();
 $method = require_method(['GET', 'POST', 'PATCH', 'DELETE']);
@@ -25,7 +45,7 @@ $tenantId = $user['tenant_id'];
 
 // プランチェック
 if (!check_plan_feature($pdo, $tenantId, 'shift_management')) {
-    json_error('PLAN_REQUIRED', 'シフト管理はProプラン以上で利用できます', 403);
+    json_error('PLAN_REQUIRED', 'この機能は現在の契約では利用できません', 403);
 }
 
 $storeId = require_store_param();
@@ -159,6 +179,49 @@ if ($method === 'GET') {
 
 // ── ここから書き込み系: manager以上 ──
 $action = $_GET['action'] ?? '';
+
+// =============================================
+// POST ?action=confirm: スタッフ本人が確定シフトを確認済みにする
+// =============================================
+if ($method === 'POST' && $action === 'confirm') {
+    $body = get_json_body();
+    $id = $body['id'] ?? ($_GET['id'] ?? '');
+    if ($id === '') {
+        json_error('MISSING_ID', 'id パラメータが必要です', 400);
+    }
+
+    $stmtOld = $pdo->prepare(
+        'SELECT * FROM shift_assignments
+         WHERE id = ? AND tenant_id = ? AND store_id = ?'
+    );
+    $stmtOld->execute([$id, $tenantId, $storeId]);
+    $old = $stmtOld->fetch();
+    if (!$old) {
+        json_error('NOT_FOUND', 'シフト割当が見つかりません', 404);
+    }
+    if ($user['role'] === 'staff' && $old['user_id'] !== $user['user_id']) {
+        json_error('FORBIDDEN', '自分のシフトのみ確認できます', 403);
+    }
+    if ($old['status'] === 'draft') {
+        json_error('NOT_PUBLISHED', '下書きシフトは確認できません', 400);
+    }
+
+    $stmt = $pdo->prepare(
+        'UPDATE shift_assignments
+         SET status = \'confirmed\'
+         WHERE id = ? AND tenant_id = ? AND store_id = ?'
+    );
+    $stmt->execute([$id, $tenantId, $storeId]);
+
+    write_audit_log(
+        $pdo, $user, $storeId,
+        'shift_assignment_confirm', 'shift_assignment', $id,
+        $old,
+        ['status' => 'confirmed']
+    );
+
+    json_response(['confirmed' => true]);
+}
 
 // =============================================
 // POST ?action=publish: ドラフト → 公開
@@ -331,8 +394,8 @@ if ($method === 'POST' && $action === '') {
     $roleType     = isset($body['role_type']) && $body['role_type'] !== '' ? $body['role_type'] : null;
     $note         = isset($body['note']) ? trim($body['note']) : null;
 
-    if ($roleType !== null && !in_array($roleType, ['kitchen', 'hall'], true)) {
-        json_error('INVALID_ROLE', 'role_type は kitchen / hall のいずれかです', 400);
+    if (!shift_assignment_role_allowed($pdo, $tenantId, $storeId, $roleType)) {
+        json_error('INVALID_ROLE', 'role_type は登録済みの持ち場から選択してください', 400);
     }
 
     // ユーザーの店舗所属チェック
@@ -435,8 +498,8 @@ if ($method === 'PATCH') {
 
     if (array_key_exists('role_type', $body)) {
         $rt = $body['role_type'];
-        if ($rt !== null && $rt !== '' && !in_array($rt, ['kitchen', 'hall'], true)) {
-            json_error('INVALID_ROLE', 'role_type は kitchen / hall のいずれかです', 400);
+        if (!shift_assignment_role_allowed($pdo, $tenantId, $storeId, $rt)) {
+            json_error('INVALID_ROLE', 'role_type は登録済みの持ち場から選択してください', 400);
         }
         $updates[] = 'role_type = ?';
         $params[]  = ($rt === '' ? null : $rt);

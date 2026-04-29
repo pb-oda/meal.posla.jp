@@ -20,7 +20,7 @@ $pdo      = get_db();
 $tenantId = $user['tenant_id'];
 
 if (!check_plan_feature($pdo, $tenantId, 'shift_management')) {
-    json_error('PLAN_REQUIRED', 'シフト管理はProプラン以上で利用できます', 403);
+    json_error('PLAN_REQUIRED', 'この機能は現在の契約では利用できません', 403);
 }
 
 $storeId = require_store_param();
@@ -53,7 +53,8 @@ if ($period === 'weekly') {
 
 // 設定取得（残業閾値 + デフォルト時給 + 休憩）
 $stmtSettings = $pdo->prepare(
-    'SELECT overtime_threshold_minutes, default_hourly_rate, default_break_minutes
+    'SELECT overtime_threshold_minutes, default_hourly_rate, default_break_minutes,
+            target_labor_cost_ratio
      FROM shift_settings
      WHERE store_id = ? AND tenant_id = ?'
 );
@@ -62,6 +63,7 @@ $settings = $stmtSettings->fetch();
 $overtimeThreshold = $settings ? (int)$settings['overtime_threshold_minutes'] : 480;
 $defaultHourlyRate = ($settings && $settings['default_hourly_rate'] !== null) ? (int)$settings['default_hourly_rate'] : null;
 $defaultBreakMinutes = $settings ? (int)$settings['default_break_minutes'] : 60;
+$targetLaborCostRatio = ($settings && isset($settings['target_labor_cost_ratio'])) ? (float)$settings['target_labor_cost_ratio'] : 30.00;
 
 // L-3 Phase 2: スタッフ個別時給マップ取得
 $stmtRates = $pdo->prepare(
@@ -362,6 +364,28 @@ foreach ($dailyRows as $d) {
     ];
 }
 
+$stmtRevenue = $pdo->prepare(
+    'SELECT COALESCE(SUM(total_amount), 0) AS total_revenue
+     FROM orders o
+     JOIN stores s ON s.id = o.store_id AND s.tenant_id = ?
+     WHERE o.store_id = ? AND o.status = ?
+       AND DATE(o.created_at) BETWEEN ? AND ?'
+);
+$stmtRevenue->execute([$tenantId, $storeId, 'paid', $startDate, $endDate]);
+$revenueRow = $stmtRevenue->fetch();
+$periodRevenue = $revenueRow ? (int)$revenueRow['total_revenue'] : 0;
+$laborCostRatio = ($periodRevenue > 0 && $laborCostTotal > 0) ? round(($laborCostTotal / $periodRevenue) * 100, 1) : null;
+if ($laborCostRatio !== null && $laborCostRatio > $targetLaborCostRatio) {
+    $laborWarnings[] = [
+        'type'         => 'actual_labor_cost_ratio',
+        'level'        => $laborCostRatio >= $targetLaborCostRatio + 10 ? 'error' : 'warning',
+        'user_id'      => null,
+        'display_name' => null,
+        'date'         => null,
+        'message'      => '実績人件費率が目標を超えています（実績' . $laborCostRatio . '% / 目標' . $targetLaborCostRatio . '%）',
+    ];
+}
+
 // ── シフト充足率（割当 vs 実出勤）──
 $stmtAssigned = $pdo->prepare(
     'SELECT shift_date, COUNT(*) AS assigned_count
@@ -384,5 +408,8 @@ json_response([
     'assigned_map'        => $assignedMap,
     'labor_cost_total'    => $laborCostTotal,
     'night_premium_total' => $nightPremiumTotal,
+    'period_revenue'      => $periodRevenue,
+    'labor_cost_ratio'    => $laborCostRatio,
+    'target_labor_cost_ratio' => $targetLaborCostRatio,
     'labor_warnings'      => $laborWarnings,
 ]);

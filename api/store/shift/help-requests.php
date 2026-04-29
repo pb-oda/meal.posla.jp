@@ -5,6 +5,7 @@
  * GET    ?store_id=xxx                        → 送信/受信の要請一覧
  * GET    ?action=list-stores&store_id=xxx     → 同一テナント内の他店舗一覧
  * GET    ?action=list-staff&store_id=xxx      → 指定店舗のスタッフ一覧
+ * GET    ?action=candidates&store_id=xxx      → 指定店舗・日時の候補スタッフ一覧
  * POST   body:{...}                           → ヘルプ要請作成
  * PATCH  ?id=xxx body:{action,assigned_user_ids,...} → 承認/却下/キャンセル
  */
@@ -12,6 +13,55 @@
 require_once __DIR__ . '/../../lib/db.php';
 require_once __DIR__ . '/../../lib/auth.php';
 require_once __DIR__ . '/../../lib/response.php';
+
+function shr_time_to_minutes($time)
+{
+    $time = (string)$time;
+    if (strlen($time) < 5) {
+        return 0;
+    }
+    return ((int)substr($time, 0, 2)) * 60 + (int)substr($time, 3, 2);
+}
+
+function shr_overlap_minutes($aStartTime, $aEndTime, $bStartTime, $bEndTime)
+{
+    $aStart = shr_time_to_minutes($aStartTime);
+    $aEnd = shr_time_to_minutes($aEndTime);
+    $bStart = shr_time_to_minutes($bStartTime);
+    $bEnd = shr_time_to_minutes($bEndTime);
+    if ($aEnd < $aStart) {
+        $aEnd += 1440;
+    }
+    if ($bEnd < $bStart) {
+        $bEnd += 1440;
+    }
+    return max(0, min($aEnd, $bEnd) - max($aStart, $bStart));
+}
+
+function shr_display_name($row)
+{
+    return ($row['display_name'] ?? '') !== '' ? $row['display_name'] : ($row['username'] ?? '');
+}
+
+function shr_role_allowed($pdo, $tenantId, $storeId, $role)
+{
+    if ($role === null || $role === '') {
+        return true;
+    }
+    if (!preg_match('/^[a-z0-9_-]{1,20}$/', (string)$role)) {
+        return false;
+    }
+    if (in_array($role, ['kitchen', 'hall'], true)) {
+        return true;
+    }
+    $stmt = $pdo->prepare(
+        'SELECT 1 FROM shift_work_positions
+         WHERE tenant_id = ? AND store_id = ? AND code = ? AND is_active = 1
+         LIMIT 1'
+    );
+    $stmt->execute([$tenantId, $storeId, $role]);
+    return (bool)$stmt->fetch();
+}
 
 start_auth_session();
 handle_preflight();
@@ -21,9 +71,9 @@ $user   = require_auth();
 $pdo      = get_db();
 $tenantId = $user['tenant_id'];
 
-// プランチェック: enterprise のみ
+// プランチェック: α-1 では hq_menu_broadcast 以外は全契約者に標準提供
 if (!check_plan_feature($pdo, $tenantId, 'shift_help_request')) {
-    json_error('PLAN_REQUIRED', 'この機能はenterpriseプランで利用可能です', 403);
+    json_error('PLAN_REQUIRED', 'この機能は現在の契約では利用できません', 403);
 }
 
 $storeId = require_store_param();
@@ -70,6 +120,191 @@ if ($method === 'GET') {
         );
         $stmtStaff->execute([$targetStoreId, $tenantId, 'staff']);
         json_response(['staff' => $stmtStaff->fetchAll()]);
+    }
+
+    // ── 指定店舗・日時の候補スタッフ一覧（ヘルプ送信前の判断材料）──
+    if ($action === 'candidates') {
+        require_role('manager');
+
+        $targetStoreId = $_GET['target_store_id'] ?? '';
+        $requestedDate = $_GET['requested_date'] ?? '';
+        $startTime = $_GET['start_time'] ?? '';
+        $endTime = $_GET['end_time'] ?? '';
+        $roleHint = isset($_GET['role_hint']) && $_GET['role_hint'] !== '' ? $_GET['role_hint'] : null;
+
+        if ($targetStoreId === '') {
+            json_error('MISSING_PARAM', 'target_store_id が必要です', 400);
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $requestedDate)) {
+            json_error('INVALID_DATE', 'requested_date を YYYY-MM-DD 形式で指定してください', 400);
+        }
+        if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime) ||
+            !preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $endTime)) {
+            json_error('INVALID_TIME', '時刻は HH:MM 形式で指定してください', 400);
+        }
+        if ($startTime >= $endTime) {
+            json_error('INVALID_TIME_RANGE', '終了時刻は開始時刻より後にしてください', 400);
+        }
+        if (!shr_role_allowed($pdo, $tenantId, $storeId, $roleHint)) {
+            json_error('INVALID_ROLE', 'role_hint は登録済みの持ち場から選択してください', 400);
+        }
+
+        $stmtCheck = $pdo->prepare(
+            'SELECT id, name FROM stores WHERE id = ? AND tenant_id = ? AND is_active = 1'
+        );
+        $stmtCheck->execute([$targetStoreId, $tenantId]);
+        $targetStore = $stmtCheck->fetch();
+        if (!$targetStore) {
+            json_error('STORE_NOT_FOUND', '店舗が見つかりません', 404);
+        }
+
+        $stmtStaff = $pdo->prepare(
+            'SELECT u.id, u.display_name, u.username, us.store_id, s.name AS store_name
+             FROM users u
+             JOIN user_stores us ON us.user_id = u.id AND us.store_id = ?
+             JOIN stores s ON s.id = us.store_id
+             WHERE u.tenant_id = ? AND u.is_active = 1 AND u.role = ?
+             ORDER BY u.display_name, u.username'
+        );
+        $stmtStaff->execute([$targetStoreId, $tenantId, 'staff']);
+        $staffRows = $stmtStaff->fetchAll();
+
+        if (count($staffRows) === 0) {
+            json_response([
+                'target_store' => $targetStore,
+                'candidates' => [],
+                'excluded' => [],
+            ]);
+        }
+
+        $staffIds = array_column($staffRows, 'id');
+        $placeholders = implode(',', array_fill(0, count($staffIds), '?'));
+
+        $stmtAvail = $pdo->prepare(
+            "SELECT user_id, availability, preferred_start, preferred_end
+             FROM shift_availabilities
+             WHERE tenant_id = ? AND store_id = ?
+               AND target_date = ?
+               AND user_id IN ({$placeholders})"
+        );
+        $stmtAvail->execute(array_merge([$tenantId, $targetStoreId, $requestedDate], $staffIds));
+        $availMap = [];
+        foreach ($stmtAvail->fetchAll() as $av) {
+            $availMap[$av['user_id']] = $av;
+        }
+
+        $stmtAssignments = $pdo->prepare(
+            "SELECT user_id, store_id, start_time, end_time
+             FROM shift_assignments
+             WHERE tenant_id = ?
+               AND shift_date = ?
+               AND user_id IN ({$placeholders})"
+        );
+        $stmtAssignments->execute(array_merge([$tenantId, $requestedDate], $staffIds));
+        $assignmentMap = [];
+        foreach ($stmtAssignments->fetchAll() as $asg) {
+            if (!isset($assignmentMap[$asg['user_id']])) {
+                $assignmentMap[$asg['user_id']] = [];
+            }
+            $assignmentMap[$asg['user_id']][] = $asg;
+        }
+
+        $historyStart = date('Y-m-d', strtotime($requestedDate . ' -90 days'));
+        $stmtRole = $pdo->prepare(
+            "SELECT user_id, role_type, COUNT(*) AS role_count
+             FROM shift_assignments
+             WHERE tenant_id = ?
+               AND user_id IN ({$placeholders})
+               AND role_type IN ('hall', 'kitchen')
+               AND shift_date BETWEEN ? AND ?
+             GROUP BY user_id, role_type"
+        );
+        $stmtRole->execute(array_merge([$tenantId], $staffIds, [$historyStart, $requestedDate]));
+        $roleMap = [];
+        foreach ($stmtRole->fetchAll() as $r) {
+            if (!isset($roleMap[$r['user_id']])) {
+                $roleMap[$r['user_id']] = [];
+            }
+            $roleMap[$r['user_id']][$r['role_type']] = (int)$r['role_count'];
+        }
+
+        $candidates = [];
+        $excluded = [];
+        foreach ($staffRows as $sr) {
+            $av = isset($availMap[$sr['id']]) ? $availMap[$sr['id']] : null;
+            if ($av && $av['availability'] === 'unavailable') {
+                $excluded[] = [
+                    'user_id' => $sr['id'],
+                    'display_name' => shr_display_name($sr),
+                    'reason' => '希望不可',
+                ];
+                continue;
+            }
+            if ($av && $av['preferred_start'] && $av['preferred_end'] &&
+                shr_overlap_minutes($av['preferred_start'], $av['preferred_end'], $startTime, $endTime) <= 0) {
+                $excluded[] = [
+                    'user_id' => $sr['id'],
+                    'display_name' => shr_display_name($sr),
+                    'reason' => '希望時間外',
+                ];
+                continue;
+            }
+
+            $conflict = false;
+            if (isset($assignmentMap[$sr['id']])) {
+                foreach ($assignmentMap[$sr['id']] as $asg) {
+                    if (shr_overlap_minutes($asg['start_time'], $asg['end_time'], $startTime, $endTime) > 0) {
+                        $conflict = true;
+                        break;
+                    }
+                }
+            }
+            if ($conflict) {
+                $excluded[] = [
+                    'user_id' => $sr['id'],
+                    'display_name' => shr_display_name($sr),
+                    'reason' => '同時間帯シフトあり',
+                ];
+                continue;
+            }
+
+            $roleKnown = isset($roleMap[$sr['id']]);
+            $roleMatch = !$roleHint || !$roleKnown || isset($roleMap[$sr['id']][$roleHint]);
+            $score = 0;
+            if ($av && $av['availability'] === 'preferred') {
+                $score += 20;
+            } elseif ($av && $av['availability'] === 'available') {
+                $score += 10;
+            }
+            if ($roleMatch) {
+                $score += 5;
+            }
+
+            $candidates[] = [
+                'user_id' => $sr['id'],
+                'display_name' => shr_display_name($sr),
+                'store_id' => $sr['store_id'],
+                'store_name' => $sr['store_name'],
+                'availability' => $av ? $av['availability'] : 'not_submitted',
+                'preferred_start' => $av ? $av['preferred_start'] : null,
+                'preferred_end' => $av ? $av['preferred_end'] : null,
+                'role_match' => $roleMatch,
+                'score' => $score,
+            ];
+        }
+
+        usort($candidates, function ($a, $b) {
+            if ($a['score'] === $b['score']) {
+                return strcmp($a['display_name'], $b['display_name']);
+            }
+            return $b['score'] - $a['score'];
+        });
+
+        json_response([
+            'target_store' => $targetStore,
+            'candidates' => $candidates,
+            'excluded' => $excluded,
+        ]);
     }
 
     // ── 送信/受信の要請一覧 ──
@@ -219,8 +454,8 @@ if ($method === 'POST') {
         json_error('INVALID_COUNT', '必要人数は1〜10の範囲で指定してください', 400);
     }
 
-    if ($roleHint !== null && !in_array($roleHint, ['kitchen', 'hall'], true)) {
-        json_error('INVALID_ROLE', 'role_hint は kitchen / hall のいずれかです', 400);
+    if (!shr_role_allowed($pdo, $tenantId, $storeId, $roleHint)) {
+        json_error('INVALID_ROLE', 'role_hint は登録済みの持ち場から選択してください', 400);
     }
 
     $id = generate_uuid();
