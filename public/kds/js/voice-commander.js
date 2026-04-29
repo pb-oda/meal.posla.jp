@@ -204,12 +204,28 @@ var VoiceCommander = (function () {
 
   // 品切れ一覧ファストパス（Gemini不要）
   var _listWords = ['品切れ一覧', '品切れ確認', '今の品切れ', '品切れリスト'];
+  var _soldOutNavWords = ['品切れ管理', '品切れ管理画面', '売り切れ管理', '売切管理'];
 
   function _isListCommand(text) {
     for (var i = 0; i < _listWords.length; i++) {
       if (text.indexOf(_listWords[i]) !== -1) return true;
     }
     return false;
+  }
+
+  function _detectSoldOutNavigationFastPath(text) {
+    for (var i = 0; i < _soldOutNavWords.length; i++) {
+      if (text.indexOf(_soldOutNavWords[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  function _executeNavigateSoldOut() {
+    _showStatus('品切れ管理画面へ移動します...', 1500);
+    try { localStorage.setItem(_VOICE_KEY, '1'); } catch (e) {}
+    _shouldRestart = false;
+    if (_recognition) { try { _recognition.abort(); } catch (ex) {} }
+    setTimeout(function () { window.location.href = 'sold-out.html'; }, 500);
   }
 
   function _isCommand(text) {
@@ -1037,6 +1053,13 @@ var VoiceCommander = (function () {
       return;
     }
 
+    // 品切れ管理画面: ファストパス（Gemini不要）
+    if (_detectSoldOutNavigationFastPath(cmd)) {
+      _showStatus('認識:「' + Utils.escapeHtml(cmd) + '」', 1500);
+      _executeNavigateSoldOut();
+      return;
+    }
+
     // 品切れ一覧: ファストパス（Gemini不要）
     if (_isListCommand(cmd)) {
       _showStatus('認識:「' + Utils.escapeHtml(cmd) + '」', 2000);
@@ -1352,6 +1375,12 @@ var VoiceCommander = (function () {
             _executeStationSwitch(stationAct);
             continue;
           }
+          if (_detectSoldOutNavigationFastPath(transcript)) {
+            _beepRecognized();
+            _showStatus('認識:「' + Utils.escapeHtml(transcript) + '」', 1500);
+            _executeNavigateSoldOut();
+            continue;
+          }
           if (_isCommand(transcript)) {
             _beepRecognized();
             // AIキッチンダッシュボード: ファストパス（Gemini不要）
@@ -1384,7 +1413,7 @@ var VoiceCommander = (function () {
           }
         } else {
           // interim結果
-          if (_isCommand(transcript) || _detectThemeFastPath(transcript) || _detectStationFastPath(transcript) !== null || _detectRestartFastPath(transcript) || _detectHelpFastPath(transcript) || _detectScrollFastPath(transcript) || _detectStaffCallFastPath(transcript) || _detectUndoFastPath(transcript) || _detectModeFastPath(transcript) || _detectTableReadFastPath(transcript) || _detectCancelFastPath(transcript) || _detectCourseAdvanceFastPath(transcript) || _detectTableBulkFastPath(transcript)) {
+          if (_isCommand(transcript) || _detectThemeFastPath(transcript) || _detectStationFastPath(transcript) !== null || _detectRestartFastPath(transcript) || _detectHelpFastPath(transcript) || _detectScrollFastPath(transcript) || _detectStaffCallFastPath(transcript) || _detectUndoFastPath(transcript) || _detectModeFastPath(transcript) || _detectTableReadFastPath(transcript) || _detectCancelFastPath(transcript) || _detectCourseAdvanceFastPath(transcript) || _detectTableBulkFastPath(transcript) || _detectSoldOutNavigationFastPath(transcript)) {
             // コマンドパターン検出 → 1.5秒後に確定（finalが来なかった場合の保険）
             _interimCmd = transcript;
             if (_interimTimer) clearTimeout(_interimTimer);
