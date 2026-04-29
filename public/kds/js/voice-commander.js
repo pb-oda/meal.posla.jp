@@ -2,7 +2,7 @@
  * KDS 音声コマンダー（コマンドパターン検出方式）
  * Web Speech API continuous モード + コマンドパターンフィルタ
  * タップでON/OFF切替 → 常時リスニング → 主要操作はファストパスで処理
- * 未対応の言い回しだけ、端末ごとの「AI補助ON」時にGeminiへ送信
+ * 未対応の言い回しだけ、AIシェフON時にGeminiへ送信
  *
  * 依存: KdsAuth, KdsRenderer, PollingDataSource, Utils
  * ES5 IIFE パターン
@@ -69,9 +69,9 @@ var VoiceCommander = (function () {
     '販売再開', '再開', '解除', '復活',
     '品切れ確認', '品切れ一覧',
     '品切れ管理',
-    // AIキッチンダッシュボード
+    // AIシェフ
     'シェフ', 'ダッシュボード', '最新にして',
-    // 音声AI補助
+    // AIシェフ
     'AI補助', 'AI解析', 'AIフォールバック',
     // テーマ切替
     'ライトモード', 'ダークモード', '明るく', '暗く', 'テーマ',
@@ -132,12 +132,15 @@ var VoiceCommander = (function () {
   }
 
   function _updateAiFallbackButton() {
-    if (!_aiFallbackBtn) return;
+    if (!_aiFallbackBtn) {
+      _updateDiagButton();
+      return;
+    }
     var isLight = document.documentElement.classList.contains('light-theme');
-    _aiFallbackBtn.textContent = _aiFallbackEnabled ? 'AI補助ON' : 'AI補助OFF';
+    _aiFallbackBtn.textContent = _aiFallbackEnabled ? 'AIシェフON' : 'AIシェフOFF';
     _aiFallbackBtn.title = _aiFallbackEnabled
-      ? '未対応の音声コマンドをGeminiで補助解析します'
-      : '未対応の音声コマンドをAI解析せず、誤操作を防ぎます';
+      ? '未対応の音声コマンドをAIシェフが補助解析します'
+      : '未対応の音声コマンドをAIシェフへ渡さず、誤操作を防ぎます';
     _aiFallbackBtn.style.borderColor = _aiFallbackEnabled ? '#42a5f5' : (isLight ? '#bbb' : 'rgba(255,255,255,0.3)');
     _aiFallbackBtn.style.background = _aiFallbackEnabled ? 'rgba(66,165,245,0.18)' : 'none';
     _aiFallbackBtn.style.color = isLight ? (_aiFallbackEnabled ? '#1565c0' : '#555') : '#fff';
@@ -277,18 +280,6 @@ var VoiceCommander = (function () {
     var headerRight = document.querySelector('.kds-header__right');
     if (headerRight) {
       headerRight.insertBefore(_btn, headerRight.firstChild);
-      _aiFallbackBtn = document.createElement('button');
-      _aiFallbackBtn.type = 'button';
-      _aiFallbackBtn.className = 'kds-header__link';
-      _aiFallbackBtn.style.cssText = 'cursor:pointer;background:none;border:2px solid rgba(255,255,255,0.3);border-radius:4px;color:#fff;padding:0.25rem 0.6rem;font-size:0.78rem;font-weight:700;';
-      _aiFallbackBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        _setAiFallbackEnabled(!_aiFallbackEnabled);
-        _showStatus(_aiFallbackEnabled ? '音声AI補助をONにしました' : '音声AI補助をOFFにしました', 2000);
-      });
-      headerRight.insertBefore(_aiFallbackBtn, _btn.nextSibling);
-      _updateAiFallbackButton();
-
       _diagBtn = document.createElement('button');
       _diagBtn.type = 'button';
       _diagBtn.className = 'kds-header__link';
@@ -299,7 +290,7 @@ var VoiceCommander = (function () {
         e.preventDefault();
         _showVoiceDiagnostics();
       });
-      headerRight.insertBefore(_diagBtn, _aiFallbackBtn.nextSibling);
+      headerRight.insertBefore(_diagBtn, _btn.nextSibling);
       _updateDiagButton();
     }
 
@@ -457,7 +448,7 @@ var VoiceCommander = (function () {
       if (text.indexOf(_actionWords[i]) !== -1) return true;
     }
 
-    // AIキッチンパネルが開いている場合、「閉じて」「更新」もコマンドとして検出
+    // AIシェフパネルが開いている場合、「閉じて」「更新」もコマンドとして検出
     if (_isAiKitchenOpen()) {
       if (text.indexOf('閉じて') !== -1 || text.indexOf('更新') !== -1) return true;
     }
@@ -465,7 +456,7 @@ var VoiceCommander = (function () {
     return false;
   }
 
-  // ── AIキッチンダッシュボード音声コマンド ──
+  // ── AIシェフ音声コマンド ──
   var _aiKitchenWords = ['シェフ', 'ダッシュボード'];
 
   function _isAiKitchenOpen() {
@@ -541,7 +532,7 @@ var VoiceCommander = (function () {
   }
 
   function _detectAiFallbackSwitchFastPath(text) {
-    var hasKeyword = text.indexOf('AI補助') !== -1 || text.indexOf('AI解析') !== -1 || text.indexOf('AIフォールバック') !== -1;
+    var hasKeyword = text.indexOf('AI補助') !== -1 || text.indexOf('シェフ補助') !== -1 || text.indexOf('AI解析') !== -1 || text.indexOf('AIフォールバック') !== -1;
     if (!hasKeyword) return null;
     if (text.indexOf('オフ') !== -1 || text.indexOf('OFF') !== -1 || text.indexOf('切って') !== -1 || text.indexOf('無効') !== -1) return false;
     if (text.indexOf('オン') !== -1 || text.indexOf('ON') !== -1 || text.indexOf('入れて') !== -1 || text.indexOf('有効') !== -1) return true;
@@ -549,11 +540,15 @@ var VoiceCommander = (function () {
   }
 
   function _executeAiFallbackSwitch(enabled) {
-    _setAiFallbackEnabled(enabled);
+    if (window.AiKitchen && AiKitchen.setEnabled) {
+      AiKitchen.setEnabled(enabled);
+    } else {
+      _setAiFallbackEnabled(enabled);
+    }
     _beepSuccess();
     _recordCommandSuccess('ai_fallback_switch');
-    _showStatus(enabled ? '音声AI補助をONにしました' : '音声AI補助をOFFにしました', 2000);
-    _speak(enabled ? '音声AI補助をオンにしました' : '音声AI補助をオフにしました');
+    _showStatus(enabled ? 'AIシェフをONにしました' : 'AIシェフをOFFにしました', 2000);
+    _speak(enabled ? 'AIシェフをオンにしました' : 'AIシェフをオフにしました');
     _returnToStandby();
   }
 
@@ -955,9 +950,9 @@ var VoiceCommander = (function () {
       + '「下にスクロール」「上にスクロール」</div>'
       + '<div style="margin-bottom:0.75rem;"><span style="color:#4CAF50;font-weight:700;">■ AIシェフ</span><br>'
       + '「シェフ」「ダッシュボード」「最新にして」</div>'
-      + '<div style="margin-bottom:0.75rem;"><span style="color:#4CAF50;font-weight:700;">■ 音声AI補助</span><br>'
-      + '「AI補助オン」「AI補助オフ」<br>'
-      + '<span style="font-size:0.75rem;color:#bbb;">通常はOFF推奨。OFF時は未対応の言い回しをAI解析しません。</span></div>'
+      + '<div style="margin-bottom:0.75rem;"><span style="color:#4CAF50;font-weight:700;">■ AIシェフON/OFF</span><br>'
+      + '「AIシェフオン」「AIシェフオフ」「シェフ補助オン」「シェフ補助オフ」<br>'
+      + '<span style="font-size:0.75rem;color:#bbb;">通常はOFF推奨。OFF時は未対応の言い回しをAIシェフへ渡しません。</span></div>'
       + '<div><span style="color:#4CAF50;font-weight:700;">■ システム</span><br>'
       + '「音声再起動」「音声診断」「コマンド一覧」</div>'
       + '<div style="margin-top:1rem;font-size:0.75rem;color:#999;">タップで閉じる</div>';
@@ -1163,7 +1158,7 @@ var VoiceCommander = (function () {
       + _diagRow('マイク入力', _diagMicLevelText())
       + _diagMicMeterHtml()
       + _diagRow('AudioContext', audioState)
-      + _diagRow('AI補助', _aiFallbackEnabled ? 'ON' : 'OFF')
+      + _diagRow('AIシェフ', _aiFallbackEnabled ? 'ON' : 'OFF')
       + _diagRow('AI設定', _aiConfigLoaded ? (_aiConfigured ? '設定済み' : '未設定') : '確認中')
       + _diagRow('最後の起動', _diagAge(_voiceDiag.lastStartAt))
       + _diagRow('最後のfinal', _diagAge(_voiceDiag.lastFinalAt))
@@ -1175,7 +1170,7 @@ var VoiceCommander = (function () {
       + _diagRow('音声起動回数', _voiceDiag.starts)
       + _diagRow('final回数', _voiceDiag.finalResults)
       + _diagRow('成功/失敗', _voiceDiag.commandSuccess + ' / ' + _voiceDiag.commandFailure)
-      + _diagRow('AI補助使用/OFF停止', _voiceDiag.aiFallbackCalls + ' / ' + _voiceDiag.aiFallbackBlocked)
+      + _diagRow('AIシェフ使用/OFF停止', _voiceDiag.aiFallbackCalls + ' / ' + _voiceDiag.aiFallbackBlocked)
       + _diagRow('自動/手動リフレッシュ', _voiceDiag.autoRefreshes + ' / ' + _voiceDiag.manualRestarts)
       + _diagRow('no-speech/network/mic', _voiceDiag.noSpeechErrors + ' / ' + _voiceDiag.networkErrors + ' / ' + _voiceDiag.audioCaptureErrors)
       + '</div>'
@@ -1386,6 +1381,8 @@ var VoiceCommander = (function () {
     }
 
     if (hasKeyword) {
+      if (text.indexOf('オフ') !== -1 || text.indexOf('OFF') !== -1 || text.indexOf('切って') !== -1 || text.indexOf('無効') !== -1) return 'disable';
+      if (text.indexOf('オン') !== -1 || text.indexOf('ON') !== -1 || text.indexOf('入れて') !== -1 || text.indexOf('有効') !== -1) return 'enable';
       if (text.indexOf('閉じ') !== -1) return 'close';
       if (text.indexOf('更新') !== -1 || text.indexOf('最新') !== -1) return 'refresh';
       return 'open';
@@ -1393,7 +1390,7 @@ var VoiceCommander = (function () {
 
     if (text.indexOf('最新にして') !== -1) return 'refresh';
 
-    // パネルが開いている場合、「閉じて」「更新」単独でもAIキッチン操作と判定
+    // パネルが開いている場合、「閉じて」「更新」単独でもAIシェフ操作と判定
     if (_isAiKitchenOpen()) {
       if (text.indexOf('閉じて') !== -1) return 'close';
       if (text.indexOf('更新') !== -1) return 'refresh';
@@ -1405,7 +1402,7 @@ var VoiceCommander = (function () {
   function _executeAiKitchenAction(action) {
     if (!window.AiKitchen) {
       _recordCommandFailure('ai_kitchen');
-      _showStatus('AIキッチンダッシュボードが利用できません', 2000);
+      _showStatus('AIシェフが利用できません', 2000);
       _returnToStandby();
       return;
     }
@@ -1414,6 +1411,14 @@ var VoiceCommander = (function () {
     if (action === 'open') {
       AiKitchen.open();
       msg = 'AIシェフを開きます';
+    } else if (action === 'enable') {
+      if (AiKitchen.setEnabled) AiKitchen.setEnabled(true);
+      AiKitchen.open();
+      msg = (AiKitchen.isEnabled && !AiKitchen.isEnabled()) ? 'AIシェフは現在使用できません' : 'AIシェフをONにします';
+    } else if (action === 'disable') {
+      if (AiKitchen.setEnabled) AiKitchen.setEnabled(false);
+      else AiKitchen.close();
+      msg = 'AIシェフをOFFにします';
     } else if (action === 'close') {
       AiKitchen.close();
       msg = 'AIシェフを閉じます';
@@ -1623,7 +1628,7 @@ var VoiceCommander = (function () {
       return;
     }
 
-    // AIキッチンダッシュボード: ファストパス（Gemini不要）
+    // AIシェフ: ファストパス（Gemini不要）
     var aiAction = _detectAiKitchenFastPath(cmd);
     if (aiAction) {
       _showStatus('認識:「' + Utils.escapeHtml(cmd) + '」', 2000);
@@ -2035,7 +2040,7 @@ var VoiceCommander = (function () {
           }
           if (_isCommand(transcript)) {
             _beepRecognized();
-            // AIキッチンダッシュボード: ファストパス（Gemini不要）
+            // AIシェフ: ファストパス（Gemini不要）
             var aiAct = _detectAiKitchenFastPath(transcript);
             if (aiAct) {
               _showStatus('認識:「' + Utils.escapeHtml(transcript) + '」', 2000);
@@ -2296,7 +2301,7 @@ var VoiceCommander = (function () {
       _beepError();
       _recordAiFallbackBlocked();
       _recordCommandFailure('ai_fallback_off');
-      _showStatus('AI補助OFF: 未対応の音声コマンドです。「コマンド一覧」で確認してください', 3500);
+      _showStatus('AIシェフOFF: 未対応の音声コマンドです。「コマンド一覧」で確認してください', 3500);
       _returnToStandby();
       return;
     }
@@ -2344,11 +2349,11 @@ var VoiceCommander = (function () {
       + '{"action":"list_sold_out","confidence":"high"}\n\n'
       + '6. 品切れ管理画面へ移動（「品切れ管理」「品切れ管理画面」等）\n'
       + '{"action":"navigate_sold_out","confidence":"high"}\n\n'
-      + '7. AIキッチンダッシュボードを開く（「AIシェフ」「シェフ」「ダッシュボード」等）\n'
+      + '7. AIシェフを開く（「AIシェフ」「シェフ」「ダッシュボード」等）\n'
       + '{"action":"ai_kitchen_open","confidence":"high"}\n\n'
-      + '8. AIキッチンダッシュボードを閉じる（「AIシェフ閉じて」「ダッシュボード閉じて」「閉じて」等）\n'
+      + '8. AIシェフを閉じる（「AIシェフ閉じて」「ダッシュボード閉じて」「閉じて」等）\n'
       + '{"action":"ai_kitchen_close","confidence":"high"}\n\n'
-      + '9. AIキッチンダッシュボードを更新（「AI更新」「最新にして」「更新」等）\n'
+      + '9. AIシェフを更新（「AI更新」「最新にして」「更新」等）\n'
       + '{"action":"ai_kitchen_refresh","confidence":"high"}\n\n'
       + '10. 該当なし → {"action":"unknown"}\n\n'
       + (menuSummary.length > 0
@@ -2864,6 +2869,9 @@ var VoiceCommander = (function () {
     updateOrders: updateOrders,
     onStoreChange: onStoreChange,
     setSensitivity: setSensitivity,
+    setAiChefEnabled: _setAiFallbackEnabled,
+    setAiFallbackEnabled: _setAiFallbackEnabled,
+    isAiChefEnabled: function () { return _aiFallbackEnabled; },
     unlockAudio: _unlockAudio
   };
 })();

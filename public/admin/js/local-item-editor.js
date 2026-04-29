@@ -49,6 +49,60 @@ var LocalItemEditor = (function () {
     return result.length > 0 ? result : null;
   }
 
+  function _buildSpiceOptions(selectedLevel) {
+    var levels = [
+      { value: 0, label: 'なし' },
+      { value: 1, label: '控えめ' },
+      { value: 2, label: '辛い' },
+      { value: 3, label: '激辛' }
+    ];
+    var selected = parseInt(selectedLevel, 10) || 0;
+    var html = '';
+    levels.forEach(function (level) {
+      html += '<option value="' + level.value + '"' + (level.value === selected ? ' selected' : '') + '>' + level.label + '</option>';
+    });
+    return html;
+  }
+
+  function _buildSelfMenuAttrHtml(prefix, item) {
+    var prep = item && item.prep_time_min !== null && item.prep_time_min !== undefined ? item.prep_time_min : '';
+    return '<div class="form-group"><label class="form-label">セルフメニュー表示</label>'
+      + '<div style="display:grid;gap:8px">'
+      + '<select class="form-input" id="' + prefix + '-spice-level">'
+      + _buildSpiceOptions(item ? item.spice_level : 0)
+      + '</select>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:0.9rem">'
+      + '<label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="' + prefix + '-quick-serve"' + (item && item.is_quick_serve == 1 ? ' checked' : '') + '> 早く出る</label>'
+      + '<label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="' + prefix + '-vegetarian"' + (item && item.is_vegetarian == 1 ? ' checked' : '') + '> ベジ</label>'
+      + '<label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="' + prefix + '-kids-friendly"' + (item && item.is_kids_friendly == 1 ? ' checked' : '') + '> 子ども向け</label>'
+      + '</div>'
+      + '<input class="form-input" id="' + prefix + '-prep-time-min" type="number" min="1" max="999" placeholder="提供目安分（例: 8）" value="' + Utils.escapeHtml(String(prep)) + '">'
+      + '</div></div>';
+  }
+
+  function _collectSelfMenuAttrs(prefix) {
+    var spice = document.getElementById(prefix + '-spice-level');
+    var prep = document.getElementById(prefix + '-prep-time-min');
+    return {
+      spice_level: spice ? (parseInt(spice.value, 10) || 0) : 0,
+      is_quick_serve: !!(document.getElementById(prefix + '-quick-serve') && document.getElementById(prefix + '-quick-serve').checked),
+      is_vegetarian: !!(document.getElementById(prefix + '-vegetarian') && document.getElementById(prefix + '-vegetarian').checked),
+      is_kids_friendly: !!(document.getElementById(prefix + '-kids-friendly') && document.getElementById(prefix + '-kids-friendly').checked),
+      prep_time_min: prep && prep.value !== '' ? (parseInt(prep.value, 10) || null) : null
+    };
+  }
+
+  function _buildSelfMenuAttrBadges(item) {
+    var badges = [];
+    if (item.is_quick_serve == 1) badges.push('早出し');
+    if (parseInt(item.spice_level, 10) > 0) badges.push('辛さ' + parseInt(item.spice_level, 10));
+    if (item.is_vegetarian == 1) badges.push('ベジ');
+    if (item.is_kids_friendly == 1) badges.push('子ども');
+    if (item.prep_time_min !== null && item.prep_time_min !== undefined && item.prep_time_min !== '') badges.push('約' + parseInt(item.prep_time_min, 10) + '分');
+    if (!badges.length) return '';
+    return '<div class="list-item__meta">' + Utils.escapeHtml(badges.join(' / ')) + '</div>';
+  }
+
   function init(container) {
     _container = container;
   }
@@ -85,7 +139,8 @@ var LocalItemEditor = (function () {
       html += '<div class="list-item">' + img
         + '<div class="list-item__body">'
         + '<div class="list-item__name">' + Utils.escapeHtml(item.name) + ' <span class="badge badge--local">限定</span></div>'
-        + '<div class="list-item__meta">' + Utils.escapeHtml(item.category_name || '') + '</div></div>'
+        + '<div class="list-item__meta">' + Utils.escapeHtml(item.category_name || '') + '</div>'
+        + _buildSelfMenuAttrBadges(item) + '</div>'
         + '<span class="list-item__price">' + Utils.formatYen(item.price) + '</span>'
         + '<div class="list-item__actions">'
         + soldOutBtn + ' '
@@ -242,10 +297,12 @@ var LocalItemEditor = (function () {
         + '<div class="form-group"><label class="form-label">カテゴリ *</label><select class="form-input" id="local-category">' + buildCategoryOptions('') + '</select></div>'
         + '<div class="form-group"><label class="form-label">価格（税込）</label><input class="form-input" id="local-price" type="number" value="0"></div>'
         + '<div class="form-group"><label class="form-label">説明</label><textarea class="form-input" id="local-desc"></textarea></div>'
+        + '<div class="form-group"><label class="form-label">説明（英語）</label><textarea class="form-input" id="local-desc-en"></textarea></div>'
         + '<div class="form-group"><label class="form-label">カロリー (kcal)</label>'
         + '<input class="form-input" id="local-calories" type="number" min="0" placeholder="未設定"></div>'
         + '<div class="form-group"><label class="form-label">アレルギー特定原材料</label>'
         + _buildAllergenCheckboxes('local', null) + '</div>'
+        + _buildSelfMenuAttrHtml('local', {})
         + _imageUploadHtml('')
         + _renderOptionGroupsHtml(allGroups, [], {});
 
@@ -259,16 +316,23 @@ var LocalItemEditor = (function () {
       if (!name || !catId) { showToast('メニュー名とカテゴリは必須です', 'error'); return; }
       this.disabled = true;
       var addCalVal = document.getElementById('local-calories').value;
-      AdminApi.createLocalItem({
+      var payload = {
         name: name,
         name_en: document.getElementById('local-name-en').value.trim(),
         category_id: catId,
         price: parseInt(document.getElementById('local-price').value, 10) || 0,
         description: document.getElementById('local-desc').value.trim(),
+        description_en: document.getElementById('local-desc-en').value.trim(),
         image_url: document.getElementById('local-image-url').value,
         calories: addCalVal !== '' ? parseInt(addCalVal, 10) : null,
         allergens: _collectAllergens('local')
-      }).then(function (res) {
+      };
+      var attrs = _collectSelfMenuAttrs('local');
+      for (var attrKey in attrs) {
+        if (attrs.hasOwnProperty(attrKey)) payload[attrKey] = attrs[attrKey];
+      }
+
+      AdminApi.createLocalItem(payload).then(function (res) {
         // 新規作成後にオプショングループ紐付け
         var groups = _collectOptionGroups('local-option-groups');
         if (groups.length > 0 && res && res.id) {
@@ -319,12 +383,15 @@ var LocalItemEditor = (function () {
         + '<div class="form-group"><label class="form-label">メニュー名（英語）</label><input class="form-input" id="local-name-en" value="' + Utils.escapeHtml(item.name_en || '') + '"></div>'
         + '<div class="form-group"><label class="form-label">カテゴリ</label><select class="form-input" id="local-category">' + buildCategoryOptions(item.category_id) + '</select></div>'
         + '<div class="form-group"><label class="form-label">価格（税込）</label><input class="form-input" id="local-price" type="number" value="' + (item.price || 0) + '"></div>'
+        + '<div class="form-group"><label class="form-label">説明</label><textarea class="form-input" id="local-desc">' + Utils.escapeHtml(item.description || '') + '</textarea></div>'
+        + '<div class="form-group"><label class="form-label">説明（英語）</label><textarea class="form-input" id="local-desc-en">' + Utils.escapeHtml(item.description_en || '') + '</textarea></div>'
         + '<div class="form-group"><label class="form-label">品切れ</label>'
         + '<label class="toggle"><input type="checkbox" id="local-soldout" ' + (item.is_sold_out == 1 ? 'checked' : '') + '><span class="toggle__slider"></span></label></div>'
         + '<div class="form-group"><label class="form-label">カロリー (kcal)</label>'
         + '<input class="form-input" id="local-calories" type="number" min="0" placeholder="未設定" value="' + (item.calories != null ? item.calories : '') + '"></div>'
         + '<div class="form-group"><label class="form-label">アレルギー特定原材料</label>'
         + _buildAllergenCheckboxes('local', item.allergens) + '</div>'
+        + _buildSelfMenuAttrHtml('local', item)
         + _imageUploadHtml(item.image_url || '')
         + _renderOptionGroupsHtml(allGroups, linkedIds, linkedRequired);
 
@@ -335,16 +402,24 @@ var LocalItemEditor = (function () {
     document.getElementById('btn-save-local').onclick = function () {
       this.disabled = true;
       var editCalVal = document.getElementById('local-calories').value;
-      AdminApi.updateLocalItem(id, {
+      var payload = {
         name: document.getElementById('local-name').value.trim(),
         name_en: document.getElementById('local-name-en').value.trim(),
         category_id: document.getElementById('local-category').value,
         price: parseInt(document.getElementById('local-price').value, 10) || 0,
+        description: document.getElementById('local-desc').value.trim(),
+        description_en: document.getElementById('local-desc-en').value.trim(),
         is_sold_out: document.getElementById('local-soldout').checked,
         image_url: document.getElementById('local-image-url').value,
         calories: editCalVal !== '' ? parseInt(editCalVal, 10) : null,
         allergens: _collectAllergens('local')
-      }).then(function () {
+      };
+      var attrs = _collectSelfMenuAttrs('local');
+      for (var attrKey in attrs) {
+        if (attrs.hasOwnProperty(attrKey)) payload[attrKey] = attrs[attrKey];
+      }
+
+      AdminApi.updateLocalItem(id, payload).then(function () {
         // オプショングループ紐付け同期
         var groups = _collectOptionGroups('local-option-groups');
         return AdminApi.syncLocalItemOptionLinks(id, groups);

@@ -1,5 +1,5 @@
 /**
- * AIキッチンダッシュボード（ai-kitchen.js）
+ * AIシェフ（ai-kitchen.js）
  *
  * KDS画面に「AIシェフ」ダッシュボードパネルを追加する。
  * AIが料理品目単位で調理優先順位を指示する。
@@ -16,12 +16,16 @@ var AiKitchen = (function () {
   var REFRESH_INTERVAL = 60000; // 60秒
   var PANEL_ID = 'ai-kitchen-panel';
   var BTN_ID   = 'btn-ai-kitchen';
+  var ALERT_ID = 'kds-ai-ops-alert';
+  var AI_CHEF_KEY = 'mt_kds_ai_chef_enabled';
+  var LEGACY_VOICE_AI_KEY = 'mt_kds_voice_ai_fallback';
 
   // ── 状態 ──
   var _isOpen      = false;
   var _isLoading   = false;
   var _timer       = null;
   var _available   = null; // null=未確認, true/false
+  var _enabled     = false;
 
   // ── スタイル注入 ──
   function _injectStyles() {
@@ -114,8 +118,14 @@ var AiKitchen = (function () {
       + '  background: rgba(66,165,245,0.3); border-color: rgba(66,165,245,0.6); color: #fff;'
       + '}'
       + '#' + BTN_ID + '.aik-unavailable {'
-      + '  background: rgba(249,168,37,0.18); border-color: rgba(249,168,37,0.55); color: #ffe082;'
+      + '  background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.8);'
       + '}'
+      + '.aik-power-on { background:#1565c0; color:#fff; border-color:#42a5f5; }'
+      + '.aik-power-off { background:rgba(255,255,255,0.08); color:#eee; }'
+      + '.aik-power-error { background:rgba(255,255,255,0.08); color:#ddd; border-color:rgba(255,255,255,0.2); }'
+      + '.aik-notice { text-align:center; padding:40px 18px; font-size:1rem; line-height:1.8; color:rgba(255,255,255,0.72); }'
+      + '.aik-notice__title { display:block; color:#fff; font-weight:700; margin-bottom:0.35rem; }'
+      + '.aik-notice__sub { display:block; font-size:0.86rem; color:rgba(255,255,255,0.55); }'
 
       // レスポンシブ
       + '@media (max-width: 1024px) {'
@@ -137,9 +147,10 @@ var AiKitchen = (function () {
     panel.innerHTML = ''
       + '<div class="aik-header">'
       + '  <div class="aik-header__title">'
-      + '\uD83E\uDDD1\u200D\uD83C\uDF73 AI\u30AD\u30C3\u30C1\u30F3\u30C0\u30C3\u30B7\u30E5\u30DC\u30FC\u30C9'
+      + '\uD83E\uDDD1\u200D\uD83C\uDF73 AI\u30B7\u30A7\u30D5'
       + '  </div>'
       + '  <div class="aik-header__actions">'
+      + '    <button class="aik-header__btn" id="aik-btn-power">AI ON</button>'
       + '    <button class="aik-header__btn" id="aik-btn-refresh">'
       + '\uD83D\uDD04 \u66F4\u65B0</button>'
       + '    <button class="aik-header__btn" id="aik-btn-close">'
@@ -155,9 +166,103 @@ var AiKitchen = (function () {
     document.body.appendChild(panel);
 
     document.getElementById('aik-btn-close').addEventListener('click', _closePanel);
+    document.getElementById('aik-btn-power').addEventListener('click', function () {
+      _setEnabled(!_enabled, { open: true });
+    });
     document.getElementById('aik-btn-refresh').addEventListener('click', function () {
       _fetchAnalysis();
     });
+  }
+
+  function _loadEnabledSetting() {
+    // KDS起動時は必ずOFF。前回ONの端末でも、厨房が意図せずAIを使わないようにする。
+    _enabled = false;
+    try {
+      localStorage.removeItem(AI_CHEF_KEY);
+      localStorage.removeItem(LEGACY_VOICE_AI_KEY);
+    } catch (e) {}
+  }
+
+  function _saveEnabledSetting() {
+    try {
+      if (_enabled) {
+        localStorage.setItem(AI_CHEF_KEY, '1');
+        localStorage.setItem(LEGACY_VOICE_AI_KEY, '1');
+      } else {
+        localStorage.removeItem(AI_CHEF_KEY);
+        localStorage.removeItem(LEGACY_VOICE_AI_KEY);
+      }
+    } catch (e) {}
+  }
+
+  function _syncVoiceCommander() {
+    if (window.VoiceCommander && VoiceCommander.setAiChefEnabled) {
+      VoiceCommander.setAiChefEnabled(_enabled);
+    }
+  }
+
+  function _updateAiChefButton() {
+    var btn = document.getElementById(BTN_ID);
+    if (btn) {
+      btn.classList.toggle('aik-active', _enabled);
+      if (_available === false) {
+        btn.classList.add('aik-unavailable');
+        btn.innerHTML = '&#x1F9D1;&#x200D;&#x1F373; AIシェフOFF';
+        btn.title = 'AIシェフは現在使用できません。通常のKDS操作は継続できます。';
+      } else {
+        btn.classList.remove('aik-unavailable');
+        btn.innerHTML = _enabled
+          ? '&#x1F9D1;&#x200D;&#x1F373; AIシェフON'
+          : '&#x1F9D1;&#x200D;&#x1F373; AIシェフOFF';
+        btn.title = _enabled
+          ? 'AIシェフを開きます。曖昧な音声コマンドもAIシェフで補助解析します。'
+          : 'AIシェフをONにします。通常の音声ファストパスはOFFでも使えます。';
+      }
+    }
+
+    var power = document.getElementById('aik-btn-power');
+    if (power) {
+      if (_available === false) {
+        power.textContent = '使用不可';
+        power.disabled = true;
+        power.className = 'aik-header__btn aik-power-error';
+      } else {
+        power.disabled = false;
+        power.textContent = _enabled ? 'AI OFF' : 'AI ON';
+        power.className = 'aik-header__btn ' + (_enabled ? 'aik-power-on' : 'aik-power-off');
+      }
+    }
+    var refresh = document.getElementById('aik-btn-refresh');
+    if (refresh) {
+      refresh.disabled = (_available === false);
+    }
+    _removeOpsAlert();
+  }
+
+  function _removeOpsAlert() {
+    var alert = document.getElementById(ALERT_ID);
+    if (alert && alert.parentNode) alert.parentNode.removeChild(alert);
+  }
+
+  function _setEnabled(enabled, options) {
+    var opts = options || {};
+    if (enabled && _available === false) {
+      _enabled = false;
+      _saveEnabledSetting();
+      _syncVoiceCommander();
+      _updateAiChefButton();
+      if (opts.open) _openPanel();
+      return;
+    }
+    _enabled = !!enabled;
+    _saveEnabledSetting();
+    _syncVoiceCommander();
+    _updateAiChefButton();
+    if (!_enabled) {
+      _closePanel();
+      return;
+    }
+    if (opts.open) _openPanel();
   }
 
   // ── パネル開閉 ──
@@ -169,8 +274,11 @@ var AiKitchen = (function () {
     if (btn) btn.classList.add('aik-active');
     _isOpen = true;
     if (_available === false) {
-      _renderError('AI機能が設定されていません。POSLA管理画面のAPI設定を確認してください。');
+      _renderUnavailableNotice();
       return;
+    }
+    if (!_enabled) {
+      _setEnabled(true);
     }
     _fetchAnalysis();
     _startAutoRefresh();
@@ -181,12 +289,21 @@ var AiKitchen = (function () {
     var btn   = document.getElementById(BTN_ID);
     if (!panel) return;
     panel.classList.remove('aik-open');
-    if (btn) btn.classList.remove('aik-active');
+    if (btn && !_enabled) btn.classList.remove('aik-active');
     _isOpen = false;
     _stopAutoRefresh();
+    _updateAiChefButton();
   }
 
   function _togglePanel() {
+    if (_available === false) {
+      _openPanel();
+      return;
+    }
+    if (!_enabled) {
+      _setEnabled(true, { open: true });
+      return;
+    }
     if (_isOpen) { _closePanel(); }
     else { _openPanel(); }
   }
@@ -315,6 +432,8 @@ var AiKitchen = (function () {
         var errMsg = (json.error && json.error.message) || 'エラーが発生しました';
         if (json.error && json.error.code === 'AI_NOT_CONFIGURED') {
           _markUnavailable();
+          _renderUnavailableNotice();
+          return;
         }
         _renderError(errMsg);
         return;
@@ -330,6 +449,14 @@ var AiKitchen = (function () {
   // ── メインの分析実行 ──
   function _fetchAnalysis() {
     if (_isLoading) return;
+    if (_available === false) {
+      _renderUnavailableNotice();
+      return;
+    }
+    if (!_enabled) {
+      _renderError('AIシェフはOFFです。AI ONにすると調理優先順位と曖昧な音声補助が使えます。');
+      return;
+    }
     _isLoading = true;
 
     var body = document.getElementById('aik-body');
@@ -437,24 +564,29 @@ var AiKitchen = (function () {
     }
   }
 
+  function _renderUnavailableNotice() {
+    var body = document.getElementById('aik-body');
+    if (body) {
+      body.innerHTML = '<div class="aik-notice">'
+        + '<span class="aik-notice__title">AIシェフは現在使用できません</span>'
+        + '<span class="aik-notice__sub">通常のKDS操作と音声操作はそのまま使えます。</span>'
+        + '</div>';
+    }
+  }
+
   // ── AI可用性表示 ──
   function _markUnavailable() {
-    var btn = document.getElementById(BTN_ID);
-    if (btn) {
-      btn.classList.add('aik-unavailable');
-      btn.title = 'AI機能が未設定です。押すと状態を確認できます。';
-    }
     _available = false;
+    _enabled = false;
+    _saveEnabledSetting();
+    _syncVoiceCommander();
+    _updateAiChefButton();
     _stopAutoRefresh();
   }
 
   function _markAvailable() {
-    var btn = document.getElementById(BTN_ID);
-    if (btn) {
-      btn.classList.remove('aik-unavailable');
-      btn.title = 'AIキッチンダッシュボードを開きます';
-    }
     _available = true;
+    _updateAiChefButton();
   }
 
   // ── APIキー可用性チェック（遅延実行） ──
@@ -508,8 +640,9 @@ var AiKitchen = (function () {
   function init() {
     _injectStyles();
     _createPanel();
-    // KdsAuth初期化後にAPIキー可用性チェック
-    setTimeout(_checkAvailability, 2000);
+    _loadEnabledSetting();
+    _updateAiChefButton();
+    _syncVoiceCommander();
   }
 
   // DOM Ready
@@ -525,6 +658,8 @@ var AiKitchen = (function () {
     toggle:        _togglePanel,
     open:          _openPanel,
     close:         _closePanel,
-    refresh:       _fetchAnalysis
+    refresh:       _fetchAnalysis,
+    setEnabled:    _setEnabled,
+    isEnabled:     function () { return _enabled; }
   };
 })();

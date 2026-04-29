@@ -17,6 +17,38 @@ $user = require_role('manager');
 $pdo = get_db();
 $tenantId = $user['tenant_id'];
 
+function menu_template_has_self_menu_attrs(PDO $pdo): bool
+{
+    try {
+        $pdo->query('SELECT spice_level FROM menu_templates LIMIT 0');
+        return true;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+function normalize_self_menu_attrs(array $data): array
+{
+    $spice = isset($data['spice_level']) ? (int)$data['spice_level'] : 0;
+    if ($spice < 0) $spice = 0;
+    if ($spice > 3) $spice = 3;
+
+    $prep = null;
+    if (array_key_exists('prep_time_min', $data) && $data['prep_time_min'] !== null && $data['prep_time_min'] !== '') {
+        $prep = (int)$data['prep_time_min'];
+        if ($prep <= 0) $prep = null;
+        if ($prep !== null && $prep > 999) $prep = 999;
+    }
+
+    return [
+        'spice_level'      => $spice,
+        'is_vegetarian'    => !empty($data['is_vegetarian']) ? 1 : 0,
+        'is_kids_friendly' => !empty($data['is_kids_friendly']) ? 1 : 0,
+        'is_quick_serve'   => !empty($data['is_quick_serve']) ? 1 : 0,
+        'prep_time_min'    => $prep,
+    ];
+}
+
 // ----- GET -----
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $categoryId = $_GET['category_id'] ?? null;
@@ -64,11 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nextOrder = (int)$stmt->fetchColumn();
 
     $id = generate_uuid();
-    $stmt = $pdo->prepare(
-        'INSERT INTO menu_templates (id, tenant_id, category_id, name, name_en, description, description_en, base_price, image_url, sort_order)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    );
-    $stmt->execute([
+    $cols = ['id', 'tenant_id', 'category_id', 'name', 'name_en', 'description', 'description_en', 'base_price', 'image_url', 'sort_order'];
+    $values = [
         $id, $tenantId, $categoryId,
         $name,
         trim($data['name_en'] ?? ''),
@@ -77,7 +106,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $basePrice,
         trim($data['image_url'] ?? ''),
         $nextOrder
-    ]);
+    ];
+    if (menu_template_has_self_menu_attrs($pdo)) {
+        $attrs = normalize_self_menu_attrs($data);
+        foreach ($attrs as $col => $val) {
+            $cols[] = $col;
+            $values[] = $val;
+        }
+    }
+
+    $stmt = $pdo->prepare(
+        'INSERT INTO menu_templates (' . implode(', ', $cols) . ')
+         VALUES (' . implode(', ', array_fill(0, count($cols), '?')) . ')'
+    );
+    $stmt->execute($values);
 
     json_response(['ok' => true, 'id' => $id], 201);
 }
@@ -124,6 +166,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     if (isset($data['is_sold_out'])) {
         $fields[] = 'is_sold_out = ?';
         $params[] = $data['is_sold_out'] ? 1 : 0;
+    }
+    if (menu_template_has_self_menu_attrs($pdo)) {
+        $attrInputMap = [
+            'spice_level'      => 'spice_level',
+            'is_vegetarian'    => 'is_vegetarian',
+            'is_kids_friendly' => 'is_kids_friendly',
+            'is_quick_serve'   => 'is_quick_serve',
+            'prep_time_min'    => 'prep_time_min',
+        ];
+        $attrs = normalize_self_menu_attrs($data);
+        foreach ($attrInputMap as $inputKey => $col) {
+            if (array_key_exists($inputKey, $data)) {
+                $fields[] = $col . ' = ?';
+                $params[] = $attrs[$col];
+            }
+        }
     }
 
     if (empty($fields)) json_error('NO_FIELDS', '更新項目がありません', 400);

@@ -132,6 +132,7 @@ function validate_and_recompute_items(PDO $pdo, string $storeId, array $items, b
                             'priceDiff' => (int)($ch['priceDiff'] ?? 0),
                             'groupId'   => $og['groupId'],
                             'groupName' => $og['groupName'],
+                            'isAvailable' => !array_key_exists('isAvailable', $ch) || !empty($ch['isAvailable']),
                         ];
                     }
                 }
@@ -144,6 +145,9 @@ function validate_and_recompute_items(PDO $pdo, string $storeId, array $items, b
                     json_error('INVALID_OPTION', '存在しないオプションが含まれています', 404);
                 }
                 $canon = $choiceMap[$choiceId];
+                if (empty($canon['isAvailable'])) {
+                    json_error('OPTION_UNAVAILABLE', '選択できないオプションが含まれています', 409);
+                }
                 // プラン中はオプション加算も 0
                 $diff = $isPlanSession ? 0 : $canon['priceDiff'];
                 $optionPriceDiff += $diff;

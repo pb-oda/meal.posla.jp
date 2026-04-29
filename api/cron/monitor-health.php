@@ -142,13 +142,14 @@ try {
          GROUP BY error_no, code, http_status, tenant_id, store_id, request_path
          HAVING cnt >= 20
             OR (http_status >= 500 AND cnt >= 3)
+            OR (code = 'AI_NOT_CONFIGURED' AND cnt >= 1)
             OR (http_status IN (401, 403) AND cnt >= 30)
          ORDER BY cnt DESC
          LIMIT 10"
     );
     $rows = $cb1 ? $cb1->fetchAll() : [];
     foreach ($rows as $r) {
-        $sev = ((int)$r['http_status'] >= 500) ? 'error' : 'warn';
+        $sev = ((string)$r['code'] === 'AI_NOT_CONFIGURED') ? 'critical' : (((int)$r['http_status'] >= 500) ? 'error' : 'warn');
         $tag = $r['error_no'] ? $r['error_no'] : $r['code'];
         $title = '[' . $tag . '] ' . $r['code'] . ' が ' . $r['cnt'] . ' 件 (直近5分)';
         $tenantId = isset($r['tenant_id']) ? trim((string)$r['tenant_id']) : '';

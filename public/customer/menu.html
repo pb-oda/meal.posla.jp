@@ -34,6 +34,54 @@
     .reorder-item__meta { font-size:0.75rem; color:var(--text-muted); }
     .reorder-item__add { background:var(--orange); color:#fff; border:none; border-radius:16px; padding:0.375rem 0.75rem; font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0; margin-left:0.5rem; }
     .reorder-item__add:disabled { background:#bdbdbd; cursor:not-allowed; }
+    /* SELF-MENU-4: 検索・絞り込み・代替提案 */
+    .menu-tools { display:none; background:#fff; border-bottom:1px solid var(--border); padding:0.75rem; }
+    .menu-tools__search { width:100%; border:1px solid #d8dee8; border-radius:10px; padding:0.75rem 0.875rem; font-size:1rem; background:#f9fbff; color:var(--text-primary); }
+    .menu-tools__search:focus { outline:none; border-color:#1976d2; box-shadow:0 0 0 3px rgba(25,118,210,0.12); background:#fff; }
+    .menu-tools__wait { margin-top:0.5rem; padding:0.45rem 0.65rem; border-radius:8px; background:#e8f5e9; color:#2e7d32; font-size:0.75rem; font-weight:700; line-height:1.45; }
+    .menu-filter-chips { display:flex; gap:0.5rem; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:0.625rem 0 0.125rem; }
+    .menu-filter-chip { flex:0 0 auto; border:1px solid #d8dee8; background:#fff; color:#455a64; border-radius:999px; padding:0.45rem 0.8rem; font-size:0.8125rem; font-weight:700; cursor:pointer; white-space:nowrap; }
+    .menu-filter-chip.active { background:#17324d; border-color:#17324d; color:#fff; }
+    .menu-filter-chip--reset { background:#f1f3f5; color:#5f6368; }
+    .menu-allergy-panel { margin-top:0.65rem; padding:0.75rem; border-radius:10px; background:#fff8e8; border:1px solid #ffd59a; }
+    .menu-allergy-panel__title { font-size:0.78rem; font-weight:700; color:#7a4b00; margin-bottom:0.5rem; }
+    .menu-allergy-panel__note { font-size:0.72rem; line-height:1.55; color:#7a4b00; margin:0 0 0.6rem; }
+    .menu-allergy-panel__staff { width:100%; margin-top:0.65rem; border:none; border-radius:9px; background:#c62828; color:#fff; padding:0.65rem 0.8rem; font-size:0.86rem; font-weight:800; cursor:pointer; }
+    .menu-allergy-panel__chips { display:flex; flex-wrap:wrap; gap:0.45rem; }
+    .menu-allergy-chip { border:1px solid #f0b454; background:#fff; color:#7a4b00; border-radius:999px; padding:0.35rem 0.65rem; font-size:0.75rem; font-weight:700; cursor:pointer; }
+    .menu-allergy-chip.active { background:#c62828; border-color:#c62828; color:#fff; }
+    .suggest-section { margin:0.75rem 0.75rem 0; padding:0.75rem; border-radius:var(--radius); border:1px solid #c9d8ef; background:#f4f8ff; }
+    .suggest-section--availability { border-color:#ffd39a; background:#fff8ec; }
+    .suggest-section--pair { border-color:#c8e6c9; background:#f0fbf4; }
+    .suggest-section__head { display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.25rem; }
+    .suggest-section__title { font-size:0.9375rem; font-weight:800; color:#17324d; }
+    .suggest-section--availability .suggest-section__title { color:#a15c00; }
+    .suggest-section__sub { font-size:0.75rem; color:#5f6368; margin-bottom:0.6rem; line-height:1.5; }
+    .suggest-section__close { flex:0 0 auto; width:28px; height:28px; border:none; border-radius:50%; background:rgba(0,0,0,0.07); color:#455a64; font-size:1rem; line-height:1; cursor:pointer; }
+    .suggest-items { display:grid; grid-template-columns:1fr; gap:0.5rem; }
+    .suggest-item { display:flex; align-items:center; gap:0.625rem; background:#fff; border:1px solid rgba(23,50,77,0.12); border-radius:8px; padding:0.55rem; }
+    .suggest-item__info { flex:1; min-width:0; }
+    .suggest-item__name { font-size:0.875rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .suggest-item__meta { font-size:0.73rem; color:#6b7280; margin-top:0.1rem; }
+    .suggest-item__add { flex:0 0 auto; border:none; border-radius:999px; background:#2d7a4f; color:#fff; padding:0.45rem 0.75rem; font-size:0.75rem; font-weight:800; cursor:pointer; }
+    .option-group__meta { margin:0.25rem 0 0.5rem; font-size:0.75rem; color:#667085; line-height:1.45; }
+    .option-group__selected { display:inline-block; margin-left:0.35rem; color:#17324d; font-weight:700; }
+    .option-group__hint { margin-top:0.4rem; font-size:0.72rem; color:#c62828; min-height:1em; }
+    .option-choice--disabled { opacity:0.48; background:#f5f5f5; cursor:not-allowed; }
+    .option-choice--disabled .option-choice__label { text-decoration:line-through; }
+    .option-choice__soldout { margin-left:0.35rem; color:#c62828; font-size:0.72rem; font-weight:800; }
+    .cart-preflight { margin:0 0 0.75rem; padding:0.75rem; border-radius:10px; border:1px solid #d8dee8; background:#f8fafc; color:#263238; }
+    .cart-preflight__title { font-size:0.86rem; font-weight:800; margin-bottom:0.45rem; color:#17324d; }
+    .cart-preflight__list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:0.35rem; }
+    .cart-preflight__item { font-size:0.78rem; line-height:1.5; color:#455a64; }
+    .cart-preflight__item--block { color:#b42318; font-weight:700; }
+    .cart-preflight__item--ok { color:#2d7a4f; font-weight:700; }
+    .menu-item__meta-tags { display:flex; flex-wrap:wrap; gap:0.25rem; margin-top:0.375rem; }
+    .menu-item__meta-tag { display:inline-flex; align-items:center; border-radius:999px; background:#eef2ff; color:#42526e; padding:1px 6px; font-size:0.65rem; font-weight:700; line-height:1.5; }
+    .menu-item__meta-tag--wait { background:#e8f5e9; color:#2e7d32; }
+    .menu-item__meta-tag--spicy { background:#ffebee; color:#c62828; }
+    .menu-empty-filter { background:#fff; border:1px dashed #cfd8dc; border-radius:12px; padding:1.25rem; text-align:center; color:#607d8b; font-size:0.9rem; }
+    .menu-empty-filter__btn { margin-top:0.75rem; border:none; border-radius:999px; background:#17324d; color:#fff; padding:0.55rem 1rem; font-weight:700; cursor:pointer; }
     /* ウェルカムモーダル */
     .welcome-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:500; display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:opacity 0.3s, visibility 0.3s; }
     .welcome-overlay.open { opacity:1; visibility:visible; }
@@ -294,6 +342,9 @@
   <!-- カテゴリナビ -->
   <nav class="category-nav" id="category-nav"></nav>
 
+  <!-- SELF-MENU-4: 検索・絞り込み -->
+  <div class="menu-tools" id="menu-tools"></div>
+
   <!-- N-2: 注文追跡セクション -->
   <div id="order-status-section" class="order-status-section" style="display:none"></div>
 
@@ -307,6 +358,11 @@
 
   <!-- 前回の注文（再注文セクション） -->
   <div id="reorder-section" style="display:none"></div>
+
+  <!-- 品切れ時の代替候補 / 追加注文おすすめ -->
+  <div id="availability-suggestion-section" style="display:none"></div>
+  <div id="pair-suggest-section" style="display:none"></div>
+  <div id="smart-suggest-section" style="display:none"></div>
 
   <!-- メニュー一覧 -->
   <main class="menu-container" id="menu-container">
@@ -530,6 +586,15 @@
     var _recommendations = {};  // menu_item_id -> {badge_type, comment}
     var _popularity = {};       // menu_item_id -> rank (1,2,3...)
     var _recList = [];          // おすすめ品目配列
+    var _prepTimes = {};        // menu_item_id -> {avgMinutes, sampleCount}
+    var _alternativeMap = {};   // sold-out menu_item_id -> manual alternative ids
+    var _pairRecommendations = {}; // menu_item_id -> paired ids from basket analysis
+    var _pairSuggestionItems = [];
+    var _menuSearchQuery = '';
+    var _menuQuickFilter = 'all';
+    var _selectedAllergenExcludes = {};
+    var _availabilitySuggestionItems = [];
+    var _avgWaitMinutes = null;
     var planInfo = null;      // プランセッション情報（nullなら通常）
     var isPlanMode = false;   // プランメニュー表示中フラグ
     var _planTimerInterval = null;
@@ -1023,6 +1088,7 @@
         document.getElementById('store-name').textContent = d.store.name;
         applyBranding(d.store);
         document.getElementById('table-name').textContent = d.table.tableCode;
+        _avgWaitMinutes = d.avgWaitMinutes || null;
         CartManager.init(storeId, tableId, d.sessionToken, BASE_API);
         syncHistoryEntryVisibility();
 
@@ -1138,12 +1204,16 @@
             _recommendations[_recList[ri].menu_item_id] = _recList[ri];
           }
           _popularity = d.popularity || {};
+          _prepTimes = d.prepTimes || {};
+          _alternativeMap = d.alternativeMap || {};
+          _pairRecommendations = d.pairRecommendations || {};
           if ((isPreview || isSupportPreview) && d.store) {
             document.getElementById('store-name').textContent = d.store.name;
             applyBranding(d.store);
           }
           renderCategoryNav();
           renderMenu();
+          if (isPlanMode) updatePlanTimer();
           if (!isPreview) {
             if (isSupportPreview) {
               document.getElementById('cart-bar').style.display = 'none';
@@ -1236,6 +1306,7 @@
         .then(function (json) {
           if (!json || !json.ok) return;
           var newData = json.data.categories || [];
+          settings = json.data.settings || settings;
           // N-1/N-6: おすすめ・人気ランキング更新
           var recArr = json.data.recommendations || [];
           _recommendations = {};
@@ -1244,11 +1315,19 @@
           }
           _recList = recArr;
           _popularity = json.data.popularity || {};
+          _prepTimes = json.data.prepTimes || {};
+          _alternativeMap = json.data.alternativeMap || {};
+          _pairRecommendations = json.data.pairRecommendations || {};
           // 品切れ商品を検出
           var soldOutIds = {};
           newData.forEach(function (cat) {
             (cat.items || []).forEach(function (item) {
-              if (item.soldOut) soldOutIds[item.menuItemId] = item.name;
+              if (item.soldOut) {
+                soldOutIds[item.menuItemId] = {
+                  name: item.name,
+                  categoryId: item.categoryId || cat.categoryId
+                };
+              }
             });
           });
           // カート内の品切れ商品を除去
@@ -1256,7 +1335,7 @@
           var removedNames = [];
           var cleanCart = cart.filter(function (ci) {
             if (soldOutIds[ci.id]) {
-              removedNames.push(soldOutIds[ci.id]);
+              removedNames.push(soldOutIds[ci.id].name);
               return false;
             }
             return true;
@@ -1268,10 +1347,12 @@
             }
             localStorage.setItem('mt_cart_' + storeId + '_' + tableId, JSON.stringify(cleanCart));
             updateCartBar();
-            alert(unique.join('、') + _t('sold_out_removed', 'が品切れになりました。カートから削除しました。'));
+            _availabilitySuggestionItems = buildAvailabilitySuggestions(soldOutIds, newData, 4);
+            showReorderToast(unique.join('、') + _t('sold_out_removed_with_suggestions', 'が品切れになりました。代わりに頼める候補を表示しました。'));
           }
           menuData = newData;
           renderMenu();
+          if (isPlanMode) updatePlanTimer();
           if (!isPreview) updateCartBar();
           if (_lastOrders && _lastOrders.length > 0) renderReorderSection(_lastOrders);
         })
@@ -1291,10 +1372,521 @@
       return null;
     }
 
+    function findMenuItemInData(menuItemId, data) {
+      var cats = data || menuData;
+      for (var ci = 0; ci < cats.length; ci++) {
+        var items = cats[ci].items || [];
+        for (var ii = 0; ii < items.length; ii++) {
+          if (items[ii].menuItemId === menuItemId) return items[ii];
+        }
+      }
+      return null;
+    }
+
     function hasOptions(menuItemId) {
       var item = findMenuItem(menuItemId);
       return item && item.optionGroups && item.optionGroups.length > 0;
     }
+
+    function normalizeMenuText(value) {
+      return String(value || '').toLowerCase().replace(/\s+/g, '');
+    }
+
+    function hasSelectedAllergenExcludes() {
+      for (var key in _selectedAllergenExcludes) {
+        if (_selectedAllergenExcludes.hasOwnProperty(key) && _selectedAllergenExcludes[key]) return true;
+      }
+      return false;
+    }
+
+    function getPrepMinutes(itemId) {
+      var prep = _prepTimes && _prepTimes[itemId];
+      if (!prep || !prep.avgMinutes) return 0;
+      return parseInt(prep.avgMinutes, 10) || 0;
+    }
+
+    function getExplicitPrepMinutes(item) {
+      if (!item || item.prepTimeMin === null || item.prepTimeMin === undefined || item.prepTimeMin === '') return 0;
+      return parseInt(item.prepTimeMin, 10) || 0;
+    }
+
+    function getDisplayPrepMinutes(item) {
+      return getExplicitPrepMinutes(item) || getPrepMinutes(item.menuItemId);
+    }
+
+    function getItemCategoryName(item, cat) {
+      if (cat) return _getLocalizedCatName(cat);
+      for (var ci = 0; ci < menuData.length; ci++) {
+        var items = menuData[ci].items || [];
+        for (var ii = 0; ii < items.length; ii++) {
+          if (items[ii].menuItemId === item.menuItemId) return _getLocalizedCatName(menuData[ci]);
+        }
+      }
+      return '';
+    }
+
+    function itemSearchText(item, cat) {
+      var text = [
+        _getLocalizedName(item),
+        item.name,
+        item.nameEn,
+        _getLocalizedDesc(item),
+        item.description,
+        item.descriptionEn,
+        getItemCategoryName(item, cat)
+      ].join(' ');
+      return normalizeMenuText(text);
+    }
+
+    function textHasAny(text, words) {
+      for (var i = 0; i < words.length; i++) {
+        if (text.indexOf(words[i]) !== -1) return true;
+      }
+      return false;
+    }
+
+    function isPopularItem(item) {
+      var rank = _popularity[item.menuItemId];
+      var rec = _recommendations[item.menuItemId];
+      return !!(rank && rank <= 10) || !!(rec && rec.badge_type === 'popular');
+    }
+
+    function looksFast(item, cat) {
+      if (item && item.isQuickServe) return true;
+      var avg = getDisplayPrepMinutes(item);
+      if (avg > 0 && avg <= 8) return true;
+      var text = itemSearchText(item, cat);
+      return textHasAny(text, [
+        'ドリンク', '飲み物', 'ビール', 'サワー', 'ハイボール', 'ワイン', 'ジュース',
+        '枝豆', '冷奴', 'サラダ', '漬物', 'すぐ', '早い', 'quick', 'drink'
+      ]);
+    }
+
+    function looksSpicy(item, cat) {
+      if (item && parseInt(item.spiceLevel, 10) > 0) return true;
+      var text = itemSearchText(item, cat);
+      if (text.indexOf('辛くない') !== -1) return false;
+      return textHasAny(text, ['辛', '唐辛子', 'チリ', '麻辣', 'スパイシ', 'hot', 'spicy', 'chili', 'chilli']);
+    }
+
+    function looksVeg(item, cat) {
+      if (item && item.isVegetarian) return true;
+      var text = itemSearchText(item, cat);
+      if (textHasAny(text, [
+        '肉', '牛', '豚', '鶏', '魚', '鮭', '海老', 'えび', '蟹', 'かに', 'まぐろ',
+        'chicken', 'beef', 'pork', 'fish', 'shrimp', 'crab', 'tuna'
+      ])) return false;
+      return textHasAny(text, ['ベジ', '野菜', 'サラダ', '豆腐', '枝豆', 'きのこ', 'vegan', 'vegetarian', 'vegetable']);
+    }
+
+    function looksKids(item, cat) {
+      if (item && item.isKidsFriendly) return true;
+      var text = itemSearchText(item, cat);
+      return textHasAny(text, ['子ども', '子供', 'お子様', 'キッズ', 'ジュニア', '甘口', 'ミニ', 'kids', 'child']);
+    }
+
+    function hasExcludedAllergen(item) {
+      if (!item.allergens || !item.allergens.length || !hasSelectedAllergenExcludes()) return false;
+      for (var ai = 0; ai < item.allergens.length; ai++) {
+        if (_selectedAllergenExcludes[item.allergens[ai]]) return true;
+      }
+      return false;
+    }
+
+    function hasActiveMenuFilter() {
+      return !!_menuSearchQuery || _menuQuickFilter !== 'all' || hasSelectedAllergenExcludes();
+    }
+
+    function itemMatchesCurrentFilter(item, cat) {
+      if (!item || item.soldOut) return false;
+      if (_menuSearchQuery) {
+        var query = normalizeMenuText(_menuSearchQuery);
+        if (itemSearchText(item, cat).indexOf(query) === -1) return false;
+      }
+      if (hasExcludedAllergen(item)) return false;
+      if (_menuQuickFilter === 'popular') return isPopularItem(item);
+      if (_menuQuickFilter === 'fast') return looksFast(item, cat);
+      if (_menuQuickFilter === 'spicy') return looksSpicy(item, cat);
+      if (_menuQuickFilter === 'veg') return looksVeg(item, cat);
+      if (_menuQuickFilter === 'kids') return looksKids(item, cat);
+      return true;
+    }
+
+    function resetMenuFilters() {
+      _menuSearchQuery = '';
+      _menuQuickFilter = 'all';
+      _selectedAllergenExcludes = {};
+      renderCategoryNav();
+      renderMenu();
+    }
+
+    function renderMenuTools() {
+      var tools = document.getElementById('menu-tools');
+      if (!tools) return;
+      if (isCourseMode) {
+        tools.style.display = 'none';
+        tools.innerHTML = '';
+        return;
+      }
+
+      var chips = [
+        { key: 'all', label: _t('filter_all', 'すべて') },
+        { key: 'popular', label: _t('filter_popular', '人気') },
+        { key: 'fast', label: _t('filter_fast', '早く出る') },
+        { key: 'spicy', label: _t('filter_spicy', '辛い') },
+        { key: 'allergy', label: _t('filter_allergy', 'アレルギー') },
+        { key: 'veg', label: _t('filter_veg', 'ベジ') },
+        { key: 'kids', label: _t('filter_kids', '子ども向け') }
+      ];
+      var html = '<input class="menu-tools__search" id="menu-search-input" type="search"'
+        + ' placeholder="' + Utils.escapeHtml(_t('menu_search_placeholder', 'メニュー名・説明で検索')) + '"'
+        + ' value="' + Utils.escapeHtml(_menuSearchQuery) + '">';
+      if (_avgWaitMinutes && _avgWaitMinutes > 0 && !isPreview && !isSupportPreview) {
+        html += '<div class="menu-tools__wait">'
+          + Utils.escapeHtml(_t('current_wait_hint', '現在の目安: 約{min}分。注文後の進捗はこの画面で確認できます。').replace('{min}', _avgWaitMinutes))
+          + '</div>';
+      }
+      html += '<div class="menu-filter-chips">';
+      for (var ci = 0; ci < chips.length; ci++) {
+        var chip = chips[ci];
+        html += '<button type="button" class="menu-filter-chip'
+          + (_menuQuickFilter === chip.key ? ' active' : '')
+          + '" data-menu-filter="' + chip.key + '">' + Utils.escapeHtml(chip.label) + '</button>';
+      }
+      if (hasActiveMenuFilter()) {
+        html += '<button type="button" class="menu-filter-chip menu-filter-chip--reset" data-menu-filter-reset="1">'
+          + Utils.escapeHtml(_t('filter_reset', '解除')) + '</button>';
+      }
+      html += '</div>';
+
+      if (_menuQuickFilter === 'allergy') {
+        var allergyKeys = ['egg', 'milk', 'wheat', 'shrimp', 'crab', 'buckwheat', 'peanut'];
+        html += '<div class="menu-allergy-panel">';
+        html += '<div class="menu-allergy-panel__title">' + Utils.escapeHtml(_t('allergy_exclude_title', '含まれるものを除外')) + '</div>';
+        html += '<p class="menu-allergy-panel__note">' + Utils.escapeHtml(_t('allergy_staff_check_desc', 'アレルギーは店舗での確認が必要です。不安な場合は注文前にスタッフへ確認してください。')) + '</p>';
+        html += '<div class="menu-allergy-panel__chips">';
+        for (var ai = 0; ai < allergyKeys.length; ai++) {
+          var aKey = allergyKeys[ai];
+          html += '<button type="button" class="menu-allergy-chip'
+            + (_selectedAllergenExcludes[aKey] ? ' active' : '')
+            + '" data-allergy-exclude="' + aKey + '">'
+            + Utils.escapeHtml(_allergenLabels[aKey] || aKey) + '</button>';
+        }
+        html += '</div>';
+        html += '<button type="button" class="menu-allergy-panel__staff" data-allergy-staff-check="1">'
+          + Utils.escapeHtml(_t('allergy_staff_check_button', 'スタッフに確認する')) + '</button>';
+        html += '</div>';
+      }
+
+      tools.innerHTML = html;
+      tools.style.display = '';
+    }
+
+    document.getElementById('menu-tools').addEventListener('input', function (e) {
+      if (e.target && e.target.id === 'menu-search-input') {
+        _menuSearchQuery = e.target.value || '';
+        renderCategoryNav();
+        renderMenu(true);
+      }
+    });
+
+    document.getElementById('menu-tools').addEventListener('click', function (e) {
+      var resetBtn = e.target.closest('[data-menu-filter-reset]');
+      if (resetBtn) {
+        resetMenuFilters();
+        return;
+      }
+      var staffCheckBtn = e.target.closest('[data-allergy-staff-check]');
+      if (staffCheckBtn) {
+        var reason = _t('cs_reason_allergy_check', 'アレルギー確認をお願いします');
+        if (window.CallStaff && typeof window.CallStaff.request === 'function') {
+          window.CallStaff.request(reason);
+        } else {
+          showReorderToast(_t('allergy_call_staff_hint', 'ヘッダーの呼び出しからスタッフへ確認してください'));
+        }
+        return;
+      }
+      var filterBtn = e.target.closest('[data-menu-filter]');
+      if (filterBtn) {
+        _menuQuickFilter = filterBtn.getAttribute('data-menu-filter') || 'all';
+        if (_menuQuickFilter !== 'allergy') _selectedAllergenExcludes = {};
+        renderCategoryNav();
+        renderMenu();
+        return;
+      }
+      var allergyBtn = e.target.closest('[data-allergy-exclude]');
+      if (allergyBtn) {
+        var key = allergyBtn.getAttribute('data-allergy-exclude');
+        _selectedAllergenExcludes[key] = !_selectedAllergenExcludes[key];
+        _menuQuickFilter = 'allergy';
+        renderCategoryNav();
+        renderMenu();
+      }
+    });
+
+    function buildItemMetaHtml(item, cat) {
+      var tags = '';
+      var avg = getDisplayPrepMinutes(item);
+      if (avg > 0) {
+        tags += '<span class="menu-item__meta-tag menu-item__meta-tag--wait">' + Utils.escapeHtml(_t('approx_wait_min', '約{min}分').replace('{min}', avg)) + '</span>';
+      } else if (looksFast(item, cat)) {
+        tags += '<span class="menu-item__meta-tag menu-item__meta-tag--wait">' + Utils.escapeHtml(_t('fast_tag', '早く出る')) + '</span>';
+      }
+      if (looksSpicy(item, cat)) {
+        tags += '<span class="menu-item__meta-tag menu-item__meta-tag--spicy">' + Utils.escapeHtml(_t('spicy_tag', '辛い')) + '</span>';
+      }
+      if (looksVeg(item, cat)) {
+        tags += '<span class="menu-item__meta-tag">' + Utils.escapeHtml(_t('veg_tag', 'ベジ')) + '</span>';
+      }
+      if (looksKids(item, cat)) {
+        tags += '<span class="menu-item__meta-tag">' + Utils.escapeHtml(_t('kids_tag', '子ども向け')) + '</span>';
+      }
+      return tags ? '<div class="menu-item__meta-tags">' + tags + '</div>' : '';
+    }
+
+    function addMenuItemById(itemId, showToast) {
+      if (isSupportPreview) {
+        showSupportPreviewToast();
+        return false;
+      }
+      var item = findMenuItem(itemId);
+      if (!item || item.soldOut) {
+        showReorderToast(_t('sold_out', '品切れです'));
+        return false;
+      }
+      if (hasOptions(itemId)) {
+        openOptionModal(itemId);
+        return true;
+      }
+      CartManager.addItem({
+        id: item.menuItemId,
+        name: item.name,
+        price: item.price
+      });
+      _pairSuggestionItems = buildPairSuggestionItems(item.menuItemId, 3);
+      renderMenu();
+      updateCartBar();
+      renderPairSuggestSection();
+      if (showToast) showReorderToast(_t('added_to_cart', 'カートに追加しました'));
+      return true;
+    }
+
+    function collectAvailableItems(data) {
+      var list = [];
+      var cats = data || menuData;
+      for (var ci = 0; ci < cats.length; ci++) {
+        var cat = cats[ci];
+        var items = cat.items || [];
+        for (var ii = 0; ii < items.length; ii++) {
+          if (!items[ii].soldOut) list.push({ item: items[ii], cat: cat });
+        }
+      }
+      return list;
+    }
+
+    function buildAvailabilitySuggestions(soldOutIds, data, limit) {
+      var entries = collectAvailableItems(data);
+      var scored = [];
+      var result = [];
+      var seen = {};
+
+      for (var soldManualId in soldOutIds) {
+        if (!soldOutIds.hasOwnProperty(soldManualId)) continue;
+        var manualList = _alternativeMap[soldManualId] || [];
+        for (var mi = 0; mi < manualList.length && result.length < limit; mi++) {
+          var manualId = manualList[mi].itemId || manualList[mi].alternative_item_id || manualList[mi];
+          var manualItem = findMenuItemInData(manualId, data);
+          if (!manualItem || manualItem.soldOut || seen[manualItem.menuItemId]) continue;
+          seen[manualItem.menuItemId] = true;
+          result.push(manualItem);
+        }
+      }
+
+      for (var i = 0; i < entries.length; i++) {
+        var entry = entries[i];
+        var item = entry.item;
+        if (seen[item.menuItemId]) continue;
+        var score = 0;
+        for (var soldId in soldOutIds) {
+          if (!soldOutIds.hasOwnProperty(soldId)) continue;
+          if (soldOutIds[soldId].categoryId && soldOutIds[soldId].categoryId === (item.categoryId || entry.cat.categoryId)) score += 30;
+        }
+        if (_recommendations[item.menuItemId]) score += 20;
+        if (_popularity[item.menuItemId]) score += (20 - _popularity[item.menuItemId]);
+        if (looksFast(item, entry.cat)) score += 5;
+        scored.push({ score: score, item: item });
+      }
+      scored.sort(function (a, b) { return b.score - a.score; });
+      for (var si = 0; si < scored.length && result.length < limit; si++) {
+        var id = scored[si].item.menuItemId;
+        if (seen[id]) continue;
+        seen[id] = true;
+        result.push(scored[si].item);
+      }
+      return result;
+    }
+
+    function buildGlobalSuggestionItems(limit) {
+      var result = [];
+      var seen = {};
+      var ordered = {};
+      for (var oi = 0; oi < _lastOrders.length; oi++) {
+        var items = _lastOrders[oi].items || [];
+        for (var ii = 0; ii < items.length; ii++) ordered[items[ii].id] = true;
+      }
+      function pushItem(item) {
+        if (!item || item.soldOut || seen[item.menuItemId] || ordered[item.menuItemId]) return;
+        seen[item.menuItemId] = true;
+        result.push(item);
+      }
+      for (var ri = 0; ri < _recList.length && result.length < limit; ri++) {
+        pushItem(findMenuItem(_recList[ri].menu_item_id));
+      }
+      var popularIds = [];
+      for (var pid in _popularity) {
+        if (_popularity.hasOwnProperty(pid)) popularIds.push(pid);
+      }
+      popularIds.sort(function (a, b) { return _popularity[a] - _popularity[b]; });
+      for (var pi = 0; pi < popularIds.length && result.length < limit; pi++) {
+        pushItem(findMenuItem(popularIds[pi]));
+      }
+      var available = collectAvailableItems(menuData);
+      for (var ai = 0; ai < available.length && result.length < limit; ai++) {
+        if (looksFast(available[ai].item, available[ai].cat)) pushItem(available[ai].item);
+      }
+      return result;
+    }
+
+    function buildSuggestItemHtml(item) {
+      var meta = [];
+      var avg = getDisplayPrepMinutes(item);
+      if (avg > 0) meta.push(_t('approx_wait_min', '約{min}分').replace('{min}', avg));
+      if (_popularity[item.menuItemId]) meta.push('TOP' + _popularity[item.menuItemId]);
+      var rec = _recommendations[item.menuItemId];
+      if (rec && rec.badge_type) meta.push(_t('recommended', 'おすすめ'));
+      return '<div class="suggest-item">'
+        + '<div class="suggest-item__info">'
+        + '<div class="suggest-item__name">' + Utils.escapeHtml(_getLocalizedName(item)) + '</div>'
+        + '<div class="suggest-item__meta">' + Utils.escapeHtml((meta.length ? meta.join(' / ') + ' / ' : '') + Utils.formatYen(item.price)) + '</div>'
+        + '</div>'
+        + '<button type="button" class="suggest-item__add" data-suggest-id="' + item.menuItemId + '">' + Utils.escapeHtml(_t('btn_add_short', '追加')) + '</button>'
+        + '</div>';
+    }
+
+    function renderAvailabilitySuggestions() {
+      var section = document.getElementById('availability-suggestion-section');
+      if (!section) return;
+      if (!_availabilitySuggestionItems.length || isPlanMode || isCourseMode) {
+        section.style.display = 'none';
+        section.innerHTML = '';
+        return;
+      }
+      var html = '<div class="suggest-section suggest-section--availability">';
+      html += '<div class="suggest-section__head"><div class="suggest-section__title">' + Utils.escapeHtml(_t('availability_suggest_title', 'こちらなら提供できます')) + '</div>'
+        + '<button type="button" class="suggest-section__close" data-suggest-close="availability">×</button></div>';
+      html += '<div class="suggest-section__sub">' + Utils.escapeHtml(_t('availability_suggest_sub', '品切れで外れた品の代わりに、今注文できる候補です。')) + '</div>';
+      html += '<div class="suggest-items">';
+      for (var i = 0; i < _availabilitySuggestionItems.length; i++) {
+        html += buildSuggestItemHtml(_availabilitySuggestionItems[i]);
+      }
+      html += '</div></div>';
+      section.innerHTML = html;
+      section.style.display = '';
+    }
+
+    function buildPairSuggestionItems(anchorItemId, limit) {
+      var result = [];
+      var seen = {};
+      var cart = CartManager.getCart();
+      for (var ci = 0; ci < cart.length; ci++) {
+        seen[cart[ci].id] = true;
+      }
+      function pushPair(itemId) {
+        var item = findMenuItem(itemId);
+        if (!item || item.soldOut || seen[item.menuItemId]) return;
+        seen[item.menuItemId] = true;
+        result.push(item);
+      }
+      var direct = _pairRecommendations[anchorItemId] || [];
+      for (var i = 0; i < direct.length && result.length < limit; i++) {
+        pushPair(direct[i].itemId || direct[i].pair_item_id || direct[i]);
+      }
+      if (result.length < limit) {
+        var cartItems = CartManager.getCart();
+        for (var k = 0; k < cartItems.length && result.length < limit; k++) {
+          var pairs = _pairRecommendations[cartItems[k].id] || [];
+          for (var pi = 0; pi < pairs.length && result.length < limit; pi++) {
+            pushPair(pairs[pi].itemId || pairs[pi].pair_item_id || pairs[pi]);
+          }
+        }
+      }
+      return result;
+    }
+
+    function renderPairSuggestSection() {
+      var section = document.getElementById('pair-suggest-section');
+      if (!section) return;
+      if (isPreview || isSupportPreview || isPlanMode || isCourseMode || !_pairSuggestionItems.length) {
+        section.style.display = 'none';
+        section.innerHTML = '';
+        return;
+      }
+      var html = '<div class="suggest-section suggest-section--pair">';
+      html += '<div class="suggest-section__head"><div class="suggest-section__title">' + Utils.escapeHtml(_t('pair_suggest_title', 'この料理に合う一品')) + '</div>'
+        + '<button type="button" class="suggest-section__close" data-suggest-close="pair">×</button></div>';
+      html += '<div class="suggest-section__sub">' + Utils.escapeHtml(_t('pair_suggest_sub', '一緒に注文されることが多い組み合わせです。')) + '</div>';
+      html += '<div class="suggest-items">';
+      for (var i = 0; i < _pairSuggestionItems.length; i++) {
+        html += buildSuggestItemHtml(_pairSuggestionItems[i]);
+      }
+      html += '</div></div>';
+      section.innerHTML = html;
+      section.style.display = '';
+    }
+
+    function renderSmartSuggestSection() {
+      var section = document.getElementById('smart-suggest-section');
+      if (!section) return;
+      if (isPreview || isSupportPreview || isPlanMode || isCourseMode || !_lastOrders.length) {
+        section.style.display = 'none';
+        section.innerHTML = '';
+        return;
+      }
+      var items = buildGlobalSuggestionItems(4);
+      if (!items.length) {
+        section.style.display = 'none';
+        section.innerHTML = '';
+        return;
+      }
+      var html = '<div class="suggest-section">';
+      html += '<div class="suggest-section__head"><div class="suggest-section__title">' + Utils.escapeHtml(_t('smart_suggest_title', 'もう一品いかがですか')) + '</div>'
+        + '<button type="button" class="suggest-section__close" data-suggest-close="smart">×</button></div>';
+      html += '<div class="suggest-section__sub">' + Utils.escapeHtml(_t('smart_suggest_sub', 'お店全体でよく出ているおすすめです。')) + '</div>';
+      html += '<div class="suggest-items">';
+      for (var i = 0; i < items.length; i++) {
+        html += buildSuggestItemHtml(items[i]);
+      }
+      html += '</div></div>';
+      section.innerHTML = html;
+      section.style.display = '';
+    }
+
+    function handleSuggestionClick(e) {
+      var closeBtn = e.target.closest('[data-suggest-close]');
+      if (closeBtn) {
+        if (closeBtn.getAttribute('data-suggest-close') === 'availability') _availabilitySuggestionItems = [];
+        if (closeBtn.getAttribute('data-suggest-close') === 'pair') _pairSuggestionItems = [];
+        closeBtn.closest('[id]').style.display = 'none';
+        return;
+      }
+      var btn = e.target.closest('[data-suggest-id]');
+      if (!btn) return;
+      addMenuItemById(btn.getAttribute('data-suggest-id'), true);
+    }
+
+    document.getElementById('availability-suggestion-section').addEventListener('click', handleSuggestionClick);
+    document.getElementById('pair-suggest-section').addEventListener('click', handleSuggestionClick);
+    document.getElementById('smart-suggest-section').addEventListener('click', handleSuggestionClick);
 
     // ============================================================
     // 前回の注文（再注文セクション）
@@ -1330,6 +1922,7 @@
 
       if (_lastOrders.length === 0) {
         section.style.display = 'none';
+        renderSmartSuggestSection();
         return;
       }
 
@@ -1366,6 +1959,7 @@
 
       if (_reorderItems.length === 0) {
         section.style.display = 'none';
+        renderSmartSuggestSection();
         return;
       }
 
@@ -1426,6 +2020,7 @@
       html += '</div>';
       section.innerHTML = html;
       section.style.display = '';
+      renderSmartSuggestSection();
     }
 
     document.getElementById('reorder-section').addEventListener('click', function (e) {
@@ -1489,22 +2084,35 @@
       var nav = document.getElementById('category-nav');
       var tabsHtml = '';
       // N-1: おすすめタブ（おすすめがある場合のみ先頭に追加）
-      if (_recList.length > 0 && !isPlanMode && !isCourseMode) {
+      if (_recList.length > 0 && !isPlanMode && !isCourseMode && !hasActiveMenuFilter()) {
         tabsHtml += '<button class="category-nav__btn" data-cat="recommendations">'
           + _t('recommended', 'おすすめ') + '</button>';
       }
-      tabsHtml += menuData.map(function (cat) {
+      for (var ci = 0; ci < menuData.length; ci++) {
+        var cat = menuData[ci];
+        var items = cat.items || [];
+        var hasVisible = !hasActiveMenuFilter();
+        for (var ii = 0; ii < items.length; ii++) {
+          if (itemMatchesCurrentFilter(items[ii], cat)) {
+            hasVisible = true;
+            break;
+          }
+        }
+        if (!hasVisible) continue;
         var name = _getLocalizedCatName(cat);
-        return '<button class="category-nav__btn" data-cat="' + cat.categoryId + '">' + Utils.escapeHtml(name) + '</button>';
-      }).join('');
+        tabsHtml += '<button class="category-nav__btn" data-cat="' + cat.categoryId + '">' + Utils.escapeHtml(name) + '</button>';
+      }
       nav.innerHTML = tabsHtml;
 
-      nav.addEventListener('click', function (e) {
-        var btn = e.target.closest('.category-nav__btn');
-        if (!btn) return;
-        var el = document.getElementById('cat-' + btn.dataset.cat);
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
+      if (!nav._poslaMenuNavBound) {
+        nav.addEventListener('click', function (e) {
+          var btn = e.target.closest('.category-nav__btn');
+          if (!btn) return;
+          var el = document.getElementById('cat-' + btn.dataset.cat);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        nav._poslaMenuNavBound = true;
+      }
     }
 
     // ============================================================
@@ -1573,7 +2181,7 @@
       return html;
     }
 
-    function renderMenuItemHtml(item) {
+    function renderMenuItemHtml(item, cat) {
       var itemId = item.menuItemId;
       var name = _getLocalizedName(item);
       var desc = _getLocalizedDesc(item);
@@ -1606,12 +2214,14 @@
 
       var badges = buildItemBadges(itemId, item.source);
       var nutritionHtml = buildNutritionHtml(item);
+      var metaHtml = buildItemMetaHtml(item, cat);
 
       return '<div class="menu-item">'
         + img
         + '<div class="menu-item__body">'
         + '<div class="menu-item__name">' + Utils.escapeHtml(name) + badges + '</div>'
         + (desc ? '<div class="menu-item__desc">' + Utils.escapeHtml(desc) + '</div>' : '')
+        + metaHtml
         + nutritionHtml
         + '<div class="menu-item__price' + (isPlanMode ? ' menu-item__price--plan' : '') + '">'
         + (isPlanMode ? _t('included', '食べ放題') : Utils.formatYen(item.price))
@@ -1621,15 +2231,19 @@
         + '</div>';
     }
 
-    function renderMenu() {
+    function renderMenu(skipTools) {
+      if (!skipTools) renderMenuTools();
       var container = document.getElementById('menu-container');
       var html = '';
+      var hasContent = false;
+      var filterActive = hasActiveMenuFilter();
 
       // N-1: おすすめセクション
-      if (_recList.length > 0 && !isPlanMode && !isCourseMode) {
-        html += '<section class="menu-section menu-section--recommend" id="cat-recommendations">'
+      if (_recList.length > 0 && !isPlanMode && !isCourseMode && !filterActive) {
+        var recHtml = '<section class="menu-section menu-section--recommend" id="cat-recommendations">'
           + '<h2 class="menu-section__title">' + _t('recommended', 'おすすめ') + '</h2>'
           + '<div class="menu-section__items">';
+        var recCount = 0;
         for (var rci = 0; rci < _recList.length; rci++) {
           var recItem = null;
           var rec = _recList[rci];
@@ -1642,29 +2256,50 @@
             if (recItem) break;
           }
           if (!recItem || recItem.soldOut) continue;
-          html += renderMenuItemHtml(recItem);
+          recHtml += renderMenuItemHtml(recItem);
+          recCount++;
           if (rec.comment) {
-            html += '<div class="recommend-comment">' + Utils.escapeHtml(rec.comment) + '</div>';
+            recHtml += '<div class="recommend-comment">' + Utils.escapeHtml(rec.comment) + '</div>';
           }
         }
-        html += '</div></section>';
+        recHtml += '</div></section>';
+        if (recCount > 0) {
+          html += recHtml;
+          hasContent = true;
+        }
       }
 
       menuData.forEach(function (cat) {
         var catName = _getLocalizedCatName(cat);
-        html += '<section class="menu-section" id="cat-' + cat.categoryId + '">'
+        var sectionHtml = '<section class="menu-section" id="cat-' + cat.categoryId + '">'
           + '<h2 class="menu-section__title">' + Utils.escapeHtml(catName) + '</h2>'
           + '<div class="menu-section__items">';
+        var itemCount = 0;
 
         (cat.items || []).forEach(function (item) {
           if (item.soldOut) return;
-          html += renderMenuItemHtml(item);
+          if (!itemMatchesCurrentFilter(item, cat)) return;
+          sectionHtml += renderMenuItemHtml(item, cat);
+          itemCount++;
         });
 
-        html += '</div></section>';
+        sectionHtml += '</div></section>';
+        if (itemCount > 0 || !filterActive) {
+          html += sectionHtml;
+        }
+        if (itemCount > 0) hasContent = true;
       });
 
+      if (!hasContent && filterActive) {
+        html = '<div class="menu-empty-filter">'
+          + '<div>' + Utils.escapeHtml(_t('filter_empty', '条件に合うメニューがありません')) + '</div>'
+          + '<button type="button" class="menu-empty-filter__btn" data-filter-reset="1">'
+          + Utils.escapeHtml(_t('filter_reset', '解除')) + '</button></div>';
+      }
+
       container.innerHTML = html;
+      renderAvailabilitySuggestions();
+      renderSmartSuggestSection();
       // Batch-E-2: カテゴリ追跡 (スクロール位置 → active ハイライト)
       setupCategoryTracking();
     }
@@ -1729,28 +2364,16 @@
     // メニューエリアのイベント委譲
     // ============================================================
     document.getElementById('menu-container').addEventListener('click', function (e) {
+      var resetBtn = e.target.closest('[data-filter-reset]');
+      if (resetBtn) {
+        resetMenuFilters();
+        return;
+      }
       // 追加ボタン
       var addBtn = e.target.closest('.menu-item__add-btn');
       if (addBtn) {
-        if (isSupportPreview) {
-          showSupportPreviewToast();
-          return;
-        }
         var itemId = addBtn.dataset.id;
-        if (hasOptions(itemId)) {
-          openOptionModal(itemId);
-        } else {
-          var item = findMenuItem(itemId);
-          if (item) {
-            CartManager.addItem({
-              id: item.menuItemId,
-              name: item.name,
-              price: item.price
-            });
-            renderMenu();
-            updateCartBar();
-          }
-        }
+        addMenuItemById(itemId, false);
         return;
       }
       // +/- ボタン（オプションなしアイテム専用）
@@ -1806,22 +2429,33 @@
       (item.optionGroups || []).forEach(function (group, gi) {
         var gName = _getLocalizedGroupName(group);
         var isSingle = group.selectionType === 'single';
+        var minSelect = group.minSelect || (group.isRequired ? 1 : 0);
+        var maxSelect = isSingle ? 1 : (group.maxSelect || 0);
         var badgeClass = group.isRequired ? 'option-group__badge--required' : 'option-group__badge--optional';
         var badgeText = group.isRequired
           ? _t('option_required', '必須')
           : _t('option_select', '任意');
+        var detailText = group.isRequired
+          ? _t('option_required_detail', '必須: {min}つ選択').replace('{min}', minSelect || 1)
+          : _t('option_optional_detail', '任意');
+        if (maxSelect > 0) {
+          detailText += ' / ' + _t('option_max_detail', '{max}つまで').replace('{max}', maxSelect);
+        }
 
         html += '<div class="option-group" data-group-index="' + gi + '">'
           + '<div class="option-group__title">'
           + Utils.escapeHtml(gName)
           + '<span class="option-group__badge ' + badgeClass + '">' + badgeText + '</span>'
-          + '</div>';
+          + '</div>'
+          + '<div class="option-group__meta">' + Utils.escapeHtml(detailText)
+          + '<span class="option-group__selected" data-option-selected="' + gi + '"></span></div>';
 
         (group.choices || []).forEach(function (choice) {
           var cName = _getLocalizedChoiceName(choice);
           var inputType = isSingle ? 'radio' : 'checkbox';
           var inputName = 'opt-group-' + gi;
-          var checked = choice.isDefault ? ' checked' : '';
+          var isAvailable = choice.isAvailable !== false;
+          var checked = choice.isDefault && isAvailable ? ' checked' : '';
           var priceDiff = choice.priceDiff || 0;
           var priceLabel = '';
           var priceClass = 'option-choice__price';
@@ -1834,19 +2468,22 @@
             priceClass += ' option-choice__price--zero';
           }
 
-          html += '<label class="option-choice">'
+          html += '<label class="option-choice' + (isAvailable ? '' : ' option-choice--disabled') + '">'
             + '<input class="option-choice__input" type="' + inputType + '"'
             + ' name="' + inputName + '"'
             + ' value="' + choice.choiceId + '"'
             + ' data-group-index="' + gi + '"'
             + ' data-price-diff="' + priceDiff + '"'
+            + ' data-choice-available="' + (isAvailable ? '1' : '0') + '"'
+            + (isAvailable ? '' : ' disabled')
             + checked + '>'
             + '<span class="option-choice__label">' + Utils.escapeHtml(cName) + '</span>'
+            + (isAvailable ? '' : '<span class="option-choice__soldout">' + Utils.escapeHtml(_t('option_sold_out', '売り切れ')) + '</span>')
             + '<span class="' + priceClass + '">' + priceLabel + '</span>'
             + '</label>';
         });
 
-        html += '</div>';
+        html += '<div class="option-group__hint" data-option-hint="' + gi + '"></div></div>';
       });
 
       body.innerHTML = html;
@@ -1869,23 +2506,53 @@
         var inputs = document.querySelectorAll('input[data-group-index="' + gi + '"]');
         var checkedInputs = document.querySelectorAll('input[data-group-index="' + gi + '"]:checked');
         var checkedCount = checkedInputs.length;
+        var minSelect = group.minSelect || (group.isRequired ? 1 : 0);
+        var maxSelect = group.selectionType === 'single' ? 1 : (group.maxSelect || 0);
+        var availableCount = 0;
+
+        for (var ai = 0; ai < inputs.length; ai++) {
+          if (inputs[ai].getAttribute('data-choice-available') !== '0') availableCount++;
+        }
 
         // 価格差分を合算
-        checkedInputs.forEach(function (inp) {
-          totalDiff += parseInt(inp.dataset.priceDiff, 10) || 0;
-        });
+        for (var ci = 0; ci < checkedInputs.length; ci++) {
+          totalDiff += parseInt(checkedInputs[ci].dataset.priceDiff, 10) || 0;
+        }
 
         // バリデーション
         var groupEl = document.querySelector('.option-group[data-group-index="' + gi + '"]');
-        if (group.isRequired && checkedCount < (group.minSelect || 1)) {
+        var hintEl = document.querySelector('[data-option-hint="' + gi + '"]');
+        var selectedEl = document.querySelector('[data-option-selected="' + gi + '"]');
+        var hintText = '';
+        if (selectedEl) {
+          selectedEl.textContent = _t('option_select_count', '選択 {count}').replace('{count}', checkedCount);
+        }
+
+        if (group.selectionType === 'multi' && maxSelect > 0) {
+          var reached = checkedCount >= maxSelect;
+          for (var di = 0; di < inputs.length; di++) {
+            if (inputs[di].getAttribute('data-choice-available') === '0') continue;
+            inputs[di].disabled = reached && !inputs[di].checked;
+          }
+          if (reached) hintText = _t('option_max_reached', '選択上限に達しています');
+        }
+
+        if (group.isRequired && availableCount === 0) {
+          allValid = false;
+          hintText = _t('option_required_none_available', '選択できる候補がありません');
+          if (groupEl) groupEl.classList.add('option-group--error');
+        } else if (group.isRequired && checkedCount < minSelect) {
           allValid = false;
           if (groupEl) groupEl.classList.add('option-group--error');
-        } else if (group.selectionType === 'multi' && group.maxSelect && checkedCount > group.maxSelect) {
+          hintText = _t('option_required_missing', '必須項目を選択してください');
+        } else if (group.selectionType === 'multi' && maxSelect && checkedCount > maxSelect) {
           allValid = false;
           if (groupEl) groupEl.classList.add('option-group--error');
+          hintText = _t('option_max_reached', '選択上限に達しています');
         } else {
           if (groupEl) groupEl.classList.remove('option-group--error');
         }
+        if (hintEl) hintEl.textContent = hintText;
       });
 
       var finalPrice = basePrice + totalDiff;
@@ -1905,6 +2572,7 @@
       var checked = document.querySelectorAll('input[data-group-index="' + gi + '"]:checked');
       if (checked.length > group.maxSelect) {
         inp.checked = false;
+        updateOptionPrice();
       }
     });
 
@@ -1920,6 +2588,7 @@
       var groups = item.optionGroups || [];
       var selectedOptions = [];
       var totalDiff = 0;
+      var invalidOption = false;
 
       groups.forEach(function (group, gi) {
         var checkedInputs = document.querySelectorAll('input[data-group-index="' + gi + '"]:checked');
@@ -1933,6 +2602,10 @@
             }
           }
           if (choice) {
+            if (choice.isAvailable === false) {
+              invalidOption = true;
+              return;
+            }
             var diff = choice.priceDiff || 0;
             totalDiff += diff;
             selectedOptions.push({
@@ -1946,6 +2619,12 @@
         });
       });
 
+      if (invalidOption) {
+        showReorderToast(_t('option_unavailable_selected', '選択できないオプションが含まれています'));
+        updateOptionPrice();
+        return;
+      }
+
       CartManager.addItem({
         id: item.menuItemId,
         name: item.name,
@@ -1954,9 +2633,11 @@
         options: selectedOptions
       });
 
+      _pairSuggestionItems = buildPairSuggestionItems(item.menuItemId, 3);
       closeOptionModal();
       renderMenu();
       updateCartBar();
+      renderPairSuggestSection();
     });
 
     // ============================================================
@@ -2038,10 +2719,137 @@
       return option.choiceName; // フォールバック
     }
 
+    function _getCartOptionChoice(menuItem, option) {
+      if (!menuItem || !option) return null;
+      var ogs = menuItem.optionGroups || [];
+      for (var gi = 0; gi < ogs.length; gi++) {
+        if (ogs[gi].groupId !== option.groupId) continue;
+        var choices = ogs[gi].choices || [];
+        for (var chi = 0; chi < choices.length; chi++) {
+          if (choices[chi].choiceId === option.choiceId) return choices[chi];
+        }
+      }
+      return null;
+    }
+
+    function getSelectedAllergenNames() {
+      var names = [];
+      var seen = {};
+      var allergenChecks = document.querySelectorAll('#allergen-chips input:checked');
+      for (var i = 0; i < allergenChecks.length; i++) {
+        var key = allergenChecks[i].value;
+        if (!seen[key]) {
+          seen[key] = true;
+          names.push(_allergenLabels[key] || key);
+        }
+      }
+      for (var exKey in _selectedAllergenExcludes) {
+        if (_selectedAllergenExcludes.hasOwnProperty(exKey) && _selectedAllergenExcludes[exKey] && !seen[exKey]) {
+          seen[exKey] = true;
+          names.push(_allergenLabels[exKey] || exKey);
+        }
+      }
+      return names;
+    }
+
+    function buildCartPreflight(cart, total) {
+      var checks = [];
+      var totalQty = 0;
+      var soldOutNames = [];
+      var unavailableOptionNames = [];
+      var longWaitNames = [];
+
+      for (var i = 0; i < cart.length; i++) {
+        var cartItem = cart[i];
+        totalQty += cartItem.qty || 1;
+        var menuItem = _findMenuItemById(cartItem.id);
+        if (!menuItem || menuItem.soldOut) {
+          soldOutNames.push(_getCartItemName(cartItem));
+          continue;
+        }
+        var opts = cartItem.options || [];
+        for (var oi = 0; oi < opts.length; oi++) {
+          var choice = _getCartOptionChoice(menuItem, opts[oi]);
+          if (!choice || choice.isAvailable === false) {
+            unavailableOptionNames.push(_getCartItemName(cartItem) + ' / ' + _getCartOptionName(opts[oi]));
+          }
+        }
+        var waitMin = getDisplayPrepMinutes(menuItem);
+        if (waitMin >= 20) {
+          longWaitNames.push(_getCartItemName(cartItem) + '(' + _t('approx_wait_min', '約{min}分').replace('{min}', waitMin) + ')');
+        }
+      }
+
+      if (_isLastOrder) {
+        checks.push({ block: true, text: _t('final_check_last_order', 'ラストオーダー終了のため送信できません') });
+      }
+      if (soldOutNames.length) {
+        checks.push({ block: true, text: _t('final_check_sold_out', '品切れ・提供停止: {items}').replace('{items}', soldOutNames.join('、')) });
+      }
+      if (unavailableOptionNames.length) {
+        checks.push({ block: true, text: _t('final_check_option_sold_out', '選択できないオプション: {items}').replace('{items}', unavailableOptionNames.join('、')) });
+      }
+      if (settings.maxItems && totalQty > parseInt(settings.maxItems, 10)) {
+        checks.push({ block: true, text: _t('final_check_max_items', '1回の注文上限 {max}品を超えています').replace('{max}', settings.maxItems) });
+      }
+      if (!isPlanMode && settings.maxAmount && total > parseInt(settings.maxAmount, 10)) {
+        checks.push({ block: true, text: _t('final_check_max_amount', '1回の注文上限金額 {max} を超えています').replace('{max}', Utils.formatYen(settings.maxAmount)) });
+      }
+
+      var allergyNames = getSelectedAllergenNames();
+      if (allergyNames.length) {
+        checks.push({ block: false, text: _t('final_check_allergy', 'アレルギー情報: {items}。不安な場合はスタッフに確認してください。').replace('{items}', allergyNames.join('、')) });
+      }
+      if (longWaitNames.length) {
+        checks.push({ block: false, text: _t('final_check_long_wait', '提供時間が長めの品目: {items}').replace('{items}', longWaitNames.join('、')) });
+      }
+      if (!checks.length) {
+        checks.push({ block: false, ok: true, text: _t('final_check_ok', '品切れ・上限・アレルギー表示を確認済みです') });
+      }
+
+      var html = '<div class="cart-preflight"><div class="cart-preflight__title">'
+        + Utils.escapeHtml(_t('final_check_title', '送信前の確認')) + '</div><ul class="cart-preflight__list">';
+      for (var ci = 0; ci < checks.length; ci++) {
+        html += '<li class="cart-preflight__item'
+          + (checks[ci].block ? ' cart-preflight__item--block' : '')
+          + (checks[ci].ok ? ' cart-preflight__item--ok' : '')
+          + '">' + Utils.escapeHtml(checks[ci].text) + '</li>';
+      }
+      html += '</ul></div>';
+      return html;
+    }
+
+    function getCartBlockingMessage(cart, total) {
+      var totalQty = 0;
+      var names = [];
+      var optNames = [];
+      for (var i = 0; i < cart.length; i++) {
+        totalQty += cart[i].qty || 1;
+        var menuItem = _findMenuItemById(cart[i].id);
+        if (!menuItem || menuItem.soldOut) names.push(_getCartItemName(cart[i]));
+        if (menuItem && cart[i].options) {
+          for (var oi = 0; oi < cart[i].options.length; oi++) {
+            var choice = _getCartOptionChoice(menuItem, cart[i].options[oi]);
+            if (!choice || choice.isAvailable === false) optNames.push(_getCartOptionName(cart[i].options[oi]));
+          }
+        }
+      }
+      if (_isLastOrder) return _t('final_check_last_order', 'ラストオーダー終了のため送信できません');
+      if (names.length) return _t('final_check_sold_out', '品切れ・提供停止: {items}').replace('{items}', names.join('、'));
+      if (optNames.length) return _t('final_check_option_sold_out', '選択できないオプション: {items}').replace('{items}', optNames.join('、'));
+      if (settings.maxItems && totalQty > parseInt(settings.maxItems, 10)) {
+        return _t('final_check_max_items', '1回の注文上限 {max}品を超えています').replace('{max}', settings.maxItems);
+      }
+      if (!isPlanMode && settings.maxAmount && total > parseInt(settings.maxAmount, 10)) {
+        return _t('final_check_max_amount', '1回の注文上限金額 {max} を超えています').replace('{max}', Utils.formatYen(settings.maxAmount));
+      }
+      return '';
+    }
+
     function renderCartModal() {
       var cart = CartManager.getCart();
       var total = cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0);
-      var html = '';
+      var html = cart.length ? buildCartPreflight(cart, total) : '';
       cart.forEach(function (item) {
         var optText = '';
         if (item.options && item.options.length > 0) {
@@ -2078,6 +2886,12 @@
       }
     });
 
+    document.getElementById('allergen-chips').addEventListener('change', function () {
+      if (document.getElementById('cart-overlay').classList.contains('open')) {
+        renderCartModal();
+      }
+    });
+
     // ============================================================
     // 注文送信
     // ============================================================
@@ -2089,6 +2903,13 @@
       var btn = this;
       var cart = CartManager.getCart();
       if (cart.length === 0) return;
+      var cartTotal = cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0);
+      var blockMessage = getCartBlockingMessage(cart, cartTotal);
+      if (blockMessage) {
+        renderCartModal();
+        alert(_t('final_check_blocking_alert', '送信前に確認が必要です。') + '\n' + blockMessage);
+        return;
+      }
 
       // N-3: メモ・アレルギー取得
       var memo = document.getElementById('order-memo').value.trim();
@@ -2176,19 +2997,21 @@
       var now = new Date();
       var expires = new Date(planInfo.expiresAt.replace(' ', 'T'));
       var lastOrder = planInfo.lastOrderAt ? new Date(planInfo.lastOrderAt.replace(' ', 'T')) : null;
+      var maxItems = settings && settings.maxItems ? parseInt(settings.maxItems, 10) : 0;
+      var limitText = maxItems > 0 ? ' / ' + _t('plan_order_limit', '1回{count}品まで').replace('{count}', maxItems) : '';
 
       var remainMs = expires.getTime() - now.getTime();
       var remainMin = Math.ceil(remainMs / 60000);
 
       if (remainMin <= 0) {
-        timeEl.textContent = _t('time_expired', '時間終了');
+        timeEl.textContent = _t('time_expired', '時間終了') + limitText;
         timeEl.className = 'plan-banner__time plan-banner__time--ended';
         clearInterval(_planTimerInterval);
         return;
       }
 
       if (lastOrder && now >= lastOrder) {
-        timeEl.textContent = _t('last_order_closed', 'ラストオーダー終了');
+        timeEl.textContent = _t('last_order_closed', 'ラストオーダー終了') + ' / ' + _t('remaining_min', '残り {min}分').replace('{min}', remainMin) + limitText;
         timeEl.className = 'plan-banner__time plan-banner__time--ended';
         return;
       }
@@ -2197,7 +3020,8 @@
       var loRemainMin = Math.ceil(loRemainMs / 60000);
 
       var timeText = _t('remaining_min', '残り {min}分').replace('{min}', remainMin);
-      if (lastOrder) timeText += _t('lo_before', '（LO {min}分前）').replace('{min}', loRemainMin);
+      if (lastOrder) timeText += ' / ' + _t('lo_remaining_min', 'LOまで {min}分').replace('{min}', loRemainMin);
+      timeText += limitText;
       timeEl.textContent = timeText;
 
       // 残り10分以下で警告スタイル
@@ -2219,7 +3043,12 @@
       var nameText = _getLocalizedName(courseInfo);
       nameEl.textContent = nameText;
       var phaseCount = courseInfo.phases ? courseInfo.phases.length : 0;
-      subEl.textContent = phaseCount + _t('course_view_only', '品のコース — 閲覧専用');
+      var currentPhase = courseInfo.currentPhase || 1;
+      var remaining = phaseCount > 0 ? Math.max(phaseCount - currentPhase, 0) : 0;
+      subEl.textContent = _t('course_progress', '現在 {current}/{total}品目・残り{remaining}品目・閲覧専用')
+        .replace('{current}', currentPhase)
+        .replace('{total}', phaseCount)
+        .replace('{remaining}', remaining);
       banner.style.display = '';
       // カートバー・カテゴリナビ非表示
       document.getElementById('cart-bar').style.display = 'none';

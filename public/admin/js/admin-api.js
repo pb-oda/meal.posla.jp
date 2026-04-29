@@ -260,6 +260,19 @@ var AdminApi = (function () {
     return request('PATCH', '/store/menu-overrides.php', data);
   }
 
+  function getMenuAlternatives() {
+    return storeGet('/store/menu-alternatives.php');
+  }
+
+  function saveMenuAlternatives(data) {
+    data.store_id = _currentStoreId;
+    return request('POST', '/store/menu-alternatives.php', data);
+  }
+
+  function getMenuQuality() {
+    return storeGet('/store/menu-quality.php');
+  }
+
   // --- 店舗限定メニュー ---
   function getLocalItems() {
     return storeGet('/store/local-items.php');
@@ -826,6 +839,9 @@ var AdminApi = (function () {
     uploadImage: uploadImage,
     getMenuOverrides: getMenuOverrides,
     updateMenuOverride: updateMenuOverride,
+    getMenuAlternatives: getMenuAlternatives,
+    saveMenuAlternatives: saveMenuAlternatives,
+    getMenuQuality: getMenuQuality,
     getLocalItems: getLocalItems,
     createLocalItem: createLocalItem,
     updateLocalItem: updateLocalItem,

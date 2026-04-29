@@ -16,6 +16,38 @@ require_method(['GET', 'POST', 'PATCH', 'DELETE']);
 $user = require_role('manager');
 $pdo = get_db();
 
+function local_item_has_self_menu_attrs(PDO $pdo): bool
+{
+    try {
+        $pdo->query('SELECT spice_level FROM store_local_items LIMIT 0');
+        return true;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+function normalize_local_self_menu_attrs(array $data): array
+{
+    $spice = isset($data['spice_level']) ? (int)$data['spice_level'] : 0;
+    if ($spice < 0) $spice = 0;
+    if ($spice > 3) $spice = 3;
+
+    $prep = null;
+    if (array_key_exists('prep_time_min', $data) && $data['prep_time_min'] !== null && $data['prep_time_min'] !== '') {
+        $prep = (int)$data['prep_time_min'];
+        if ($prep <= 0) $prep = null;
+        if ($prep !== null && $prep > 999) $prep = 999;
+    }
+
+    return [
+        'spice_level'      => $spice,
+        'is_vegetarian'    => !empty($data['is_vegetarian']) ? 1 : 0,
+        'is_kids_friendly' => !empty($data['is_kids_friendly']) ? 1 : 0,
+        'is_quick_serve'   => !empty($data['is_quick_serve']) ? 1 : 0,
+        'prep_time_min'    => $prep,
+    ];
+}
+
 // ----- GET -----
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $storeId = require_store_param();
@@ -48,41 +80,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $hasNutrition = false;
     try { $pdo->query('SELECT calories FROM store_local_items LIMIT 0'); $hasNutrition = true; } catch (PDOException $e) {}
 
+    $hasMenuAttrs = local_item_has_self_menu_attrs($pdo);
+    $cols = ['id', 'store_id', 'category_id', 'name', 'name_en', 'description', 'description_en', 'price', 'image_url', 'sort_order'];
+    $values = [
+        $id, $storeId, $categoryId,
+        $name,
+        trim($data['name_en'] ?? ''),
+        trim($data['description'] ?? ''),
+        trim($data['description_en'] ?? ''),
+        isset($data['price']) ? (int)$data['price'] : 0,
+        trim($data['image_url'] ?? ''),
+        0
+    ];
     if ($hasNutrition) {
         $calories = array_key_exists('calories', $data) && $data['calories'] !== null && $data['calories'] !== '' ? (int)$data['calories'] : null;
         $allergens = !empty($data['allergens']) && is_array($data['allergens']) ? json_encode($data['allergens'], JSON_UNESCAPED_UNICODE) : null;
-        $stmt = $pdo->prepare(
-            'INSERT INTO store_local_items (id, store_id, category_id, name, name_en, description, description_en, price, image_url, sort_order, calories, allergens)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        );
-        $stmt->execute([
-            $id, $storeId, $categoryId,
-            $name,
-            trim($data['name_en'] ?? ''),
-            trim($data['description'] ?? ''),
-            trim($data['description_en'] ?? ''),
-            isset($data['price']) ? (int)$data['price'] : 0,
-            trim($data['image_url'] ?? ''),
-            0,
-            $calories,
-            $allergens
-        ]);
-    } else {
-        $stmt = $pdo->prepare(
-            'INSERT INTO store_local_items (id, store_id, category_id, name, name_en, description, description_en, price, image_url, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        );
-        $stmt->execute([
-            $id, $storeId, $categoryId,
-            $name,
-            trim($data['name_en'] ?? ''),
-            trim($data['description'] ?? ''),
-            trim($data['description_en'] ?? ''),
-            isset($data['price']) ? (int)$data['price'] : 0,
-            trim($data['image_url'] ?? ''),
-            0
-        ]);
+        $cols[] = 'calories';
+        $cols[] = 'allergens';
+        $values[] = $calories;
+        $values[] = $allergens;
     }
+    if ($hasMenuAttrs) {
+        $attrs = normalize_local_self_menu_attrs($data);
+        foreach ($attrs as $col => $val) {
+            $cols[] = $col;
+            $values[] = $val;
+        }
+    }
+    $stmt = $pdo->prepare(
+        'INSERT INTO store_local_items (' . implode(', ', $cols) . ')
+         VALUES (' . implode(', ', array_fill(0, count($cols), '?')) . ')'
+    );
+    $stmt->execute($values);
 
     json_response(['ok' => true, 'id' => $id], 201);
 }
@@ -135,6 +164,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         }
     } catch (PDOException $e) {
         // カラム未作成時はスキップ
+    }
+    if (local_item_has_self_menu_attrs($pdo)) {
+        $attrs = normalize_local_self_menu_attrs($data);
+        $attrInputMap = [
+            'spice_level'      => 'spice_level',
+            'is_vegetarian'    => 'is_vegetarian',
+            'is_kids_friendly' => 'is_kids_friendly',
+            'is_quick_serve'   => 'is_quick_serve',
+            'prep_time_min'    => 'prep_time_min',
+        ];
+        foreach ($attrInputMap as $inputKey => $col) {
+            if (array_key_exists($inputKey, $data)) {
+                $fields[] = $col . ' = ?';
+                $params[] = $attrs[$col];
+            }
+        }
     }
 
     if (empty($fields)) json_error('NO_FIELDS', '更新項目がありません', 400);

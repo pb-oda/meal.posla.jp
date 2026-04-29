@@ -74,6 +74,61 @@ var MenuOverrideEditor = (function () {
     return result.length > 0 ? result : null;
   }
 
+  function _buildSpiceOptions(selectedLevel) {
+    var levels = [
+      { value: 0, label: 'なし' },
+      { value: 1, label: '控えめ' },
+      { value: 2, label: '辛い' },
+      { value: 3, label: '激辛' }
+    ];
+    var selected = parseInt(selectedLevel, 10) || 0;
+    var html = '';
+    levels.forEach(function (level) {
+      html += '<option value="' + level.value + '"' + (level.value === selected ? ' selected' : '') + '>' + level.label + '</option>';
+    });
+    return html;
+  }
+
+  function _buildSelfMenuAttrHtml(prefix, item, disabled, note) {
+    var dis = disabled ? ' disabled' : '';
+    var prep = item && item.prep_time_min !== null && item.prep_time_min !== undefined ? item.prep_time_min : '';
+    return '<div class="form-group"><label class="form-label">セルフメニュー表示' + (note || '') + '</label>'
+      + '<div style="display:grid;gap:8px">'
+      + '<select class="form-input" id="' + prefix + '-spice-level"' + dis + '>'
+      + _buildSpiceOptions(item ? item.spice_level : 0)
+      + '</select>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:0.9rem">'
+      + '<label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="' + prefix + '-quick-serve"' + dis + (item && item.is_quick_serve == 1 ? ' checked' : '') + '> 早く出る</label>'
+      + '<label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="' + prefix + '-vegetarian"' + dis + (item && item.is_vegetarian == 1 ? ' checked' : '') + '> ベジ</label>'
+      + '<label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="' + prefix + '-kids-friendly"' + dis + (item && item.is_kids_friendly == 1 ? ' checked' : '') + '> 子ども向け</label>'
+      + '</div>'
+      + '<input class="form-input" id="' + prefix + '-prep-time-min" type="number" min="1" max="999" placeholder="提供目安分（例: 8）"' + dis + ' value="' + Utils.escapeHtml(String(prep)) + '">'
+      + '</div></div>';
+  }
+
+  function _collectSelfMenuAttrs(prefix) {
+    var spice = document.getElementById(prefix + '-spice-level');
+    var prep = document.getElementById(prefix + '-prep-time-min');
+    return {
+      spice_level: spice ? (parseInt(spice.value, 10) || 0) : 0,
+      is_quick_serve: !!(document.getElementById(prefix + '-quick-serve') && document.getElementById(prefix + '-quick-serve').checked),
+      is_vegetarian: !!(document.getElementById(prefix + '-vegetarian') && document.getElementById(prefix + '-vegetarian').checked),
+      is_kids_friendly: !!(document.getElementById(prefix + '-kids-friendly') && document.getElementById(prefix + '-kids-friendly').checked),
+      prep_time_min: prep && prep.value !== '' ? (parseInt(prep.value, 10) || null) : null
+    };
+  }
+
+  function _buildSelfMenuAttrBadges(item) {
+    var badges = [];
+    if (item.is_quick_serve == 1) badges.push('早出し');
+    if (parseInt(item.spice_level, 10) > 0) badges.push('辛さ' + parseInt(item.spice_level, 10));
+    if (item.is_vegetarian == 1) badges.push('ベジ');
+    if (item.is_kids_friendly == 1) badges.push('子ども');
+    if (item.prep_time_min !== null && item.prep_time_min !== undefined && item.prep_time_min !== '') badges.push('約' + parseInt(item.prep_time_min, 10) + '分');
+    if (!badges.length) return '';
+    return '<div style="font-size:0.78rem;color:#6b7280;margin-top:2px">' + Utils.escapeHtml(badges.join(' / ')) + '</div>';
+  }
+
   function render() {
     if (_items.length === 0) {
       _container.innerHTML = '<div class="empty-state"><p class="empty-state__text">メニューがありません</p></div>';
@@ -95,7 +150,7 @@ var MenuOverrideEditor = (function () {
 
       html += '<tr' + (isHidden ? ' style="opacity:0.5"' : '') + '>'
         + imgCell
-        + '<td>' + Utils.escapeHtml(item.name) + ' ' + badges + '</td>'
+        + '<td>' + Utils.escapeHtml(item.name) + ' ' + badges + _buildSelfMenuAttrBadges(item) + '</td>'
         + '<td>' + Utils.escapeHtml(item.category_name) + '</td>'
         + '<td>' + Utils.formatYen(_effectivePrice(item)) + '</td>'
         + '<td>'
@@ -299,6 +354,7 @@ var MenuOverrideEditor = (function () {
         + '<input class="form-input" id="ovr-calories" type="number" min="0" placeholder="未設定"' + dis + ' value="' + (item.calories != null ? item.calories : '') + '"></div>'
         + '<div class="form-group"><label class="form-label">アレルギー特定原材料' + hqNote + '</label>'
         + _buildAllergenCheckboxes('ovr', item.allergens) + '</div>'
+        + _buildSelfMenuAttrHtml('ovr', item, _isHqLocked, hqNote)
         + _ovrImageHtml(item.override_image_url || '')
         + _renderOptionGroupsHtml(allGroups, linkedIds, linkedRequired);
 
@@ -333,11 +389,16 @@ var MenuOverrideEditor = (function () {
         });
       } else {
         // 既存ロジック (standard/pro): 本部マスタ → オーバーライドの順に更新
-        savePromise = AdminApi.updateMenuTemplate(templateId, {
+        var templatePayload = {
           name: name,
           name_en: document.getElementById('ovr-name-en').value.trim(),
           category_id: document.getElementById('ovr-category').value
-        }).then(function () {
+        };
+        var attrs = _collectSelfMenuAttrs('ovr');
+        for (var attrKey in attrs) {
+          if (attrs.hasOwnProperty(attrKey)) templatePayload[attrKey] = attrs[attrKey];
+        }
+        savePromise = AdminApi.updateMenuTemplate(templateId, templatePayload).then(function () {
           var caloriesVal = document.getElementById('ovr-calories').value;
           return AdminApi.updateMenuOverride(templateId, {
             price: price,
@@ -393,6 +454,7 @@ var MenuOverrideEditor = (function () {
         + '<select class="form-input" id="ovr-category">' + buildCategoryOptions('') + '</select></div>'
         + '<div class="form-group"><label class="form-label">価格（税込）</label>'
         + '<input class="form-input" id="ovr-price" type="number" value="0"></div>'
+        + _buildSelfMenuAttrHtml('ovr', {}, false, '')
         + _ovrImageHtml('')
         + _renderOptionGroupsHtml(allGroups, [], {});
 
@@ -406,13 +468,19 @@ var MenuOverrideEditor = (function () {
       if (!name || !catId) { showToast('メニュー名とカテゴリは必須です', 'error'); return; }
       this.disabled = true;
 
-      AdminApi.createMenuTemplate({
+      var payload = {
         name: name,
         name_en: document.getElementById('ovr-name-en').value.trim(),
         category_id: catId,
         base_price: parseInt(document.getElementById('ovr-price').value, 10) || 0,
         image_url: document.getElementById('ovr-image-url').value
-      }).then(function (res) {
+      };
+      var attrs = _collectSelfMenuAttrs('ovr');
+      for (var attrKey in attrs) {
+        if (attrs.hasOwnProperty(attrKey)) payload[attrKey] = attrs[attrKey];
+      }
+
+      AdminApi.createMenuTemplate(payload).then(function (res) {
         // 新規作成後にオプショングループ紐付け
         var groups = _collectOptionGroups('ovr-option-groups');
         if (groups.length > 0 && res && res.id) {

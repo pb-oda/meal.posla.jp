@@ -92,7 +92,7 @@ POSLA運営（プラスビリーフ）がテナントからの問い合わせや
 3. APIの利用量制限・課金設定を確認（無料枠超過時のエラーになっていないか）
 4. サーバー側でレスポンスを直接叩いて確認：
    - `POST /api/store/ai-generate.php`（要認証）
-   - エラーコード `AI_NOT_CONFIGURED`(503) → APIキー未設定
+   - エラーコード `AI_NOT_CONFIGURED`(503) → POSLA運営側のGemini APIキー未設定。店舗側の通常設定ではなく運営側障害として扱う
    - エラーコード `GEMINI_ERROR`(502) → Gemini API側の問題（キー無効、課金停止、レート制限等）
 
 ::: tip P1-6: サーバープロキシ経由
@@ -929,7 +929,7 @@ created_at           | error_no | code        | ip_address       | request_path
 ```
 → 対処: 専用の PIN 検証 API は存在しないため、`request_path` が `process-payment.php` / `refund-payment.php` のどちらかを確認し、`cashier_pin_failed` 監査ログとあわせて PIN 誤入力か出勤状態不整合かを切り分ける。
 
-**例 2: AI_NOT_CONFIGURED 多発**
+**例 2: AI_NOT_CONFIGURED 発生**
 
 ```
 SELECT created_at, message FROM error_log WHERE code='AI_NOT_CONFIGURED'

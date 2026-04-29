@@ -5,16 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#263238">
   <title>KDS - キッチンディスプレイ</title>
-  <link rel="stylesheet" href="css/kds.css?v=20260429-kds-terminal-prep">
+  <link rel="stylesheet" href="css/kds.css?v=20260429-kds-ai-chef-topbar">
   <style>
     .kds-badge-course { background:#2e7d32; color:#fff; font-size:0.65rem; padding:1px 5px; border-radius:3px; white-space:nowrap; }
     .kds-card--course { border-left:3px solid #2e7d32; }
-    .kds-course-bar { display:flex; gap:0.5rem; padding:0.25rem 0.75rem; background:var(--kds-bg-header); flex-wrap:wrap; }
+    .kds-course-bar { display:flex; gap:0.5rem; padding:0.25rem 0.75rem; background:var(--kds-bg-header); flex-wrap:wrap; flex:0 0 auto; }
     .kds-course-bar:empty { display:none; }
     .kds-advance-btn { background:#2e7d32; color:#fff; border:none; padding:0.35rem 0.75rem; border-radius:4px; font-size:0.8rem; cursor:pointer; }
     .kds-advance-btn:hover { background:#1b5e20; }
     .kds-advance-btn:disabled { opacity:0.5; cursor:not-allowed; }
-    .kds-station-bar { display:flex; gap:0.5rem; padding:0.5rem 1rem; background:var(--kds-bg-surface); flex-wrap:wrap; }
+    .kds-ops-strip { display:grid; grid-template-columns:minmax(220px,1.1fr) minmax(420px,2fr) minmax(300px,1.25fr); grid-template-areas:"station focus terminal" "station mode terminal"; gap:0.45rem; padding:0.45rem 0.7rem; background:rgba(255,255,255,0.035); border-bottom:1px solid var(--kds-border); flex:0 0 auto; }
+    .kds-station-bar { grid-area:station; display:flex; gap:0.45rem; padding:0.45rem; background:rgba(255,255,255,0.035); border:1px solid var(--kds-border); border-radius:6px; flex-wrap:wrap; align-content:flex-start; min-height:74px; }
     .kds-station-btn { background:var(--kds-bg-surface); color:var(--kds-text-muted); border:1px solid var(--kds-border); padding:0.35rem 0.75rem; border-radius:4px; font-size:0.8rem; cursor:pointer; }
     .kds-station-btn:hover { background:var(--kds-bg-surface-subtle); }
     .kds-station-btn.active { background:rgba(66,165,245,0.3); color:#fff; border-color:rgba(66,165,245,0.6); }
@@ -22,7 +23,7 @@
     .kds-station-btn--warning.active { background:rgba(255,179,0,0.32); border-color:#ffb300; color:#fff; }
     .kds-station-btn--danger.active { background:rgba(255,82,82,0.36); border-color:#ff5252; color:#fff; animation:kds-station-pulse 1.2s infinite; }
     @keyframes kds-station-pulse { 50% { box-shadow:0 0 0 3px rgba(255,82,82,0.18); } }
-    .kds-station-focus { display:flex; align-items:center; gap:0.75rem; min-height:42px; padding:0.45rem 1rem; background:rgba(255,255,255,0.035); border-bottom:1px solid var(--kds-border); border-left:4px solid transparent; font-size:0.82rem; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .kds-station-focus { grid-area:focus; display:flex; align-items:center; gap:0.75rem; min-height:38px; padding:0.42rem 0.7rem; background:rgba(255,255,255,0.045); border:1px solid var(--kds-border); border-left:4px solid transparent; border-radius:6px; font-size:0.82rem; overflow-x:auto; -webkit-overflow-scrolling:touch; }
     .kds-station-focus__name { font-weight:900; color:var(--kds-text); white-space:nowrap; }
     .kds-station-focus__status { font-weight:900; white-space:nowrap; }
     .kds-station-focus__metric { color:var(--kds-text-muted); white-space:nowrap; }
@@ -41,7 +42,8 @@
     html.light-theme .kds-station-focus--warning { background:#fff8e1; }
     html.light-theme .kds-station-focus--danger { background:#ffebee; }
     /* KDS-P1-1: モード切替バー (通常 / まとめ表示) */
-    .kds-mode-bar { display:flex; gap:0.5rem; padding:0.4rem 1rem; background:var(--kds-bg-surface); align-items:center; border-bottom:1px solid var(--kds-border); }
+    .kds-terminal-status { grid-area:terminal; min-height:74px; align-content:center; flex-wrap:wrap; border:1px solid var(--kds-border); border-radius:6px; border-left:4px solid transparent; padding:0.38rem 0.55rem; background:rgba(255,255,255,0.045); }
+    .kds-mode-bar { grid-area:mode; display:flex; gap:0.5rem; padding:0.38rem 0.55rem; background:rgba(255,255,255,0.045); align-items:center; border:1px solid var(--kds-border); border-radius:6px; min-height:34px; }
     .kds-mode-bar__label { font-size:0.72rem; color:var(--kds-text-muted); letter-spacing:0.05em; }
     .kds-mode-btn { background:var(--kds-bg-surface); color:var(--kds-text-muted); border:1px solid var(--kds-border); padding:0.3rem 0.9rem; border-radius:4px; font-size:0.82rem; cursor:pointer; font-family:inherit; }
     .kds-mode-btn:hover { background:var(--kds-bg-surface-subtle); }
@@ -49,6 +51,15 @@
     html.light-theme .kds-mode-btn { color:#555; background:#fff; border-color:#ccc; }
     html.light-theme .kds-mode-btn:hover { background:#f0f0f0; }
     html.light-theme .kds-mode-btn.active { background:#e8f5e9; color:#2e7d32; border-color:#4caf50; }
+    html.light-theme .kds-ops-strip { background:#f7f9fb; }
+    html.light-theme .kds-station-bar,
+    html.light-theme .kds-mode-bar,
+    html.light-theme .kds-terminal-status { background:#fff; border-color:#ddd; }
+    @media (max-width: 980px) {
+      .kds-ops-strip { grid-template-columns:1fr 1fr; grid-template-areas:"station mode" "focus focus" "terminal terminal"; }
+      .kds-station-bar,
+      .kds-terminal-status { min-height:48px; }
+    }
     /* KDS-P1-1: expeditor 単一カラム + カードスタイル */
     .kds-board--expeditor { display:flex; flex-direction:column; overflow:hidden; }
     .kds-column--expeditor { flex:1; overflow-y:auto; padding:0.5rem 1rem 1rem; }
@@ -83,7 +94,7 @@
       <a href="sold-out.html" class="kds-header__link">品切れ管理</a>
       <button type="button" class="kds-header__link kds-prep-settings-btn" id="kds-prep-lead-btn">着手時間</button>
       <button type="button" class="kds-header__link kds-preflight-btn" id="kds-preflight-btn">開店前チェック</button>
-      <button id="btn-ai-kitchen" onclick="AiKitchen.toggle()">&#x1F9D1;&#x200D;&#x1F373; AIシェフ</button>
+      <button id="btn-ai-kitchen" onclick="AiKitchen.toggle()">&#x1F9D1;&#x200D;&#x1F373; AIシェフOFF</button>
       <span id="kds-wake-lock-status" class="kds-header__link" style="font-size:0.75rem;opacity:0.7;cursor:default;" title="画面が暗くならないようにする補助機能 (端末側設定の影響あり)"></span>
       <span id="kds-push-status" class="kds-header__link" style="font-size:0.75rem;opacity:0.7;cursor:pointer;" title="この端末で通知を受け取る設定 (タップで許可)"></span>
       <span class="kds-header__user" id="kds-user-name">-</span>
@@ -91,20 +102,22 @@
     </div>
   </header>
 
-  <!-- ステーション選択バー -->
-  <div class="kds-station-bar" id="kds-station-bar"></div>
-  <div class="kds-station-focus" id="kds-station-focus"></div>
-  <div class="kds-terminal-status" id="kds-terminal-status" aria-live="polite"></div>
+  <!-- KDS運用バー: タブレットで上段の空き幅を使い、盤面を広く残す -->
+  <div class="kds-ops-strip" id="kds-ops-strip">
+    <div class="kds-station-bar" id="kds-station-bar"></div>
+    <div class="kds-station-focus" id="kds-station-focus"></div>
+    <div class="kds-terminal-status" id="kds-terminal-status" aria-live="polite"></div>
+
+    <!-- KDS-P1-1: 表示モード切替 (通常 3 列 / expeditor まとめ) -->
+    <div class="kds-mode-bar" id="kds-mode-bar">
+      <span class="kds-mode-bar__label">表示</span>
+      <button type="button" class="kds-mode-btn active" data-kds-mode="normal">通常 (3列)</button>
+      <button type="button" class="kds-mode-btn" data-kds-mode="expeditor">まとめ (提供順)</button>
+    </div>
+  </div>
 
   <!-- コースフェーズ操作バー -->
   <div class="kds-course-bar" id="kds-course-bar"></div>
-
-  <!-- KDS-P1-1: 表示モード切替バー (通常 3 列 / expeditor まとめ) -->
-  <div class="kds-mode-bar" id="kds-mode-bar">
-    <span class="kds-mode-bar__label">表示</span>
-    <button type="button" class="kds-mode-btn active" data-kds-mode="normal">通常 (3列)</button>
-    <button type="button" class="kds-mode-btn" data-kds-mode="expeditor">まとめ (提供順)</button>
-  </div>
 
   <!-- キッチンモード: 既存の 3 列カンバン + KDS-P1-1 expeditor 追加コンテナ。
        event delegation は #kds-board に紐付くので expeditor カラムも同じ親配下に置く -->
@@ -156,8 +169,8 @@
   <script src="js/kds-auth.js?v=20260418gps"></script>
   <script src="js/polling-data-source.js?v=20260420-pwa3"></script>
   <script src="js/kds-renderer.js?v=20260429-kds-terminal-prep"></script>
-  <script src="js/voice-commander.js?v=20260429-kds-p0g"></script>
-  <script src="js/ai-kitchen.js?v=20260429-visible"></script>
+  <script src="js/voice-commander.js?v=20260429-ai-unavailable-neutral"></script>
+  <script src="js/ai-kitchen.js?v=20260429-ai-unavailable-neutral2"></script>
   <script>
   (function () {
     'use strict';
@@ -337,7 +350,7 @@
         var value = hasValue ? cfg.categories[catId] : '';
         html += '<label class="kds-prep-settings-row">'
           + '<span class="kds-prep-settings-label">' + Utils.escapeHtml(_prepCategoryMap[catId] || 'カテゴリ') + '</span>'
-          + '<input class="kds-prep-settings-input" type="number" min="0" max="180" step="1" data-prep-cat-id="' + Utils.escapeHtml(catId) + '" value="' + Utils.escapeHtml(String(value)) + '" placeholder="既定">'
+          + '<input class="kds-prep-settings-input" type="number" min="0" max="180" step="1" data-prep-cat-id="' + Utils.escapeHtml(catId) + '" value="' + Utils.escapeHtml(String(value)) + '" placeholder="空欄">'
           + '<span class="kds-prep-settings-hint">分前</span>'
           + '</label>';
       }
@@ -353,7 +366,6 @@
         + '<button type="button" class="kds-prep-settings-close" data-prep-close="1">閉じる</button>'
         + '</div>'
         + '<div class="kds-prep-settings-body">'
-        + _prepInputRowHtml('全体', 'defaultMin', cfg.defaultMin, '分前')
         + _prepInputRowHtml('テイクアウト', 'takeoutMin', cfg.takeoutMin, '分前')
         + _prepInputRowHtml('予約', 'reservationMin', cfg.reservationMin, '分前')
         + '<div class="kds-prep-settings-section">カテゴリ別</div>'

@@ -48,6 +48,7 @@ var MenuTemplateEditor = (function () {
         + '<div class="list-item__name">' + Utils.escapeHtml(t.name)
         + (t.name_en ? ' <span class="i18n-en">' + Utils.escapeHtml(t.name_en) + '</span>' : '') + '</div>'
         + '<div class="list-item__meta">' + Utils.escapeHtml(t.category_name || '') + '</div>'
+        + _buildSelfMenuAttrBadges(t)
         + '</div>'
         + '<span class="list-item__price">' + Utils.formatYen(t.base_price) + '</span>'
         + '<div class="list-item__actions">'
@@ -82,6 +83,60 @@ var MenuTemplateEditor = (function () {
     }).join('');
   }
 
+  function _buildSpiceOptions(selectedLevel) {
+    var levels = [
+      { value: 0, label: 'なし' },
+      { value: 1, label: '控えめ' },
+      { value: 2, label: '辛い' },
+      { value: 3, label: '激辛' }
+    ];
+    var selected = parseInt(selectedLevel, 10) || 0;
+    var html = '';
+    levels.forEach(function (level) {
+      html += '<option value="' + level.value + '"' + (level.value === selected ? ' selected' : '') + '>' + level.label + '</option>';
+    });
+    return html;
+  }
+
+  function _buildSelfMenuAttrHtml(prefix, item) {
+    var prep = item && item.prep_time_min !== null && item.prep_time_min !== undefined ? item.prep_time_min : '';
+    return '<div class="form-group"><label class="form-label">セルフメニュー表示</label>'
+      + '<div style="display:grid;gap:8px">'
+      + '<select class="form-input" id="' + prefix + '-spice-level">'
+      + _buildSpiceOptions(item ? item.spice_level : 0)
+      + '</select>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:0.9rem">'
+      + '<label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="' + prefix + '-quick-serve"' + (item && item.is_quick_serve == 1 ? ' checked' : '') + '> 早く出る</label>'
+      + '<label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="' + prefix + '-vegetarian"' + (item && item.is_vegetarian == 1 ? ' checked' : '') + '> ベジ</label>'
+      + '<label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="' + prefix + '-kids-friendly"' + (item && item.is_kids_friendly == 1 ? ' checked' : '') + '> 子ども向け</label>'
+      + '</div>'
+      + '<input class="form-input" id="' + prefix + '-prep-time-min" type="number" min="1" max="999" placeholder="提供目安分（例: 8）" value="' + Utils.escapeHtml(String(prep)) + '">'
+      + '</div></div>';
+  }
+
+  function _collectSelfMenuAttrs(prefix) {
+    var spice = document.getElementById(prefix + '-spice-level');
+    var prep = document.getElementById(prefix + '-prep-time-min');
+    return {
+      spice_level: spice ? (parseInt(spice.value, 10) || 0) : 0,
+      is_quick_serve: !!(document.getElementById(prefix + '-quick-serve') && document.getElementById(prefix + '-quick-serve').checked),
+      is_vegetarian: !!(document.getElementById(prefix + '-vegetarian') && document.getElementById(prefix + '-vegetarian').checked),
+      is_kids_friendly: !!(document.getElementById(prefix + '-kids-friendly') && document.getElementById(prefix + '-kids-friendly').checked),
+      prep_time_min: prep && prep.value !== '' ? (parseInt(prep.value, 10) || null) : null
+    };
+  }
+
+  function _buildSelfMenuAttrBadges(item) {
+    var badges = [];
+    if (item.is_quick_serve == 1) badges.push('早出し');
+    if (parseInt(item.spice_level, 10) > 0) badges.push('辛さ' + parseInt(item.spice_level, 10));
+    if (item.is_vegetarian == 1) badges.push('ベジ');
+    if (item.is_kids_friendly == 1) badges.push('子ども');
+    if (item.prep_time_min !== null && item.prep_time_min !== undefined && item.prep_time_min !== '') badges.push('約' + parseInt(item.prep_time_min, 10) + '分');
+    if (!badges.length) return '';
+    return '<div class="list-item__meta">' + Utils.escapeHtml(badges.join(' / ')) + '</div>';
+  }
+
   function openAddModal() {
     var overlay = document.getElementById('admin-modal-overlay');
     overlay.querySelector('.modal__title').textContent = 'メニューを追加';
@@ -92,6 +147,7 @@ var MenuTemplateEditor = (function () {
       + '<div class="form-group"><label class="form-label">基本価格（税込）</label><input class="form-input" id="tmpl-price" type="number" value="0"></div>'
       + '<div class="form-group"><label class="form-label">説明</label><textarea class="form-input" id="tmpl-desc"></textarea></div>'
       + '<div class="form-group"><label class="form-label">説明（英語）</label><textarea class="form-input" id="tmpl-desc-en"></textarea></div>'
+      + _buildSelfMenuAttrHtml('tmpl', {})
       + '<div class="form-group"><label class="form-label">画像</label>'
       + '<div class="image-upload" id="tmpl-image-upload"><input type="file" accept="image/*" class="image-upload__input" id="tmpl-image-file">'
       + '<div class="image-upload__label"><strong>クリックして画像を選択</strong></div>'
@@ -111,7 +167,7 @@ var MenuTemplateEditor = (function () {
       if (!name || !catId) { showToast('メニュー名とカテゴリは必須です', 'error'); return; }
       this.disabled = true;
 
-      AdminApi.createMenuTemplate({
+      var payload = {
         name: name,
         name_en: document.getElementById('tmpl-name-en').value.trim(),
         category_id: catId,
@@ -119,7 +175,13 @@ var MenuTemplateEditor = (function () {
         description: document.getElementById('tmpl-desc').value.trim(),
         description_en: document.getElementById('tmpl-desc-en').value.trim(),
         image_url: document.getElementById('tmpl-image-url').value
-      }).then(function () {
+      };
+      var attrs = _collectSelfMenuAttrs('tmpl');
+      for (var attrKey in attrs) {
+        if (attrs.hasOwnProperty(attrKey)) payload[attrKey] = attrs[attrKey];
+      }
+
+      AdminApi.createMenuTemplate(payload).then(function () {
         CategoryEditor.closeModal();
         showToast('メニューを追加しました', 'success');
         load();
@@ -145,6 +207,7 @@ var MenuTemplateEditor = (function () {
       + '<div class="form-group"><label class="form-label">基本価格（税込）</label><input class="form-input" id="tmpl-price" type="number" value="' + (t.base_price || 0) + '"></div>'
       + '<div class="form-group"><label class="form-label">説明</label><textarea class="form-input" id="tmpl-desc">' + Utils.escapeHtml(t.description || '') + '</textarea></div>'
       + '<div class="form-group"><label class="form-label">説明（英語）</label><textarea class="form-input" id="tmpl-desc-en">' + Utils.escapeHtml(t.description_en || '') + '</textarea></div>'
+      + _buildSelfMenuAttrHtml('tmpl', t)
       + '<div class="form-group"><label class="form-label">品切れ</label>'
       + '<label class="toggle"><input type="checkbox" id="tmpl-soldout" ' + (t.is_sold_out == 1 ? 'checked' : '') + '><span class="toggle__slider"></span></label></div>'
       + '<div class="form-group"><label class="form-label">画像</label>'
@@ -163,7 +226,7 @@ var MenuTemplateEditor = (function () {
 
     document.getElementById('btn-save-tmpl').onclick = function () {
       this.disabled = true;
-      AdminApi.updateMenuTemplate(id, {
+      var payload = {
         name: document.getElementById('tmpl-name').value.trim(),
         name_en: document.getElementById('tmpl-name-en').value.trim(),
         category_id: document.getElementById('tmpl-category').value,
@@ -172,7 +235,13 @@ var MenuTemplateEditor = (function () {
         description_en: document.getElementById('tmpl-desc-en').value.trim(),
         is_sold_out: document.getElementById('tmpl-soldout').checked,
         image_url: document.getElementById('tmpl-image-url').value
-      }).then(function () {
+      };
+      var attrs = _collectSelfMenuAttrs('tmpl');
+      for (var attrKey in attrs) {
+        if (attrs.hasOwnProperty(attrKey)) payload[attrKey] = attrs[attrKey];
+      }
+
+      AdminApi.updateMenuTemplate(id, payload).then(function () {
         CategoryEditor.closeModal();
         showToast('メニューを更新しました', 'success');
         load();

@@ -142,6 +142,14 @@ function _record_error_log(string $code, string $message, int $status_code, ?str
         $storeId = null;
         if (isset($_GET['store_id']) && is_string($_GET['store_id'])) {
             $storeId = substr($_GET['store_id'], 0, 36);
+        } else {
+            $raw = @file_get_contents('php://input');
+            if (is_string($raw) && $raw !== '') {
+                $body = json_decode($raw, true);
+                if (is_array($body) && isset($body['store_id']) && is_string($body['store_id'])) {
+                    $storeId = substr($body['store_id'], 0, 36);
+                }
+            }
         }
 
         $stmt = $pdo->prepare(

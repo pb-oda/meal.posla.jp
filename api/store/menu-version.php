@@ -6,6 +6,7 @@
  * → { ok: true, data: { version: "2026-03-31 15:30:45" } }
  *
  * store_menu_overrides と store_local_items の最新 updated_at を返す。
+ * 代替提案設定も顧客メニューの表示に影響するため含める。
  * 顧客メニュー・ハンディが数秒ごとにポーリングし、
  * バージョンが変わったときだけフルメニュー取得する。
  */
@@ -50,6 +51,20 @@ try {
 } catch (Exception $e) {
     // テーブル未存在時はスキップ
     error_log('[P1-12][api/store/menu-version.php:49] fetch_local_items_version: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+}
+
+try {
+    $stmt = $pdo->prepare(
+        'SELECT MAX(updated_at) AS latest FROM menu_alternatives WHERE store_id = ?'
+    );
+    $stmt->execute([$storeId]);
+    $row = $stmt->fetch();
+    if ($row && $row['latest'] && $row['latest'] > $version) {
+        $version = $row['latest'];
+    }
+} catch (Exception $e) {
+    // テーブル未存在時はスキップ
+    error_log('[SELF-MENU-GUIDANCE][api/store/menu-version.php] fetch_alternatives_version: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 json_response(['version' => $version]);

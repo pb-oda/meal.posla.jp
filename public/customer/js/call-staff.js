@@ -29,6 +29,7 @@ var CallStaff = (function () {
 
   var _reasons = [
     { key: 'cs_reason_order', ja: '注文したい' },
+    { key: 'cs_reason_allergy_check', ja: 'アレルギー確認をお願いします' },
     { key: 'cs_reason_check', ja: 'お会計をお願いします' },
     { key: 'cs_reason_clear', ja: '食器を下げてください' },
     { key: 'cs_reason_other', ja: 'その他' }
@@ -203,6 +204,16 @@ var CallStaff = (function () {
   function _closeModal() {
     var overlay = document.getElementById('cs-overlay');
     if (overlay) overlay.classList.remove('cs-open');
+  }
+
+  function request(reason) {
+    if (!_storeId || !_tableId) return false;
+    if (_isCooldown()) {
+      _openModal();
+      return false;
+    }
+    _sendCall(reason || _t('cs_reason_other', 'その他'));
+    return true;
   }
 
   // ── API呼び出し ──
@@ -405,5 +416,8 @@ var CallStaff = (function () {
     init();
   }
 
-  return {};
+  return {
+    request: request,
+    open: _openModal
+  };
 })();

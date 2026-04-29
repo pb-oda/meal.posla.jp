@@ -51,13 +51,18 @@ function resolve_store_menu(PDO $pdo, string $store_id): array
     try { $pdo->query('SELECT calories FROM menu_templates LIMIT 0'); $hasNutrition = true; } catch (PDOException $e) {}
     $nutritionCols = $hasNutrition ? ', mt.calories, mt.allergens' : '';
 
+    // SELF-MENU-4: 検索/絞り込み用の構造化属性（未適用環境は従来表示を維持）
+    $hasTemplateAttrs = false;
+    try { $pdo->query('SELECT spice_level FROM menu_templates LIMIT 0'); $hasTemplateAttrs = true; } catch (PDOException $e) {}
+    $attrCols = $hasTemplateAttrs ? ', mt.spice_level, mt.is_vegetarian, mt.is_kids_friendly, mt.is_quick_serve, mt.prep_time_min' : '';
+
     $stmt = $pdo->prepare(
         'SELECT mt.id, mt.category_id, mt.name, mt.name_en,
                 mt.base_price, mt.description, mt.description_en,
                 mt.image_url, mt.sort_order,
                 smo.price AS override_price,
                 smo.is_hidden, COALESCE(smo.is_sold_out, mt.is_sold_out) AS is_sold_out,
-                smo.sort_order AS override_sort' . $ovrImageCol . $nutritionCols . '
+                smo.sort_order AS override_sort' . $ovrImageCol . $nutritionCols . $attrCols . '
          FROM menu_templates mt
          LEFT JOIN store_menu_overrides smo
            ON smo.template_id = mt.id AND smo.store_id = ?
@@ -69,10 +74,13 @@ function resolve_store_menu(PDO $pdo, string $store_id): array
 
     // 3. 店舗限定メニュー
     $localNutritionCols = $hasNutrition ? ', calories, allergens' : '';
+    $hasLocalAttrs = false;
+    try { $pdo->query('SELECT spice_level FROM store_local_items LIMIT 0'); $hasLocalAttrs = true; } catch (PDOException $e) {}
+    $localAttrCols = $hasLocalAttrs ? ', spice_level, is_vegetarian, is_kids_friendly, is_quick_serve, prep_time_min' : '';
     $stmt = $pdo->prepare(
         'SELECT id, category_id, name, name_en, price,
                 description, description_en, image_url,
-                is_sold_out, sort_order' . $localNutritionCols . '
+                is_sold_out, sort_order' . $localNutritionCols . $localAttrCols . '
          FROM store_local_items
          WHERE store_id = ?
          ORDER BY sort_order ASC'
@@ -129,6 +137,11 @@ function resolve_store_menu(PDO $pdo, string $store_id): array
             'soldOut'       => (bool)($t['is_sold_out'] ?? false),
             'calories'      => $hasNutrition && isset($t['calories']) ? (int)$t['calories'] : null,
             'allergens'     => $hasNutrition && !empty($t['allergens']) ? json_decode($t['allergens'], true) : null,
+            'spiceLevel'    => $hasTemplateAttrs ? (int)($t['spice_level'] ?? 0) : 0,
+            'isVegetarian'  => $hasTemplateAttrs ? (bool)($t['is_vegetarian'] ?? false) : false,
+            'isKidsFriendly'=> $hasTemplateAttrs ? (bool)($t['is_kids_friendly'] ?? false) : false,
+            'isQuickServe'  => $hasTemplateAttrs ? (bool)($t['is_quick_serve'] ?? false) : false,
+            'prepTimeMin'   => $hasTemplateAttrs && isset($t['prep_time_min']) ? (int)$t['prep_time_min'] : null,
             'optionGroups'  => $optionMap[$t['id']] ?? [],
         ];
     }
@@ -151,6 +164,11 @@ function resolve_store_menu(PDO $pdo, string $store_id): array
             'soldOut'       => (bool)$li['is_sold_out'],
             'calories'      => $hasNutrition && isset($li['calories']) ? (int)$li['calories'] : null,
             'allergens'     => $hasNutrition && !empty($li['allergens']) ? json_decode($li['allergens'], true) : null,
+            'spiceLevel'    => $hasLocalAttrs ? (int)($li['spice_level'] ?? 0) : 0,
+            'isVegetarian'  => $hasLocalAttrs ? (bool)($li['is_vegetarian'] ?? false) : false,
+            'isKidsFriendly'=> $hasLocalAttrs ? (bool)($li['is_kids_friendly'] ?? false) : false,
+            'isQuickServe'  => $hasLocalAttrs ? (bool)($li['is_quick_serve'] ?? false) : false,
+            'prepTimeMin'   => $hasLocalAttrs && isset($li['prep_time_min']) ? (int)$li['prep_time_min'] : null,
             'optionGroups'  => $optionMap[$li['id']] ?? [],
         ];
     }
@@ -284,7 +302,8 @@ function load_item_options(PDO $pdo, array $templateIds, array $localItemIds, st
                 oc.price_diff,
                 oc.is_default,
                 oc.sort_order AS choice_sort,
-                soo.price_diff AS override_price_diff
+                soo.price_diff AS override_price_diff,
+                COALESCE(soo.is_available, 1) AS is_available
             FROM menu_template_options mto
             JOIN option_groups og
                 ON og.id = mto.group_id AND og.is_active = 1
@@ -293,7 +312,6 @@ function load_item_options(PDO $pdo, array $templateIds, array $localItemIds, st
             LEFT JOIN store_option_overrides soo
                 ON soo.choice_id = oc.id AND soo.store_id = ?
             WHERE mto.template_id IN ({$ph})
-              AND (soo.id IS NULL OR soo.is_available = 1)
             ORDER BY mto.sort_order, og.sort_order, oc.sort_order"
         );
         $stmt->execute(array_merge([$store_id], $templateIds));
@@ -320,7 +338,8 @@ function load_item_options(PDO $pdo, array $templateIds, array $localItemIds, st
                 oc.price_diff,
                 oc.is_default,
                 oc.sort_order AS choice_sort,
-                soo.price_diff AS override_price_diff
+                soo.price_diff AS override_price_diff,
+                COALESCE(soo.is_available, 1) AS is_available
             FROM local_item_options lio
             JOIN option_groups og
                 ON og.id = lio.group_id AND og.is_active = 1
@@ -329,7 +348,6 @@ function load_item_options(PDO $pdo, array $templateIds, array $localItemIds, st
             LEFT JOIN store_option_overrides soo
                 ON soo.choice_id = oc.id AND soo.store_id = ?
             WHERE lio.local_item_id IN ({$ph})
-              AND (soo.id IS NULL OR soo.is_available = 1)
             ORDER BY lio.sort_order, og.sort_order, oc.sort_order"
         );
         $stmt->execute(array_merge([$store_id], $localItemIds));
@@ -373,6 +391,7 @@ function build_option_map(array $rows): array
             'nameEn'    => $row['choice_name_en'] ?? '',
             'priceDiff' => (int)($row['override_price_diff'] ?? $row['price_diff']),
             'isDefault' => (bool)$row['is_default'],
+            'isAvailable' => (bool)($row['is_available'] ?? true),
         ];
     }
 

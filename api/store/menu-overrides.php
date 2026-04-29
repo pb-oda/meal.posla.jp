@@ -25,11 +25,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $stmt->execute([$storeId]);
     $tenantId = $stmt->fetchColumn();
 
+    $nutritionCols = '';
+    try {
+        $pdo->query('SELECT calories FROM menu_templates LIMIT 0');
+        $nutritionCols = ', mt.calories, mt.allergens';
+    } catch (PDOException $e) {
+        $nutritionCols = '';
+    }
+    $attrCols = '';
+    try {
+        $pdo->query('SELECT spice_level FROM menu_templates LIMIT 0');
+        $attrCols = ', mt.spice_level, mt.is_vegetarian, mt.is_kids_friendly, mt.is_quick_serve, mt.prep_time_min';
+    } catch (PDOException $e) {
+        $attrCols = '';
+    }
+
     $stmt = $pdo->prepare(
         'SELECT mt.id AS template_id, mt.name, mt.name_en, mt.base_price, mt.is_sold_out AS template_sold_out,
                 mt.image_url, mt.category_id, c.name AS category_name,
                 smo.id AS override_id, smo.price, smo.is_hidden, smo.is_sold_out AS override_sold_out,
-                smo.image_url AS override_image_url
+                smo.image_url AS override_image_url' . $nutritionCols . $attrCols . '
          FROM menu_templates mt
          JOIN categories c ON c.id = mt.category_id
          LEFT JOIN store_menu_overrides smo ON smo.template_id = mt.id AND smo.store_id = ?

@@ -210,6 +210,106 @@ try {
     error_log('[P1-12][customer/menu.php:202] fetch_popularity: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
+// SELF-MENU-4: 品目別の目安提供時間（過去30日の完成/提供実績から算出）
+$prepTimes = [];
+try {
+    $prepStmt = $pdo->prepare(
+        "SELECT oi.menu_item_id,
+                COUNT(*) AS sample_count,
+                AVG(TIMESTAMPDIFF(MINUTE, oi.created_at, COALESCE(oi.ready_at, oi.served_at))) AS avg_min
+         FROM order_items oi
+         INNER JOIN orders o ON o.id = oi.order_id AND o.store_id = oi.store_id
+         WHERE oi.store_id = ?
+           AND o.store_id = ?
+           AND oi.menu_item_id IS NOT NULL
+           AND oi.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+           AND oi.status IN ('ready', 'served')
+           AND (oi.ready_at IS NOT NULL OR oi.served_at IS NOT NULL)
+         GROUP BY oi.menu_item_id
+         HAVING sample_count >= 2 AND avg_min IS NOT NULL"
+    );
+    $prepStmt->execute([$storeId, $storeId]);
+    $prepRows = $prepStmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($prepRows as $row) {
+        $avgMin = (int)round((float)$row['avg_min']);
+        if ($avgMin <= 0) continue;
+        $prepTimes[$row['menu_item_id']] = [
+            'avgMinutes'  => $avgMin,
+            'sampleCount' => (int)$row['sample_count'],
+        ];
+    }
+} catch (PDOException $e) {
+    // order_items の運用前や旧環境では目安時間なしで表示を継続
+    error_log('[SELF-MENU-4][customer/menu.php] fetch_prep_times: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+}
+
+$alternativeMap = [];
+try {
+    $altStmt = $pdo->prepare(
+        "SELECT source_item_id, alternative_item_id, alternative_source, sort_order
+         FROM menu_alternatives
+         WHERE store_id = ?
+         ORDER BY source_item_id, sort_order ASC"
+    );
+    $altStmt->execute([$storeId]);
+    $altRows = $altStmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($altRows as $row) {
+        $sourceId = (string)$row['source_item_id'];
+        if (!isset($alternativeMap[$sourceId])) $alternativeMap[$sourceId] = [];
+        $alternativeMap[$sourceId][] = [
+            'itemId'    => $row['alternative_item_id'],
+            'source'    => $row['alternative_source'],
+            'sortOrder' => (int)$row['sort_order'],
+        ];
+    }
+} catch (PDOException $e) {
+    // migration 未適用環境では自動候補のみで継続
+    error_log('[SELF-MENU-GUIDANCE][customer/menu.php] fetch_alternatives: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+}
+
+$pairRecommendations = [];
+try {
+    $pairStmt = $pdo->prepare(
+        "SELECT a.menu_item_id AS item_id,
+                b.menu_item_id AS pair_item_id,
+                COUNT(DISTINCT a.order_id) AS support
+         FROM order_items a
+         INNER JOIN order_items b
+           ON b.order_id = a.order_id
+          AND b.store_id = a.store_id
+          AND b.menu_item_id <> a.menu_item_id
+         WHERE a.store_id = ?
+           AND a.menu_item_id IS NOT NULL
+           AND b.menu_item_id IS NOT NULL
+           AND a.created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY)
+           AND a.status != 'cancelled'
+           AND b.status != 'cancelled'
+         GROUP BY a.menu_item_id, b.menu_item_id
+         HAVING support >= 2
+         ORDER BY support DESC
+         LIMIT 300"
+    );
+    $pairStmt->execute([$storeId]);
+    $pairRows = $pairStmt->fetchAll(PDO::FETCH_ASSOC);
+    $pairCounts = [];
+    foreach ($pairRows as $row) {
+        $itemId = (string)$row['item_id'];
+        if (!isset($pairRecommendations[$itemId])) {
+            $pairRecommendations[$itemId] = [];
+            $pairCounts[$itemId] = 0;
+        }
+        if ($pairCounts[$itemId] >= 3) continue;
+        $pairRecommendations[$itemId][] = [
+            'itemId'  => $row['pair_item_id'],
+            'support' => (int)$row['support'],
+        ];
+        $pairCounts[$itemId]++;
+    }
+} catch (PDOException $e) {
+    // 注文実績がない環境では非表示で継続
+    error_log('[SELF-MENU-GUIDANCE][customer/menu.php] fetch_pair_recommendations: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+}
+
 json_response([
     'store' => [
         'id'     => $store['id'],
@@ -225,4 +325,7 @@ json_response([
     'categories'      => $categories,
     'recommendations' => $recommendations,
     'popularity'      => $popularity,
+    'prepTimes'       => $prepTimes,
+    'alternativeMap'  => $alternativeMap,
+    'pairRecommendations' => $pairRecommendations,
 ]);

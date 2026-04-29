@@ -249,7 +249,7 @@ RPT-P1-1 は最近完了 (tasks.md Top 10 の #7) で、実装直後のため do
 | status | priority | path | purpose | evidence |
 |---|---|---|---|---|
 | 🟡 partial | **high** | `api/kds/advance-phase.php` | コースフェーズ手動発火 API | internal×1, spec |
-| 🟡 partial | **high** | `api/kds/ai-kitchen.php` | AIキッチンダッシュボード API | internal×1, spec |
+| 🟡 partial | **high** | `api/kds/ai-kitchen.php` | AIシェフ API | internal×1, spec |
 | ✅ documented | medium | `api/kds/call-alerts.php` | 呼び出しアラート API（認証必要：device 以上） | internal×3, spec |
 | 🟡 partial | **high** | `api/kds/cash-log.php` | レジ開け/締め API | internal×1, spec |
 | ✅ documented | medium | `api/kds/close-table.php` | テーブル会計 API (※ 97.2.1 で deprecated 指摘あり) | internal×5, spec |

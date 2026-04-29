@@ -222,6 +222,14 @@
         <summary style="padding:10px 16px;cursor:pointer;font-weight:600;font-size:0.95rem;background:var(--bg-secondary,#f5f5f5);border-radius:8px">今日のおすすめ設定</summary>
         <div id="recommend-editor-container" style="padding:12px 16px"></div>
       </details>
+      <details class="recommend-section" style="margin:12px 0;border:1px solid var(--border-color,#ddd);border-radius:8px;padding:0">
+        <summary style="padding:10px 16px;cursor:pointer;font-weight:600;font-size:0.95rem;background:var(--bg-secondary,#f5f5f5);border-radius:8px">品切れ時の代替提案</summary>
+        <div id="alternative-editor-container" style="padding:12px 16px"></div>
+      </details>
+      <details class="recommend-section" style="margin:12px 0;border:1px solid var(--border-color,#ddd);border-radius:8px;padding:0">
+        <summary style="padding:10px 16px;cursor:pointer;font-weight:600;font-size:0.95rem;background:var(--bg-secondary,#f5f5f5);border-radius:8px">メニュー整備チェック</summary>
+        <div id="menu-quality-container" style="padding:12px 16px"></div>
+      </details>
       <div class="panel-body">
         <div id="override-list"></div>
       </div>
@@ -814,6 +822,8 @@
   <script src="js/store-selector.js"></script>
   <script src="js/category-editor.js"></script>
   <script src="js/menu-override-editor.js?v=20260408p130"></script>
+  <script src="js/menu-alternative-editor.js"></script>
+  <script src="js/menu-quality-check.js"></script>
   <script src="js/local-item-editor.js"></script>
   <script src="js/daily-recommendation-editor.js"></script>
   <script src="js/table-editor.js?v=20260418"></script>
@@ -1198,6 +1208,8 @@
       );
       MenuOverrideEditor.init(document.getElementById('override-list'), _planFeatures);
       DailyRecommendationEditor.init(document.getElementById('recommend-editor-container'));
+      MenuAlternativeEditor.init(document.getElementById('alternative-editor-container'));
+      MenuQualityCheck.init(document.getElementById('menu-quality-container'));
       LocalItemEditor.init(document.getElementById('local-list'));
       TableEditor.init(
         document.getElementById('table-list'),
@@ -1569,7 +1581,7 @@
       switch (tabId) {
         case 'hq-categories': CategoryEditor.load(); break;
         case 'option-groups': OptionGroupEditor.load(); break;
-        case 'store-menu': MenuOverrideEditor.load(); DailyRecommendationEditor.load(); break;
+        case 'store-menu': MenuOverrideEditor.load(); DailyRecommendationEditor.load(); MenuAlternativeEditor.load(); MenuQualityCheck.load(); break;
         case 'local-menu': LocalItemEditor.load(); break;
         case 'tables': TableEditor.load(); break;
         case 'floor-map': FloorMap.load(); break;
