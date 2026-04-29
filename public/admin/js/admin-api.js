@@ -318,6 +318,14 @@ var AdminApi = (function () {
     return storeGet('/store/register-report.php', { from: from, to: to });
   }
 
+  function resolveRegisterPreCloseLog(id, note) {
+    return request('POST', '/store/register-pre-close-resolve.php', {
+      store_id: _currentStoreId,
+      id: id,
+      resolution_note: note
+    });
+  }
+
   // --- 注文履歴 ---
   function getOrderHistory(params) {
     return storeGet('/store/order-history.php', params);
@@ -830,6 +838,7 @@ var AdminApi = (function () {
     updateSettings: updateSettings,
     getSalesReport: getSalesReport,
     getRegisterReport: getRegisterReport,
+    resolveRegisterPreCloseLog: resolveRegisterPreCloseLog,
     getOrderHistory: getOrderHistory,
     getTurnoverReport: getTurnoverReport,
     getStaffReport: getStaffReport,
@@ -908,6 +917,7 @@ var AdminApi = (function () {
     updateReceiptSettings: updateReceiptSettings,
     getReceiptsByDate: getReceiptsByDate,
     getReceiptDetail: getReceiptDetail,
+    logReceiptReprint: logReceiptReprint,
     // PWA Phase 4b-2: 緊急会計台帳 (読み取り専用)
     getEmergencyPaymentLedger: getEmergencyPaymentLedger,
     // PWA Phase 4c-1: 緊急会計の管理者解決
@@ -960,6 +970,9 @@ var AdminApi = (function () {
   }
   function getReceiptDetail(receiptId) {
     return request('GET', '/store/receipt.php?id=' + encodeURIComponent(receiptId) + '&detail=1');
+  }
+  function logReceiptReprint(receiptId) {
+    return request('POST', '/store/receipt-reprint-log.php', { store_id: _currentStoreId, receipt_id: receiptId });
   }
 
   // PWA Phase 4b-2: 緊急会計台帳 (manager/owner のみ)

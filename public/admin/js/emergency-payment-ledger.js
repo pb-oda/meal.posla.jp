@@ -2,7 +2,7 @@
  * 緊急会計台帳 (PWA Phase 4b-2 / 2026-04-20)
  *
  * 管理画面 dashboard.html 「レポート」グループのサブタブ「緊急会計台帳」用 JS。
- * 読み取り専用 (operation button なし)。
+ * 緊急会計の照合・有効確認・売上転記・取消を管理する。
  *
  * 公開 API:
  *   EmergencyPaymentLedger.init()  — タブが初めて表示されたときの初期化 (現状 no-op、load が主)
@@ -21,6 +21,7 @@ var EmergencyPaymentLedger = (function () {
   var CONTAINER_ID = 'panel-emergency-ledger';
   var _loading = false;
   var _lastRecords = [];
+  var _lastRawRecords = [];
   var _resolving = false;        // Phase 4c-1: 二重クリック防止フラグ
   var _transferring = false;     // Phase 4c-2: 二重クリック防止フラグ
   var _hasResolutionColumn = true;  // migration 未適用時は false で API から返る → 操作ボタン非表示
@@ -51,8 +52,8 @@ var EmergencyPaymentLedger = (function () {
       +   '<span style="font-size:0.8rem;color:#666;">PWA Phase 4c-1 / \u7BA1\u7406\u8005\u5224\u65AD\u8A18\u9332</span>'
       + '</div>'
       + '<div style="background:#fff3cd;border:1px solid #ffd757;border-radius:6px;padding:10px 14px;margin-bottom:12px;color:#795500;font-size:0.85rem;line-height:1.6;">'
-      +   '\u58F2\u4E0A\u53CD\u6620\u30FB\u4FEE\u6B63\u30FB\u53D6\u6D88\u306F\u307E\u3060\u3067\u304D\u307E\u305B\u3093\u3002\u7BA1\u7406\u8005\u5224\u65AD\u306E\u8A18\u9332\u306E\u307F\u53EF\u80FD\u3067\u3059\u3002'
-      +   '\u7DCA\u6025\u4F1A\u8A08\u306F\u7AEF\u672B\u5185 IndexedDB \u304B\u3089\u540C\u671F\u3055\u308C\u305F\u4F1A\u8A08\u8A18\u9332\u3067\u3059\u3002conflict / pending_review \u306F\u5916\u90E8\u7AEF\u672B\u306E\u63A7\u3048\u3092\u78BA\u8A8D\u3057\u3066\u300C\u6709\u52B9\u78BA\u8A8D / \u91CD\u8907\u6271\u3044 / \u7121\u52B9\u6271\u3044 / \u4FDD\u7559\u300D\u3092\u884C\u3068\u3054\u3068\u306B\u8A18\u9332\u3057\u3066\u304F\u3060\u3055\u3044\u3002'
+      +   '\u7DCA\u6025\u4F1A\u8A08\u306F\u7AEF\u672B\u5185 IndexedDB \u304B\u3089\u540C\u671F\u3055\u308C\u305F\u4F1A\u8A08\u8A18\u9332\u3067\u3059\u3002'
+      +   '\u5916\u90E8\u7AEF\u672B\u306E\u63A7\u3048\u3068\u91D1\u984D\u3092\u78BA\u8A8D\u3057\u3001\u300C\u6709\u52B9\u78BA\u8A8D\u300D\u306E\u5F8C\u306B\u5FC5\u8981\u306A\u884C\u3092\u58F2\u4E0A\u3078\u8EE2\u8A18\u3057\u307E\u3059\u3002'
       + '</div>'
       + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">'
       +   '<label style="font-size:0.85rem;">\u671F\u9593 '
@@ -71,13 +72,34 @@ var EmergencyPaymentLedger = (function () {
       +       '<option value="failed">failed</option>'
       +     '</select>'
       +   '</label>'
+      +   '<label style="font-size:0.85rem;margin-left:12px;">\u8868\u793A '
+      +     '<select id="epl-client-filter" style="padding:4px 6px;border:1px solid #ccc;border-radius:4px;">'
+      +       '<option value="all">\u3059\u3079\u3066</option>'
+      +       '<option value="needs_action">\u8981\u5BFE\u5FDC\u306E\u307F</option>'
+      +       '<option value="unresolved">\u672A\u89E3\u6C7A / \u4FDD\u7559</option>'
+      +       '<option value="untransferred">\u6709\u52B9\u78BA\u8A8D\u6E08\u30FB\u672A\u8EE2\u8A18</option>'
+      +       '<option value="manual">\u624B\u5165\u529B\u8A18\u9332</option>'
+      +       '<option value="transferred">\u8EE2\u8A18\u6E08\u307F</option>'
+      +     '</select>'
+      +   '</label>'
+      +   '<label style="font-size:0.85rem;flex:1;min-width:180px;">\u691C\u7D22 '
+      +     '<input type="search" id="epl-search" placeholder="\u5353\u756A\u30FB\u62C5\u5F53\u30FB\u63A7\u3048\u756A\u53F7\u30FB\u30E1\u30E2" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px;">'
+      +   '</label>'
       +   '<button type="button" id="epl-refresh" style="padding:6px 14px;background:#1565c0;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem;">\u8868\u793A</button>'
+      +   '<button type="button" id="epl-clear-filter" style="padding:6px 12px;background:#78909c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem;">\u7D5E\u308A\u8FBC\u307F\u89E3\u9664</button>'
       + '</div>'
       + '<div id="epl-summary" style="display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:10px;margin-bottom:12px;"></div>'
       + '<div id="epl-list"><div style="padding:40px;text-align:center;color:#888;">\u8AAD\u307F\u8FBC\u307F\u4E2D...</div></div>'
       + '<div id="epl-detail-overlay" style="display:none;"></div>';
 
     panel.querySelector('#epl-refresh').addEventListener('click', function () { _fetchAndRender(); });
+    panel.querySelector('#epl-client-filter').addEventListener('change', function () { _renderFilteredList(panel); });
+    panel.querySelector('#epl-search').addEventListener('input', function () { _renderFilteredList(panel); });
+    panel.querySelector('#epl-clear-filter').addEventListener('click', function () {
+      panel.querySelector('#epl-client-filter').value = 'all';
+      panel.querySelector('#epl-search').value = '';
+      _renderFilteredList(panel);
+    });
   }
 
   // ── fetch + render ────────────────────
@@ -107,8 +129,8 @@ var EmergencyPaymentLedger = (function () {
       // Phase 4c-2: hasTransferColumns=false なら転記 UI を出さない
       _hasTransferColumns = (data.hasTransferColumns !== false);
       _renderSummary(panel, data.summary || {}, displayed, limit);
-      _lastRecords = data.records || [];
-      _renderList(panel, _lastRecords);
+      _lastRawRecords = data.records || [];
+      _renderFilteredList(panel);
     }).catch(function (err) {
       _loading = false;
       _renderError(panel, (err && err.message) || '\u8AAD\u307F\u8FBC\u307F\u306B\u5931\u6557\u3057\u307E\u3057\u305F');
@@ -173,7 +195,55 @@ var EmergencyPaymentLedger = (function () {
       + '</div>';
   }
 
-  function _renderList(panel, records) {
+  function _renderFilteredList(panel) {
+    var records = _applyClientFilters(panel, _lastRawRecords || []);
+    _lastRecords = records;
+    _renderList(panel, records, (_lastRawRecords || []).length);
+  }
+
+  function _applyClientFilters(panel, records) {
+    var filterEl = panel ? panel.querySelector('#epl-client-filter') : null;
+    var searchEl = panel ? panel.querySelector('#epl-search') : null;
+    var filter = filterEl ? String(filterEl.value || 'all') : 'all';
+    var q = searchEl ? searchEl.value.replace(/^\s+|\s+$/g, '').toLowerCase() : '';
+    var out = [];
+    for (var i = 0; i < records.length; i++) {
+      var r = records[i];
+      if (!_matchesQuickFilter(r, filter)) continue;
+      if (q && !_matchesTextFilter(r, q)) continue;
+      out.push(r);
+    }
+    return out;
+  }
+
+  function _matchesQuickFilter(r, filter) {
+    if (!filter || filter === 'all') return true;
+    var resolution = r.resolutionStatus || 'unresolved';
+    var needsReview = (r.status === 'conflict' || r.status === 'pending_review' || r.status === 'failed');
+    var unresolved = (!r.resolutionStatus || resolution === 'unresolved' || resolution === 'pending');
+    var confirmedUntransferred = (resolution === 'confirmed' && !r.syncedPaymentId);
+    if (filter === 'needs_action') return needsReview || unresolved || confirmedUntransferred;
+    if (filter === 'unresolved') return unresolved;
+    if (filter === 'untransferred') return confirmedUntransferred;
+    if (filter === 'manual') return _isManualEntryRecord(r);
+    if (filter === 'transferred') return !!r.syncedPaymentId;
+    return true;
+  }
+
+  function _matchesTextFilter(r, q) {
+    var parts = [
+      r.tableCode, r.staffName, r.externalSlipNo, r.externalApprovalNo,
+      r.externalTerminalName, r.note, r.localEmergencyPaymentId,
+      _methodLabel(r.paymentMethod, r.externalMethodType),
+      _humanizeConflictReason(r.conflictReason)
+    ];
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i] != null && String(parts[i]).toLowerCase().indexOf(q) !== -1) return true;
+    }
+    return false;
+  }
+
+  function _renderList(panel, records, rawCount) {
     var listEl = panel.querySelector('#epl-list');
     if (!listEl) return;
     if (!records || records.length === 0) {
@@ -182,6 +252,9 @@ var EmergencyPaymentLedger = (function () {
     }
 
     var html = ''
+      + ((rawCount && rawCount !== records.length)
+          ? '<div style="margin-bottom:8px;padding:8px 10px;background:#e3f2fd;color:#1565c0;border-radius:4px;font-size:0.8rem;">\u8868\u793A\u4E2D: ' + records.length + ' / ' + rawCount + ' \u4EF6</div>'
+          : '')
       + '<div style="overflow-x:auto;">'
       + '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;background:#fff;">'
       + '<thead><tr style="background:#eceff1;">'
@@ -303,6 +376,7 @@ var EmergencyPaymentLedger = (function () {
     var resolutionBlock = _renderResolutionBlock(r);
     // Phase 4c-2: 売上転記情報 + 操作 UI
     var transferBlock = _renderTransferBlock(r);
+    var nextActionBlock = _renderNextActionBlock(r);
 
     panel.innerHTML = ''
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
@@ -333,6 +407,8 @@ var EmergencyPaymentLedger = (function () {
       +   '<div style="margin-top:6px;font-size:0.7rem;color:#888;"><strong>\u30ED\u30FC\u30AB\u30EB\u8A18\u9332ID:</strong> <code style="font-size:0.7rem;">' + _escape(r.localEmergencyPaymentId || '-') + '</code> <span>(\u7AEF\u672B\u5185\u90E8ID)</span></div>'
       + '</div>'
       + '<hr style="margin:12px 0;">'
+      + nextActionBlock
+      + '<hr style="margin:12px 0;">'
       + resolutionBlock
       + '<hr style="margin:12px 0;">'
       + transferBlock
@@ -357,10 +433,60 @@ var EmergencyPaymentLedger = (function () {
     _bindTransferButton(panel, r, overlay);
   }
 
+  function _renderNextActionBlock(r) {
+    var bg = '#e3f2fd';
+    var color = '#1565c0';
+    var title = '\u6B21\u306B\u3084\u308B\u3053\u3068';
+    var text = '\u5916\u90E8\u7AEF\u672B\u63A7\u3048\u3068\u91D1\u984D\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002';
+    var resolution = (r && r.resolutionStatus) ? r.resolutionStatus : 'unresolved';
+    var isManual = _isManualEntryRecord(r);
+    if (r && r.status === 'failed') {
+      bg = '#ffebee';
+      color = '#c62828';
+      text = '\u7AEF\u672B\u5074\u306E\u7DCA\u6025\u30EC\u30B8\u4E00\u89A7\u304B\u3089\u540C\u671F\u518D\u8A66\u884C\u3057\u3001\u518D\u5EA6\u53F0\u5E33\u3092\u78BA\u8A8D\u3057\u307E\u3059\u3002';
+    } else if (r && (r.status === 'conflict' || r.status === 'pending_review')) {
+      bg = '#fff3cd';
+      color = '#795500';
+      text = '\u91CD\u8907\u30FB\u91D1\u984D\u5DEE\u7570\u30FB\u624B\u5165\u529B\u8A18\u9332\u306E\u53EF\u80FD\u6027\u304C\u3042\u308A\u307E\u3059\u3002\u63A7\u3048\u3068\u7A81\u5408\u3057\u3066\u6709\u52B9\u78BA\u8A8D / \u91CD\u8907\u6271\u3044 / \u7121\u52B9\u6271\u3044\u3092\u8A18\u9332\u3057\u307E\u3059\u3002';
+    } else if (resolution === 'unresolved' || resolution === 'pending') {
+      bg = '#fff3cd';
+      color = '#795500';
+      text = '\u6709\u52B9\u306A\u4F1A\u8A08\u304B\u78BA\u8A8D\u3057\u3001\u7BA1\u7406\u8005\u89E3\u6C7A\u3092\u8A18\u9332\u3057\u307E\u3059\u3002';
+    } else if (resolution === 'confirmed' && !r.syncedPaymentId) {
+      if (r.paymentMethod === 'other_external' && !r.externalMethodType) {
+        bg = '#fff3cd';
+        color = '#795500';
+        text = '\u305D\u306E\u4ED6\u5916\u90E8\u6C7A\u6E08\u306E\u5206\u985E\u3092\u9078\u629E\u3057\u3066\u304B\u3089\u58F2\u4E0A\u8EE2\u8A18\u3057\u307E\u3059\u3002';
+      } else if (isManual) {
+        text = '\u6CE8\u6587\u7D10\u4ED8\u3051\u306E\u306A\u3044\u624B\u5165\u529B\u8A18\u9332\u3067\u3059\u3002\u5FC5\u8981\u306B\u5FDC\u3058\u3066\u624B\u5165\u529B\u58F2\u4E0A\u3068\u3057\u3066\u8A08\u4E0A\u3057\u307E\u3059\u3002';
+      } else {
+        text = '\u5916\u90E8\u7AEF\u672B\u63A7\u3048\u3068\u91D1\u984D\u304C\u4E00\u81F4\u3057\u3066\u3044\u308C\u3070\u3001\u58F2\u4E0A\u3078\u8EE2\u8A18\u3057\u307E\u3059\u3002';
+      }
+    } else if (r && r.syncedPaymentId && r.paymentVoidStatus === 'voided') {
+      bg = '#ffebee';
+      color = '#c62828';
+      title = '\u53D6\u6D88\u6E08\u307F';
+      text = '\u3053\u306E\u7DCA\u6025\u4F1A\u8A08\u306B\u5BFE\u5FDC\u3059\u308B payments \u306F\u53D6\u6D88\u6E08\u307F\u3067\u3059\u3002';
+    } else if (r && r.syncedPaymentId) {
+      bg = '#e8f5e9';
+      color = '#2e7d32';
+      title = '\u51E6\u7406\u6E08\u307F';
+      text = '\u58F2\u4E0A\u3078\u8EE2\u8A18\u6E08\u307F\u3067\u3059\u3002\u53D6\u6D88\u304C\u5FC5\u8981\u306A\u5834\u5408\u306F\u4E0B\u306E\u53D6\u6D88\u64CD\u4F5C\u3092\u4F7F\u3044\u307E\u3059\u3002';
+    } else if (resolution === 'duplicate' || resolution === 'rejected') {
+      bg = '#f5f5f5';
+      color = '#555';
+      title = '\u7D42\u4E86';
+      text = '\u91CD\u8907\u307E\u305F\u306F\u7121\u52B9\u3068\u3057\u3066\u51E6\u7406\u6E08\u307F\u3067\u3059\u3002';
+    }
+    return '<div style="padding:10px 12px;background:' + bg + ';color:' + color + ';border-radius:4px;font-size:0.85rem;line-height:1.6;">'
+      + '<strong>' + _escape(title) + ':</strong> ' + _escape(text)
+      + '</div>';
+  }
+
   // ── Phase 4c-1: 解決ブロック HTML ────
   function _renderResolutionBlock(r) {
     var status = r.resolutionStatus || 'unresolved';
-    var html = '<h4 style="margin:8px 0;font-size:0.95rem;">\u7BA1\u7406\u8005\u89E3\u6C7A (Phase 4c-1)</h4>';
+    var html = '<h4 style="margin:8px 0;font-size:0.95rem;">\u7BA1\u7406\u8005\u89E3\u6C7A</h4>';
     html += '<div style="font-size:0.85rem;line-height:1.8;">';
     html += '<div><strong>\u89E3\u6C7A\u72B6\u614B:</strong> ' + _resolutionBadge(status) + '</div>';
     if (r.resolvedByName) html += '<div><strong>\u89E3\u6C7A\u8005:</strong> ' + _escape(r.resolvedByName) + '</div>';
@@ -430,7 +556,7 @@ var EmergencyPaymentLedger = (function () {
     }
 
     var confirmMsg = '\u300C' + actionLabel + '\u300D\u3068\u3057\u3066\u8A18\u9332\u3057\u307E\u3059\u3002\u3088\u308D\u3057\u3044\u3067\u3059\u304B\uFF1F\n\n'
-      + '\u203B \u3053\u306E\u64CD\u4F5C\u306F\u58F2\u4E0A\u30EC\u30DD\u30FC\u30C8\u306B\u306F\u53CD\u6620\u3055\u308C\u307E\u305B\u3093 (Phase 4c-2 \u4EE5\u964D\u3067\u9023\u643A\u4E88\u5B9A)';
+      + '\u203B \u3053\u306E\u64CD\u4F5C\u3060\u3051\u3067\u306F\u58F2\u4E0A\u30EC\u30DD\u30FC\u30C8\u306B\u306F\u53CD\u6620\u3055\u308C\u307E\u305B\u3093\u3002\u5FC5\u8981\u306A\u884C\u306F\u7D9A\u3051\u3066\u58F2\u4E0A\u8EE2\u8A18\u3057\u3066\u304F\u3060\u3055\u3044\u3002';
     if (!window.confirm(confirmMsg)) return;
 
     _resolving = true;
@@ -472,7 +598,7 @@ var EmergencyPaymentLedger = (function () {
 
   // ── Phase 4c-2: 売上転記ブロック HTML + バインド ────
   function _renderTransferBlock(r) {
-    var html = '<h4 style="margin:8px 0;font-size:0.95rem;">\u58F2\u4E0A\u8EE2\u8A18 (Phase 4c-2)</h4>';
+    var html = '<h4 style="margin:8px 0;font-size:0.95rem;">\u58F2\u4E0A\u8EE2\u8A18</h4>';
 
     // 既に転記済み
     if (r && r.syncedPaymentId) {

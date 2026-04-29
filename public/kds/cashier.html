@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0f1923">
   <title>POSレジ - Cashier</title>
-  <link rel="stylesheet" href="css/cashier.css?v=20260429-manual-pay-notice1">
+  <link rel="stylesheet" href="css/cashier.css?v=20260429-quickops1">
   <!-- PWA -->
-  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="manifest" href="manifest-cashier.webmanifest">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 </head>
 <body class="ca-body">
@@ -87,10 +87,10 @@
   <!-- Phase 3: オフライン時の表示耐性 helpers (cashier-app.js の前にロードする) -->
   <script src="../shared/js/offline-snapshot.js?v=20260420-pwa3"></script>
   <script src="../shared/js/offline-state-banner.js?v=20260420-pwa3b"></script>
-  <script src="js/cashier-app.js?v=20260429-manual-pay-notice1"></script>
+  <script src="js/cashier-app.js?v=20260429-restaurant-cash1"></script>
   <!-- Phase 4: 緊急レジモード (IndexedDB 台帳 + 同期 API) -->
   <script src="js/emergency-register-store.js?v=20260420-pwa4"></script>
-  <script src="js/emergency-register.js?v=20260421-pwa4d-2-hotfix1"></script>
+  <script src="js/emergency-register.js?v=20260429-emergency-cashier1"></script>
   <script>
   (function () {
     'use strict';
@@ -115,6 +115,27 @@
   <script>ThemeSwitcher.injectButton(document.querySelector('.ca-header__right'));</script>
   <script src="../js/session-monitor.js?v=20260419-fixurl"></script>
   <script src="pwa-register.js"></script>
+  <script src="../shared/js/install-prompt-banner.js?v=20260429-business-install1"></script>
+  <script>
+  (function () {
+    'use strict';
+    if (typeof InstallPromptBanner === 'undefined') return;
+    InstallPromptBanner.init('cashier', {
+      androidOnly: true,
+      iosHint: false,
+      manualAndroidHint: true,
+      background: '#b71c1c',
+      primaryColor: '#b71c1c',
+      padding: '12px 14px',
+      fontSize: '14px',
+      buttonPadding: '8px 14px',
+      buttonFontSize: '13px',
+      message: 'POSLAレジをホーム画面に追加すると、会計画面を1タップで起動できます。',
+      manualMessage: 'Chrome右上のメニューから「ホーム画面に追加」を選ぶと、レジを1タップで起動できます。',
+      installText: 'ホームに追加'
+    });
+  })();
+  </script>
   <script src="../shared/js/standard-env-banner.js?v=20260420-env"></script>
   <script>StandardEnvBanner.init('cashier');</script>
   <!-- Phase 1: PWA 更新マネージャ (cashier も KDS スコープ /public/kds/ 配下なので prefix は posla-kds-) -->

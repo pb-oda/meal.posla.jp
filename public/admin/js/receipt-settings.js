@@ -128,6 +128,9 @@ var ReceiptSettings = (function () {
   function reprintReceipt(receiptId) {
     _showToast('読み込み中...');
     AdminApi.getReceiptDetail(receiptId).then(function (data) {
+      if (AdminApi.logReceiptReprint) {
+        AdminApi.logReceiptReprint(receiptId).catch(function () {});
+      }
       _printReceiptHtml(data);
     }).catch(function (err) {
       _showToast(err.message || '読み込みエラー', true);

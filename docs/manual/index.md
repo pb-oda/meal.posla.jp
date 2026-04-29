@@ -7,25 +7,37 @@ hero:
   tagline: 初期設定から日々の注文・会計・レポート確認まで、画面操作に沿って説明します。
   actions:
     - theme: brand
-      text: はじめに読む →
-      link: /tenant/01-introduction
+      text: 機能別索引を見る →
+      link: /tenant/
     - theme: alt
-      text: ログイン方法を見る
-      link: /tenant/02-login
+      text: 店舗運用手順書を見る
+      link: /operations/00-table-of-contents
 features:
-  - title: 初期設定とアカウント
-    details: ログイン、パスワード、ユーザー権限、店舗切替など、利用開始時に必要な操作を確認できます。
-    link: /tenant/02-login
-  - title: 日々の営業
-    details: セルフオーダー、ハンディPOS、KDS、POSレジ、レシート、返金の流れを確認できます。
+  - title: 管理画面
+    details: 店舗管理、メニュー、テーブル、レポート、設定、ユーザー管理の入口です。
+    link: /tenant/03-dashboard
+  - title: レジ
+    details: 通常会計、外部決済記録、個別会計、レジ開け、現金移動、レジ締め、緊急レジを確認できます。
+    link: /tenant/08-cashier
+  - title: ハンディ
+    details: 店内注文、テイクアウト入力、テーブル状況、予約着席、注文履歴を確認できます。
     link: /tenant/06-orders
-  - title: 店舗運用手順書
-    details: 開店準備、接客、キッチン、会計、閉店作業まで、現場の流れに沿って確認できます。
-    link: /operations/00-table-of-contents
-  - title: 店舗管理
-    details: メニュー、テーブル、フロアマップ、在庫、シフト、店舗設定の操作を確認できます。
-    link: /tenant/04-menu
-  - title: レポートとAI
-    details: 売上、回転率、ABC分析、需要予測、AIアシスタントの活用方法を確認できます。
+  - title: KDS
+    details: 受付、調理中、提供待ち、ステーション、音声操作、端末準備を確認できます。
+    link: /tenant/07-kds
+  - title: シフト
+    details: シフト作成、勤怠打刻、スタッフ別確認、AI提案、ヘルプ調整を確認できます。
+    link: /tenant/12-shift
+  - title: 予約
+    details: 予約台帳、電話予約、Web予約、着席、キャンセル、予約金を確認できます。
+    link: /tenant/24-reservations
+  - title: テイクアウト
+    details: 注文受付、受取時間、受け渡し、オンライン決済時の扱いを確認できます。
+    link: /tenant/09-takeout
+  - title: レポート
+    details: 売上、レジ分析、支払い方法別、レジ締め照合、CSV出力を確認できます。
     link: /tenant/13-reports
+  - title: 店舗運用手順書
+    details: 開店準備から閉店作業まで、現場の一日の流れに沿って確認できます。
+    link: /operations/00-table-of-contents
 ---

@@ -64,6 +64,19 @@
       _PAY_DETAIL_LABELS[opt.value] = opt.label;
     });
   });
+  var _externalPaymentNote = '';
+  var _externalPaymentConfirmed = false;
+  var _CASH_DENOMINATIONS = [
+    { value: 10000, label: '1万円' },
+    { value: 5000, label: '5千円' },
+    { value: 1000, label: '千円' },
+    { value: 500, label: '500円' },
+    { value: 100, label: '100円' },
+    { value: 50, label: '50円' },
+    { value: 10, label: '10円' },
+    { value: 5, label: '5円' },
+    { value: 1, label: '1円' }
+  ];
 
   // 新機能状態
   var _clockTimer = null;
@@ -72,6 +85,10 @@
   var _openPanel = null;     // 'journal' | 'register-ctrl' | null
   var _journalData = null;
   var _cashLogEntries = [];
+  var _preCloseLogs = [];
+  var _preCloseCarryovers = [];
+  var _previousClose = null;
+  var _registerCloseReminder = null;
   var _registerOpen = false; // レジ開き済みかどうか
 
   var _lastPaymentId = null;       // L-5: 領収書発行用
@@ -196,6 +213,8 @@
   function _setPaymentMethod(method) {
     _paymentMethod = method;
     _paymentDetail = _defaultPaymentDetail(method);
+    _externalPaymentNote = '';
+    _externalPaymentConfirmed = false;
     _receivedInput = '';
     if (_paymentMethod !== 'cash') {
       var calc = _calcTotal();
@@ -435,7 +454,8 @@
       cash: 0,
       card: 0,
       qr: 0,
-      expectedBalance: 0
+      expectedBalance: 0,
+      closeAssist: null
     };
     if (sales && sales.summary) {
       summary.totalRevenue = sales.summary.totalRevenue || 0;
@@ -450,6 +470,9 @@
     }
     if (reg && reg.registerSummary) {
       summary.expectedBalance = reg.registerSummary.expectedBalance || 0;
+    }
+    if (reg && reg.closeAssist) {
+      summary.closeAssist = reg.closeAssist;
     }
     return summary;
   }
@@ -726,6 +749,8 @@
     _discountApplied = false;
     // _paymentMethod はリセットしない（連続会計時に支払方法を維持）
     _receivedInput = '';
+    _externalPaymentNote = '';
+    _externalPaymentConfirmed = false;
   }
 
   // O-2: 合流モードのトグル
@@ -818,6 +843,15 @@
         h += '<button class="' + cls + '" data-payment-detail="' + Utils.escapeHtml(opt.value) + '">' + Utils.escapeHtml(opt.label) + '</button>';
       });
       h += '</div>';
+      h += '<div class="ca-pay-detail__memo">';
+      h += '<label class="ca-pay-detail__label" for="ca-external-payment-note">控え番号・端末番号メモ</label>';
+      h += '<input type="text" class="ca-pay-detail__input" id="ca-external-payment-note" maxlength="120" value="' + Utils.escapeHtml(_externalPaymentNote || '') + '" placeholder="例: PayPay控え1234 / 端末No.02">';
+      h += '</div>';
+      h += '<label class="ca-pay-confirm">';
+      h += '<input type="checkbox" id="ca-external-payment-confirmed"' + (_externalPaymentConfirmed ? ' checked' : '') + '>';
+      h += '<span class="ca-pay-confirm__box"></span>';
+      h += '<span class="ca-pay-confirm__text">端末・アプリ側で決済完了を確認済み</span>';
+      h += '</label>';
       h += '</div>';
     }
     h += _renderManualPaymentNoticeHtml();
@@ -1051,6 +1085,8 @@
     var canPay = calc.finalTotal > 0 && someChecked && !_isSubmitting;
     if (_paymentMethod === 'cash') {
       canPay = canPay && received >= calc.finalTotal;
+    } else {
+      canPay = canPay && _externalPaymentConfirmed;
     }
     html += _renderAmountHtml(calc);
 
@@ -1149,6 +1185,13 @@
     var shopFooter = _receiptSettings.receipt_footer || '';
 
     var html = '';
+    if (_lastPaymentId) {
+      html += '<div class="ca-receipt__complete">';
+      html += '<div class="ca-receipt__complete-title">会計完了</div>';
+      html += '<div class="ca-receipt__complete-sub">' + Utils.escapeHtml(_currentPaymentLabel()) + ' / ' + Utils.formatYen(calc.finalTotal) + '</div>';
+      html += '</div>';
+    }
+
     // 店舗情報
     html += '<div class="ca-receipt__shop">';
     html += '<div class="ca-receipt__shop-name">' + Utils.escapeHtml(shopName) + '</div>';
@@ -1228,12 +1271,16 @@
     }
 
     // ボタン
-    html += '<div class="ca-receipt__actions">';
-    html += '<button class="ca-receipt__btn ca-receipt__btn--print" id="ca-receipt-print">レシート印刷</button>';
+    html += '<div class="ca-receipt__actions' + (_lastPaymentId ? ' ca-receipt__actions--complete' : '') + '">';
     if (_lastPaymentId) {
+      html += '<button class="ca-receipt__btn ca-receipt__btn--print" id="ca-receipt-print">レシート印刷</button>';
       html += '<button class="ca-receipt__btn ca-receipt__btn--invoice" id="ca-receipt-invoice">領収書</button>';
+      html += '<button class="ca-receipt__btn ca-receipt__btn--journal" id="ca-receipt-journal">取引履歴</button>';
+      html += '<button class="ca-receipt__btn ca-receipt__btn--next" id="ca-receipt-next">次の会計へ</button>';
+    } else {
+      html += '<button class="ca-receipt__btn ca-receipt__btn--print" id="ca-receipt-print">レシート印刷</button>';
+      html += '<button class="ca-receipt__btn ca-receipt__btn--close" id="ca-receipt-close">閉じる</button>';
     }
-    html += '<button class="ca-receipt__btn ca-receipt__btn--close" id="ca-receipt-close">閉じる</button>';
     html += '</div>';
 
     document.getElementById('ca-receipt-body').innerHTML = html;
@@ -1446,11 +1493,20 @@
 
     // 確認ダイアログ
     var payLabel = _currentPaymentLabel();
+    var noteInput = document.getElementById('ca-external-payment-note');
+    if (noteInput) _externalPaymentNote = noteInput.value.replace(/^\s+|\s+$/g, '').slice(0, 120);
+    if (_paymentMethod !== 'cash' && !_externalPaymentConfirmed) {
+      _showToast('外部端末・アプリ側の決済完了確認にチェックしてください', 'error');
+      return;
+    }
     var confirmMsg = Utils.formatYen(calc.finalTotal) + ' を ' + payLabel + ' で会計しますか？';
     if (_paymentMethod === 'card') {
       confirmMsg = '外部カード端末（' + payLabel + '）で決済完了を確認済みとして、' + Utils.formatYen(calc.finalTotal) + ' をPOSLAに記録しますか？';
     } else if (_paymentMethod === 'qr') {
       confirmMsg = '店舗契約の' + payLabel + 'で支払い完了を確認済みとして、' + Utils.formatYen(calc.finalTotal) + ' をPOSLAに記録しますか？';
+    }
+    if (_paymentMethod !== 'cash' && _externalPaymentNote) {
+      confirmMsg += '\n控えメモ: ' + _externalPaymentNote;
     }
     if (isPartial) confirmMsg = '【個別会計】' + confirmMsg;
     if (!confirm(confirmMsg)) return;
@@ -1537,10 +1593,107 @@
     });
   }
 
+  function _promptPostCloseReason(actionLabel, callback) {
+    var existing = document.getElementById('ca-post-close-modal-overlay');
+    if (existing) existing.remove();
+
+    var reasons = [
+      '締め後の会計漏れ',
+      '締め金額の訂正',
+      '取消・返金処理漏れ',
+      '端末日計の再確認',
+      '店長指示',
+      'その他'
+    ];
+
+    var overlay = document.createElement('div');
+    overlay.id = 'ca-post-close-modal-overlay';
+    overlay.className = 'ca-post-close-modal';
+    overlay.innerHTML =
+      '<div class="ca-post-close-modal__box">' +
+      '<h3 class="ca-post-close-modal__title">レジ本締め後の操作理由</h3>' +
+      '<p class="ca-post-close-modal__text">' + Utils.escapeHtml(actionLabel || '金銭操作') + 'を続ける理由を残します。</p>' +
+      '<div class="ca-post-close-modal__chips">' +
+        reasons.map(function (r) {
+          return '<button type="button" class="ca-post-close-modal__chip" data-post-close-reason="' + Utils.escapeHtml(r) + '">' + Utils.escapeHtml(r) + '</button>';
+        }).join('') +
+      '</div>' +
+      '<textarea id="ca-post-close-reason-input" class="ca-post-close-modal__input" maxlength="180" rows="3" placeholder="補足メモを入力"></textarea>' +
+      '<div id="ca-post-close-reason-error" class="ca-post-close-modal__error"></div>' +
+      '<div class="ca-post-close-modal__actions">' +
+      '<button type="button" class="ca-post-close-modal__cancel" id="ca-post-close-cancel">キャンセル</button>' +
+      '<button type="button" class="ca-post-close-modal__ok" id="ca-post-close-ok">理由を残して続行</button>' +
+      '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+
+    var selectedReason = '';
+    var input = document.getElementById('ca-post-close-reason-input');
+    var errEl = document.getElementById('ca-post-close-reason-error');
+
+    function cleanup() {
+      overlay.remove();
+    }
+
+    function submit() {
+      var detail = input ? input.value.replace(/^\s+|\s+$/g, '') : '';
+      var reason = selectedReason;
+      if (reason && detail) reason += ' / ' + detail;
+      else if (!reason) reason = detail;
+      reason = reason.replace(/^\s+|\s+$/g, '').slice(0, 180);
+      if (!reason) {
+        if (errEl) errEl.textContent = '理由を選択または入力してください';
+        return;
+      }
+      cleanup();
+      callback(reason);
+    }
+
+    overlay.addEventListener('click', function (e) {
+      var chip = e.target.closest('[data-post-close-reason]');
+      if (chip) {
+        selectedReason = chip.getAttribute('data-post-close-reason') || '';
+        overlay.querySelectorAll('.ca-post-close-modal__chip').forEach(function (btn) {
+          btn.classList.remove('ca-post-close-modal__chip--active');
+        });
+        chip.classList.add('ca-post-close-modal__chip--active');
+        if (errEl) errEl.textContent = '';
+        return;
+      }
+      if (e.target.closest('#ca-post-close-ok')) {
+        submit();
+        return;
+      }
+      if (e.target.closest('#ca-post-close-cancel')) {
+        cleanup();
+        callback(null);
+        return;
+      }
+      if (e.target === overlay) {
+        cleanup();
+        callback(null);
+      }
+    });
+
+    if (input) {
+      setTimeout(function () { input.focus(); }, 100);
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          cleanup();
+          callback(null);
+        }
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+          submit();
+        }
+      });
+    }
+  }
+
   /**
    * CP1: PIN 確認後の実際の会計送信処理
    */
-  function _submitPaymentWithPin(group, isPartial, calc, pin) {
+  function _submitPaymentWithPin(group, isPartial, calc, pin, postCloseReason) {
     var isMerged = _mergeMode && _mergedGroupKeys.length >= 2;
     var isManualNonCash = (_paymentMethod !== 'cash');
 
@@ -1548,8 +1701,10 @@
       store_id: _storeId,
       payment_method: _paymentMethod,
       payment_method_detail: _paymentDetail || '',
+      external_payment_note: _externalPaymentNote || '',
       staff_pin: pin   // CP1: 担当スタッフ PIN
     };
+    if (postCloseReason) body.post_close_reason = postCloseReason;
 
     // 合流モードの場合
     if (isMerged) {
@@ -1634,6 +1789,18 @@
         _playError();
         var errCode = (json.error && json.error.code) || '';
         var formatted = Utils.formatError(json);
+        if (errCode === 'REGISTER_CLOSED' && !postCloseReason) {
+          _isSubmitting = false;
+          _promptPostCloseReason('締め後会計', function (reason) {
+            if (!reason) {
+              _startPolling();
+              _renderRegister();
+              return;
+            }
+            _submitPaymentWithPin(group, isPartial, calc, pin, reason);
+          });
+          return;
+        }
         if (errCode === 'GATEWAY_ERROR') {
           _showToast('決済エラー: ' + formatted, 'error');
         } else {
@@ -1821,6 +1988,9 @@
       html += '<span class="ca-journal__item-method ca-journal__item-method--' + method + '">' + Utils.escapeHtml(_paymentLabel(method, p.payment_method_detail)) + '</span>';
       html += '<span class="ca-journal__item-staff">' + Utils.escapeHtml(staffName) + '</span>';
       html += '<span class="ca-journal__item-amount">' + Utils.formatYen(amount) + '</span>';
+      if (p.external_payment_note) {
+        html += '<span class="ca-journal__item-note">' + Utils.escapeHtml(p.external_payment_note) + '</span>';
+      }
       if (isVoided) {
         html += '<span class="ca-journal__void-badge">✗ 取消済</span>';
       } else if (isRefunded) {
@@ -1948,19 +2118,21 @@
     });
   }
 
-  function _executeRefund(paymentId, amount, pin) {
+  function _executeRefund(paymentId, amount, pin, postCloseReason) {
     _refunding = true;
     var url = '../../api/store/refund-payment.php';
+    var payload = {
+      payment_id: paymentId,
+      store_id: _storeId,
+      reason: 'requested_by_customer',
+      staff_pin: pin
+    };
+    if (postCloseReason) payload.post_close_reason = postCloseReason;
     fetch(url, {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        payment_id: paymentId,
-        store_id: _storeId,
-        reason: 'requested_by_customer',
-        staff_pin: pin
-      })
+      body: JSON.stringify(payload)
     })
     .then(function (r) {
       return r.text().then(function (t) {
@@ -1973,6 +2145,14 @@
         alert('返金が完了しました (' + Utils.formatYen(amount) + ')');
         _openJournal(); // リロード
       } else {
+        var code = (json.error && json.error.code) || '';
+        if (code === 'REGISTER_CLOSED' && !postCloseReason) {
+          _refunding = false;
+          _promptPostCloseReason('締め後返金', function (reason) {
+            if (reason) _executeRefund(paymentId, amount, pin, reason);
+          });
+          return;
+        }
         alert('返金に失敗しました: ' + Utils.formatError(json));
       }
     })
@@ -1989,6 +2169,7 @@
     _openSlidePanel('register-ctrl');
     _fetchSalesSummary();
     _fetchCashLog();
+    _fetchPreCloseLogs();
   }
 
   function _fetchCashLog() {
@@ -2002,6 +2183,19 @@
       .then(function (json) {
         if (json.ok && json.data) {
           _cashLogEntries = json.data.entries || [];
+          if (!_salesSummary) {
+            _salesSummary = { totalRevenue: 0, orderCount: 0, cash: 0, card: 0, qr: 0, expectedBalance: 0, closeAssist: null };
+          }
+          if (json.data.paymentSummary) {
+            _salesSummary.cash = parseInt(json.data.paymentSummary.cash, 10) || 0;
+            _salesSummary.card = parseInt(json.data.paymentSummary.card, 10) || 0;
+            _salesSummary.qr = parseInt(json.data.paymentSummary.qr, 10) || 0;
+          }
+          if (json.data.closeAssist) {
+            _salesSummary.closeAssist = json.data.closeAssist;
+          }
+          _previousClose = json.data.previousClose || null;
+          _registerCloseReminder = json.data.registerCloseReminder || null;
           // レジ開閉状態判定
           _registerOpen = false;
           for (var i = _cashLogEntries.length - 1; i >= 0; i--) {
@@ -2018,6 +2212,24 @@
       });
   }
 
+  function _fetchPreCloseLogs() {
+    var url = '../../api/kds/register-pre-close.php?store_id=' + encodeURIComponent(_storeId);
+    fetch(url, { credentials: 'same-origin' })
+      .then(function (r) {
+        return r.text().then(function (t) {
+          try { return JSON.parse(t); } catch (e) { return {}; }
+        });
+      })
+      .then(function (json) {
+        if (json.ok && json.data) {
+          _preCloseLogs = json.data.logs || [];
+          _preCloseCarryovers = json.data.carryovers || [];
+          if (_openPanel === 'register-ctrl') _renderRegisterCtrl();
+        }
+      })
+      .catch(function () {});
+  }
+
   function _renderRegisterCtrl() {
     var body = document.getElementById('ca-register-ctrl-body');
     if (!body) return;
@@ -2032,34 +2244,57 @@
       html += '<span class="ca-register-ctrl__status-badge ca-register-ctrl__status-badge--closed">レジ未開放</span>';
     }
     html += '</div>';
+    html += _renderRegisterCloseReminderHtml();
+
+    if (!_registerOpen) {
+      html += _renderRegisterOpenGuardHtml();
+    }
 
     // フォーム
     if (!_registerOpen) {
       // レジ開け
       html += '<div class="ca-register-ctrl__form">';
       html += '<div class="ca-register-ctrl__form-title">レジ開け</div>';
+      html += _renderOpenCashGuideHtml();
+      html += _renderOpenQuickActionsHtml();
+      html += '<details class="ca-register-details">';
+      html += '<summary>開始現金を手入力する</summary>';
       html += '<div class="ca-register-ctrl__input-group">';
       html += '<label class="ca-register-ctrl__input-label">開始在高（円）</label>';
-      html += '<input type="text" class="ca-register-ctrl__input" id="ca-reg-open-amount" inputmode="numeric" placeholder="0" value="">';
+      html += '<input type="text" class="ca-register-ctrl__input" id="ca-reg-open-amount" inputmode="numeric" placeholder="0" value="" oninput="CashierApp._onOpenAmountInput()">';
       html += '</div>';
+      html += _renderOpenCashDenominationHtml();
+      html += '<label class="ca-open-confirm">';
+      html += '<input type="checkbox" id="ca-reg-open-cash-checked">';
+      html += '<span class="ca-open-confirm__box"></span>';
+      html += '<span>開始現金を確認済み</span>';
+      html += '</label>';
       html += '<button class="ca-register-ctrl__btn ca-register-ctrl__btn--open" id="ca-reg-open-btn">レジを開ける</button>';
+      html += '</details>';
       html += '</div>';
     } else {
       // 入出金フォーム
       html += '<div class="ca-register-ctrl__form">';
       html += '<div class="ca-register-ctrl__form-title">入出金</div>';
+      html += '<div class="ca-cash-move__expected">現在の予想現金 <strong>' + Utils.formatYen(_calcExpectedBalance()) + '</strong></div>';
+      html += _renderCashMoveQuickActionsHtml();
+      html += '<details class="ca-register-details">';
+      html += '<summary>金額・理由を手入力する</summary>';
       html += '<div class="ca-register-ctrl__input-group">';
       html += '<label class="ca-register-ctrl__input-label">金額（円）</label>';
       html += '<input type="text" class="ca-register-ctrl__input" id="ca-reg-io-amount" inputmode="numeric" placeholder="0">';
       html += '</div>';
+      html += _renderCashMoveAmountChipsHtml();
       html += '<div class="ca-register-ctrl__input-group">';
       html += '<label class="ca-register-ctrl__input-label">備考</label>';
-      html += '<input type="text" class="ca-register-ctrl__input ca-register-ctrl__input--text" id="ca-reg-io-note" placeholder="例: つり銭準備">';
+      html += '<input type="text" class="ca-register-ctrl__input ca-register-ctrl__input--text" id="ca-reg-io-note" maxlength="120" placeholder="例: 釣銭補充 / 現金回収 / 小口購入">';
       html += '</div>';
+      html += _renderCashMoveReasonChipsHtml();
       html += '<div style="display:flex;gap:0.375rem;">';
       html += '<button class="ca-register-ctrl__btn ca-register-ctrl__btn--action" id="ca-reg-cashin-btn" style="flex:1;">入金</button>';
       html += '<button class="ca-register-ctrl__btn ca-register-ctrl__btn--action" id="ca-reg-cashout-btn" style="flex:1;background:var(--ca-warn);color:var(--ca-bg-primary);">出金</button>';
       html += '</div>';
+      html += '</details>';
       html += '</div>';
 
       // レジ閉め
@@ -2072,6 +2307,14 @@
       html += '<div class="ca-register-ctrl__reconcile-row"><span>カード売上</span><strong>' + Utils.formatYen(closeSummary.cardSales) + '</strong></div>';
       html += '<div class="ca-register-ctrl__reconcile-row"><span>QR/電子</span><strong>' + Utils.formatYen(closeSummary.qrSales) + '</strong></div>';
       html += '</div>';
+      html += _renderCloseAssistHtml(closeSummary.closeAssist);
+      html += _renderPreCloseHandoffHtml();
+      html += _renderQuickCloseHtml(closeSummary);
+      html += '<details class="ca-register-details ca-register-details--close">';
+      html += '<summary>詳細に確認して締める</summary>';
+      html += _renderCloseStepHtml('1', '締め前確認', _renderCloseCheckHtml(closeSummary));
+      html += _renderCloseStepHtml('2', '現金カウント', _renderCashDenominationHtml());
+      html += _renderCloseStepHtml('3', '外部決済日計', _renderExternalReconcileHtml(closeSummary));
       html += '<div class="ca-register-ctrl__input-group">';
       html += '<label class="ca-register-ctrl__input-label">実際の現金額（円）</label>';
       html += '<input type="text" class="ca-register-ctrl__input" id="ca-reg-close-amount" inputmode="numeric" placeholder="0" oninput="CashierApp._onCloseAmountInput()">';
@@ -2083,14 +2326,24 @@
       html += '<label class="ca-register-ctrl__input-label">予想在高: ' + Utils.formatYen(expected) + '</label>';
       html += '<div class="ca-register-ctrl__diff" id="ca-reg-close-diff">--</div>';
       html += '</div>';
+      html += _renderCloseReasonAssistHtml();
       html += '<div class="ca-register-ctrl__input-group">';
       html += '<label class="ca-register-ctrl__input-label">差額理由・締めメモ</label>';
-      html += '<input type="text" class="ca-register-ctrl__input ca-register-ctrl__input--text" id="ca-reg-close-note" maxlength="120" placeholder="例: 100円硬貨不足">';
+      html += '<input type="text" class="ca-register-ctrl__input ca-register-ctrl__input--text" id="ca-reg-close-note" maxlength="120" placeholder="例: 両替の出金記録漏れ / 端末日計差異確認済み">';
+      html += '</div>';
+      html += '<div class="ca-register-ctrl__input-group">';
+      html += '<label class="ca-register-ctrl__input-label">閉店引き継ぎメモ</label>';
+      html += '<textarea class="ca-register-ctrl__input ca-register-ctrl__input--text ca-register-ctrl__textarea" id="ca-reg-handover-note" maxlength="255" rows="3" placeholder="例: 未処理注文、翌日共有、外部決済端末の日締め差異"></textarea>';
       html += '</div>';
 
-      html += '<button class="ca-register-ctrl__btn ca-register-ctrl__btn--close" id="ca-reg-close-btn">レジを閉める</button>';
+      html += '<div class="ca-close-ready ca-close-ready--ng" id="ca-close-ready">未確認の項目があります</div>';
+      html += '<button class="ca-register-ctrl__btn ca-register-ctrl__btn--preclose" id="ca-reg-pre-close-btn">仮締め保存</button>';
+      html += '<button class="ca-register-ctrl__btn ca-register-ctrl__btn--close" id="ca-reg-close-btn" disabled>レジを閉める</button>';
+      html += '</details>';
       html += '</div>';
     }
+
+    html += _renderPreCloseLogsHtml();
 
     // 入出金履歴
     if (_cashLogEntries.length > 0) {
@@ -2113,6 +2366,7 @@
         html += '<span class="ca-register-ctrl__log-time">' + time + '</span>';
         html += '<span class="' + typeCls + '">' + (typeLabels[entry.type] || entry.type) + '</span>';
         if (entry.note) html += '<span class="ca-register-ctrl__log-note">' + Utils.escapeHtml(entry.note) + '</span>';
+        if (entry.handover_note) html += '<span class="ca-register-ctrl__log-note">引継: ' + Utils.escapeHtml(entry.handover_note) + '</span>';
         if (entry.type === 'close' && entry.difference_amount !== null && typeof entry.difference_amount !== 'undefined') {
           var closeDiff = parseInt(entry.difference_amount, 10) || 0;
           html += '<span class="ca-register-ctrl__log-note">' + (closeDiff >= 0 ? '+' : '') + Utils.formatYen(closeDiff) + '</span>';
@@ -2123,6 +2377,357 @@
     }
 
     body.innerHTML = html;
+    if (_registerOpen) _updateCloseWizardState();
+    else _updateOpenCashCountState();
+  }
+
+  function _renderOpenQuickActionsHtml() {
+    var prev = (_previousClose && _previousClose.actualAmount !== null && typeof _previousClose.actualAmount !== 'undefined')
+      ? parseInt(_previousClose.actualAmount, 10) || 0
+      : null;
+    var h = '<div class="ca-quick-actions">';
+    if (prev !== null) {
+      h += '<button type="button" class="ca-quick-action ca-quick-action--primary" data-open-quick="previous" data-open-amount="' + prev + '">';
+      h += '<span>前回締め現金でレジ開け</span><strong>' + Utils.escapeHtml(Utils.formatYen(prev)) + '</strong>';
+      h += '</button>';
+    } else {
+      h += '<button type="button" class="ca-quick-action ca-quick-action--primary" data-open-quick="zero" data-open-amount="0">';
+      h += '<span>0円でレジ開け</span><strong>開始現金なし</strong>';
+      h += '</button>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function _renderCashMoveQuickActionsHtml() {
+    var actions = [
+      { type: 'cash_in', amount: 10000, label: '釣銭補充' },
+      { type: 'cash_in', amount: 30000, label: '釣銭補充' },
+      { type: 'cash_out', amount: 30000, label: '現金回収' },
+      { type: 'cash_out', amount: 10000, label: '両替持出' }
+    ];
+    var h = '<div class="ca-quick-actions ca-quick-actions--grid">';
+    actions.forEach(function (a) {
+      var cls = a.type === 'cash_in' ? ' ca-quick-action--in' : ' ca-quick-action--out';
+      h += '<button type="button" class="ca-quick-action' + cls + '" data-cash-move-quick="1" data-cash-move-type="' + a.type + '" data-cash-move-quick-amount="' + a.amount + '" data-cash-move-quick-note="' + Utils.escapeHtml(a.label) + '">';
+      h += '<span>' + Utils.escapeHtml(a.label) + '</span><strong>' + Utils.escapeHtml(Utils.formatYen(a.amount)) + '</strong>';
+      h += '</button>';
+    });
+    h += '</div>';
+    return h;
+  }
+
+  function _renderQuickCloseHtml(closeSummary) {
+    var warnings = (closeSummary.closeAssist && closeSummary.closeAssist.warnings) || [];
+    var hasPreCloseCarryovers = _preCloseCarryovers && _preCloseCarryovers.length > 0;
+    var disabled = (warnings.length > 0 || hasPreCloseCarryovers);
+    var h = '<div class="ca-quick-close">';
+    h += '<button type="button" class="ca-quick-close__btn" id="ca-reg-quick-close-btn"' + (disabled ? ' disabled' : '') + '>';
+    h += '<span>問題なければこのまま締める</span><strong>' + Utils.escapeHtml(Utils.formatYen(closeSummary.expectedCash)) + '</strong>';
+    h += '</button>';
+    if (disabled) {
+      h += '<div class="ca-quick-close__note">確認事項があるため、詳細確認で締めてください。</div>';
+    } else {
+      h += '<div class="ca-quick-close__note">現金が予想現金と一致している前提で本締めします。</div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function _renderOpenCashGuideHtml() {
+    if (!_previousClose || _previousClose.actualAmount === null || typeof _previousClose.actualAmount === 'undefined') return '';
+    var diff = _previousClose.differenceAmount === null || typeof _previousClose.differenceAmount === 'undefined'
+      ? null
+      : parseInt(_previousClose.differenceAmount, 10);
+    var h = '<div class="ca-open-guide">';
+    h += '<div class="ca-open-guide__row"><span>前回締め現金</span><strong>' + Utils.escapeHtml(Utils.formatYen(_previousClose.actualAmount)) + '</strong></div>';
+    if (diff !== null && diff !== 0) {
+      h += '<div class="ca-open-guide__note">前回差額 ' + Utils.escapeHtml(_formatSignedYen(diff)) + ' があります。開始前に確認してください。</div>';
+    }
+    h += '<button type="button" class="ca-open-guide__btn" id="ca-reg-open-use-prev">前回締め現金を入力</button>';
+    h += '</div>';
+    return h;
+  }
+
+  function _renderOpenCashDenominationHtml() {
+    var h = '<div class="ca-open-denom">';
+    h += '<div class="ca-open-denom__title">開始現金カウント</div>';
+    h += _renderCashDenominationRowsHtml('open');
+    h += '</div>';
+    return h;
+  }
+
+  function _renderCloseStepHtml(num, title, innerHtml) {
+    var h = '<div class="ca-close-step">';
+    h += '<div class="ca-close-step__head"><span>' + Utils.escapeHtml(num) + '</span><strong>' + Utils.escapeHtml(title) + '</strong></div>';
+    h += innerHtml;
+    h += '</div>';
+    return h;
+  }
+
+  function _renderPreCloseLogsHtml() {
+    if (!_preCloseLogs || _preCloseLogs.length === 0) return '';
+    var h = '<div class="ca-preclose-log">';
+    h += '<div class="ca-preclose-log__title">本日の仮締め</div>';
+    _preCloseLogs.slice(0, 3).forEach(function (log) {
+      h += '<div class="ca-preclose-log__item">';
+      h += '<span>' + Utils.escapeHtml(_formatPreCloseTime(log.createdAt)) + '</span>';
+      h += '<strong>' + Utils.escapeHtml(_formatSignedYen(log.differenceAmount)) + '</strong>';
+      if (log.reconciliationNote) h += '<em>' + Utils.escapeHtml(log.reconciliationNote) + '</em>';
+      h += '</div>';
+    });
+    h += '</div>';
+    return h;
+  }
+
+  function _formatSignedYen(value) {
+    if (value === null || typeof value === 'undefined') return '--';
+    var n = parseInt(value, 10);
+    if (isNaN(n)) return '--';
+    return (n > 0 ? '+' : '') + Utils.formatYen(n);
+  }
+
+  function _formatPreCloseTime(value) {
+    if (!value) return '';
+    return Utils.formatDateTime ? Utils.formatDateTime(value) : value;
+  }
+
+  function _latestPreCloseLog() {
+    return (_preCloseLogs && _preCloseLogs.length > 0) ? _preCloseLogs[0] : null;
+  }
+
+  function _renderPreCloseHandoffHtml() {
+    var latest = _latestPreCloseLog();
+    var carryovers = _preCloseCarryovers || [];
+    if (!latest && carryovers.length === 0) return '';
+
+    var h = '<div class="ca-preclose-handoff">';
+    h += '<div class="ca-preclose-handoff__title">仮締め引き継ぎ</div>';
+    if (latest) {
+      var latestDiff = latest.differenceAmount === null || typeof latest.differenceAmount === 'undefined'
+        ? null
+        : parseInt(latest.differenceAmount, 10);
+      var latestCls = latestDiff === null || latestDiff === 0 ? '' : ' ca-preclose-handoff__block--alert';
+      h += '<div class="ca-preclose-handoff__block' + latestCls + '">';
+      h += '<div class="ca-preclose-handoff__row"><span>直近仮締め</span><strong>' + Utils.escapeHtml(_formatSignedYen(latest.differenceAmount)) + '</strong></div>';
+      h += '<div class="ca-preclose-handoff__meta">' + Utils.escapeHtml(_formatPreCloseTime(latest.createdAt)) + ' / ' + Utils.escapeHtml(latest.userName || '-') + '</div>';
+      if (latest.actualCashAmount !== null && typeof latest.actualCashAmount !== 'undefined') {
+        h += '<div class="ca-preclose-handoff__meta">実際 ' + Utils.escapeHtml(Utils.formatYen(latest.actualCashAmount)) + ' / 予想 ' + Utils.escapeHtml(Utils.formatYen(latest.expectedCashAmount || 0)) + '</div>';
+      }
+      if (latest.reconciliationNote) h += '<div class="ca-preclose-handoff__note">メモ: ' + Utils.escapeHtml(latest.reconciliationNote) + '</div>';
+      if (latest.handoverNote) h += '<div class="ca-preclose-handoff__note">引き継ぎ: ' + Utils.escapeHtml(latest.handoverNote) + '</div>';
+      h += '</div>';
+    }
+    if (carryovers.length > 0) {
+      h += '<div class="ca-preclose-handoff__block ca-preclose-handoff__block--alert">';
+      h += '<div class="ca-preclose-handoff__row"><span>未解決差額の持ち越し</span><strong>' + carryovers.length + '件</strong></div>';
+      carryovers.forEach(function (log) {
+        h += '<div class="ca-preclose-handoff__carry">';
+        h += '<span>' + Utils.escapeHtml(log.businessDay || '') + '</span>';
+        h += '<strong>' + Utils.escapeHtml(_formatSignedYen(log.differenceAmount)) + '</strong>';
+        if (log.reconciliationNote) h += '<em>' + Utils.escapeHtml(log.reconciliationNote) + '</em>';
+        else if (log.handoverNote) h += '<em>' + Utils.escapeHtml(log.handoverNote) + '</em>';
+        h += '</div>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function _renderRegisterOpenGuardHtml() {
+    var carryovers = _preCloseCarryovers || [];
+    if (!_previousClose && carryovers.length === 0) return '';
+    var h = '<div class="ca-preclose-handoff ca-preclose-handoff--open">';
+    h += '<div class="ca-preclose-handoff__title">レジ開け前確認</div>';
+    if (_previousClose) {
+      var prevDiff = _previousClose.differenceAmount === null || typeof _previousClose.differenceAmount === 'undefined'
+        ? null
+        : parseInt(_previousClose.differenceAmount, 10);
+      var blockCls = prevDiff === null || prevDiff === 0 ? '' : ' ca-preclose-handoff__block--alert';
+      h += '<div class="ca-preclose-handoff__block' + blockCls + '">';
+      h += '<div class="ca-preclose-handoff__row"><span>前回レジ締め差額</span><strong>' + Utils.escapeHtml(_formatSignedYen(_previousClose.differenceAmount)) + '</strong></div>';
+      h += '<div class="ca-preclose-handoff__meta">' + Utils.escapeHtml(_formatPreCloseTime(_previousClose.createdAt)) + ' / ' + Utils.escapeHtml(_previousClose.userName || '-') + '</div>';
+      if (_previousClose.actualAmount !== null && typeof _previousClose.actualAmount !== 'undefined') {
+        h += '<div class="ca-preclose-handoff__meta">実際 ' + Utils.escapeHtml(Utils.formatYen(_previousClose.actualAmount)) + (_previousClose.expectedAmount !== null && typeof _previousClose.expectedAmount !== 'undefined' ? ' / 予想 ' + Utils.escapeHtml(Utils.formatYen(_previousClose.expectedAmount)) : '') + '</div>';
+      }
+      if (_previousClose.reconciliationNote) h += '<div class="ca-preclose-handoff__note">締めメモ: ' + Utils.escapeHtml(_previousClose.reconciliationNote) + '</div>';
+      if (_previousClose.handoverNote) h += '<div class="ca-preclose-handoff__note">引き継ぎ: ' + Utils.escapeHtml(_previousClose.handoverNote) + '</div>';
+      h += '</div>';
+    }
+    if (carryovers.length > 0) {
+      h += '<div class="ca-preclose-handoff__block ca-preclose-handoff__block--alert">';
+      h += '<div class="ca-preclose-handoff__row"><span>未解決仮締め</span><strong>' + carryovers.length + '件</strong></div>';
+      carryovers.forEach(function (log) {
+        h += '<div class="ca-preclose-handoff__carry">';
+        h += '<span>' + Utils.escapeHtml(log.businessDay || '') + '</span>';
+        h += '<strong>' + Utils.escapeHtml(_formatSignedYen(log.differenceAmount)) + '</strong>';
+        if (log.reconciliationNote) h += '<em>' + Utils.escapeHtml(log.reconciliationNote) + '</em>';
+        else if (log.handoverNote) h += '<em>' + Utils.escapeHtml(log.handoverNote) + '</em>';
+        h += '</div>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function _renderRegisterCloseReminderHtml() {
+    var r = _registerCloseReminder || {};
+    if (!r.enabled || !r.configured) return '';
+    var cls = r.isOverdue ? ' ca-register-reminder--alert' : '';
+    var h = '<div class="ca-register-reminder' + cls + '">';
+    h += '<div class="ca-register-reminder__title">' + (r.isOverdue ? 'レジ締め予定時刻を過ぎています' : 'レジ締め予定') + '</div>';
+    h += '<div class="ca-register-reminder__meta">予定: ' + Utils.escapeHtml(_formatPreCloseTime(r.dueAt)) + ' / 警告: ' + Utils.escapeHtml(_formatPreCloseTime(r.alertAt)) + '</div>';
+    if (r.autoFromLastOrder) {
+      h += '<div class="ca-register-reminder__note">レジ締め予定時刻が未設定のため、ラストオーダー+60分を基準にしています。</div>';
+    }
+    if (r.isOverdue) {
+      h += '<div class="ca-register-reminder__note">営業終了後は本締めを完了してください。</div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function _renderCloseCheckHtml(closeSummary) {
+    var warnings = (closeSummary.closeAssist && closeSummary.closeAssist.warnings) || [];
+    var extRequired = (closeSummary.cardSales > 0 || closeSummary.qrSales > 0);
+    var h = '<div class="ca-close-checks">';
+    h += _renderCloseCheckItem('ca-close-check-cash-count', '現金枚数確認済み', true);
+    h += _renderCloseCheckItem('ca-close-check-external-total', 'カード / QR 端末日計確認済み', extRequired);
+    h += _renderCloseCheckItem('ca-close-check-warnings', '締め前チェック確認済み', warnings.length > 0);
+    h += '</div>';
+    return h;
+  }
+
+  function _renderCloseCheckItem(id, label, required) {
+    var req = required ? '<em>必須</em>' : '<small>任意</small>';
+    var h = '<label class="ca-close-check">';
+    h += '<input type="checkbox" id="' + Utils.escapeHtml(id) + '" data-close-check="1">';
+    h += '<span class="ca-close-check__box"></span>';
+    h += '<span class="ca-close-check__label">' + Utils.escapeHtml(label) + '</span>';
+    h += req;
+    h += '</label>';
+    return h;
+  }
+
+  function _renderCashDenominationHtml() {
+    return _renderCashDenominationRowsHtml('close');
+  }
+
+  function _renderCashDenominationRowsHtml(mode) {
+    var cls = mode === 'open' ? 'ca-open-denom' : 'ca-close-denom';
+    var dataName = mode === 'open' ? 'data-open-denom' : 'data-denom';
+    var linePrefix = mode === 'open' ? 'ca-open-denom-line-' : 'ca-close-denom-line-';
+    var totalId = mode === 'open' ? 'ca-open-denom-total' : 'ca-close-denom-total';
+    var h = '<div class="ca-close-denom">';
+    _CASH_DENOMINATIONS.forEach(function (d) {
+      h += '<label class="ca-close-denom__row ' + cls + '__row">';
+      h += '<span>' + Utils.escapeHtml(d.label) + '</span>';
+      h += '<input type="text" inputmode="numeric" pattern="[0-9]*" class="' + cls + '__qty" ' + dataName + '="' + d.value + '" placeholder="0">';
+      h += '<strong id="' + linePrefix + d.value + '">¥0</strong>';
+      h += '</label>';
+    });
+    h += '<div class="ca-close-denom__total ' + cls + '__total"><span>枚数合計</span><strong id="' + totalId + '">¥0</strong></div>';
+    h += '</div>';
+    return h;
+  }
+
+  function _renderCashMoveAmountChipsHtml() {
+    var amounts = [1000, 5000, 10000, 30000];
+    var h = '<div class="ca-cash-move__chips ca-cash-move__chips--amount">';
+    amounts.forEach(function (amount) {
+      h += '<button type="button" class="ca-cash-move__chip" data-cash-move-amount="' + amount + '">' + Utils.escapeHtml(Utils.formatYen(amount)) + '</button>';
+    });
+    h += '<button type="button" class="ca-cash-move__chip ca-cash-move__chip--muted" data-cash-move-clear="amount">金額クリア</button>';
+    h += '</div>';
+    return h;
+  }
+
+  function _renderCashMoveReasonChipsHtml() {
+    var reasons = [
+      { type: 'in', label: '釣銭補充' },
+      { type: 'in', label: '両替戻し' },
+      { type: 'in', label: '記録漏れ修正' },
+      { type: 'out', label: '現金回収' },
+      { type: 'out', label: '小口購入' },
+      { type: 'out', label: '両替持出' },
+      { type: 'out', label: '消耗品購入' }
+    ];
+    var h = '<div class="ca-cash-move__reasons">';
+    h += '<div class="ca-cash-move__reason-title">理由を選択</div>';
+    h += '<div class="ca-cash-move__chips">';
+    reasons.forEach(function (reason) {
+      h += '<button type="button" class="ca-cash-move__chip ca-cash-move__chip--' + reason.type + '" data-cash-move-reason="' + Utils.escapeHtml(reason.label) + '">' + Utils.escapeHtml(reason.label) + '</button>';
+    });
+    h += '</div></div>';
+    return h;
+  }
+
+  function _renderExternalReconcileHtml(closeSummary) {
+    var h = '<div class="ca-close-external">';
+    h += _renderExternalReconcileRow('card', 'カード', closeSummary.cardSales);
+    h += _renderExternalReconcileRow('qr', 'QR / 電子', closeSummary.qrSales);
+    h += '</div>';
+    return h;
+  }
+
+  function _renderExternalReconcileRow(kind, label, poslaAmount) {
+    var h = '<div class="ca-close-external__row">';
+    h += '<div class="ca-close-external__label">' + Utils.escapeHtml(label) + '</div>';
+    h += '<div class="ca-close-external__posla"><span>POSLA</span><strong>' + Utils.formatYen(poslaAmount || 0) + '</strong></div>';
+    h += '<label class="ca-close-external__actual"><span>端末日計</span><input type="text" inputmode="numeric" id="ca-close-' + kind + '-actual" data-close-external="' + kind + '" placeholder="0"></label>';
+    h += '<div class="ca-close-external__diff" id="ca-close-' + kind + '-diff">--</div>';
+    h += '</div>';
+    return h;
+  }
+
+  function _renderCloseReasonAssistHtml() {
+    var reasons = [
+      '釣銭補充漏れ',
+      '両替・入出金記録漏れ',
+      '現金受け渡しミス',
+      '端末日計差異',
+      '取消・返金確認済み',
+      '入力ミス',
+      '不明'
+    ];
+    var h = '<div class="ca-close-reason">';
+    h += '<div class="ca-close-reason__title">差額原因候補</div>';
+    h += '<div class="ca-close-cause-list" id="ca-close-cause-list"></div>';
+    h += '<div class="ca-close-reason__chips">';
+    reasons.forEach(function (reason) {
+      h += '<button type="button" class="ca-close-reason__chip" data-close-reason="' + Utils.escapeHtml(reason) + '">' + Utils.escapeHtml(reason) + '</button>';
+    });
+    h += '</div>';
+    h += '</div>';
+    return h;
+  }
+
+  function _renderCloseAssistHtml(closeAssist) {
+    var warnings = (closeAssist && closeAssist.warnings) || [];
+    if (!warnings.length) {
+      return '<div class="ca-close-assist ca-close-assist--ok">締め前チェック: 未会計・取消/返金確認・外部控えメモの警告はありません</div>';
+    }
+    var h = '<div class="ca-close-assist">';
+    h += '<div class="ca-close-assist__title">締め前チェック</div>';
+    warnings.forEach(function (w) {
+      var cls = 'ca-close-assist__item';
+      if (w.level === 'alert') cls += ' ca-close-assist__item--alert';
+      var detail = '';
+      if (w.code === 'active_orders') {
+        detail = ' ' + (w.count || 0) + '件 / ' + Utils.formatYen(w.amount || 0);
+      } else if (w.code === 'missing_external_note') {
+        detail = ' ' + (w.count || 0) + '件 / ' + Utils.formatYen(w.amount || 0);
+      } else if (w.code === 'adjustments') {
+        detail = ' 取消' + (w.voidCount || 0) + '件 / 返金' + (w.refundCount || 0) + '件';
+      } else if (w.code === 'cash_difference') {
+        detail = ' ' + (w.amount >= 0 ? '+' : '') + Utils.formatYen(w.amount || 0);
+      }
+      h += '<div class="' + cls + '">' + Utils.escapeHtml(w.message || '') + '<span>' + Utils.escapeHtml(detail) + '</span></div>';
+    });
+    h += '</div>';
+    return h;
   }
 
   function _calcExpectedBalance() {
@@ -2149,29 +2754,491 @@
       cashSales: parseInt(s.cash, 10) || cashFromLog,
       cardSales: parseInt(s.card, 10) || 0,
       qrSales: parseInt(s.qr, 10) || 0,
-      totalRevenue: parseInt(s.totalRevenue, 10) || 0
+      totalRevenue: parseInt(s.totalRevenue, 10) || 0,
+      closeAssist: s.closeAssist || null
+    };
+  }
+
+  function _parseAmountValue(value) {
+    var raw = String(value || '').replace(/[^\d]/g, '');
+    if (!raw) return 0;
+    return parseInt(raw, 10) || 0;
+  }
+
+  function _setCashMoveAmount(amount) {
+    var input = document.getElementById('ca-reg-io-amount');
+    if (!input) return;
+    input.value = String(amount || 0);
+    input.focus();
+  }
+
+  function _setCashMoveReason(reason) {
+    var input = document.getElementById('ca-reg-io-note');
+    if (!input) return;
+    var current = input.value.replace(/^\s+|\s+$/g, '');
+    if (!current) {
+      input.value = reason;
+    } else if (current.indexOf(reason) === -1) {
+      input.value = (current + ' / ' + reason).slice(0, 120);
+    }
+    input.focus();
+  }
+
+  function _confirmCashMove(type, amount, note) {
+    var label = type === 'cash_in' ? '入金' : '出金';
+    var before = _calcExpectedBalance();
+    var after = type === 'cash_in' ? before + amount : before - amount;
+    return confirm(label + 'を記録しますか？'
+      + '\n金額: ' + Utils.formatYen(amount)
+      + '\n理由: ' + note
+      + '\n現在の予想現金: ' + Utils.formatYen(before)
+      + '\n記録後の予想現金: ' + Utils.formatYen(after));
+  }
+
+  function _performCashMove(type, amount, note) {
+    if (amount <= 0) { _showToast('金額を入力してください', 'error'); return; }
+    if (!note) { _showToast('理由を入力してください', 'error'); return; }
+    if (!_confirmCashMove(type, amount, note)) return;
+    _promptCashierPin(function (pin) {
+      if (pin === null) return;
+      _postCashLog(type, amount, note, pin, function (ok) {
+        if (ok) {
+          _showToast(type === 'cash_in' ? '入金しました' : '出金しました', 'success');
+          _fetchSalesSummary();
+        }
+      });
+    });
+  }
+
+  function _performQuickOpen(amount, note) {
+    var openAmount = parseInt(amount, 10) || 0;
+    if (!confirm('レジを開けますか？\n開始現金: ' + Utils.formatYen(openAmount))) return;
+    _promptCashierPin(function (pin) {
+      if (pin === null) return;
+      _postCashLog('open', openAmount, note || 'クイックレジ開け', pin, function (ok) {
+        if (ok) {
+          _showToast('レジを開けました', 'success');
+          _fetchSalesSummary();
+        }
+      }, {
+        cash_denomination: {
+          total: openAmount,
+          items: [],
+          hasInput: false,
+          quickOpen: true
+        }
+      });
+    });
+  }
+
+  function _performQuickClose(closeSummary) {
+    var amount = closeSummary.expectedCash || 0;
+    var note = 'クイックレジ締め（差額: +¥0）';
+    if (!confirm('レジを締めますか？\n実際現金: ' + Utils.formatYen(amount) + '\n予想現金: ' + Utils.formatYen(amount) + '\n差額: ¥0')) return;
+    _promptCashierPin(function (pin) {
+      if (pin === null) return;
+      _postCashLog('close', amount, note, pin, function (ok) {
+        if (ok) {
+          _showToast('レジを閉めました', 'success');
+          _fetchPreCloseLogs();
+          _fetchSalesSummary();
+        }
+      }, {
+        expected_amount: amount,
+        difference_amount: 0,
+        cash_sales_amount: closeSummary.cashSales,
+        card_sales_amount: closeSummary.cardSales,
+        qr_sales_amount: closeSummary.qrSales,
+        reconciliation_note: 'クイック締め',
+        handover_note: '',
+        cash_denomination: {
+          total: amount,
+          items: [],
+          hasInput: false,
+          quickClose: true
+        },
+        external_reconciliation: {
+          card: { posla: closeSummary.cardSales, actual: closeSummary.cardSales, difference: 0 },
+          qr: { posla: closeSummary.qrSales, actual: closeSummary.qrSales, difference: 0 },
+          quickClose: true
+        },
+        close_check: {
+          cashCountChecked: true,
+          externalTotalChecked: true,
+          warningsChecked: true,
+          warningCount: 0,
+          quickClose: true
+        }
+      });
+    });
+  }
+
+  function _readCashDenominationBreakdown() {
+    return _readDenominationBreakdown('close');
+  }
+
+  function _readOpenCashDenominationBreakdown() {
+    return _readDenominationBreakdown('open');
+  }
+
+  function _readDenominationBreakdown(mode) {
+    var selector = mode === 'open' ? '.ca-open-denom__qty' : '.ca-close-denom__qty';
+    var linePrefix = mode === 'open' ? 'ca-open-denom-line-' : 'ca-close-denom-line-';
+    var totalId = mode === 'open' ? 'ca-open-denom-total' : 'ca-close-denom-total';
+    var items = [];
+    var total = 0;
+    var hasInput = false;
+    _CASH_DENOMINATIONS.forEach(function (d) {
+      var input = document.querySelector(selector + '[' + (mode === 'open' ? 'data-open-denom' : 'data-denom') + '="' + d.value + '"]');
+      var qty = input ? _parseAmountValue(input.value) : 0;
+      var lineTotal = qty * d.value;
+      var lineEl = document.getElementById(linePrefix + d.value);
+      if (lineEl) lineEl.textContent = Utils.formatYen(lineTotal);
+      if (qty > 0) {
+        hasInput = true;
+        items.push({ label: d.label, value: d.value, quantity: qty, amount: lineTotal });
+        total += lineTotal;
+      }
+    });
+    var totalEl = document.getElementById(totalId);
+    if (totalEl) totalEl.textContent = Utils.formatYen(total);
+    return { total: total, items: items, hasInput: hasInput };
+  }
+
+  function _updateOpenCashCountState() {
+    var breakdown = _readOpenCashDenominationBreakdown();
+    var openInput = document.getElementById('ca-reg-open-amount');
+    if (breakdown.hasInput && openInput && document.activeElement && document.activeElement.className.indexOf('ca-open-denom__qty') !== -1) {
+      openInput.value = String(breakdown.total);
+    }
+  }
+
+  function _collectOpenRegisterData() {
+    var openInput = document.getElementById('ca-reg-open-amount');
+    var openAmt = openInput ? _parseAmountValue(openInput.value) : 0;
+    var breakdown = _readOpenCashDenominationBreakdown();
+    var checked = !!(document.getElementById('ca-reg-open-cash-checked') || {}).checked;
+
+    if (!checked) {
+      _showToast('開始現金を確認済みにチェックしてください', 'error');
+      return null;
+    }
+    if (breakdown.hasInput && breakdown.total !== openAmt) {
+      _showToast('開始現金の枚数合計と開始在高が一致していません', 'error');
+      if (openInput) openInput.focus();
+      return null;
+    }
+
+    return {
+      amount: openAmt,
+      cashDenomination: breakdown,
+      note: 'レジ開け（開始現金確認済み）'
+    };
+  }
+
+  CashierApp._onOpenAmountInput = function () {
+    _readOpenCashDenominationBreakdown();
+  };
+
+  function _updateCloseDiffText(el, diff) {
+    if (!el) return;
+    if (diff > 0) {
+      el.textContent = '+' + Utils.formatYen(diff);
+      el.className = el.className.replace(/\s?ca-close-external__diff--[a-z]+/g, '') + ' ca-close-external__diff--plus';
+    } else if (diff < 0) {
+      el.textContent = Utils.formatYen(diff);
+      el.className = el.className.replace(/\s?ca-close-external__diff--[a-z]+/g, '') + ' ca-close-external__diff--minus';
+    } else {
+      el.textContent = Utils.formatYen(0);
+      el.className = el.className.replace(/\s?ca-close-external__diff--[a-z]+/g, '') + ' ca-close-external__diff--zero';
+    }
+  }
+
+  function _readExternalReconciliation(closeSummary) {
+    function readKind(kind, poslaAmount) {
+      var input = document.getElementById('ca-close-' + kind + '-actual');
+      var raw = input ? String(input.value || '').replace(/^\s+|\s+$/g, '') : '';
+      var actual = raw === '' ? null : _parseAmountValue(raw);
+      var diff = actual === null ? null : actual - (poslaAmount || 0);
+      var diffEl = document.getElementById('ca-close-' + kind + '-diff');
+      if (diffEl) {
+        if (actual === null) {
+          diffEl.textContent = '--';
+          diffEl.className = 'ca-close-external__diff';
+        } else {
+          _updateCloseDiffText(diffEl, diff);
+        }
+      }
+      return { posla: poslaAmount || 0, actual: actual, difference: diff };
+    }
+    return {
+      card: readKind('card', closeSummary.cardSales),
+      qr: readKind('qr', closeSummary.qrSales)
+    };
+  }
+
+  function _buildCloseCauseCandidates(cashDiff, closeSummary, external, breakdown) {
+    var list = [];
+    var warnings = (closeSummary.closeAssist && closeSummary.closeAssist.warnings) || [];
+    if (breakdown.hasInput && breakdown.total !== _parseAmountValue((document.getElementById('ca-reg-close-amount') || {}).value)) {
+      list.push({ level: 'alert', text: '金種合計と実際現金額が一致していません' });
+    }
+    if (cashDiff > 0) {
+      list.push({ level: 'notice', text: '現金が多い: 入金記録漏れ、釣銭補充、現金売上の重複を確認' });
+    } else if (cashDiff < 0) {
+      list.push({ level: 'alert', text: '現金が少ない: 出金記録漏れ、お釣り渡し過ぎ、現金売上の記録漏れを確認' });
+    }
+    if (external.card.difference !== null && external.card.difference !== 0) {
+      list.push({ level: 'notice', text: 'カード端末日計とPOSLA記録が一致していません' });
+    }
+    if (external.qr.difference !== null && external.qr.difference !== 0) {
+      list.push({ level: 'notice', text: 'QR / 電子決済の日計とPOSLA記録が一致していません' });
+    }
+    warnings.forEach(function (w) {
+      if (w.code === 'active_orders') {
+        list.push({ level: 'alert', text: '未会計注文が残っています。締め前に会計漏れを確認' });
+      } else if (w.code === 'adjustments') {
+        list.push({ level: 'notice', text: '取消・返金があります。端末側処理と理由を確認' });
+      } else if (w.code === 'missing_external_note') {
+        list.push({ level: 'notice', text: '外部決済の控えメモ未入力があります。端末控えと照合' });
+      }
+    });
+    if (_preCloseCarryovers && _preCloseCarryovers.length > 0) {
+      list.push({ level: 'alert', text: '前日以前の未解決差額があります。引き継ぎ内容を確認' });
+    }
+    if (list.length === 0) {
+      list.push({ level: 'ok', text: '大きな差額候補はありません' });
+    }
+    return list;
+  }
+
+  function _renderCloseCauseCandidates(candidates) {
+    var el = document.getElementById('ca-close-cause-list');
+    if (!el) return;
+    var h = '';
+    candidates.forEach(function (c) {
+      var cls = 'ca-close-cause';
+      if (c.level === 'alert') cls += ' ca-close-cause--alert';
+      else if (c.level === 'ok') cls += ' ca-close-cause--ok';
+      h += '<div class="' + cls + '">' + Utils.escapeHtml(c.text) + '</div>';
+    });
+    el.innerHTML = h;
+  }
+
+  function _updateCloseWizardState() {
+    var closeSummary = _getCloseReconcileSummary();
+    var breakdown = _readCashDenominationBreakdown();
+    var closeInput = document.getElementById('ca-reg-close-amount');
+    if (breakdown.hasInput && closeInput && document.activeElement && document.activeElement.className.indexOf('ca-close-denom__qty') !== -1) {
+      closeInput.value = String(breakdown.total);
+    }
+
+    var actual = closeInput ? _parseAmountValue(closeInput.value) : 0;
+    var expected = _calcExpectedBalance();
+    var diff = actual - expected;
+    var diffEl = document.getElementById('ca-reg-close-diff');
+    if (diffEl) {
+      if (diff > 0) {
+        diffEl.textContent = '+' + Utils.formatYen(diff) + ' 過剰';
+        diffEl.className = 'ca-register-ctrl__diff ca-register-ctrl__diff--plus';
+      } else if (diff < 0) {
+        diffEl.textContent = Utils.formatYen(diff) + ' 不足';
+        diffEl.className = 'ca-register-ctrl__diff ca-register-ctrl__diff--minus';
+      } else {
+        diffEl.textContent = Utils.formatYen(0) + ' ぴったり';
+        diffEl.className = 'ca-register-ctrl__diff ca-register-ctrl__diff--zero';
+      }
+    }
+
+    var external = _readExternalReconciliation(closeSummary);
+    _renderCloseCauseCandidates(_buildCloseCauseCandidates(diff, closeSummary, external, breakdown));
+
+    var warnings = (closeSummary.closeAssist && closeSummary.closeAssist.warnings) || [];
+    var extRequired = (closeSummary.cardSales > 0 || closeSummary.qrSales > 0);
+    var cashChecked = !!(document.getElementById('ca-close-check-cash-count') || {}).checked;
+    var externalChecked = !!(document.getElementById('ca-close-check-external-total') || {}).checked;
+    var warningsChecked = !!(document.getElementById('ca-close-check-warnings') || {}).checked;
+    var externalInputReady = (!extRequired)
+      || ((closeSummary.cardSales <= 0 || external.card.actual !== null)
+        && (closeSummary.qrSales <= 0 || external.qr.actual !== null));
+    var ready = cashChecked && (!extRequired || (externalChecked && externalInputReady)) && (warnings.length === 0 || warningsChecked);
+    var btn = document.getElementById('ca-reg-close-btn');
+    if (btn) btn.disabled = !ready;
+    var readyEl = document.getElementById('ca-close-ready');
+    if (readyEl) {
+      readyEl.textContent = ready ? '締め確認が完了しています' : '未確認の項目があります';
+      readyEl.className = ready ? 'ca-close-ready ca-close-ready--ok' : 'ca-close-ready ca-close-ready--ng';
+    }
+  }
+
+  function _collectCloseWizardData() {
+    var closeInput = document.getElementById('ca-reg-close-amount');
+    var closeNoteInput = document.getElementById('ca-reg-close-note');
+    var handoverInput = document.getElementById('ca-reg-handover-note');
+    var closeAmt = closeInput ? _parseAmountValue(closeInput.value) : 0;
+    var closeNote = closeNoteInput ? closeNoteInput.value.replace(/^\s+|\s+$/g, '') : '';
+    var handoverNote = handoverInput ? handoverInput.value.replace(/^\s+|\s+$/g, '').slice(0, 255) : '';
+    var closeSummary = _getCloseReconcileSummary();
+    var expected = closeSummary.expectedCash;
+    var diff = closeAmt - expected;
+    var breakdown = _readCashDenominationBreakdown();
+    var external = _readExternalReconciliation(closeSummary);
+    var warnings = (closeSummary.closeAssist && closeSummary.closeAssist.warnings) || [];
+    var extRequired = (closeSummary.cardSales > 0 || closeSummary.qrSales > 0);
+    var cashChecked = !!(document.getElementById('ca-close-check-cash-count') || {}).checked;
+    var externalChecked = !!(document.getElementById('ca-close-check-external-total') || {}).checked;
+    var warningsChecked = !!(document.getElementById('ca-close-check-warnings') || {}).checked;
+
+    if (!cashChecked) {
+      _showToast('現金枚数確認にチェックしてください', 'error');
+      return null;
+    }
+    if (breakdown.hasInput && breakdown.total !== closeAmt) {
+      _showToast('現金枚数合計と実際の現金額が一致していません', 'error');
+      if (closeInput) closeInput.focus();
+      return null;
+    }
+    if (extRequired && !externalChecked) {
+      _showToast('カード / QR 端末日計確認にチェックしてください', 'error');
+      return null;
+    }
+    if (closeSummary.cardSales > 0 && external.card.actual === null) {
+      _showToast('カード端末の日計金額を入力してください', 'error');
+      var cardInput = document.getElementById('ca-close-card-actual');
+      if (cardInput) cardInput.focus();
+      return null;
+    }
+    if (closeSummary.qrSales > 0 && external.qr.actual === null) {
+      _showToast('QR / 電子端末の日計金額を入力してください', 'error');
+      var qrInput = document.getElementById('ca-close-qr-actual');
+      if (qrInput) qrInput.focus();
+      return null;
+    }
+    if (warnings.length > 0 && !warningsChecked) {
+      _showToast('締め前チェック確認にチェックしてください', 'error');
+      return null;
+    }
+    var externalDiffExists = (external.card.difference !== null && external.card.difference !== 0)
+      || (external.qr.difference !== null && external.qr.difference !== 0);
+    if ((diff !== 0 || externalDiffExists) && !closeNote) {
+      _showToast('差額がある場合は理由メモを入力してください', 'error');
+      if (closeNoteInput) closeNoteInput.focus();
+      return null;
+    }
+
+    return {
+      amount: closeAmt,
+      note: closeNote,
+      handoverNote: handoverNote,
+      summary: closeSummary,
+      expected: expected,
+      difference: diff,
+      cashDenomination: breakdown,
+      externalReconciliation: external,
+      closeCheck: {
+        cashCountChecked: cashChecked,
+        externalTotalChecked: externalChecked,
+        warningsChecked: warningsChecked,
+        warningCount: warnings.length
+      }
+    };
+  }
+
+  function _collectPreCloseData() {
+    var closeInput = document.getElementById('ca-reg-close-amount');
+    var closeNoteInput = document.getElementById('ca-reg-close-note');
+    var handoverInput = document.getElementById('ca-reg-handover-note');
+    var rawClose = closeInput ? String(closeInput.value || '').replace(/^\s+|\s+$/g, '') : '';
+    var closeSummary = _getCloseReconcileSummary();
+    var expected = closeSummary.expectedCash;
+    var breakdown = _readCashDenominationBreakdown();
+    var external = _readExternalReconciliation(closeSummary);
+    var closeAmt = rawClose === '' && !breakdown.hasInput ? null : _parseAmountValue(rawClose);
+    if (rawClose === '' && breakdown.hasInput) {
+      closeAmt = breakdown.total;
+      if (closeInput) closeInput.value = String(closeAmt);
+    }
+    var diff = closeAmt === null ? null : closeAmt - expected;
+    var warnings = (closeSummary.closeAssist && closeSummary.closeAssist.warnings) || [];
+    var cashChecked = !!(document.getElementById('ca-close-check-cash-count') || {}).checked;
+    var externalChecked = !!(document.getElementById('ca-close-check-external-total') || {}).checked;
+    var warningsChecked = !!(document.getElementById('ca-close-check-warnings') || {}).checked;
+    var closeNote = closeNoteInput ? closeNoteInput.value.replace(/^\s+|\s+$/g, '') : '';
+    var handoverNote = handoverInput ? handoverInput.value.replace(/^\s+|\s+$/g, '').slice(0, 255) : '';
+
+    return {
+      amount: closeAmt,
+      note: closeNote,
+      handoverNote: handoverNote,
+      summary: closeSummary,
+      expected: expected,
+      difference: diff,
+      cashDenomination: breakdown,
+      externalReconciliation: external,
+      closeAssist: closeSummary.closeAssist || null,
+      closeCheck: {
+        cashCountChecked: cashChecked,
+        externalTotalChecked: externalChecked,
+        warningsChecked: warningsChecked,
+        warningCount: warnings.length
+      }
     };
   }
 
   // レジ閉め金額入力時の差額リアルタイム計算
   CashierApp._onCloseAmountInput = function () {
-    var input = document.getElementById('ca-reg-close-amount');
-    var diffEl = document.getElementById('ca-reg-close-diff');
-    if (!input || !diffEl) return;
-    var actual = parseInt(input.value, 10) || 0;
-    var expected = _calcExpectedBalance();
-    var diff = actual - expected;
-    if (diff > 0) {
-      diffEl.textContent = '+' + Utils.formatYen(diff) + ' 過剰';
-      diffEl.className = 'ca-register-ctrl__diff ca-register-ctrl__diff--plus';
-    } else if (diff < 0) {
-      diffEl.textContent = Utils.formatYen(diff) + ' 不足';
-      diffEl.className = 'ca-register-ctrl__diff ca-register-ctrl__diff--minus';
-    } else {
-      diffEl.textContent = Utils.formatYen(0) + ' ぴったり';
-      diffEl.className = 'ca-register-ctrl__diff ca-register-ctrl__diff--zero';
-    }
+    _updateCloseWizardState();
   };
+
+  function _postPreCloseLog(data, pin, callback) {
+    if (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isOfflineOrStale && OfflineStateBanner.isOfflineOrStale()) {
+      _showToast('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u306F\u4EEE\u7DE0\u3081\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002', 'error');
+      if (callback) callback(false);
+      return;
+    }
+
+    var payload = {
+      store_id: _storeId,
+      actual_cash_amount: data.amount,
+      expected_cash_amount: data.expected,
+      difference_amount: data.difference,
+      cash_sales_amount: data.summary.cashSales,
+      card_sales_amount: data.summary.cardSales,
+      qr_sales_amount: data.summary.qrSales,
+      reconciliation_note: data.note,
+      handover_note: data.handoverNote,
+      cash_denomination: data.cashDenomination,
+      external_reconciliation: data.externalReconciliation,
+      close_check: data.closeCheck,
+      close_assist: data.closeAssist,
+      staff_pin: pin || ''
+    };
+
+    fetch('../../api/kds/register-pre-close.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      credentials: 'same-origin'
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        try { return JSON.parse(t); } catch (e) { return {}; }
+      });
+    }).then(function (json) {
+      if (json.ok || (json.data && json.data.id)) {
+        _playClick();
+        _fetchPreCloseLogs();
+        if (callback) callback(true);
+      } else {
+        _playError();
+        _showToast('仮締め保存エラー: ' + Utils.formatError(json), 'error');
+        if (callback) callback(false);
+      }
+    }).catch(function (err) {
+      _playError();
+      _showToast('通信エラー: ' + Utils.formatError(err), 'error');
+      if (callback) callback(false);
+    });
+  }
 
   function _postCashLog(type, amount, note, pin, callback, extra) {
     // 後方互換: 旧シグネチャ (type, amount, note, callback) を許容
@@ -2211,6 +3278,24 @@
         _fetchCashLog();
         if (callback) callback(true);
       } else {
+        var errCode = (json.error && json.error.code) || '';
+        if (errCode === 'REGISTER_CLOSED' && !(extra && extra.post_close_reason)) {
+          _promptPostCloseReason(_cashLogActionLabel(type), function (reason) {
+            if (!reason) {
+              if (callback) callback(false);
+              return;
+            }
+            var retryExtra = {};
+            if (extra) {
+              Object.keys(extra).forEach(function (key) {
+                retryExtra[key] = extra[key];
+              });
+            }
+            retryExtra.post_close_reason = reason;
+            _postCashLog(type, amount, note, pin, callback, retryExtra);
+          });
+          return;
+        }
         _playError();
         _showToast('エラー: ' + Utils.formatError(json), 'error');
         if (callback) callback(false);
@@ -2220,6 +3305,14 @@
       _showToast('通信エラー: ' + Utils.formatError(err), 'error');
       if (callback) callback(false);
     });
+  }
+
+  function _cashLogActionLabel(type) {
+    if (type === 'open') return '締め後のレジ再開';
+    if (type === 'close') return '締め後の締め直し';
+    if (type === 'cash_in') return '締め後入金';
+    if (type === 'cash_out') return '締め後出金';
+    return '締め後レジ操作';
   }
 
   // ── キーボードショートカット ──
@@ -2346,6 +3439,12 @@
     });
 
     // レジ内イベント委譲
+    register.addEventListener('input', function (e) {
+      if (e.target && e.target.id === 'ca-external-payment-note') {
+        _externalPaymentNote = e.target.value.replace(/^\s+|\s+$/g, '').slice(0, 120);
+      }
+    });
+
     register.addEventListener('click', function (e) {
       // 全選択（支払済みはスキップ）
       if (e.target.closest('#ca-btn-select-all')) {
@@ -2471,6 +3570,13 @@
 
     // チェックボックス変更
     register.addEventListener('change', function (e) {
+      if (e.target && e.target.id === 'ca-external-payment-confirmed') {
+        _externalPaymentConfirmed = !!e.target.checked;
+        _playClick();
+        _renderRegister();
+        return;
+      }
+
       var itemCheck = e.target.closest('.ca-item__check');
       if (itemCheck) {
         var idx = parseInt(itemCheck.dataset.idx, 10);
@@ -2499,6 +3605,15 @@
       }
       if (e.target.closest('#ca-receipt-close')) {
         _closeReceiptModal();
+        return;
+      }
+      if (e.target.closest('#ca-receipt-next')) {
+        _closeReceiptModal();
+        return;
+      }
+      if (e.target.closest('#ca-receipt-journal')) {
+        _closeReceiptModal();
+        _openJournal();
         return;
       }
     });
@@ -2556,17 +3671,99 @@
     var regCtrlBody = document.getElementById('ca-register-ctrl-body');
     if (regCtrlBody) {
       regCtrlBody.addEventListener('click', function (e) {
+        var reasonBtn = e.target.closest('[data-close-reason]');
+        if (reasonBtn) {
+          var reason = reasonBtn.getAttribute('data-close-reason') || '';
+          var noteInputForReason = document.getElementById('ca-reg-close-note');
+          if (noteInputForReason && reason) {
+            var currentReason = noteInputForReason.value.replace(/^\s+|\s+$/g, '');
+            if (!currentReason) {
+              noteInputForReason.value = reason;
+            } else if (currentReason.indexOf(reason) === -1) {
+              noteInputForReason.value = (currentReason + ' / ' + reason).slice(0, 120);
+            }
+            noteInputForReason.focus();
+          }
+          _playClick();
+          _updateCloseWizardState();
+          return;
+        }
+
+        var openQuickBtn = e.target.closest('[data-open-quick]');
+        if (openQuickBtn) {
+          var openQuickAmount = parseInt(openQuickBtn.getAttribute('data-open-amount'), 10) || 0;
+          var openQuickType = openQuickBtn.getAttribute('data-open-quick') || '';
+          var openQuickNote = openQuickType === 'previous' ? '前回締め現金でクイックレジ開け' : '0円でクイックレジ開け';
+          _performQuickOpen(openQuickAmount, openQuickNote);
+          return;
+        }
+
+        var quickMoveBtn = e.target.closest('[data-cash-move-quick]');
+        if (quickMoveBtn) {
+          var quickMoveType = quickMoveBtn.getAttribute('data-cash-move-type') || '';
+          var quickMoveAmount = parseInt(quickMoveBtn.getAttribute('data-cash-move-quick-amount'), 10) || 0;
+          var quickMoveNote = quickMoveBtn.getAttribute('data-cash-move-quick-note') || '';
+          if (quickMoveType !== 'cash_in' && quickMoveType !== 'cash_out') return;
+          _performCashMove(quickMoveType, quickMoveAmount, quickMoveNote);
+          return;
+        }
+
+        if (e.target.closest('#ca-reg-quick-close-btn')) {
+          var closeSummaryForQuick = _getCloseReconcileSummary();
+          _performQuickClose(closeSummaryForQuick);
+          return;
+        }
+
+        var cashMoveAmountBtn = e.target.closest('[data-cash-move-amount]');
+        if (cashMoveAmountBtn) {
+          var chipAmount = parseInt(cashMoveAmountBtn.getAttribute('data-cash-move-amount'), 10) || 0;
+          _setCashMoveAmount(chipAmount);
+          _playClick();
+          return;
+        }
+
+        if (e.target.closest('[data-cash-move-clear="amount"]')) {
+          _setCashMoveAmount(0);
+          _playClick();
+          return;
+        }
+
+        var cashMoveReasonBtn = e.target.closest('[data-cash-move-reason]');
+        if (cashMoveReasonBtn) {
+          _setCashMoveReason(cashMoveReasonBtn.getAttribute('data-cash-move-reason') || '');
+          _playClick();
+          return;
+        }
+
+        if (e.target.closest('#ca-reg-open-use-prev')) {
+          var prevInput = document.getElementById('ca-reg-open-amount');
+          if (prevInput && _previousClose && _previousClose.actualAmount !== null && typeof _previousClose.actualAmount !== 'undefined') {
+            prevInput.value = String(parseInt(_previousClose.actualAmount, 10) || 0);
+            prevInput.focus();
+            _playClick();
+          }
+          return;
+        }
+
         // レジ開け (CB1d: PIN 必須)
         if (e.target.closest('#ca-reg-open-btn')) {
-          var openInput = document.getElementById('ca-reg-open-amount');
-          var openAmt = openInput ? (parseInt(openInput.value, 10) || 0) : 0;
+          var openData = _collectOpenRegisterData();
+          if (!openData) return;
+          var openConfirmMsg = 'レジを開けますか？'
+            + '\n開始現金: ' + Utils.formatYen(openData.amount);
+          if (openData.cashDenomination && openData.cashDenomination.hasInput) {
+            openConfirmMsg += '\n金種合計: ' + Utils.formatYen(openData.cashDenomination.total);
+          }
+          if (!confirm(openConfirmMsg)) return;
           _promptCashierPin(function (pin) {
             if (pin === null) return;
-            _postCashLog('open', openAmt, 'レジ開け', pin, function (ok) {
+            _postCashLog('open', openData.amount, openData.note, pin, function (ok) {
               if (ok) {
                 _showToast('レジを開けました', 'success');
                 _fetchSalesSummary();
               }
+            }, {
+              cash_denomination: openData.cashDenomination
             });
           });
           return;
@@ -2576,18 +3773,13 @@
         if (e.target.closest('#ca-reg-cashin-btn')) {
           var inInput = document.getElementById('ca-reg-io-amount');
           var noteInput = document.getElementById('ca-reg-io-note');
-          var inAmt = inInput ? (parseInt(inInput.value, 10) || 0) : 0;
-          var inNote = noteInput ? noteInput.value : '';
+          var inAmt = inInput ? _parseAmountValue(inInput.value) : 0;
+          var inNote = noteInput ? noteInput.value.replace(/^\s+|\s+$/g, '') : '';
           if (inAmt <= 0) { _showToast('金額を入力してください', 'error'); return; }
-          _promptCashierPin(function (pin) {
-            if (pin === null) return;
-            _postCashLog('cash_in', inAmt, inNote || '入金', pin, function (ok) {
-              if (ok) {
-                _showToast('入金しました', 'success');
-                _fetchSalesSummary();
-              }
-            });
-          });
+          if (!inNote) { _showToast('入金理由を入力してください', 'error'); if (noteInput) noteInput.focus(); return; }
+          _performCashMove('cash_in', inAmt, inNote);
+          if (inInput) inInput.value = '';
+          if (noteInput) noteInput.value = '';
           return;
         }
 
@@ -2595,15 +3787,33 @@
         if (e.target.closest('#ca-reg-cashout-btn')) {
           var outInput = document.getElementById('ca-reg-io-amount');
           var outNoteInput = document.getElementById('ca-reg-io-note');
-          var outAmt = outInput ? (parseInt(outInput.value, 10) || 0) : 0;
-          var outNote = outNoteInput ? outNoteInput.value : '';
+          var outAmt = outInput ? _parseAmountValue(outInput.value) : 0;
+          var outNote = outNoteInput ? outNoteInput.value.replace(/^\s+|\s+$/g, '') : '';
           if (outAmt <= 0) { _showToast('金額を入力してください', 'error'); return; }
+          if (!outNote) { _showToast('出金理由を入力してください', 'error'); if (outNoteInput) outNoteInput.focus(); return; }
+          _performCashMove('cash_out', outAmt, outNote);
+          if (outInput) outInput.value = '';
+          if (outNoteInput) outNoteInput.value = '';
+          return;
+        }
+
+        // 仮締め保存: レジは閉めず、現在の締めチェック結果だけ保存
+        if (e.target.closest('#ca-reg-pre-close-btn')) {
+          var preCloseData = _collectPreCloseData();
+          var preDiff = preCloseData.difference;
+          var preDiffText = preDiff === null ? '--' : ((preDiff >= 0 ? '+' : '') + Utils.formatYen(preDiff));
+          var preMsg = '仮締めを保存しますか？'
+            + '\n実際現金: ' + (preCloseData.amount === null ? '--' : Utils.formatYen(preCloseData.amount))
+            + '\n予想現金: ' + Utils.formatYen(preCloseData.expected)
+            + '\n差額: ' + preDiffText;
+          if (preCloseData.note) preMsg += '\nメモ: ' + preCloseData.note;
+          if (preCloseData.handoverNote) preMsg += '\n引き継ぎ: ' + preCloseData.handoverNote;
+          if (!confirm(preMsg)) return;
           _promptCashierPin(function (pin) {
             if (pin === null) return;
-            _postCashLog('cash_out', outAmt, outNote || '出金', pin, function (ok) {
+            _postPreCloseLog(preCloseData, pin, function (ok) {
               if (ok) {
-                _showToast('出金しました', 'success');
-                _fetchSalesSummary();
+                _showToast('仮締めを保存しました', 'success');
               }
             });
           });
@@ -2612,19 +3822,15 @@
 
         // レジ閉め (CB1d: PIN 必須)
         if (e.target.closest('#ca-reg-close-btn')) {
-          var closeInput = document.getElementById('ca-reg-close-amount');
-          var closeNoteInput = document.getElementById('ca-reg-close-note');
-          var closeAmt = closeInput ? (parseInt(closeInput.value, 10) || 0) : 0;
-          var closeNote = closeNoteInput ? closeNoteInput.value.replace(/^\s+|\s+$/g, '') : '';
-          var closeSummary = _getCloseReconcileSummary();
-          var expected = closeSummary.expectedCash;
-          var diff = closeAmt - expected;
+          var closeData = _collectCloseWizardData();
+          if (!closeData) return;
+          var closeAmt = closeData.amount;
+          var closeNote = closeData.note;
+          var handoverNote = closeData.handoverNote;
+          var closeSummary = closeData.summary;
+          var expected = closeData.expected;
+          var diff = closeData.difference;
           var diffStr = diff >= 0 ? '+' + Utils.formatYen(diff) : Utils.formatYen(diff);
-          if (diff !== 0 && !closeNote) {
-            _showToast('差額がある場合は理由メモを入力してください', 'error');
-            if (closeNoteInput) closeNoteInput.focus();
-            return;
-          }
           var closeNoteText = 'レジ閉め（差額: ' + diffStr + '）';
           if (closeNote) closeNoteText += ' ' + closeNote;
           closeNoteText = closeNoteText.slice(0, 180);
@@ -2635,12 +3841,26 @@
             + '\n現金売上: ' + Utils.formatYen(closeSummary.cashSales)
             + '\nカード売上: ' + Utils.formatYen(closeSummary.cardSales)
             + '\nQR/電子: ' + Utils.formatYen(closeSummary.qrSales);
+          if (closeData.externalReconciliation.card.actual !== null) {
+            var cardDiff = closeData.externalReconciliation.card.difference || 0;
+            confirmMsg += '\nカード端末差額: ' + (cardDiff >= 0 ? '+' : '') + Utils.formatYen(cardDiff);
+          }
+          if (closeData.externalReconciliation.qr.actual !== null) {
+            var qrDiff = closeData.externalReconciliation.qr.difference || 0;
+            confirmMsg += '\nQR端末差額: ' + (qrDiff >= 0 ? '+' : '') + Utils.formatYen(qrDiff);
+          }
+          var assistWarnings = (closeSummary.closeAssist && closeSummary.closeAssist.warnings) || [];
+          if (assistWarnings.length > 0) {
+            confirmMsg += '\n\n締め前チェック: ' + assistWarnings.length + '件の確認事項があります';
+          }
+          if (handoverNote) confirmMsg += '\n引き継ぎ: ' + handoverNote;
           if (!confirm(confirmMsg)) return;
           _promptCashierPin(function (pin) {
             if (pin === null) return;
             _postCashLog('close', closeAmt, closeNoteText, pin, function (ok) {
               if (ok) {
                 _showToast('レジを閉めました', 'success');
+                _fetchPreCloseLogs();
                 _fetchSalesSummary();
               }
             }, {
@@ -2649,9 +3869,33 @@
               cash_sales_amount: closeSummary.cashSales,
               card_sales_amount: closeSummary.cardSales,
               qr_sales_amount: closeSummary.qrSales,
-              reconciliation_note: closeNote
+              reconciliation_note: closeNote,
+              handover_note: handoverNote,
+              cash_denomination: closeData.cashDenomination,
+              external_reconciliation: closeData.externalReconciliation,
+              close_check: closeData.closeCheck
             });
           });
+          return;
+        }
+      });
+      regCtrlBody.addEventListener('input', function (e) {
+        if (e.target.closest('.ca-open-denom__qty')) {
+          _updateOpenCashCountState();
+          return;
+        }
+        if (e.target.closest('.ca-close-denom__qty')) {
+          _updateCloseWizardState();
+          return;
+        }
+        if (e.target.closest('#ca-reg-close-amount') || e.target.closest('[data-close-external]')) {
+          _updateCloseWizardState();
+          return;
+        }
+      });
+      regCtrlBody.addEventListener('change', function (e) {
+        if (e.target.closest('[data-close-check]')) {
+          _updateCloseWizardState();
           return;
         }
       });

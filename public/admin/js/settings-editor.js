@@ -42,6 +42,14 @@ var SettingsEditor = (function () {
       + '<div class="form-row">'
       + '<div class="form-group"><label class="form-label">デフォルト開店金額</label><input class="form-input" id="set-open" type="number" value="' + (s.default_open_amount || 30000) + '"></div>'
       + '<div class="form-group"><label class="form-label">過不足閾値</label><input class="form-input" id="set-overshort" type="number" value="' + (s.overshort_threshold || 500) + '"></div></div>'
+      + '<div class="form-row">'
+      + '<div class="form-group"><label class="form-label">レジ締め予定時刻</label><input class="form-input" id="set-register-close-time" type="time" value="' + (s.register_close_time ? s.register_close_time.substring(0, 5) : '') + '" placeholder="空欄=LO+60分"></div>'
+      + '<div class="form-group"><label class="form-label">締め忘れ警告 猶予分</label><input class="form-input" id="set-register-close-grace" type="number" min="0" value="' + (s.register_close_grace_min || 30) + '"></div></div>'
+      + '<div class="form-group"><label class="form-label">締め忘れ警告</label>'
+      + '<div class="settings-toggle-group">'
+      + '<label class="settings-toggle"><input type="checkbox" class="settings-toggle__input" id="set-register-close-alert"' + (parseInt(s.register_close_alert_enabled, 10) !== 0 ? ' checked' : '') + '> 有効</label>'
+      + '</div>'
+      + '<div style="font-size:0.75rem;color:#888;margin-top:0.25rem">予定時刻＋猶予分を過ぎてもレジが開いたままの場合、管理画面とレジ画面に警告します。予定時刻が空欄の場合はラストオーダー+60分を暫定基準にします。</div></div>'
       + '<div class="form-group"><label class="form-label">利用可能な支払方法</label>'
       + '<div class="settings-toggle-group">'
       + '<label class="settings-toggle"><input type="checkbox" class="settings-toggle__input pay-cb" value="cash"' + (payMethods.indexOf('cash') >= 0 ? ' checked' : '') + '> 現金</label>'
@@ -396,6 +404,7 @@ var SettingsEditor = (function () {
       document.querySelectorAll('.pay-cb:checked').forEach(function (cb) { payChecked.push(cb.value); });
 
       var loTimeVal = document.getElementById('set-lo-time') ? document.getElementById('set-lo-time').value : '';
+      var regCloseTimeVal = document.getElementById('set-register-close-time') ? document.getElementById('set-register-close-time').value : '';
       var payload = {
         day_cutoff_time: (document.getElementById('set-cutoff').value || '05:00').replace(/^(\d{2}:\d{2})$/, '$1:00'),
         tax_rate: parseFloat(document.getElementById('set-tax').value) || 10,
@@ -404,6 +413,9 @@ var SettingsEditor = (function () {
         last_order_time: loTimeVal ? loTimeVal.replace(/^(\d{2}:\d{2})$/, '$1:00') : null,
         default_open_amount: parseInt(document.getElementById('set-open').value, 10) || 30000,
         overshort_threshold: parseInt(document.getElementById('set-overshort').value, 10) || 500,
+        register_close_alert_enabled: document.getElementById('set-register-close-alert').checked ? 1 : 0,
+        register_close_time: regCloseTimeVal ? regCloseTimeVal.replace(/^(\d{2}:\d{2})$/, '$1:00') : null,
+        register_close_grace_min: parseInt(document.getElementById('set-register-close-grace').value, 10) || 0,
         payment_methods_enabled: payChecked.join(','),
         receipt_store_name: document.getElementById('set-receipt-name').value.trim(),
         receipt_address: document.getElementById('set-receipt-addr').value.trim(),

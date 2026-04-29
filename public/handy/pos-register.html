@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="css/handy.css">
   <link rel="stylesheet" href="css/pos-register.css">
   <!-- PWA -->
-  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="manifest" href="manifest-register.webmanifest">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 </head>
 <body>
@@ -155,6 +155,27 @@
   })();
   </script>
   <script src="pwa-register.js"></script>
+  <script src="../shared/js/install-prompt-banner.js?v=20260429-business-install1"></script>
+  <script>
+  (function () {
+    'use strict';
+    if (typeof InstallPromptBanner === 'undefined') return;
+    InstallPromptBanner.init('pos-register', {
+      androidOnly: true,
+      iosHint: false,
+      manualAndroidHint: true,
+      background: '#b71c1c',
+      primaryColor: '#b71c1c',
+      padding: '12px 14px',
+      fontSize: '14px',
+      buttonPadding: '8px 14px',
+      buttonFontSize: '13px',
+      message: 'POSLAレジをホーム画面に追加すると、ハンディ内レジを1タップで起動できます。',
+      manualMessage: 'Chrome右上のメニューから「ホーム画面に追加」を選ぶと、ハンディ内レジを1タップで起動できます。',
+      installText: 'ホームに追加'
+    });
+  })();
+  </script>
   <script src="../shared/js/standard-env-banner.js?v=20260420-env"></script>
   <script>StandardEnvBanner.init('pos-register');</script>
   <!-- Phase 1: PWA 更新マネージャ -->

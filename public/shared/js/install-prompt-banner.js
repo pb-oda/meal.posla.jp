@@ -1,5 +1,5 @@
 /**
- * POSLA PWA インストール案内バナー (スタッフ管理画面用)
+ * POSLA PWA インストール案内バナー
  *
  * 目的:
  *   POSLA をホーム画面に追加 (PWA インストール) して 1 タップ起動できることを案内する。
@@ -8,6 +8,10 @@
  * 対象:
  *   public/admin/dashboard.html (店舗運営)
  *   public/admin/owner-dashboard.html (オーナー管理)
+ *   public/kds/index.html (KDS)
+ *   public/kds/cashier.html (レジ)
+ *   public/handy/index.html (ハンディ)
+ *   public/handy/pos-register.html (ハンディ内レジ)
  *
  * 顧客セルフメニュー (public/customer/) では絶対に表示しない (二重防御で URL 判定 skip)。
  *
@@ -33,6 +37,9 @@
  *     - iosHint: false にすると iOS Safari の「共有メニュー → ホーム画面に追加」
  *       案内を出さない。業務端末 (KDS / レジ / ハンディ) は Android Chrome 標準環境のため、
  *       iOS 利用は標準環境バナー側で別途案内する想定。
+ *     - androidOnly: true にすると Android Chrome 以外では案内を出さない。
+ *     - manualAndroidHint: true にすると beforeinstallprompt が発火しない場合も
+ *       Android Chrome 向けに「Chrome メニューからホーム画面に追加」の補助案内を出す。
  *
  *   既存呼び出し InstallPromptBanner.init('admin') / init('owner') は無変更で動作する。
  */
@@ -65,6 +72,18 @@ var InstallPromptBanner = (function () {
     return false;
   }
 
+  function _isAndroidChrome() {
+    var ua = navigator.userAgent || '';
+    var isAndroid = /Android/i.test(ua);
+    var isChrome = /Chrome\/\d+/i.test(ua) && !/Edg\/|EdgA\/|OPR\/|SamsungBrowser|UCBrowser|MiuiBrowser|HuaweiBrowser/i.test(ua);
+    return isAndroid && isChrome;
+  }
+
+  function _option(options, key, fallback) {
+    if (options && typeof options[key] !== 'undefined') return options[key];
+    return fallback;
+  }
+
   function _dismissed(scope) {
     try {
       return window.localStorage && localStorage.getItem(STORAGE_PREFIX + scope) === '1';
@@ -81,18 +100,20 @@ var InstallPromptBanner = (function () {
     }
   }
 
-  function _baseBannerStyle() {
+  function _baseBannerStyle(options, bgOverride, fgOverride) {
+    var bg = bgOverride || _option(options, 'background', '#1b5e20');
+    var fg = fgOverride || _option(options, 'color', '#fff');
     return [
       'position:fixed',
       'bottom:12px',
       'left:50%',
       'transform:translateX(-50%)',
       'z-index:2147483000',
-      'background:#1b5e20',
-      'color:#fff',
+      'background:' + bg,
+      'color:' + fg,
       'border-radius:8px',
-      'padding:10px 14px',
-      'font-size:13px',
+      'padding:' + _option(options, 'padding', '10px 14px'),
+      'font-size:' + _option(options, 'fontSize', '13px'),
       'line-height:1.4',
       'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif',
       'display:flex',
@@ -103,18 +124,20 @@ var InstallPromptBanner = (function () {
     ].join(';');
   }
 
-  function _btnStyle(primary) {
+  function _btnStyle(primary, options) {
+    var primaryColor = _option(options, 'primaryColor', _option(options, 'background', '#1b5e20'));
+    var textColor = _option(options, 'color', '#fff');
     var bg = primary ? '#fff' : 'transparent';
-    var fg = primary ? '#1b5e20' : '#fff';
+    var fg = primary ? primaryColor : textColor;
     var border = primary ? '#fff' : 'rgba(255,255,255,0.6)';
     return [
       'flex:0 0 auto',
       'background:' + bg,
       'border:1px solid ' + border,
       'color:' + fg,
-      'border-radius:4px',
-      'padding:5px 12px',
-      'font-size:12px',
+      'border-radius:' + _option(options, 'buttonRadius', '4px'),
+      'padding:' + _option(options, 'buttonPadding', '5px 12px'),
+      'font-size:' + _option(options, 'buttonFontSize', '12px'),
       'cursor:pointer',
       'line-height:1.2',
       'font-weight:' + (primary ? '700' : '500')
@@ -126,23 +149,31 @@ var InstallPromptBanner = (function () {
     if (n && n.parentNode) n.parentNode.removeChild(n);
   }
 
-  function _renderInstallable(scope) {
-    if (document.getElementById(BANNER_ID_PREFIX + scope)) return;
+  function _renderInstallable(scope, options) {
+    var current = document.getElementById(BANNER_ID_PREFIX + scope);
+    if (current) {
+      if (current.getAttribute('data-posla-install-kind') === 'manual' && current.parentNode) {
+        current.parentNode.removeChild(current);
+      } else {
+        return;
+      }
+    }
     if (!document.body) return;
 
     var banner = document.createElement('div');
     banner.id = BANNER_ID_PREFIX + scope;
     banner.setAttribute('role', 'status');
-    banner.style.cssText = _baseBannerStyle();
+    banner.setAttribute('data-posla-install-kind', 'prompt');
+    banner.style.cssText = _baseBannerStyle(options);
 
     var span = document.createElement('span');
     span.style.cssText = 'flex:1 1 auto;min-width:0';
-    span.textContent = '📱 POSLA をホーム画面に追加して 1 タップで起動できます。インストールしますか?';
+    span.textContent = _option(options, 'message', '📱 POSLA をホーム画面に追加して 1 タップで起動できます。インストールしますか?');
 
     var installBtn = document.createElement('button');
     installBtn.type = 'button';
-    installBtn.textContent = 'インストール';
-    installBtn.style.cssText = _btnStyle(true);
+    installBtn.textContent = _option(options, 'installText', 'インストール');
+    installBtn.style.cssText = _btnStyle(true, options);
     installBtn.addEventListener('click', function () {
       if (!_deferredPrompt) {
         _removeBanner(scope);
@@ -165,9 +196,9 @@ var InstallPromptBanner = (function () {
 
     var laterBtn = document.createElement('button');
     laterBtn.type = 'button';
-    laterBtn.textContent = '後で';
+    laterBtn.textContent = _option(options, 'laterText', '後で');
     laterBtn.setAttribute('aria-label', '後で');
-    laterBtn.style.cssText = _btnStyle(false);
+    laterBtn.style.cssText = _btnStyle(false, options);
     laterBtn.addEventListener('click', function () {
       _setDismissed(scope);
       _removeBanner(scope);
@@ -179,17 +210,15 @@ var InstallPromptBanner = (function () {
     document.body.appendChild(banner);
   }
 
-  function _renderIOSHint(scope) {
+  function _renderIOSHint(scope, options) {
     if (document.getElementById(BANNER_ID_PREFIX + scope)) return;
     if (!document.body) return;
 
     var banner = document.createElement('div');
     banner.id = BANNER_ID_PREFIX + scope;
     banner.setAttribute('role', 'status');
-    var s = _baseBannerStyle();
-    // iOS は補助案内なので落ち着いた色 (青系) に
-    s = s.replace('background:#1b5e20', 'background:#0d47a1');
-    banner.style.cssText = s;
+    banner.setAttribute('data-posla-install-kind', 'ios');
+    banner.style.cssText = _baseBannerStyle(options, '#0d47a1', '#fff');
 
     var span = document.createElement('span');
     span.style.cssText = 'flex:1 1 auto;min-width:0';
@@ -199,9 +228,36 @@ var InstallPromptBanner = (function () {
     closeBtn.type = 'button';
     closeBtn.textContent = '閉じる';
     closeBtn.setAttribute('aria-label', '閉じる');
-    var btnStyle = _btnStyle(false);
-    btnStyle = btnStyle.replace('color:#fff', 'color:#fff');
-    closeBtn.style.cssText = btnStyle;
+    closeBtn.style.cssText = _btnStyle(false, options);
+    closeBtn.addEventListener('click', function () {
+      _setDismissed(scope);
+      _removeBanner(scope);
+    });
+
+    banner.appendChild(span);
+    banner.appendChild(closeBtn);
+    document.body.appendChild(banner);
+  }
+
+  function _renderAndroidManualHint(scope, options) {
+    if (document.getElementById(BANNER_ID_PREFIX + scope)) return;
+    if (!document.body) return;
+
+    var banner = document.createElement('div');
+    banner.id = BANNER_ID_PREFIX + scope;
+    banner.setAttribute('role', 'status');
+    banner.setAttribute('data-posla-install-kind', 'manual');
+    banner.style.cssText = _baseBannerStyle(options);
+
+    var span = document.createElement('span');
+    span.style.cssText = 'flex:1 1 auto;min-width:0';
+    span.textContent = _option(options, 'manualMessage', 'Chrome 右上のメニューから「ホーム画面に追加」を選ぶと、次回から 1 タップで起動できます。');
+
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.textContent = _option(options, 'closeText', '閉じる');
+    closeBtn.setAttribute('aria-label', '閉じる');
+    closeBtn.style.cssText = _btnStyle(false, options);
     closeBtn.addEventListener('click', function () {
       _setDismissed(scope);
       _removeBanner(scope);
@@ -217,35 +273,54 @@ var InstallPromptBanner = (function () {
     _scope = scope;
     // 後方互換: options 未指定 (admin / owner の既存呼び出し) は iosHint=true として動作
     var iosHintEnabled = !(options && options.iosHint === false);
+    var androidOnly = options && options.androidOnly === true;
+    var manualAndroidHint = options && options.manualAndroidHint === true;
+    var manualDelayMs = (options && typeof options.manualDelayMs === 'number') ? options.manualDelayMs : 2500;
 
     if (_isCustomerScope()) return;
     if (_isStandalone()) return;
     if (_dismissed(scope)) return;
+    if (androidOnly && !_isAndroidChrome()) return;
 
     // 1. beforeinstallprompt キャプチャ (Android Chrome / Desktop Chrome / Edge)
     //    PWA インストール条件 (HTTPS + manifest + SW + 一定の利用) を満たすと発火する。
     window.addEventListener('beforeinstallprompt', function (e) {
+      if (androidOnly && !_isAndroidChrome()) return;
       e.preventDefault();
       _deferredPrompt = e;
       if (document.body) {
-        _renderInstallable(scope);
+        _renderInstallable(scope, options);
       } else {
         document.addEventListener('DOMContentLoaded', function () {
-          _renderInstallable(scope);
+          _renderInstallable(scope, options);
         });
       }
     });
+
+    if (manualAndroidHint && _isAndroidChrome()) {
+      window.setTimeout(function () {
+        if (_deferredPrompt) return;
+        if (_dismissed(scope)) return;
+        if (document.body) {
+          _renderAndroidManualHint(scope, options);
+        } else {
+          document.addEventListener('DOMContentLoaded', function () {
+            _renderAndroidManualHint(scope, options);
+          });
+        }
+      }, manualDelayMs);
+    }
 
     // 2. iOS Safari フォールバック
     //    iOS は beforeinstallprompt 非対応のため、共有メニュー案内を表示する。
     //    options.iosHint=false の場合 (業務端末用) は表示しない
     //    → 業務端末では iOS は標準環境外のため、StandardEnvBanner で別途注意を出す前提
-    if (iosHintEnabled && _isIOS()) {
+    if (!androidOnly && iosHintEnabled && _isIOS()) {
       if (document.body) {
-        _renderIOSHint(scope);
+        _renderIOSHint(scope, options);
       } else {
         document.addEventListener('DOMContentLoaded', function () {
-          _renderIOSHint(scope);
+          _renderIOSHint(scope, options);
         });
       }
     }

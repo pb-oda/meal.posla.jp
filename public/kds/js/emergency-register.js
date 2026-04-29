@@ -156,126 +156,342 @@ var EmergencyRegister = (function () {
     var ctx = null;
     try { ctx = _ctxGetter ? _ctxGetter() : null; } catch (e) { ctx = null; }
 
+    var state = _createNewPaymentState(ctx);
     var overlay = _createOverlay();
     overlay.style.alignItems = 'flex-start';
-    overlay.style.padding = '20px';
+    overlay.className = 'cer-cashier-overlay';
     overlay.style.overflowY = 'auto';
     var panel = document.createElement('div');
-    panel.style.cssText = 'background:#fff;padding:20px;border-radius:10px;max-width:600px;width:100%;';
-    panel.innerHTML = _renderNewFormHtml(ctx);
+    panel.className = 'cer-cashier';
+    panel.innerHTML = _renderNewFormHtml(ctx, state);
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
 
-    panel.querySelector('#cer-new-close').addEventListener('click', function () { overlay.remove(); });
-
-    var methodSel = panel.querySelector('#cer-method');
-    var cashRow = panel.querySelector('#cer-cash-row');
-    var externalRow = panel.querySelector('#cer-external-row');
-    // Phase 4d-2: 分類行は other_external 選択時のみ表示
-    var extMethodRow = panel.querySelector('#cer-ext-method-row');
-    var extMethodSel = panel.querySelector('#cer-ext-method');
-    function toggleMethod() {
-      var v = methodSel.value;
-      if (v === 'cash') {
-        cashRow.style.display = '';
-        externalRow.style.display = 'none';
-      } else {
-        cashRow.style.display = 'none';
-        externalRow.style.display = '';
-      }
-      if (extMethodRow) {
-        if (v === 'other_external') {
-          extMethodRow.style.display = '';
-        } else {
-          extMethodRow.style.display = 'none';
-          // other_external 以外に切り替えた場合は select を空に戻す (送信しない)
-          if (extMethodSel) extMethodSel.value = '';
-        }
-      }
+    function rerender() {
+      panel.innerHTML = _renderNewFormHtml(ctx, state);
     }
-    methodSel.addEventListener('change', toggleMethod);
-    toggleMethod();
 
-    panel.querySelector('#cer-new-submit').addEventListener('click', function () {
-      _submitNewPayment(ctx, panel, overlay);
+    panel.addEventListener('input', function (e) {
+      if (!e || !e.target) return;
+      if (e.target.id === 'cer-terminal') state.terminalName = e.target.value || '';
+      if (e.target.id === 'cer-slip') state.slipNo = e.target.value || '';
+      if (e.target.id === 'cer-approval') state.approvalNo = e.target.value || '';
+      if (e.target.id === 'cer-pin') state.pin = e.target.value || '';
+      if (e.target.id === 'cer-note') state.note = e.target.value || '';
+    });
+
+    panel.addEventListener('click', function (e) {
+      var target = e.target;
+      if (!target) return;
+      if (target.closest('#cer-new-close') || target.closest('#cer-new-cancel')) {
+        overlay.remove();
+        return;
+      }
+      var methodBtn = target.closest('[data-cer-method]');
+      if (methodBtn) {
+        state.method = methodBtn.getAttribute('data-cer-method') || 'cash';
+        if (state.method === 'cash') {
+          state.activeAmount = 'received';
+          state.externalMethodType = '';
+          if (!state.receivedInput && state.totalInput) state.receivedInput = state.totalInput;
+        } else {
+          state.activeAmount = 'total';
+        }
+        rerender();
+        return;
+      }
+      var detailBtn = target.closest('[data-cer-detail]');
+      if (detailBtn) {
+        state.terminalName = detailBtn.getAttribute('data-cer-detail') || '';
+        rerender();
+        return;
+      }
+      var extBtn = target.closest('[data-cer-ext-method]');
+      if (extBtn) {
+        state.externalMethodType = extBtn.getAttribute('data-cer-ext-method') || '';
+        rerender();
+        return;
+      }
+      var amountTarget = target.closest('[data-cer-amount-target]');
+      if (amountTarget) {
+        state.activeAmount = amountTarget.getAttribute('data-cer-amount-target') || 'total';
+        rerender();
+        return;
+      }
+      var quickBtn = target.closest('[data-cer-quick]');
+      if (quickBtn) {
+        _applyNewPaymentQuickAmount(state, quickBtn.getAttribute('data-cer-quick'));
+        rerender();
+        return;
+      }
+      var keyBtn = target.closest('[data-cer-key]');
+      if (keyBtn) {
+        _applyNewPaymentKey(state, keyBtn.getAttribute('data-cer-key'));
+        rerender();
+        return;
+      }
+      if (target.closest('#cer-new-submit')) {
+        if (parseInt(state.totalInput || '0', 10) <= 0) {
+          window.alert('\u5408\u8A08\u91D1\u984D\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044');
+          return;
+        }
+        _submitNewPayment(ctx, panel, overlay);
+      }
     });
   }
 
-  function _renderNewFormHtml(ctx) {
+  function _createNewPaymentState(ctx) {
+    var method = 'cash';
+    if (ctx && ctx.paymentMethod === 'card') method = 'external_card';
+    else if (ctx && ctx.paymentMethod === 'qr') method = 'external_qr';
+    var total = (ctx && ctx.totalAmount) ? String(ctx.totalAmount) : '';
+    return {
+      method: method,
+      totalInput: total,
+      receivedInput: (method === 'cash' && total) ? total : '',
+      activeAmount: method === 'cash' ? 'received' : 'total',
+      terminalName: '',
+      slipNo: '',
+      approvalNo: '',
+      externalMethodType: '',
+      pin: '',
+      note: ''
+    };
+  }
+
+  function _renderNewFormHtml(ctx, state) {
+    state = state || _createNewPaymentState(ctx);
     var tableInfoHtml;
     if (ctx && ctx.tableId) {
-      tableInfoHtml = '<div style="padding:10px;background:#e3f2fd;border-radius:6px;margin-bottom:12px;font-size:14px;line-height:1.7;">'
-        + '<strong>\u5BFE\u8C61\u30C6\u30FC\u30D6\u30EB:</strong> ' + _escapeHtml(ctx.tableCode || '(unknown)') + '<br>'
-        + '<strong>\u5BFE\u8C61\u6CE8\u6587:</strong> ' + ((ctx.orderIds && ctx.orderIds.length) || 0) + ' \u4EF6<br>'
-        + '<strong>\u63A8\u5968\u5408\u8A08:</strong> &yen;' + _formatYen(ctx.totalAmount || 0)
+      tableInfoHtml = '<div class="cer-context cer-context--ok">'
+        + '<div class="cer-context__label">\u5BFE\u8C61\u30C6\u30FC\u30D6\u30EB</div>'
+        + '<div class="cer-context__main">' + _escapeHtml(ctx.tableCode || '(unknown)') + '</div>'
+        + '<div class="cer-context__sub">\u6CE8\u6587 ' + ((ctx.orderIds && ctx.orderIds.length) || 0) + ' \u4EF6 / \u63A8\u5968\u5408\u8A08 &yen;' + _formatYen(ctx.totalAmount || 0) + '</div>'
         + '</div>';
     } else {
-      tableInfoHtml = '<div style="padding:10px;background:#fff3cd;border-radius:6px;margin-bottom:12px;font-size:13px;color:#795500;">'
-        + '\u26A0 \u5BFE\u8C61\u30C6\u30FC\u30D6\u30EB\u304C\u9078\u629E\u3055\u308C\u3066\u3044\u307E\u305B\u3093\u3002\u624B\u5165\u529B\u30E2\u30FC\u30C9\u3067\u8A18\u9332\u3057\u307E\u3059\u3002<br>'
-        + '\u540C\u671F\u6642\u306B\u300C\u8981\u78BA\u8A8D (pending_review)\u300D\u306B\u306A\u308A\u3001\u7BA1\u7406\u8005\u304C\u624B\u52D5\u3067\u7167\u5408\u3059\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059\u3002'
+      tableInfoHtml = '<div class="cer-context cer-context--manual">'
+        + '<div class="cer-context__label">\u624B\u5165\u529B\u4F1A\u8A08</div>'
+        + '<div class="cer-context__main">\u30C6\u30FC\u30D6\u30EB\u672A\u9078\u629E</div>'
+        + '<div class="cer-context__sub">\u540C\u671F\u5F8C\u306F\u7BA1\u7406\u753B\u9762\u3067\u7167\u5408\u3057\u3066\u304B\u3089\u58F2\u4E0A\u8EE2\u8A18\u3057\u307E\u3059</div>'
         + '</div>';
     }
-    var totalVal = (ctx && ctx.totalAmount) ? String(ctx.totalAmount) : '';
+    var totalVal = state.totalInput || '';
+    var receivedVal = state.receivedInput || '';
+    var total = parseInt(totalVal || '0', 10) || 0;
+    var received = parseInt(receivedVal || '0', 10) || 0;
+    var change = (state.method === 'cash' && received >= total) ? (received - total) : 0;
+    var canSubmit = total > 0;
+    var methodIsCash = state.method === 'cash';
 
     return ''
-      + '<h3 style="margin:0 0 12px;color:#d32f2f;">\uD83D\uDD34 \u7DCA\u6025\u4F1A\u8A08\u8A18\u9332</h3>'
+      + '<input type="hidden" id="cer-method" value="' + _escapeHtml(state.method) + '">'
+      + '<input type="hidden" id="cer-total" value="' + _escapeHtml(totalVal) + '">'
+      + '<input type="hidden" id="cer-received" value="' + _escapeHtml(receivedVal) + '">'
+      + '<input type="hidden" id="cer-ext-method" value="' + _escapeHtml(state.externalMethodType || '') + '">'
+      + '<div class="cer-cashier__header">'
+      + '<div>'
+      + '<div class="cer-cashier__eyebrow">\u901A\u4FE1\u969C\u5BB3\u6642\u306E\u7AEF\u672B\u5185\u8A18\u9332</div>'
+      + '<h3 class="cer-cashier__title">\u7DCA\u6025\u4F1A\u8A08\u30EC\u30B8</h3>'
+      + '</div>'
+      + '<button type="button" id="cer-new-close" class="cer-cashier__close">&times;</button>'
+      + '</div>'
+      + '<div class="cer-cashier__notice">\u5916\u90E8\u30AB\u30FC\u30C9 / QR \u306F\u7AEF\u672B\u30FB\u30A2\u30D7\u30EA\u5074\u3067\u6C7A\u6E08\u5B8C\u4E86\u3092\u78BA\u8A8D\u3057\u3066\u304B\u3089\u8A18\u9332\u3057\u307E\u3059\u3002\u30AB\u30FC\u30C9\u756A\u53F7\u7B49\u306F\u5165\u529B\u7981\u6B62\u3067\u3059\u3002</div>'
+      + '<div class="cer-cashier__content">'
+      + '<section class="cer-cashier__items">'
       + tableInfoHtml
-      + '<div style="display:grid;gap:12px;">'
-      + '<label style="font-size:13px;">\u652F\u6255\u65B9\u6CD5'
-      + '<select id="cer-method" style="width:100%;padding:8px;margin-top:4px;border:1px solid #ccc;border-radius:4px;font-size:14px;">'
-      + '<option value="cash">\u73FE\u91D1</option>'
-      + '<option value="external_card">\u5916\u90E8\u30AB\u30FC\u30C9\u7AEF\u672B</option>'
-      + '<option value="external_qr">\u5916\u90E8 QR / \u96FB\u5B50\u6C7A\u6E08\u7AEF\u672B</option>'
-      + '<option value="other_external">\u305D\u306E\u4ED6\u5916\u90E8\u6C7A\u6E08</option>'
-      + '</select>'
-      + '</label>'
-      + '<label style="font-size:13px;">\u5408\u8A08\u91D1\u984D (\u7A0E\u8FBC)'
-      + '<input type="number" id="cer-total" min="0" step="1" value="' + totalVal + '" style="width:100%;padding:8px;margin-top:4px;border:1px solid #ccc;border-radius:4px;font-size:14px;" />'
-      + '</label>'
-      + '<div id="cer-cash-row">'
-      + '<label style="font-size:13px;">\u73FE\u91D1\u53D7\u9818\u984D'
-      + '<input type="number" id="cer-received" min="0" step="1" style="width:100%;padding:8px;margin-top:4px;border:1px solid #ccc;border-radius:4px;font-size:14px;" />'
-      + '</label>'
+      + _renderEmergencyItemsHtml(ctx)
+      + _renderEmergencySummaryHtml(ctx, total)
+      + '</section>'
+      + '<section class="cer-cashier__operation">'
+      + _renderEmergencyMethodHtml(state)
+      + _renderEmergencyExternalHtml(state)
+      + _renderEmergencyAmountHtml(state, total, received, change, methodIsCash)
+      + _renderEmergencyTenkeyHtml(state, methodIsCash)
+      + '<div class="cer-cashier__field-grid">'
+      + '<label class="cer-cashier__field"><span>担当スタッフ PIN</span><input type="password" id="cer-pin" inputmode="numeric" maxlength="8" autocomplete="off" value="' + _escapeHtml(state.pin || '') + '" placeholder="任意"></label>'
+      + '<label class="cer-cashier__field"><span>メモ</span><textarea id="cer-note" maxlength="255" rows="2" placeholder="任意">' + _escapeHtml(state.note || '') + '</textarea></label>'
       + '</div>'
-      + '<div id="cer-external-row" style="display:none;">'
-      + '<div style="padding:10px;background:#fff3cd;border:1px solid #ffd757;border-radius:6px;margin-bottom:10px;font-size:12px;color:#795500;line-height:1.6;">'
-      + '\u26A0 \u30AB\u30FC\u30C9\u756A\u53F7\u30FB\u6709\u52B9\u671F\u9650\u30FB\u30BB\u30AD\u30E5\u30EA\u30C6\u30A3\u30B3\u30FC\u30C9\u306F\u5165\u529B\u7981\u6B62\u3067\u3059\u3002<br>'
-      + '\u6C7A\u6E08\u7AEF\u672B\u5074\u306E\u63A7\u3048\u3092\u5FC5\u305A\u4FDD\u7BA1\u3057\u3066\u304F\u3060\u3055\u3044\u3002'
+      + '<div class="ca-action-btns cer-cashier__actions">'
+      + '<button type="button" class="ca-btn-receipt" id="cer-new-cancel">\u30AD\u30E3\u30F3\u30BB\u30EB</button>'
+      + '<button type="button" class="ca-btn-submit cer-cashier__submit" id="cer-new-submit"' + (canSubmit ? '' : ' disabled') + '>\u7DCA\u6025\u4F1A\u8A08\u3092\u8A18\u9332</button>'
       + '</div>'
-      // Phase 4d-2: other_external 選択時のみ表示。初期値は "" の「選択してください」で、未選択だと alert で弾く。
-      + '<div id="cer-ext-method-row" style="display:none;margin-bottom:10px;">'
-      + '<label style="font-size:13px;">\u5206\u985E (\u5FC5\u9808)'
-      + '<select id="cer-ext-method" style="width:100%;padding:8px;margin-top:4px;border:1px solid #ccc;border-radius:4px;font-size:14px;">'
-      + '<option value="">\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044</option>'
-      + '<option value="voucher">\u5546\u54C1\u5238</option>'
-      + '<option value="bank_transfer">\u4E8B\u524D\u632F\u8FBC</option>'
-      + '<option value="accounts_receivable">\u58F2\u639B</option>'
-      + '<option value="point">\u30DD\u30A4\u30F3\u30C8\u5145\u5F53</option>'
-      + '<option value="other">\u305D\u306E\u4ED6</option>'
-      + '</select>'
-      + '</label>'
-      + '</div>'
-      + '<label style="font-size:13px;">\u7AEF\u672B\u540D (\u4EFB\u610F)'
-      + '<input type="text" id="cer-terminal" maxlength="100" autocomplete="off" style="width:100%;padding:8px;margin-top:4px;border:1px solid #ccc;border-radius:4px;font-size:14px;" />'
-      + '</label>'
-      + '<label style="font-size:13px;display:block;margin-top:8px;">\u63A7\u3048\u756A\u53F7 (\u4EFB\u610F)'
-      + '<input type="text" id="cer-slip" maxlength="100" autocomplete="off" style="width:100%;padding:8px;margin-top:4px;border:1px solid #ccc;border-radius:4px;font-size:14px;" />'
-      + '</label>'
-      + '<label style="font-size:13px;display:block;margin-top:8px;">\u627F\u8A8D\u756A\u53F7 (\u4EFB\u610F)'
-      + '<input type="text" id="cer-approval" maxlength="100" autocomplete="off" style="width:100%;padding:8px;margin-top:4px;border:1px solid #ccc;border-radius:4px;font-size:14px;" />'
-      + '</label>'
-      + '</div>'
-      + '<label style="font-size:13px;">\u62C5\u5F53\u30B9\u30BF\u30C3\u30D5 PIN (\u4EFB\u610F\u30FB\u8A2D\u5B9A\u6E08\u307F\u30B9\u30BF\u30C3\u30D5\u306E\u307F)'
-      + '<input type="password" id="cer-pin" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="\u7A7A\u6B04\u53EF\u3002\u5165\u529B\u3059\u308B\u5834\u5408\u306F 4-8 \u6841\u306E\u6570\u5B57" style="width:100%;padding:8px;margin-top:4px;border:1px solid #ccc;border-radius:4px;font-size:14px;letter-spacing:0.3em;" />'
-      + '</label>'
-      + '<label style="font-size:13px;">\u30E1\u30E2 (\u4EFB\u610F)'
-      + '<textarea id="cer-note" maxlength="255" rows="2" style="width:100%;padding:8px;margin-top:4px;border:1px solid #ccc;border-radius:4px;font-size:14px;"></textarea>'
-      + '</label>'
-      + '</div>'
-      + '<div style="display:flex;gap:10px;margin-top:18px;">'
-      + '<button type="button" id="cer-new-close" style="flex:1;padding:12px;background:#f5f5f5;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:14px;">\u30AD\u30E3\u30F3\u30BB\u30EB</button>'
-      + '<button type="button" id="cer-new-submit" style="flex:2;padding:12px;background:#d32f2f;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;">\u7DCA\u6025\u4F1A\u8A08\u3092\u8A18\u9332</button>'
+      + '</section>'
       + '</div>';
+  }
+
+  function _renderEmergencyItemsHtml(ctx) {
+    var items = (ctx && ctx.items) ? ctx.items : [];
+    if (!items || items.length === 0) {
+      return '<div class="cer-items-empty">\u6CE8\u6587\u660E\u7D30\u306A\u3057</div>';
+    }
+    var h = '<div class="cer-items-list">';
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i] || {};
+      var qty = parseInt(item.qty || 0, 10) || 0;
+      var price = parseInt(item.price || 0, 10) || 0;
+      var lineTotal = qty * price;
+      var taxLabel = (item.taxRate === 8) ? '<span class="ca-tax-label ca-tax-label--8">\u8EFD\u6E1B</span>' : '';
+      h += '<div class="ca-item cer-item">'
+        + '<div class="ca-item__detail">'
+        + '<div class="ca-item__name">' + _escapeHtml(item.name || '') + taxLabel + '</div>'
+        + '</div>'
+        + '<span class="ca-item__qty">x' + _escapeHtml(String(qty)) + '</span>'
+        + '<span class="ca-item__price">&yen;' + _formatYen(lineTotal) + '</span>'
+        + '</div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function _renderEmergencySummaryHtml(ctx, total) {
+    var subtotal = (ctx && ctx.subtotal) ? parseInt(ctx.subtotal, 10) || 0 : total;
+    var tax = (ctx && ctx.tax) ? parseInt(ctx.tax, 10) || 0 : 0;
+    return '<div class="ca-summary cer-summary">'
+      + '<div class="ca-summary__row"><span>\u7A0E\u629C</span><span>&yen;' + _formatYen(subtotal) + '</span></div>'
+      + '<div class="ca-summary__row ca-summary__row--sub"><span>\u7A0E</span><span>&yen;' + _formatYen(tax) + '</span></div>'
+      + '<div class="ca-summary__total"><span>\u5408\u8A08</span><span>&yen;' + _formatYen(total) + '</span></div>'
+      + '</div>';
+  }
+
+  function _renderEmergencyMethodHtml(state) {
+    var defs = [
+      { method: 'cash', label: '\u73FE\u91D1', cls: 'cash' },
+      { method: 'external_card', label: '\u30AB\u30FC\u30C9', cls: 'card' },
+      { method: 'external_qr', label: 'QR', cls: 'qr' },
+      { method: 'other_external', label: '\u305D\u306E\u4ED6', cls: 'qr' }
+    ];
+    var h = '<div class="ca-pay-methods cer-pay-methods">';
+    for (var i = 0; i < defs.length; i++) {
+      var d = defs[i];
+      var cls = 'ca-pay-btn ca-pay-btn--' + d.cls;
+      if (state.method === d.method) cls += ' ca-pay-btn--active';
+      h += '<button type="button" class="' + cls + '" data-cer-method="' + _escapeHtml(d.method) + '">' + _escapeHtml(d.label) + '</button>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function _renderEmergencyExternalHtml(state) {
+    if (state.method === 'cash') return '';
+    var detailDefs = [];
+    if (state.method === 'external_card') {
+      detailDefs = ['\u30AF\u30EC\u30B8\u30C3\u30C8', '\u30C7\u30D3\u30C3\u30C8', '\u305D\u306E\u4ED6\u30AB\u30FC\u30C9', '\u7AEF\u672BNo.01', '\u7AEF\u672BNo.02'];
+    } else if (state.method === 'external_qr') {
+      detailDefs = ['PayPay', '\u697D\u5929\u30DA\u30A4', 'd\u6255\u3044', 'au PAY', '\u4EA4\u901A\u7CFBIC', '\u305D\u306E\u4ED6QR'];
+    }
+
+    var h = '<div class="ca-pay-detail cer-external">';
+    h += '<div class="ca-pay-detail__label">\u5916\u90E8\u6C7A\u6E08\u63A7\u3048</div>';
+    if (detailDefs.length > 0) {
+      h += '<div class="ca-pay-detail__grid cer-external__quick">';
+      for (var i = 0; i < detailDefs.length; i++) {
+        var detail = detailDefs[i];
+        var cls = 'ca-pay-detail__btn';
+        if (state.terminalName === detail) cls += ' ca-pay-detail__btn--active';
+        h += '<button type="button" class="' + cls + '" data-cer-detail="' + _escapeHtml(detail) + '">' + _escapeHtml(detail) + '</button>';
+      }
+      h += '</div>';
+    }
+    if (state.method === 'other_external') {
+      h += '<div class="cer-ext-methods">'
+        + _renderExtMethodButton(state, 'voucher', '\u5546\u54C1\u5238')
+        + _renderExtMethodButton(state, 'bank_transfer', '\u4E8B\u524D\u632F\u8FBC')
+        + _renderExtMethodButton(state, 'accounts_receivable', '\u58F2\u639B')
+        + _renderExtMethodButton(state, 'point', '\u30DD\u30A4\u30F3\u30C8')
+        + _renderExtMethodButton(state, 'other', '\u305D\u306E\u4ED6')
+        + '</div>';
+    }
+    h += '<div class="cer-cashier__field-grid cer-cashier__field-grid--external">'
+      + '<label class="cer-cashier__field"><span>\u7AEF\u672B\u540D / \u30D6\u30E9\u30F3\u30C9</span><input type="text" id="cer-terminal" maxlength="100" autocomplete="off" value="' + _escapeHtml(state.terminalName || '') + '" placeholder="\u4EFB\u610F"></label>'
+      + '<label class="cer-cashier__field"><span>\u63A7\u3048\u756A\u53F7</span><input type="text" id="cer-slip" maxlength="100" autocomplete="off" value="' + _escapeHtml(state.slipNo || '') + '" placeholder="\u4EFB\u610F"></label>'
+      + '<label class="cer-cashier__field"><span>\u627F\u8A8D\u756A\u53F7</span><input type="text" id="cer-approval" maxlength="100" autocomplete="off" value="' + _escapeHtml(state.approvalNo || '') + '" placeholder="\u4EFB\u610F"></label>'
+      + '</div>'
+      + '<div class="ca-pay-notice cer-external__notice">'
+      + '<div class="ca-pay-notice__title">\u6C7A\u6E08\u5B8C\u4E86\u5F8C\u306B\u8A18\u9332</div>'
+      + '<div class="ca-pay-notice__text">POSLA \u304B\u3089\u6C7A\u6E08\u306F\u5B9F\u884C\u3057\u307E\u305B\u3093\u3002\u7AEF\u672B\u5074\u306E\u63A7\u3048\u3068\u91D1\u984D\u3092\u78BA\u8A8D\u3057\u307E\u3059\u3002</div>'
+      + '</div>';
+    h += '</div>';
+    return h;
+  }
+
+  function _renderExtMethodButton(state, value, label) {
+    var cls = 'ca-pay-detail__btn';
+    if (state.externalMethodType === value) cls += ' ca-pay-detail__btn--active';
+    return '<button type="button" class="' + cls + '" data-cer-ext-method="' + _escapeHtml(value) + '">' + _escapeHtml(label) + '</button>';
+  }
+
+  function _renderEmergencyAmountHtml(state, total, received, change, methodIsCash) {
+    var totalCls = 'ca-amount-row cer-amount-row';
+    if (state.activeAmount === 'total') totalCls += ' cer-amount-row--active';
+    var h = '<div class="ca-amount-display cer-amount">';
+    h += '<button type="button" class="' + totalCls + '" data-cer-amount-target="total">'
+      + '<span class="ca-amount-label">\u5408\u8A08</span><span class="ca-amount-value">&yen;' + _formatYen(total) + '</span>'
+      + '</button>';
+    if (methodIsCash) {
+      var receivedCls = 'ca-amount-row cer-amount-row';
+      if (state.activeAmount === 'received') receivedCls += ' cer-amount-row--active';
+      var changeClass = 'ca-amount-value';
+      if (received >= total && total > 0) changeClass += ' ca-amount-value--change';
+      else if (state.receivedInput && received < total) changeClass += ' ca-amount-value--short';
+      h += '<button type="button" class="' + receivedCls + '" data-cer-amount-target="received">'
+        + '<span class="ca-amount-label">\u9810\u304B\u308A</span><span class="ca-amount-value ca-amount-value--received">' + (state.receivedInput ? ('&yen;' + _formatYen(received)) : '-') + '</span>'
+        + '</button>';
+      h += '<div class="ca-amount-row ca-amount-row--change"><span class="ca-amount-label">\u304A\u91E3\u308A</span><span class="' + changeClass + '">' + (received >= total && total > 0 ? ('&yen;' + _formatYen(change)) : '-') + '</span></div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function _renderEmergencyTenkeyHtml(state, methodIsCash) {
+    var h = '<div class="ca-tenkey cer-tenkey">';
+    h += '<div class="ca-tenkey__quick">';
+    h += '<button type="button" class="ca-quick-btn" data-cer-quick="1000">&yen;1,000</button>';
+    h += '<button type="button" class="ca-quick-btn" data-cer-quick="5000">&yen;5,000</button>';
+    h += '<button type="button" class="ca-quick-btn" data-cer-quick="10000">&yen;10,000</button>';
+    h += '<button type="button" class="ca-quick-btn ca-quick-btn--exact" data-cer-quick="exact"' + (methodIsCash ? '' : ' disabled') + '>\u3074\u3063\u305F\u308A</button>';
+    h += '</div>';
+    h += '<div class="ca-tenkey__grid">';
+    var keys = ['7','8','9','4','5','6','1','2','3','00','0','C'];
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var cls = 'ca-tenkey__btn' + (k === 'C' ? ' ca-tenkey__btn--clear' : '');
+      h += '<button type="button" class="' + cls + '" data-cer-key="' + _escapeHtml(k) + '">' + _escapeHtml(k) + '</button>';
+    }
+    h += '</div>';
+    h += '<button type="button" class="ca-tenkey__btn ca-tenkey__btn--bs ca-tenkey__btn--wide" data-cer-key="BS">&larr; 1\u5B57\u524A\u9664</button>';
+    h += '</div>';
+    return h;
+  }
+
+  function _applyNewPaymentQuickAmount(state, amount) {
+    if (amount === 'exact') {
+      state.receivedInput = state.totalInput || '';
+      state.activeAmount = 'received';
+      return;
+    }
+    if (state.activeAmount === 'received' && state.method === 'cash') {
+      state.receivedInput = String(amount || '');
+    } else {
+      state.totalInput = String(amount || '');
+      if (state.method === 'cash' && !state.receivedInput) state.receivedInput = state.totalInput;
+    }
+  }
+
+  function _applyNewPaymentKey(state, key) {
+    var prop = (state.activeAmount === 'received' && state.method === 'cash') ? 'receivedInput' : 'totalInput';
+    var cur = String(state[prop] || '');
+    if (key === 'C') {
+      cur = '';
+    } else if (key === 'BS') {
+      cur = cur.slice(0, -1);
+    } else if ((key === '0' || key === '00' || /^[1-9]$/.test(key)) && cur.length < 7) {
+      cur += key;
+      if (cur.length > 7) cur = cur.substring(0, 7);
+    }
+    if (cur.length > 1 && cur.charAt(0) === '0') {
+      while (cur.length > 1 && cur.charAt(0) === '0') cur = cur.substring(1);
+    }
+    state[prop] = cur;
   }
 
   function _submitNewPayment(ctx, panel, overlay) {

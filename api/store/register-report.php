@@ -9,6 +9,7 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/business-day.php';
+require_once __DIR__ . '/../lib/register-close-reminder.php';
 
 require_method(['GET']);
 $user = require_role('manager');
@@ -53,6 +54,14 @@ $hasPaymentDetailColForReport = false;
 try { $pdo->query('SELECT payment_method_detail FROM payments LIMIT 0'); $hasPaymentDetailColForReport = true; }
 catch (PDOException $e) {}
 
+$hasPaymentExternalNoteColForReport = false;
+try { $pdo->query('SELECT external_payment_note FROM payments LIMIT 0'); $hasPaymentExternalNoteColForReport = true; }
+catch (PDOException $e) {}
+
+$hasPaymentNoteColForReport = false;
+try { $pdo->query('SELECT note FROM payments LIMIT 0'); $hasPaymentNoteColForReport = true; }
+catch (PDOException $e) {}
+
 $hasGatewayColsForReport = false;
 try { $pdo->query('SELECT gateway_name FROM payments LIMIT 0'); $hasGatewayColsForReport = true; }
 catch (PDOException $e) {}
@@ -74,6 +83,35 @@ catch (PDOException $e) {}
 $hasRefundColsForReport = false;
 try { $pdo->query('SELECT refund_status FROM payments LIMIT 0'); $hasRefundColsForReport = true; }
 catch (PDOException $e) {}
+
+$paymentTransactions = [];
+try {
+    $detailSelect = $hasPaymentDetailColForReport ? ', p.payment_method_detail' : ', NULL AS payment_method_detail';
+    $noteSelect = $hasPaymentExternalNoteColForReport ? ', p.external_payment_note' : ', NULL AS external_payment_note';
+    $paymentNoteSelect = $hasPaymentNoteColForReport ? ', p.note AS payment_note' : ', NULL AS payment_note';
+    $gatewaySelect = $hasGatewayColsForReport ? ', p.gateway_name, p.external_payment_id, p.gateway_status' : ', NULL AS gateway_name, NULL AS external_payment_id, NULL AS gateway_status';
+    $refundSelect = $hasRefundColsForReport
+        ? ', p.refund_status, p.refund_amount, p.refunded_at'
+        : ", 'none' AS refund_status, 0 AS refund_amount, NULL AS refunded_at";
+    $voidSelect = $hasVoidColsForReport
+        ? ', p.void_status, p.voided_at, p.void_reason'
+        : ", 'active' AS void_status, NULL AS voided_at, NULL AS void_reason";
+    $txStmt = $pdo->prepare(
+        'SELECT p.id, p.table_id, t.table_code, p.total_amount, p.payment_method,
+                p.received_amount, p.change_amount, p.is_partial, p.paid_at,
+                u.display_name AS staff_name' . $detailSelect . $noteSelect . $paymentNoteSelect . $gatewaySelect . $refundSelect . $voidSelect . '
+           FROM payments p
+           LEFT JOIN users u ON u.id = p.user_id
+           LEFT JOIN tables t ON t.id = p.table_id
+          WHERE p.store_id = ?
+            AND p.paid_at >= ? AND p.paid_at < ?
+          ORDER BY p.paid_at DESC'
+    );
+    $txStmt->execute([$storeId, $range['start'], $range['end']]);
+    $paymentTransactions = $txStmt->fetchAll();
+} catch (PDOException $e) {
+    $paymentTransactions = [];
+}
 
 $paymentDetailBreakdown = [];
 if ($hasPaymentDetailColForReport) {
@@ -130,6 +168,7 @@ if ($hasVoidColsForReport || $hasRefundColsForReport) {
     if (!empty($adjustConditions)) {
         try {
             $detailSelect = $hasPaymentDetailColForReport ? ', p.payment_method_detail' : ", NULL AS payment_method_detail";
+            $noteSelect = $hasPaymentExternalNoteColForReport ? ', p.external_payment_note' : ', NULL AS external_payment_note';
             $gatewaySelect = $hasGatewayColsForReport ? ', p.gateway_name' : ', NULL AS gateway_name';
             $refundSelect = $hasRefundColsForReport
                 ? ', p.refund_status, p.refund_amount, p.refund_reason, p.refunded_at, refund_user.display_name AS refunded_by_name'
@@ -148,7 +187,7 @@ if ($hasVoidColsForReport || $hasRefundColsForReport) {
                 $adjustOrderExpr = 'COALESCE(p.refunded_at, p.paid_at)';
             }
             $adjustStmt = $pdo->prepare(
-                'SELECT p.id, p.table_id, t.table_code, p.total_amount, p.payment_method' . $detailSelect . ',
+                'SELECT p.id, p.table_id, t.table_code, p.total_amount, p.payment_method' . $detailSelect . $noteSelect . ',
                         p.paid_at' . $gatewaySelect . $refundSelect . $voidSelect . '
                    FROM payments p
                    LEFT JOIN tables t ON t.id = p.table_id' . $refundJoin . $voidJoin . '
@@ -167,6 +206,7 @@ if ($hasVoidColsForReport || $hasRefundColsForReport) {
                         'amount' => (int)$row['total_amount'],
                         'paymentMethod' => $row['payment_method'],
                         'paymentMethodDetail' => $row['payment_method_detail'] ?? null,
+                        'externalPaymentNote' => $row['external_payment_note'] ?? null,
                         'gatewayName' => $row['gateway_name'] ?? null,
                         'paidAt' => $row['paid_at'],
                         'adjustedAt' => $row['voided_at'],
@@ -185,6 +225,7 @@ if ($hasVoidColsForReport || $hasRefundColsForReport) {
                         'amount' => $refundAmount,
                         'paymentMethod' => $row['payment_method'],
                         'paymentMethodDetail' => $row['payment_method_detail'] ?? null,
+                        'externalPaymentNote' => $row['external_payment_note'] ?? null,
                         'gatewayName' => $row['gateway_name'] ?? null,
                         'paidAt' => $row['paid_at'],
                         'adjustedAt' => $row['refunded_at'],
@@ -240,6 +281,12 @@ $nullableInt = function ($row, $key) {
     return array_key_exists($key, $row) && $row[$key] !== null ? (int)$row[$key] : null;
 };
 
+$jsonColumn = function ($row, $key) {
+    if (!array_key_exists($key, $row) || $row[$key] === null || $row[$key] === '') return null;
+    $decoded = json_decode($row[$key], true);
+    return is_array($decoded) ? $decoded : null;
+};
+
 $closeReconciliations = [];
 foreach ($cashLog as $entry) {
     if ($entry['type'] !== 'close') continue;
@@ -263,12 +310,118 @@ foreach ($cashLog as $entry) {
         'cardSalesAmount'    => $nullableInt($entry, 'card_sales_amount'),
         'qrSalesAmount'      => $nullableInt($entry, 'qr_sales_amount'),
         'reconciliationNote' => array_key_exists('reconciliation_note', $entry) ? $entry['reconciliation_note'] : null,
+        'handoverNote'       => array_key_exists('handover_note', $entry) ? $entry['handover_note'] : null,
+        'cashDenomination'   => $jsonColumn($entry, 'cash_denomination_json'),
+        'externalReconciliation' => $jsonColumn($entry, 'external_reconciliation_json'),
+        'closeCheck'         => $jsonColumn($entry, 'close_check_json'),
         'note'               => $entry['note'] ?? null,
     ];
 }
 $latestCloseReconciliation = !empty($closeReconciliations)
     ? $closeReconciliations[count($closeReconciliations) - 1]
     : null;
+
+$hasPreCloseResolutionCols = false;
+try {
+    $pdo->query('SELECT resolved_by, resolved_at, resolution_note FROM register_pre_close_logs LIMIT 0');
+    $hasPreCloseResolutionCols = true;
+} catch (PDOException $e) {}
+
+$preCloseLogs = [];
+try {
+    $preCloseResolveSelect = $hasPreCloseResolutionCols
+        ? ', l.resolved_by, l.resolved_at, l.resolution_note, ru.display_name AS resolved_by_name'
+        : ', NULL AS resolved_by, NULL AS resolved_at, NULL AS resolution_note, NULL AS resolved_by_name';
+    $preCloseResolveJoin = $hasPreCloseResolutionCols
+        ? ' LEFT JOIN users ru ON ru.id = l.resolved_by AND ru.tenant_id = l.tenant_id'
+        : '';
+    $preCloseStmt = $pdo->prepare(
+        'SELECT l.*, u.display_name AS user_name' . $preCloseResolveSelect . '
+           FROM register_pre_close_logs l
+           LEFT JOIN users u ON u.id = l.user_id AND u.tenant_id = l.tenant_id' . $preCloseResolveJoin . '
+          WHERE l.tenant_id = ?
+            AND l.store_id = ?
+            AND l.created_at >= ? AND l.created_at < ?
+          ORDER BY l.created_at DESC'
+    );
+    $preCloseStmt->execute([$user['tenant_id'], $storeId, $range['start'], $range['end']]);
+    foreach ($preCloseStmt->fetchAll() as $row) {
+        $preCloseLogs[] = [
+            'id' => $row['id'],
+            'businessDay' => $row['business_day'],
+            'createdAt' => $row['created_at'],
+            'userName' => $row['user_name'] ?? null,
+            'actualCashAmount' => $nullableInt($row, 'actual_cash_amount'),
+            'expectedCashAmount' => $nullableInt($row, 'expected_cash_amount'),
+            'differenceAmount' => $nullableInt($row, 'difference_amount'),
+            'cashSalesAmount' => $nullableInt($row, 'cash_sales_amount'),
+            'cardSalesAmount' => $nullableInt($row, 'card_sales_amount'),
+            'qrSalesAmount' => $nullableInt($row, 'qr_sales_amount'),
+            'reconciliationNote' => $row['reconciliation_note'] ?? null,
+            'handoverNote' => $row['handover_note'] ?? null,
+            'cashDenomination' => $jsonColumn($row, 'cash_denomination_json'),
+            'externalReconciliation' => $jsonColumn($row, 'external_reconciliation_json'),
+            'closeCheck' => $jsonColumn($row, 'close_check_json'),
+            'closeAssist' => $jsonColumn($row, 'close_assist_json'),
+            'status' => $row['status'] ?? 'open',
+            'resolvedAt' => $row['resolved_at'] ?? null,
+            'resolvedByName' => $row['resolved_by_name'] ?? null,
+            'resolutionNote' => $row['resolution_note'] ?? null,
+        ];
+    }
+} catch (PDOException $e) {
+    $preCloseLogs = [];
+}
+
+$unresolvedPreCloseLogs = [];
+try {
+    $preCloseResolveSelect = $hasPreCloseResolutionCols
+        ? ', l.resolved_by, l.resolved_at, l.resolution_note, ru.display_name AS resolved_by_name'
+        : ', NULL AS resolved_by, NULL AS resolved_at, NULL AS resolution_note, NULL AS resolved_by_name';
+    $preCloseResolveJoin = $hasPreCloseResolutionCols
+        ? ' LEFT JOIN users ru ON ru.id = l.resolved_by AND ru.tenant_id = l.tenant_id'
+        : '';
+    $unresolvedStmt = $pdo->prepare(
+        'SELECT l.*, u.display_name AS user_name' . $preCloseResolveSelect . '
+           FROM register_pre_close_logs l
+           LEFT JOIN users u ON u.id = l.user_id AND u.tenant_id = l.tenant_id' . $preCloseResolveJoin . '
+          WHERE l.tenant_id = ?
+            AND l.store_id = ?
+            AND l.status = "open"
+            AND l.difference_amount IS NOT NULL
+            AND l.difference_amount <> 0
+            AND l.created_at < ?
+          ORDER BY l.business_day DESC, l.created_at DESC
+          LIMIT 20'
+    );
+    $unresolvedStmt->execute([$user['tenant_id'], $storeId, $range['end']]);
+    foreach ($unresolvedStmt->fetchAll() as $row) {
+        $unresolvedPreCloseLogs[] = [
+            'id' => $row['id'],
+            'businessDay' => $row['business_day'],
+            'createdAt' => $row['created_at'],
+            'userName' => $row['user_name'] ?? null,
+            'actualCashAmount' => $nullableInt($row, 'actual_cash_amount'),
+            'expectedCashAmount' => $nullableInt($row, 'expected_cash_amount'),
+            'differenceAmount' => $nullableInt($row, 'difference_amount'),
+            'cashSalesAmount' => $nullableInt($row, 'cash_sales_amount'),
+            'cardSalesAmount' => $nullableInt($row, 'card_sales_amount'),
+            'qrSalesAmount' => $nullableInt($row, 'qr_sales_amount'),
+            'reconciliationNote' => $row['reconciliation_note'] ?? null,
+            'handoverNote' => $row['handover_note'] ?? null,
+            'cashDenomination' => $jsonColumn($row, 'cash_denomination_json'),
+            'externalReconciliation' => $jsonColumn($row, 'external_reconciliation_json'),
+            'closeCheck' => $jsonColumn($row, 'close_check_json'),
+            'closeAssist' => $jsonColumn($row, 'close_assist_json'),
+            'status' => $row['status'] ?? 'open',
+            'resolvedAt' => $row['resolved_at'] ?? null,
+            'resolvedByName' => $row['resolved_by_name'] ?? null,
+            'resolutionNote' => $row['resolution_note'] ?? null,
+        ];
+    }
+} catch (PDOException $e) {
+    $unresolvedPreCloseLogs = [];
+}
 
 $hasOpen = false;
 $hasClose = false;
@@ -294,6 +447,8 @@ foreach ($cashLog as $entry) {
 }
 $isRegisterOpen = $lastRegisterAction === 'open';
 $needsClose = $hasOpen && $isRegisterOpen;
+$targetBusinessDay = get_business_day($pdo, $storeId, $to);
+$closeReminder = get_register_close_reminder($pdo, $storeId, $targetBusinessDay, $isRegisterOpen);
 $latestDifference = $latestCloseReconciliation
     ? $latestCloseReconciliation['differenceAmount']
     : $overshort;
@@ -309,13 +464,184 @@ if ($latestDifference !== null) {
     }
 }
 
+$postCloseTransactions = [];
+$postCloseAdjustments = [];
+$postClosePaymentTotal = 0;
+if ($latestCloseAt !== null) {
+    foreach ($paymentTransactions as $tx) {
+        $paidAt = (string)($tx['paid_at'] ?? '');
+        if ($paidAt !== '' && $paidAt > $latestCloseAt) {
+            $postCloseTransactions[] = $tx;
+            $postClosePaymentTotal += isset($tx['total_amount']) ? (int)$tx['total_amount'] : 0;
+        }
+    }
+    foreach ($paymentAdjustments as $adj) {
+        $adjustedAt = (string)($adj['adjustedAt'] ?? '');
+        if ($adjustedAt !== '' && $adjustedAt > $latestCloseAt) {
+            $postCloseAdjustments[] = $adj;
+        }
+    }
+}
+
+$activeOrderCount = 0;
+$activeOrderTotal = 0;
+$activeTableCount = 0;
+try {
+    $activeStmt = $pdo->prepare(
+        'SELECT COUNT(*) AS order_count,
+                COALESCE(SUM(total_amount), 0) AS total_amount,
+                COUNT(DISTINCT table_id) AS table_count
+           FROM orders
+          WHERE store_id = ?
+            AND status NOT IN ("paid", "cancelled")'
+    );
+    $activeStmt->execute([$storeId]);
+    $activeRow = $activeStmt->fetch();
+    if ($activeRow) {
+        $activeOrderCount = (int)$activeRow['order_count'];
+        $activeOrderTotal = (int)$activeRow['total_amount'];
+        $activeTableCount = (int)$activeRow['table_count'];
+    }
+} catch (PDOException $e) {}
+
+$missingExternalNoteCount = 0;
+$missingExternalNoteTotal = 0;
+if ($hasPaymentExternalNoteColForReport) {
+    try {
+        $voidClause = $hasVoidColsForReport ? " AND (void_status IS NULL OR void_status <> 'voided')" : '';
+        $missingStmt = $pdo->prepare(
+            'SELECT COUNT(*) AS cnt, COALESCE(SUM(total_amount), 0) AS total
+               FROM payments
+              WHERE store_id = ?
+                AND payment_method IN ("card", "qr")
+                AND paid_at >= ? AND paid_at < ?
+                AND (external_payment_note IS NULL OR external_payment_note = "")' . $voidClause
+        );
+        $missingStmt->execute([$storeId, $range['start'], $range['end']]);
+        $missingRow = $missingStmt->fetch();
+        if ($missingRow) {
+            $missingExternalNoteCount = (int)$missingRow['cnt'];
+            $missingExternalNoteTotal = (int)$missingRow['total'];
+        }
+    } catch (PDOException $e) {}
+}
+
+$adjustmentReviewCount = count($paymentAdjustments);
+$voidReviewCount = 0;
+$refundReviewCount = 0;
+foreach ($paymentAdjustments as $adj) {
+    if (($adj['type'] ?? '') === 'void') $voidReviewCount++;
+    if (($adj['type'] ?? '') === 'refund') $refundReviewCount++;
+}
+
+$closeAssistWarnings = [];
+if ($activeOrderCount > 0) {
+    $closeAssistWarnings[] = [
+        'level' => 'alert',
+        'code' => 'active_orders',
+        'message' => '未会計の注文が残っています',
+        'count' => $activeOrderCount,
+        'amount' => $activeOrderTotal,
+    ];
+}
+if ($adjustmentReviewCount > 0) {
+    $closeAssistWarnings[] = [
+        'level' => 'notice',
+        'code' => 'adjustments',
+        'message' => '会計取消・返金があります。理由と端末側処理を確認してください',
+        'count' => $adjustmentReviewCount,
+        'voidCount' => $voidReviewCount,
+        'refundCount' => $refundReviewCount,
+    ];
+}
+if ($missingExternalNoteCount > 0) {
+    $closeAssistWarnings[] = [
+        'level' => 'notice',
+        'code' => 'missing_external_note',
+        'message' => '外部決済の控えメモが未入力の取引があります',
+        'count' => $missingExternalNoteCount,
+        'amount' => $missingExternalNoteTotal,
+    ];
+}
+if ($latestDifference !== null && (int)$latestDifference !== 0) {
+    $closeAssistWarnings[] = [
+        'level' => abs((int)$latestDifference) >= 500 ? 'alert' : 'notice',
+        'code' => 'cash_difference',
+        'message' => 'レジ締め差額があります',
+        'amount' => (int)$latestDifference,
+    ];
+}
+if (!empty($unresolvedPreCloseLogs)) {
+    $unresolvedTotal = 0;
+    foreach ($unresolvedPreCloseLogs as $log) {
+        $unresolvedTotal += isset($log['differenceAmount']) ? (int)$log['differenceAmount'] : 0;
+    }
+    $closeAssistWarnings[] = [
+        'level' => 'alert',
+        'code' => 'unresolved_pre_close',
+        'message' => '未解決の仮締め差額があります',
+        'count' => count($unresolvedPreCloseLogs),
+        'amount' => $unresolvedTotal,
+    ];
+}
+if (!empty($postCloseTransactions) || !empty($postCloseAdjustments)) {
+    $closeAssistWarnings[] = [
+        'level' => 'alert',
+        'code' => 'post_close_activity',
+        'message' => 'レジ締め後に会計・取消・返金が発生しています',
+        'count' => count($postCloseTransactions) + count($postCloseAdjustments),
+        'amount' => $postClosePaymentTotal,
+    ];
+}
+if (!empty($closeReminder['isOverdue'])) {
+    $closeAssistWarnings[] = [
+        'level' => 'alert',
+        'code' => 'register_close_overdue',
+        'message' => 'レジ締め予定時刻を過ぎています',
+        'count' => 1,
+        'amount' => null,
+        'dueAt' => $closeReminder['dueAt'] ?? null,
+        'alertAt' => $closeReminder['alertAt'] ?? null,
+    ];
+}
+
+$receiptReprints = [];
+try {
+    $pdo->query('SELECT 1 FROM audit_log LIMIT 0');
+    $reprintStmt = $pdo->prepare(
+        'SELECT al.created_at, al.user_id, al.username, al.reason,
+                u.display_name AS user_name,
+                r.id AS receipt_id, r.receipt_number, r.receipt_type,
+                r.total_amount, r.payment_id
+           FROM audit_log al
+           LEFT JOIN users u ON u.id = al.user_id
+           LEFT JOIN receipts r ON r.id = al.entity_id AND r.store_id = al.store_id
+          WHERE al.tenant_id = ?
+            AND al.store_id = ?
+            AND al.action = "receipt_reprint"
+            AND al.entity_type = "receipt"
+            AND al.created_at >= ? AND al.created_at < ?
+          ORDER BY al.created_at DESC'
+    );
+    $reprintStmt->execute([$user['tenant_id'], $storeId, $range['start'], $range['end']]);
+    $receiptReprints = $reprintStmt->fetchAll();
+} catch (PDOException $e) {
+    $receiptReprints = [];
+}
+
 json_response([
     'paymentBreakdown' => $paymentBreakdown,
     'paymentDetailBreakdown' => $paymentDetailBreakdown,
     'externalMethodBreakdown' => $externalMethodBreakdown,
     'paymentAdjustments' => $paymentAdjustments,
+    'paymentTransactions' => $paymentTransactions,
+    'receiptReprints' => $receiptReprints,
     'cashLog'          => $cashLog,
     'closeReconciliations' => $closeReconciliations,
+    'preCloseLogs' => $preCloseLogs,
+    'unresolvedPreCloseLogs' => $unresolvedPreCloseLogs,
+    'postCloseTransactions' => $postCloseTransactions,
+    'postCloseAdjustments' => $postCloseAdjustments,
     'registerStatus' => [
         'hasOpen' => $hasOpen,
         'hasClose' => $hasClose,
@@ -328,6 +654,7 @@ json_response([
         'lastActionUserName' => $lastRegisterActionUserName,
         'latestDifference' => $latestDifference,
         'overshortLevel' => $overshortLevel,
+        'closeReminder' => $closeReminder,
     ],
     'registerSummary'  => [
         'openAmount'      => $openAmount,
@@ -338,6 +665,22 @@ json_response([
         'closeAmount'     => $closeAmount,
         'overshort'       => $overshort,
         'latestCloseReconciliation' => $latestCloseReconciliation,
+    ],
+    'closeAssist' => [
+        'activeOrderCount' => $activeOrderCount,
+        'activeOrderTotal' => $activeOrderTotal,
+        'activeTableCount' => $activeTableCount,
+        'missingExternalNoteCount' => $missingExternalNoteCount,
+        'missingExternalNoteTotal' => $missingExternalNoteTotal,
+        'adjustmentReviewCount' => $adjustmentReviewCount,
+        'voidReviewCount' => $voidReviewCount,
+        'refundReviewCount' => $refundReviewCount,
+        'unresolvedPreCloseCount' => count($unresolvedPreCloseLogs),
+        'postClosePaymentCount' => count($postCloseTransactions),
+        'postClosePaymentTotal' => $postClosePaymentTotal,
+        'postCloseAdjustmentCount' => count($postCloseAdjustments),
+        'registerCloseReminder' => $closeReminder,
+        'warnings' => $closeAssistWarnings,
     ],
     'period' => ['from' => $from, 'to' => $to],
 ]);

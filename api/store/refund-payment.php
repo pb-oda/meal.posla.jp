@@ -15,6 +15,7 @@ require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/payment-gateway.php';
 require_once __DIR__ . '/../lib/stripe-connect.php';
 require_once __DIR__ . '/../lib/audit-log.php';
+require_once __DIR__ . '/../lib/register-close-lock.php';
 
 require_method(['POST']);
 
@@ -42,6 +43,7 @@ if (!$paymentId || !$storeId) {
 require_store_access($storeId);
 
 $pdo = get_db();
+$postCloseLock = require_register_close_override($pdo, $storeId, $data, '返金');
 
 // CP1b: 返金担当スタッフ PIN を必須化（出勤中スタッフのみ）
 $cashierUserId   = $user['user_id'];
@@ -345,6 +347,7 @@ try {
     'reason'            => $reason,
     'refund_id'         => $refundResult['refund_id'],
     'gateway'           => $payment['gateway_name'],
+    'register_close_lock' => register_close_override_audit_payload($postCloseLock),
 ], $reason);
 
 json_response([
@@ -352,4 +355,5 @@ json_response([
     'refund_id'  => $refundResult['refund_id'],
     'amount'     => $totalAmount,
     'payment_id' => $paymentId,
+    'postCloseOverride' => !empty($postCloseLock['locked']),
 ]);

@@ -61,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
 
         $allowed = [
             'day_cutoff_time', 'default_open_amount', 'overshort_threshold',
+            'register_close_alert_enabled', 'register_close_time', 'register_close_grace_min',
             'payment_methods_enabled', 'receipt_store_name', 'receipt_address',
             'receipt_phone', 'tax_rate', 'receipt_footer',
             'max_items_per_order', 'max_amount_per_order',

@@ -38,6 +38,9 @@ if (!conf) throw new Error('Unknown VP_MODE: ' + MODE + ' (expected tenant|inter
 // ---------- 共通サイドバー定義 ----------
 
 var tenantSidebar = [
+  { text: '機能別索引', collapsed: false, items: [
+    { text: '画面・機能から探す', link: '/tenant/' }
+  ]},
   { text: '1. はじめに', collapsed: false, items: [
     { text: 'POSLAとは・動作環境・ロール', link: '/tenant/01-introduction' }
   ]},
@@ -162,7 +165,8 @@ var themeConfig
 if (MODE === 'tenant') {
   themeConfig = {
     nav: [
-      { text: 'ご利用ガイド', link: '/tenant/01-introduction' },
+      { text: '機能別索引', link: '/tenant/' },
+      { text: 'はじめに', link: '/tenant/01-introduction' },
       { text: '店舗運用手順書', link: '/operations/00-table-of-contents' }
     ],
     sidebar: {
@@ -174,6 +178,7 @@ if (MODE === 'tenant') {
   // internal: テナント機能詳細 + 運営編 + 現場向け超詳細 全部
   themeConfig = {
     nav: [
+      { text: '機能別索引', link: '/tenant/' },
       { text: '顧客向けガイド', link: '/tenant/01-introduction' },
       { text: '店舗運用手順書', link: '/operations/00-table-of-contents' },
       { text: '社内リファレンス', link: '/internal/00-complete-reference' }

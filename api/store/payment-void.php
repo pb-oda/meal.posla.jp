@@ -68,6 +68,7 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/register-close-lock.php';
 @require_once __DIR__ . '/../lib/audit-log.php';
 
 require_method(['POST']);
@@ -99,6 +100,11 @@ require_store_access($storeId);
 $tenantId = $user['tenant_id'];
 
 $pdo = get_db();
+$postClosePayload = $body;
+if (empty($postClosePayload['post_close_reason'])) {
+    $postClosePayload['post_close_reason'] = $reason;
+}
+$postCloseLock = require_register_close_override($pdo, $storeId, $postClosePayload, '会計取消');
 
 // migration-pwa4d5a 適用済みかチェック
 $hasVoidCols = true;
@@ -380,6 +386,7 @@ try {
                 'order_ids_count'          => count($orderIds),
                 'orders_status_preserved'  => 'paid',
                 'table_sessions_preserved' => true,
+                'register_close_lock'      => register_close_override_audit_payload($postCloseLock),
             ]
         );
     }
@@ -391,6 +398,7 @@ try {
         'cashLogId'             => $cashLogId,
         // 注: orders.status / table_sessions / session_token は意図的に維持している
         'ordersStatusPreserved' => true,
+        'postCloseOverride'     => !empty($postCloseLock['locked']),
     ]);
 } catch (PDOException $e) {
     if ($inTx) {
