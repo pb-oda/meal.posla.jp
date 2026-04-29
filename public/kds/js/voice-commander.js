@@ -220,6 +220,21 @@ var VoiceCommander = (function () {
     return false;
   }
 
+  function _detectSoldOutToggleFastPath(text) {
+    if (_isListCommand(text) || _detectSoldOutNavigationFastPath(text)) return null;
+    var isResume = text.indexOf('販売再開') !== -1 || text.indexOf('再開') !== -1 || text.indexOf('解除') !== -1 || text.indexOf('復活') !== -1;
+    var isSoldOut = text.indexOf('品切れ') !== -1 || text.indexOf('品切') !== -1 || text.indexOf('売り切れ') !== -1 || text.indexOf('売切') !== -1;
+    if (!isResume && !isSoldOut) return null;
+    var item = _findMatchingMenuItem(text);
+    if (!item) return null;
+    return {
+      menuItemId: item.menuItemId,
+      source: item.source,
+      menuName: item.name,
+      isSoldOut: isResume ? false : true
+    };
+  }
+
   function _executeNavigateSoldOut() {
     _showStatus('品切れ管理画面へ移動します...', 1500);
     try { localStorage.setItem(_VOICE_KEY, '1'); } catch (e) {}
@@ -518,6 +533,49 @@ var VoiceCommander = (function () {
       },
       function () { _showStatus('キャンセルしました', 2000); _returnToStandby(); }
     );
+  }
+
+  function _detectTableStatusFastPath(text) {
+    if (!_tablePattern.test(text)) return null;
+    if (_detectTableReadFastPath(text) || _detectCancelFastPath(text) || _detectCourseAdvanceFastPath(text) || _detectTableBulkFastPath(text)) return null;
+    if (_findMatchingItem(text)) return null;
+    var status = _detectItemStatusFromText(text);
+    if (!status) return null;
+    return status;
+  }
+
+  function _pickTableOrderForStatus(orders, newStatus) {
+    if (!orders || orders.length === 0) return null;
+    var preferred = [];
+    var i;
+    if (newStatus === 'preparing') {
+      preferred = ['pending'];
+    } else if (newStatus === 'ready') {
+      preferred = ['preparing', 'pending'];
+    } else if (newStatus === 'served') {
+      preferred = ['ready', 'preparing', 'pending'];
+    }
+    for (var p = 0; p < preferred.length; p++) {
+      for (i = 0; i < orders.length; i++) {
+        if ((orders[i].status || 'pending') === preferred[p]) return orders[i];
+      }
+    }
+    return orders[0];
+  }
+
+  function _executeTableStatus(text, newStatus) {
+    var orders = _activeOrdersForTableText(text);
+    var order = _pickTableOrderForStatus(orders, newStatus);
+    if (!order) {
+      _beepError();
+      _showStatus('該当する卓の未完了注文がありません', 2500);
+      _returnToStandby();
+      return;
+    }
+    var tableLabel = order.table_code || '卓';
+    var labels = { preparing: '調理開始', ready: '完成', served: '提供済み' };
+    var statusLabel = labels[newStatus] || newStatus;
+    _executeStatusUpdate(order.id, newStatus, tableLabel, statusLabel);
   }
 
   function _detectCancelFastPath(text) {
@@ -1010,6 +1068,12 @@ var VoiceCommander = (function () {
       return;
     }
 
+    var tableStatus = _detectTableStatusFastPath(cmd);
+    if (tableStatus) {
+      _executeTableStatus(cmd, tableStatus);
+      return;
+    }
+
     // スクロール: ファストパス（Gemini不要）
     var scrollCmd = _detectScrollFastPath(cmd);
     if (scrollCmd) {
@@ -1057,6 +1121,13 @@ var VoiceCommander = (function () {
     if (_detectSoldOutNavigationFastPath(cmd)) {
       _showStatus('認識:「' + Utils.escapeHtml(cmd) + '」', 1500);
       _executeNavigateSoldOut();
+      return;
+    }
+
+    var soldOutCmd = _detectSoldOutToggleFastPath(cmd);
+    if (soldOutCmd) {
+      _showStatus('認識:「' + Utils.escapeHtml(cmd) + '」', 1500);
+      _executeSoldOutToggle(soldOutCmd.menuItemId, soldOutCmd.source, soldOutCmd.isSoldOut, soldOutCmd.menuName);
       return;
     }
 
@@ -1343,6 +1414,11 @@ var VoiceCommander = (function () {
             _executeTableBulk(transcript, tableBulk2);
             continue;
           }
+          var tableStatus2 = _detectTableStatusFastPath(transcript);
+          if (tableStatus2) {
+            _executeTableStatus(transcript, tableStatus2);
+            continue;
+          }
           // スクロール: ファストパス
           var scrollDir = _detectScrollFastPath(transcript);
           if (scrollDir) {
@@ -1381,6 +1457,13 @@ var VoiceCommander = (function () {
             _executeNavigateSoldOut();
             continue;
           }
+          var soldOutCmd2 = _detectSoldOutToggleFastPath(transcript);
+          if (soldOutCmd2) {
+            _beepRecognized();
+            _showStatus('認識:「' + Utils.escapeHtml(transcript) + '」', 1500);
+            _executeSoldOutToggle(soldOutCmd2.menuItemId, soldOutCmd2.source, soldOutCmd2.isSoldOut, soldOutCmd2.menuName);
+            continue;
+          }
           if (_isCommand(transcript)) {
             _beepRecognized();
             // AIキッチンダッシュボード: ファストパス（Gemini不要）
@@ -1413,7 +1496,7 @@ var VoiceCommander = (function () {
           }
         } else {
           // interim結果
-          if (_isCommand(transcript) || _detectThemeFastPath(transcript) || _detectStationFastPath(transcript) !== null || _detectRestartFastPath(transcript) || _detectHelpFastPath(transcript) || _detectScrollFastPath(transcript) || _detectStaffCallFastPath(transcript) || _detectUndoFastPath(transcript) || _detectModeFastPath(transcript) || _detectTableReadFastPath(transcript) || _detectCancelFastPath(transcript) || _detectCourseAdvanceFastPath(transcript) || _detectTableBulkFastPath(transcript) || _detectSoldOutNavigationFastPath(transcript)) {
+          if (_isCommand(transcript) || _detectThemeFastPath(transcript) || _detectStationFastPath(transcript) !== null || _detectRestartFastPath(transcript) || _detectHelpFastPath(transcript) || _detectScrollFastPath(transcript) || _detectStaffCallFastPath(transcript) || _detectUndoFastPath(transcript) || _detectModeFastPath(transcript) || _detectTableReadFastPath(transcript) || _detectCancelFastPath(transcript) || _detectCourseAdvanceFastPath(transcript) || _detectTableBulkFastPath(transcript) || _detectTableStatusFastPath(transcript) || _detectSoldOutNavigationFastPath(transcript) || _detectSoldOutToggleFastPath(transcript)) {
             // コマンドパターン検出 → 1.5秒後に確定（finalが来なかった場合の保険）
             _interimCmd = transcript;
             if (_interimTimer) clearTimeout(_interimTimer);
@@ -2057,6 +2140,20 @@ var VoiceCommander = (function () {
       }
     }
     return null;
+  }
+
+  function _findMatchingMenuItem(transcript) {
+    var best = null;
+    var bestLen = 0;
+    for (var i = 0; i < _menuItems.length; i++) {
+      var item = _menuItems[i];
+      if (!item.name || !item.menuItemId) continue;
+      if (_itemNameMatch(item.name, transcript) && item.name.length > bestLen) {
+        best = item;
+        bestLen = item.name.length;
+      }
+    }
+    return best;
   }
 
   // ── item_idで品目を検索 ──
