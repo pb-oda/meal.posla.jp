@@ -53,6 +53,21 @@ if ($tokenRow) {
     }
 }
 
+try {
+    $activeStmt = $pdo->prepare(
+        "SELECT id FROM table_sessions
+         WHERE table_id = ? AND store_id = ?
+           AND status IN ('seated', 'eating')
+         LIMIT 1"
+    );
+    $activeStmt->execute([$tableId, $storeId]);
+    if (!$activeStmt->fetch()) {
+        json_error('SESSION_CLOSED', 'このQRコードは現在注文できません。スタッフにお声がけください。', 403);
+    }
+} catch (PDOException $e) {
+    // table_sessions 未作成時は従来動作
+}
+
 // S1: per-session 注文上限 — 同一セッション内で 50件 or ¥200,000 超えたら拒否
 $sessLimitStmt = $pdo->prepare(
     "SELECT COUNT(*) AS cnt, COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE table_id = ? AND session_token = ? AND status != 'cancelled'"
@@ -253,6 +268,16 @@ try {
 
 // order_items テーブルにも書き込み（品目単位ステータス管理）
 insert_order_items($pdo, $orderId, $storeId, $items);
+
+try {
+    $pdo->prepare(
+        'UPDATE table_sessions
+            SET status = "eating"
+          WHERE store_id = ? AND table_id = ? AND status = "seated"'
+    )->execute([$storeId, $tableId]);
+} catch (PDOException $e) {
+    error_log('[customer/orders.php] session_mark_eating_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+}
 
 // L-15: スマレジ同期（ベストエフォート）
 try {

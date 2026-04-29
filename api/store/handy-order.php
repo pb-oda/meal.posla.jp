@@ -5,10 +5,10 @@
  * POST /api/store/handy-order.php
  *
  * 店内飲食:
- *   { store_id, table_id, items, order_type: "handy" }
+ *   { store_id, table_id, items, order_type: "handy", idempotency_key? }
  *
  * テイクアウト:
- *   { store_id, items, order_type: "takeout", customer_name, customer_phone, pickup_at }
+ *   { store_id, items, order_type: "takeout", customer_name, customer_phone, pickup_at, idempotency_key? }
  *
  * スタッフがスマホ・タブレットから注文を入力する。
  * セッションから user_id を取得し staff_id として記録。
@@ -20,6 +20,7 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/order-items.php';
 require_once __DIR__ . '/../lib/order-validator.php';
+require_once __DIR__ . '/../lib/audit-log.php';
 
 require_method(['POST', 'PATCH']);
 $user = require_auth();
@@ -109,12 +110,32 @@ $data = get_json_body();
 $storeId = $data['store_id'] ?? null;
 $items = $data['items'] ?? [];
 $orderType = $data['order_type'] ?? 'handy';
+$idempotencyKey = trim($data['idempotency_key'] ?? $data['client_order_key'] ?? '');
+if ($idempotencyKey !== '') {
+    $idempotencyKey = mb_substr($idempotencyKey, 0, 64);
+}
 
 if (!$storeId || empty($items)) {
     json_error('VALIDATION', 'store_id と items は必須です', 400);
 }
 
 require_store_access($storeId);
+
+if ($idempotencyKey !== '') {
+    $stmt = $pdo->prepare(
+        'SELECT id, order_type, total_amount FROM orders WHERE store_id = ? AND idempotency_key = ? LIMIT 1'
+    );
+    $stmt->execute([$storeId, $idempotencyKey]);
+    $existing = $stmt->fetch();
+    if ($existing) {
+        json_response([
+            'order_id'   => $existing['id'],
+            'order_type' => $existing['order_type'],
+            'total'      => (int)$existing['total_amount'],
+            'idempotent' => true,
+        ]);
+    }
+}
 
 // 注文種別バリデーション
 if (!in_array($orderType, ['handy', 'takeout'])) {
@@ -131,6 +152,24 @@ if ($orderType === 'handy') {
     $stmt = $pdo->prepare('SELECT id FROM tables WHERE id = ? AND store_id = ? AND is_active = 1');
     $stmt->execute([$tableId, $storeId]);
     if (!$stmt->fetch()) json_error('NOT_FOUND', 'テーブルが見つかりません', 404);
+
+    try {
+        $sessionStmt = $pdo->prepare(
+            'SELECT id, status FROM table_sessions
+             WHERE table_id = ? AND store_id = ? AND status NOT IN ("paid", "closed")
+             ORDER BY started_at DESC LIMIT 1'
+        );
+        $sessionStmt->execute([$tableId, $storeId]);
+        $activeSession = $sessionStmt->fetch();
+        if ($activeSession && $activeSession['status'] === 'bill_requested') {
+            json_error('BILL_REQUESTED', '会計待ち中です。追加注文する場合は先に会計待ちを解除してください。', 409);
+        }
+        if ($activeSession && $activeSession['status'] === 'cleaning') {
+            json_error('CLEANING', '清掃待ちの卓には注文できません', 409);
+        }
+    } catch (PDOException $e) {
+        error_log('[handy-order POST] session_status_guard_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+    }
 }
 
 // テイクアウト情報
@@ -228,8 +267,8 @@ try {
         'INSERT INTO orders (
             id, store_id, table_id, items, total_amount, status,
             order_type, staff_id, customer_name, customer_phone, pickup_at,
-            memo, created_at, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())'
+            memo, idempotency_key, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())'
     );
     $stmt->execute([
         $orderId,
@@ -243,9 +282,25 @@ try {
         $customerName ?: null,
         $customerPhone ?: null,
         $pickupAt,
-        $memo ?: null
+        $memo ?: null,
+        $idempotencyKey ?: null
     ]);
 } catch (PDOException $e) {
+    if ($idempotencyKey !== '' && isset($e->errorInfo[1]) && (int)$e->errorInfo[1] === 1062) {
+        $stmt = $pdo->prepare(
+            'SELECT id, order_type, total_amount FROM orders WHERE store_id = ? AND idempotency_key = ? LIMIT 1'
+        );
+        $stmt->execute([$storeId, $idempotencyKey]);
+        $existing = $stmt->fetch();
+        if ($existing) {
+            json_response([
+                'order_id'   => $existing['id'],
+                'order_type' => $existing['order_type'],
+                'total'      => (int)$existing['total_amount'],
+                'idempotent' => true,
+            ]);
+        }
+    }
     // S3 #11: 内部エラーメッセージはログのみ、レスポンスは固定文言
     error_log('[handy-order POST] db_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('DB_ERROR', '処理に失敗しました。時間を置いて再試行してください。', 500);
@@ -254,8 +309,46 @@ try {
 // order_items テーブルにも書き込み（品目単位ステータス管理）
 insert_order_items($pdo, $orderId, $storeId, $items);
 
+if ($tableId) {
+    try {
+        $pdo->prepare(
+            'UPDATE table_sessions
+                SET status = "eating"' . (handy_table_session_has_column($pdo, 'status_changed_at') ? ', status_changed_at = NOW()' : '') . '
+              WHERE store_id = ? AND table_id = ? AND status = "seated"'
+        )->execute([$storeId, $tableId]);
+    } catch (PDOException $e) {
+        error_log('[handy-order POST] session_mark_eating_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+    }
+}
+
+write_audit_log($pdo, $user, $storeId, 'handy_order_create', 'order', $orderId, null, [
+    'table_id' => $tableId,
+    'order_type' => $orderType,
+    'item_count' => count($items),
+    'total_amount' => $totalAmount,
+], null);
+
 json_response([
     'order_id'   => $orderId,
     'order_type' => $orderType,
     'total'      => $totalAmount,
 ], 201);
+
+function handy_table_session_has_column(PDO $pdo, string $column): bool
+{
+    static $cache = [];
+    if (array_key_exists($column, $cache)) return $cache[$column];
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = "table_sessions"
+                AND COLUMN_NAME = ?'
+        );
+        $stmt->execute([$column]);
+        $cache[$column] = ((int)$stmt->fetchColumn()) > 0;
+    } catch (Exception $e) {
+        $cache[$column] = false;
+    }
+    return $cache[$column];
+}

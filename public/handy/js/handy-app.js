@@ -20,8 +20,19 @@ var HandyApp = (function () {
   var _activeCatId = null;
   var _cartOpen = false;
   var _editingOrder = null;
+  var _quickOrders = [];
+  var _quickFrequentItems = [];
+  var _orderContextTimer = null;
+  var _pendingOrders = [];
+  var _pendingRetryLocks = {};
+  var _opsTimer = null;
+  var _opsAlerts = [];
+  var _opsLogs = [];
+  var _terminalMode = 'handy';
 
   var API_BASE = '../../api';
+  var PENDING_KEY_PREFIX = 'posla_handy_pending_orders_';
+  var TERMINAL_MODE_KEY = 'posla_handy_terminal_mode';
 
   // ==== DOM cache ====
   var els = {};
@@ -98,6 +109,8 @@ var HandyApp = (function () {
                 renderMenuItems();
                 renderTables();
                 renderCart();
+                loadQuickOrderHints();
+                loadCompactTableContext();
                 _menuVersionTimer = setInterval(checkMenuVersion, _VERSION_CHECK_INTERVAL);
               });
             });
@@ -113,6 +126,8 @@ var HandyApp = (function () {
             renderMenuItems();
             renderTables();
             renderCart();
+            loadQuickOrderHints();
+            loadCompactTableContext();
             _menuVersionTimer = setInterval(checkMenuVersion, _VERSION_CHECK_INTERVAL);
           });
         });
@@ -129,16 +144,27 @@ var HandyApp = (function () {
   function cacheDom() {
     els.storeName    = document.getElementById('handy-store-name');
     els.changeStore  = document.getElementById('handy-change-store');
+    els.terminalMode = document.getElementById('handy-terminal-mode');
+    els.pendingBtn   = document.getElementById('handy-pending-btn');
+    els.pendingCount = document.getElementById('handy-pending-count');
     els.userName     = document.getElementById('handy-user-name');
     els.ctxDinein    = document.getElementById('ctx-dinein');
     els.ctxTakeout   = document.getElementById('ctx-takeout');
     els.tableSel     = document.getElementById('table-select');
+    els.selectedTablePanel = document.getElementById('selected-table-panel');
     els.toName       = document.getElementById('to-name');
     els.toPhone      = document.getElementById('to-phone');
     els.toPickup     = document.getElementById('to-pickup');
+    els.quickOrderPanel = document.getElementById('quick-order-panel');
     els.catTabs      = document.getElementById('category-tabs');
     els.menuGrid     = document.getElementById('menu-grid');
     els.panelOrder   = document.getElementById('panel-order');
+    els.panelOps     = document.getElementById('panel-ops');
+    els.opsSummary   = document.getElementById('ops-summary');
+    els.opsAlerts    = document.getElementById('ops-alerts');
+    els.opsTasks     = document.getElementById('ops-tasks');
+    els.opsLog       = document.getElementById('ops-log');
+    els.opsTableGrid = document.getElementById('ops-table-grid');
     els.panelHistory = document.getElementById('panel-history');
     els.cartBar      = document.getElementById('cart-bar');
     els.cartSummary  = document.getElementById('cart-summary');
@@ -185,6 +211,52 @@ var HandyApp = (function () {
     }
 
     setDefaultPickupTime();
+    loadTerminalMode();
+    renderTerminalModeControls();
+    loadPendingOrders();
+    renderPendingBadge();
+  }
+
+  function loadTerminalMode() {
+    var saved = '';
+    try { saved = localStorage.getItem(TERMINAL_MODE_KEY) || ''; } catch (e) {}
+    if (saved === 'wall' || saved === 'register') {
+      _terminalMode = saved;
+    } else {
+      _terminalMode = 'handy';
+    }
+    applyTerminalModeClass();
+  }
+
+  function setTerminalMode(mode) {
+    if (mode !== 'handy' && mode !== 'wall' && mode !== 'register') return;
+    _terminalMode = mode;
+    try { localStorage.setItem(TERMINAL_MODE_KEY, mode); } catch (e) {}
+    applyTerminalModeClass();
+    renderTerminalModeControls();
+    if (_currentTab === 'ops') renderOperationsBoard();
+    if (_currentTab === 'tables') renderTableStatus(_lastTableData);
+  }
+
+  function applyTerminalModeClass() {
+    document.body.classList.remove('handy-mode-handy');
+    document.body.classList.remove('handy-mode-wall');
+    document.body.classList.remove('handy-mode-register');
+    document.body.classList.add('handy-mode-' + _terminalMode);
+  }
+
+  function renderTerminalModeControls() {
+    if (!els.terminalMode) return;
+    var modes = [
+      { id: 'handy', label: 'ハンディ' },
+      { id: 'wall', label: '壁掛け' },
+      { id: 'register', label: 'レジ横' }
+    ];
+    var html = '';
+    for (var i = 0; i < modes.length; i++) {
+      html += '<button type="button" class="' + (_terminalMode === modes[i].id ? 'active' : '') + '" data-terminal-mode="' + modes[i].id + '">' + modes[i].label + '</button>';
+    }
+    els.terminalMode.innerHTML = html;
   }
 
   function bindEvents() {
@@ -202,6 +274,10 @@ var HandyApp = (function () {
           renderMenuItems();
           renderTables();
           renderCart();
+          loadPendingOrders();
+          renderPendingBadge();
+          loadQuickOrderHints();
+          loadCompactTableContext();
         });
       });
     });
@@ -221,6 +297,94 @@ var HandyApp = (function () {
       updateCatActive();
       renderMenuItems();
     });
+
+    if (els.tableSel) {
+      els.tableSel.addEventListener('change', function () {
+        renderSelectedTablePanel();
+        renderQuickOrderPanel();
+        loadCompactTableContext();
+      });
+    }
+
+    if (els.quickOrderPanel) {
+      els.quickOrderPanel.addEventListener('click', function (e) {
+        var itemBtn = e.target.closest('[data-quick-item-id]');
+        if (itemBtn) {
+          addMenuItemById(itemBtn.getAttribute('data-quick-item-id'));
+          return;
+        }
+        var orderBtn = e.target.closest('[data-reorder-id]');
+        if (orderBtn) {
+          addOrderToCart(orderBtn.getAttribute('data-reorder-id'));
+          return;
+        }
+      });
+    }
+
+    if (els.selectedTablePanel) {
+      els.selectedTablePanel.addEventListener('click', function (e) {
+        var action = e.target.closest('[data-table-action]');
+        if (!action) return;
+        handleTableAction(action);
+      });
+    }
+
+    if (els.pendingBtn) {
+      els.pendingBtn.addEventListener('click', function () {
+        openPendingOrdersModal();
+      });
+    }
+
+    if (els.terminalMode) {
+      els.terminalMode.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-terminal-mode]');
+        if (!btn) return;
+        setTerminalMode(btn.getAttribute('data-terminal-mode'));
+      });
+    }
+
+    if (els.panelOps) {
+      els.panelOps.addEventListener('click', function (e) {
+        var refreshBtn = e.target.closest('#ops-refresh');
+        if (refreshBtn) {
+          loadOperationsBoard();
+          return;
+        }
+        var pendingBtn = e.target.closest('[data-ops-pending]');
+        if (pendingBtn) {
+          openPendingOrdersModal();
+          return;
+        }
+        var startBtn = e.target.closest('[data-ops-start-alert]');
+        if (startBtn) {
+          startOperationAlert(startBtn.getAttribute('data-ops-start-alert'));
+          return;
+        }
+        var ackBtn = e.target.closest('[data-ops-ack-alert]');
+        if (ackBtn) {
+          acknowledgeOperationAlert(ackBtn.getAttribute('data-ops-ack-alert'));
+          return;
+        }
+        var undoServedBtn = e.target.closest('[data-ops-undo-served]');
+        if (undoServedBtn) {
+          undoServedItem(undoServedBtn.getAttribute('data-ops-undo-served'));
+          return;
+        }
+        var tableAction = e.target.closest('[data-table-action]');
+        if (tableAction) {
+          handleTableAction(tableAction);
+          return;
+        }
+        var openTable = e.target.closest('[data-ops-open-table]');
+        if (openTable) {
+          switchTab('dinein');
+          if (els.tableSel) {
+            els.tableSel.value = openTable.getAttribute('data-ops-open-table');
+            loadCompactTableContext();
+          }
+        }
+      });
+    }
 
     // メニュー品目タップ
     els.menuGrid.addEventListener('click', function (e) {
@@ -289,6 +453,14 @@ var HandyApp = (function () {
         loadHistory();
       } else if (btn.classList.contains('btn-edit')) {
         startEdit(btn.dataset.orderId);
+      } else if (btn.classList.contains('btn-order-cancel')) {
+        cancelWholeOrder(btn.dataset.orderId);
+      } else if (btn.getAttribute('data-item-cancel')) {
+        cancelOrderItem(btn.getAttribute('data-order-id'), btn.getAttribute('data-item-cancel'));
+      } else if (btn.getAttribute('data-item-undo-served')) {
+        undoServedItem(btn.getAttribute('data-item-undo-served'));
+      } else if (btn.getAttribute('data-item-qty-delta')) {
+        adjustOrderItemQty(btn.getAttribute('data-order-id'), btn.getAttribute('data-item-id'), parseInt(btn.getAttribute('data-current-qty'), 10) || 0, parseInt(btn.getAttribute('data-item-qty-delta'), 10) || 0);
       }
     });
 
@@ -300,6 +472,11 @@ var HandyApp = (function () {
 
     // テーブル状況: 着席ボタン / 着席キャンセルボタン / メモボタン
     els.tblGrid.addEventListener('click', function (e) {
+      var tableAction = e.target.closest('[data-table-action]');
+      if (tableAction) {
+        handleTableAction(tableAction);
+        return;
+      }
       var seatBtn = e.target.closest('.ts-card__seat-btn');
       if (seatBtn) {
         openSeatModal(seatBtn.dataset.tableId, seatBtn.dataset.tableCode);
@@ -443,6 +620,160 @@ var HandyApp = (function () {
       .catch(function () { /* サイレント失敗 */ });
   }
 
+  function loadQuickOrderHints() {
+    if (!_storeId) return;
+    apiFetch('/kds/orders.php?store_id=' + encodeURIComponent(_storeId) + '&view=accounting')
+      .then(function (json) {
+        if (!json.ok) return;
+        _quickOrders = json.data.orders || [];
+        buildQuickFrequentItems();
+        renderQuickOrderPanel();
+      })
+      .catch(function () {
+        // ハンディ注文自体は止めない
+      });
+  }
+
+  function buildQuickFrequentItems() {
+    var map = {};
+    var list = [];
+    var orders = (_quickOrders || []).slice().sort(function (a, b) {
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+    for (var i = 0; i < orders.length; i++) {
+      if (orders[i].status === 'cancelled') continue;
+      var items = orders[i].items || [];
+      for (var j = 0; j < items.length; j++) {
+        var it = items[j];
+        if (!it.id || !_menuItemMap[it.id]) continue;
+        if (!map[it.id]) {
+          map[it.id] = {
+            id: it.id,
+            name: it.name || _menuItemMap[it.id].name,
+            count: 0,
+            latest: orders[i].created_at
+          };
+        }
+        map[it.id].count += parseInt(it.qty, 10) || 1;
+      }
+    }
+    Object.keys(map).forEach(function (id) { list.push(map[id]); });
+    list.sort(function (a, b) {
+      if (b.count !== a.count) return b.count - a.count;
+      return String(b.latest).localeCompare(String(a.latest));
+    });
+    _quickFrequentItems = list.slice(0, 6);
+  }
+
+  function renderQuickOrderPanel() {
+    if (!els.quickOrderPanel) return;
+    if (_mode !== 'dinein' && _mode !== 'takeout') {
+      els.quickOrderPanel.style.display = 'none';
+      return;
+    }
+
+    var selectedTableId = (_mode === 'dinein' && els.tableSel) ? els.tableSel.value : '';
+    var recent = getRecentOrdersForQuick(selectedTableId);
+    if (_quickFrequentItems.length === 0 && recent.length === 0) {
+      els.quickOrderPanel.style.display = 'none';
+      return;
+    }
+
+    var html = '';
+    if (_quickFrequentItems.length > 0) {
+      html += '<div class="quick-order-row">';
+      html += '<div class="quick-order-title">よく出る</div>';
+      html += '<div class="quick-order-chips">';
+      for (var i = 0; i < _quickFrequentItems.length; i++) {
+        var f = _quickFrequentItems[i];
+        html += '<button type="button" class="quick-order-chip" data-quick-item-id="' + Utils.escapeHtml(f.id) + '">'
+          + Utils.escapeHtml(f.name) + '<span>' + f.count + '</span></button>';
+      }
+      html += '</div></div>';
+    }
+
+    if (recent.length > 0) {
+      html += '<div class="quick-order-row">';
+      html += '<div class="quick-order-title">' + (selectedTableId ? 'この卓の直近' : '直近再注文') + '</div>';
+      html += '<div class="quick-order-chips">';
+      for (var j = 0; j < recent.length; j++) {
+        var o = recent[j];
+        html += '<button type="button" class="quick-order-chip quick-order-chip--recent" data-reorder-id="' + Utils.escapeHtml(o.id) + '">'
+          + Utils.escapeHtml(formatOrderShortLabel(o)) + '</button>';
+      }
+      html += '</div></div>';
+    }
+
+    els.quickOrderPanel.innerHTML = html;
+    els.quickOrderPanel.style.display = '';
+  }
+
+  function getRecentOrdersForQuick(tableId) {
+    var orders = (_quickOrders || []).filter(function (o) {
+      if (o.status === 'cancelled') return false;
+      if (tableId && String(o.table_id || '') !== String(tableId)) return false;
+      return (o.items || []).length > 0;
+    }).sort(function (a, b) {
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+    return orders.slice(0, 4);
+  }
+
+  function formatOrderShortLabel(order) {
+    var items = order.items || [];
+    if (items.length === 0) return '再注文';
+    var first = items[0].name || '品目';
+    var count = 0;
+    for (var i = 0; i < items.length; i++) {
+      count += parseInt(items[i].qty, 10) || 1;
+    }
+    return first + (count > 1 ? ' ほか' + (count - 1) + '品' : '');
+  }
+
+  function addMenuItemById(itemId) {
+    var menuItem = _menuItemMap[itemId];
+    if (!menuItem) { toast('現在のメニューにありません', 'error'); return; }
+    if (menuItem.soldOut) { toast('品切れです', 'error'); return; }
+    if (menuItem.optionGroups && menuItem.optionGroups.length > 0) {
+      openOptionModal(menuItem);
+      return;
+    }
+    addToCart({
+      id: menuItem.menuItemId,
+      cartKey: menuItem.menuItemId,
+      name: menuItem.name,
+      basePrice: menuItem.price,
+      price: menuItem.price,
+      qty: 1,
+      options: []
+    });
+  }
+
+  function addOrderToCart(orderId) {
+    var order = null;
+    for (var i = 0; i < _quickOrders.length; i++) {
+      if (_quickOrders[i].id === orderId) { order = _quickOrders[i]; break; }
+    }
+    if (!order) { toast('注文が見つかりません', 'error'); return; }
+    var items = order.items || [];
+    for (var j = 0; j < items.length; j++) {
+      var it = items[j];
+      var opts = it.options || [];
+      var choiceIds = opts.map(function (o) { return o.choiceId || ''; }).sort().join(',');
+      addToCart({
+        id: it.id,
+        cartKey: it.id + (choiceIds ? '__' + choiceIds : ''),
+        name: it.name,
+        basePrice: it.price,
+        price: it.price,
+        qty: parseInt(it.qty, 10) || 1,
+        options: opts
+      });
+    }
+    toast('直近注文をカートに追加しました', 'success');
+    if (!_cartOpen) toggleCartDetail();
+  }
+
   function loadTables() {
     return apiFetch('/store/tables.php?store_id=' + _storeId)
       .then(function (json) {
@@ -492,6 +823,8 @@ var HandyApp = (function () {
     // ポーリング停止
     if (_tablesPollTimer) { clearInterval(_tablesPollTimer); _tablesPollTimer = null; }
     if (_menuVersionTimer) { clearInterval(_menuVersionTimer); _menuVersionTimer = null; }
+    if (_orderContextTimer) { clearInterval(_orderContextTimer); _orderContextTimer = null; }
+    if (_opsTimer) { clearInterval(_opsTimer); _opsTimer = null; }
 
     var btns = document.querySelectorAll('.handy-tabs__btn');
     btns.forEach(function (b) {
@@ -501,6 +834,7 @@ var HandyApp = (function () {
     els.panelOrder.style.display = 'none';
     els.panelHistory.style.display = 'none';
     els.panelTables.style.display = 'none';
+    if (els.panelOps) els.panelOps.style.display = 'none';
     var pRsv = document.getElementById('panel-reservations');
     if (pRsv) pRsv.style.display = 'none';
     els.cartBar.style.display = 'none';
@@ -512,6 +846,10 @@ var HandyApp = (function () {
       els.panelTables.style.display = 'block';
       loadTableStatus();
       _tablesPollTimer = setInterval(loadTableStatus, 5000);
+    } else if (tab === 'ops') {
+      if (els.panelOps) els.panelOps.style.display = 'block';
+      loadOperationsBoard();
+      _opsTimer = setInterval(loadOperationsBoard, 5000);
     } else if (tab === 'reservations') {
       if (pRsv) pRsv.style.display = 'block';
       initReservationTab();
@@ -522,6 +860,12 @@ var HandyApp = (function () {
       els.ctxDinein.style.display = (tab === 'dinein') ? 'block' : 'none';
       els.ctxTakeout.style.display = (tab === 'takeout') ? 'block' : 'none';
       if (tab === 'takeout') setDefaultPickupTime();
+      renderSelectedTablePanel();
+      renderQuickOrderPanel();
+      if (tab === 'dinein') {
+        loadCompactTableContext();
+        _orderContextTimer = setInterval(loadCompactTableContext, 10000);
+      }
       // メニュー変更検知ポーリング開始
       _menuVersionTimer = setInterval(checkMenuVersion, _VERSION_CHECK_INTERVAL);
     }
@@ -613,6 +957,8 @@ var HandyApp = (function () {
 
     els.optBody.innerHTML = html;
     els.optAdd.textContent = 'カートに追加';
+    els.optAdd.style.display = '';
+    els.optBody.onclick = null;
     updateOptionModalPrice();
     els.optOverlay.classList.add('show');
   }
@@ -620,6 +966,8 @@ var HandyApp = (function () {
   function closeOptionModal() {
     els.optOverlay.classList.remove('show');
     _optionItem = null;
+    els.optAdd.style.display = '';
+    els.optBody.onclick = null;
 
     // 着席モーダルで cloneNode されたボタンを元のメニュー用に復元
     var newAdd = els.optAdd.cloneNode(true);
@@ -824,9 +1172,6 @@ var HandyApp = (function () {
   function submitOrder() {
     if (_cart.length === 0) { toast('カートが空です', 'error'); return; }
 
-    // Phase 3: offline または stale 中の注文送信は絶対に実行しない (キューもしない)
-    if (_guardOfflineOrStale()) return;
-
     var items = _cart.map(function (c) {
       var entry = { id: c.id, name: c.name, price: c.price, qty: c.qty };
       if (c.options && c.options.length > 0) {
@@ -836,6 +1181,7 @@ var HandyApp = (function () {
     });
 
     if (_editingOrder) {
+      if (_guardOfflineOrStale()) return;
       var patchBody = {
         order_id: _editingOrder.id,
         store_id: _storeId,
@@ -865,7 +1211,8 @@ var HandyApp = (function () {
     var body = {
       store_id: _storeId,
       items: items,
-      order_type: _mode === 'takeout' ? 'takeout' : 'handy'
+      order_type: _mode === 'takeout' ? 'takeout' : 'handy',
+      idempotency_key: createHandyIdempotencyKey()
     };
     if (memoVal) {
       body.memo = memoVal;
@@ -881,6 +1228,16 @@ var HandyApp = (function () {
       if (!body.pickup_at) { toast('受取時間を入力してください', 'error'); return; }
     }
 
+    if (_isOfflineOrStale()) {
+      savePendingOrder(body, 'オフラインまたは古いデータ表示中');
+      toast('送信できないため未送信に保存しました', 'error');
+      clearCart();
+      if (handyMemo) handyMemo.value = '';
+      renderCart();
+      renderMenuItems();
+      return;
+    }
+
     apiPost('/store/handy-order.php', body)
       .then(function (json) {
         if (!json.ok) { toast(apiErrorMsg(json), 'error'); return; }
@@ -894,8 +1251,196 @@ var HandyApp = (function () {
           els.toPhone.value = '';
           setDefaultPickupTime();
         }
+        loadQuickOrderHints();
+        loadCompactTableContext();
       })
-      .catch(function (err) { toast(err.message || '通信エラー', 'error'); console.error(err); });
+      .catch(function (err) {
+        savePendingOrder(body, err.message || '通信エラー');
+        toast('送信失敗。未送信に保存しました', 'error');
+        clearCart();
+        if (handyMemo) handyMemo.value = '';
+        renderCart();
+        renderMenuItems();
+        console.error(err);
+      });
+  }
+
+  // ==== Pending orders (送信失敗・未送信) ====
+  function pendingStorageKey() {
+    return PENDING_KEY_PREFIX + (_storeId || 'unknown');
+  }
+
+  function createHandyIdempotencyKey() {
+    var storePart = String(_storeId || 'store').replace(/[^a-zA-Z0-9]/g, '').substring(0, 18);
+    return 'handy-' + storePart + '-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
+  }
+
+  function clonePlain(obj) {
+    return JSON.parse(JSON.stringify(obj));
+  }
+
+  function loadPendingOrders() {
+    _pendingOrders = [];
+    if (!_storeId || !window.localStorage) return;
+    try {
+      var raw = localStorage.getItem(pendingStorageKey());
+      var list = raw ? JSON.parse(raw) : [];
+      _pendingOrders = Array.isArray(list) ? list.filter(function (p) {
+        return p && p.id && p.body && p.body.store_id === _storeId;
+      }) : [];
+    } catch (e) {
+      _pendingOrders = [];
+    }
+  }
+
+  function savePendingOrders() {
+    if (!_storeId || !window.localStorage) return;
+    try {
+      localStorage.setItem(pendingStorageKey(), JSON.stringify(_pendingOrders.slice(0, 30)));
+    } catch (e) {
+      toast('未送信の保存に失敗しました', 'error');
+    }
+    renderPendingBadge();
+  }
+
+  function renderPendingBadge() {
+    if (!els.pendingBtn || !els.pendingCount) return;
+    var count = _pendingOrders.length;
+    els.pendingCount.textContent = count;
+    els.pendingBtn.style.display = count > 0 ? '' : 'none';
+  }
+
+  function savePendingOrder(body, reason) {
+    loadPendingOrders();
+    _pendingOrders.unshift({
+      id: 'pending-' + Date.now() + '-' + Math.floor(Math.random() * 100000),
+      body: clonePlain(body),
+      reason: reason || '送信失敗',
+      retryCount: 0,
+      createdAt: new Date().toISOString()
+    });
+    savePendingOrders();
+  }
+
+  function getTableCodeById(tableId) {
+    for (var i = 0; i < _lastTableData.length; i++) {
+      if (String(_lastTableData[i].id) === String(tableId)) return _lastTableData[i].tableCode || _lastTableData[i].table_code || tableId;
+    }
+    for (var j = 0; j < _tables.length; j++) {
+      if (String(_tables[j].id) === String(tableId)) return _tables[j].table_code || tableId;
+    }
+    return tableId || '-';
+  }
+
+  function formatPendingTitle(body) {
+    if (body.order_type === 'takeout') {
+      return 'TO ' + (body.customer_name || 'テイクアウト');
+    }
+    return getTableCodeById(body.table_id);
+  }
+
+  function formatPendingTime(iso) {
+    if (!iso) return '-';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '-';
+    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  }
+
+  function renderPendingOrdersList() {
+    if (_pendingOrders.length === 0) {
+      els.optBody.innerHTML = '<div class="empty-state" style="padding:1rem">未送信注文はありません</div>';
+      return;
+    }
+    var html = '<div class="pending-order-list">';
+    for (var i = 0; i < _pendingOrders.length; i++) {
+      var p = _pendingOrders[i];
+      var body = p.body || {};
+      var items = body.items || [];
+      var total = 0;
+      var summary = [];
+      for (var j = 0; j < items.length; j++) {
+        total += (parseInt(items[j].price, 10) || 0) * (parseInt(items[j].qty, 10) || 1);
+        summary.push((items[j].name || '品目') + ' ×' + (items[j].qty || 1));
+      }
+      var createdLabel = formatPendingTime(p.createdAt);
+      var locked = _pendingRetryLocks[p.id] === true;
+      html += '<div class="pending-order-card">';
+      html += '<div class="pending-order-card__top"><strong>' + Utils.escapeHtml(formatPendingTitle(body)) + '</strong><span>' + createdLabel + '</span></div>';
+      html += '<div class="pending-order-card__items">' + Utils.escapeHtml(summary.join('、')) + '</div>';
+      html += '<div class="pending-order-card__meta">' + Utils.formatYen(total) + ' / ' + Utils.escapeHtml(p.reason || '送信失敗') + ' / 再送' + (p.retryCount || 0) + '回</div>';
+      html += '<div class="pending-order-card__actions">';
+      html += '<button type="button" data-pending-retry="' + Utils.escapeHtml(p.id) + '"' + (locked ? ' disabled' : '') + '>' + (locked ? '送信中' : '再送信') + '</button>';
+      html += '<button type="button" data-pending-delete="' + Utils.escapeHtml(p.id) + '"' + (locked ? ' disabled' : '') + '>破棄</button>';
+      html += '</div></div>';
+    }
+    html += '</div>';
+    els.optBody.innerHTML = html;
+  }
+
+  function openPendingOrdersModal() {
+    loadPendingOrders();
+    els.optTitle.textContent = '未送信注文';
+    els.optPrice.textContent = '';
+    els.optAdd.style.display = 'none';
+    renderPendingOrdersList();
+    els.optBody.onclick = function (e) {
+      var retryBtn = e.target.closest('[data-pending-retry]');
+      if (retryBtn) {
+        retryPendingOrder(retryBtn.getAttribute('data-pending-retry'));
+        return;
+      }
+      var deleteBtn = e.target.closest('[data-pending-delete]');
+      if (deleteBtn) {
+        deletePendingOrder(deleteBtn.getAttribute('data-pending-delete'));
+      }
+    };
+    els.optOverlay.classList.add('show');
+  }
+
+  function retryPendingOrder(pendingId) {
+    if (_guardOfflineOrStale()) return;
+    var idx = -1;
+    for (var i = 0; i < _pendingOrders.length; i++) {
+      if (_pendingOrders[i].id === pendingId) { idx = i; break; }
+    }
+    if (idx === -1) return;
+    var pending = _pendingOrders[idx];
+    if (_pendingRetryLocks[pendingId]) return;
+    _pendingRetryLocks[pendingId] = true;
+    renderPendingOrdersList();
+    apiPost('/store/handy-order.php', pending.body)
+      .then(function (json) {
+        _pendingRetryLocks[pendingId] = false;
+        if (!json.ok) {
+          pending.reason = apiErrorMsg(json);
+          pending.retryCount = (pending.retryCount || 0) + 1;
+          savePendingOrders();
+          renderPendingOrdersList();
+          toast('再送信できませんでした', 'error');
+          return;
+        }
+        _pendingOrders.splice(idx, 1);
+        savePendingOrders();
+        renderPendingOrdersList();
+        toast('未送信注文を送信しました', 'success');
+        loadQuickOrderHints();
+        loadCompactTableContext();
+      })
+      .catch(function (err) {
+        _pendingRetryLocks[pendingId] = false;
+        pending.reason = err.message || '通信エラー';
+        pending.retryCount = (pending.retryCount || 0) + 1;
+        savePendingOrders();
+        renderPendingOrdersList();
+        toast('再送信できませんでした', 'error');
+      });
+  }
+
+  function deletePendingOrder(pendingId) {
+    if (!confirm('この未送信注文を破棄しますか？')) return;
+    _pendingOrders = _pendingOrders.filter(function (p) { return p.id !== pendingId; });
+    savePendingOrders();
+    renderPendingOrdersList();
   }
 
   // ==== Order history ====
@@ -965,6 +1510,32 @@ var HandyApp = (function () {
 
       var canEdit = (['paid', 'cancelled'].indexOf(o.status) === -1);
       var statusClass = 'status--' + o.status;
+      var itemRowsHtml = '<div class="order-card__item-list">';
+      for (var ii = 0; ii < items.length; ii++) {
+        var item = items[ii];
+        var itemStatus = item.status || 'pending';
+        var itemId = Utils.escapeHtml(item.item_id || '');
+        var qty = parseInt(item.qty, 10) || 1;
+        var itemCanAdjust = canEdit && item.item_id && itemStatus !== 'cancelled';
+        var optLine = '';
+        if (item.options && item.options.length > 0) {
+          optLine = '<span class="order-card__item-options">' + Utils.escapeHtml(item.options.map(function (op) { return op.choiceName || op.name || ''; }).join(', ')) + '</span>';
+        }
+        itemRowsHtml += '<div class="order-card__item order-card__item--' + itemStatus + '">';
+        itemRowsHtml += '<div class="order-card__item-main"><strong>' + Utils.escapeHtml(item.name || '品目') + '</strong>' + optLine + '<span>' + qty + '点 / ' + Utils.escapeHtml(statusLabels[itemStatus] || itemStatus) + '</span></div>';
+        if (itemCanAdjust) {
+          itemRowsHtml += '<div class="order-card__item-actions">';
+          itemRowsHtml += '<button type="button" data-order-id="' + Utils.escapeHtml(o.id) + '" data-item-id="' + itemId + '" data-current-qty="' + qty + '" data-item-qty-delta="-1"' + (qty <= 1 ? ' disabled' : '') + '>数量-</button>';
+          itemRowsHtml += '<button type="button" data-order-id="' + Utils.escapeHtml(o.id) + '" data-item-id="' + itemId + '" data-current-qty="' + qty + '" data-item-qty-delta="1">数量+</button>';
+          itemRowsHtml += '<button type="button" data-order-id="' + Utils.escapeHtml(o.id) + '" data-item-cancel="' + itemId + '">品目取消</button>';
+          if (itemStatus === 'served') {
+            itemRowsHtml += '<button type="button" data-item-undo-served="' + itemId + '">配膳取消</button>';
+          }
+          itemRowsHtml += '</div>';
+        }
+        itemRowsHtml += '</div>';
+      }
+      itemRowsHtml += '</div>';
 
       var memoLine = '';
       if (o.memo) {
@@ -980,13 +1551,113 @@ var HandyApp = (function () {
         + '</div></div>'
         + memoLine
         + '<div class="order-card__items">' + itemsSummary + '</div>'
+        + itemRowsHtml
         + '<div class="order-card__footer">'
         + '<span class="order-card__total">' + Utils.formatYen(o.total_amount) + '</span>'
         + (canEdit ? '<button class="btn-edit" data-order-id="' + o.id + '">修正</button>' : '')
+        + (canEdit ? '<button class="btn-order-cancel" data-order-id="' + o.id + '">注文取消</button>' : '')
         + '</div></div>';
     });
 
     els.orderList.innerHTML = html;
+  }
+
+  function findHistoryOrder(orderId) {
+    for (var i = 0; i < _historyOrders.length; i++) {
+      if (_historyOrders[i].id === orderId) return _historyOrders[i];
+    }
+    return null;
+  }
+
+  function cancelWholeOrder(orderId) {
+    if (!orderId) return;
+    if (_guardOfflineOrStale()) return;
+    var reason = prompt('注文取消の理由を入力してください', '');
+    if (!reason || !reason.trim()) return;
+    apiPatch('/kds/update-status.php', {
+      order_id: orderId,
+      store_id: _storeId,
+      status: 'cancelled',
+      reason: reason.trim()
+    }).then(function (json) {
+      if (!json.ok) { toast(apiErrorMsg(json), 'error'); return; }
+      toast('注文を取消しました', 'success');
+      loadHistory();
+      loadQuickOrderHints();
+      loadCompactTableContext();
+    }).catch(function (err) {
+      toast(err.message || '通信エラー', 'error');
+    });
+  }
+
+  function cancelOrderItem(orderId, itemId) {
+    if (!orderId || !itemId) return;
+    if (_guardOfflineOrStale()) return;
+    var reason = prompt('品目取消の理由を入力してください', '');
+    if (!reason || !reason.trim()) return;
+    apiPatch('/store/order-item-adjust.php', {
+      store_id: _storeId,
+      order_id: orderId,
+      item_id: itemId,
+      qty: 0,
+      reason: reason.trim()
+    }).then(function (json) {
+      if (!json.ok) { toast(apiErrorMsg(json), 'error'); return; }
+      toast('品目を取消しました', 'success');
+      loadHistory();
+      loadQuickOrderHints();
+      loadCompactTableContext();
+    }).catch(function (err) {
+      toast(err.message || '通信エラー', 'error');
+    });
+  }
+
+  function adjustOrderItemQty(orderId, itemId, currentQty, delta) {
+    if (!orderId || !itemId || !delta) return;
+    if (_guardOfflineOrStale()) return;
+    var nextQty = currentQty + delta;
+    if (nextQty < 1) return;
+    var order = findHistoryOrder(orderId);
+    var reason = '';
+    if (order && order.status !== 'pending') {
+      reason = prompt('数量変更の理由を入力してください', '');
+      if (reason === null) return;
+    }
+    apiPatch('/store/order-item-adjust.php', {
+      store_id: _storeId,
+      order_id: orderId,
+      item_id: itemId,
+      qty: nextQty,
+      reason: reason ? reason.trim() : null
+    }).then(function (json) {
+      if (!json.ok) { toast(apiErrorMsg(json), 'error'); return; }
+      toast('数量を変更しました', 'success');
+      loadHistory();
+      loadQuickOrderHints();
+      loadCompactTableContext();
+    }).catch(function (err) {
+      toast(err.message || '通信エラー', 'error');
+    });
+  }
+
+  function undoServedItem(itemId) {
+    if (!itemId) return;
+    if (_guardOfflineOrStale()) return;
+    if (!confirm('配膳完了を取り消して、提供待ちに戻しますか？')) return;
+    apiPatch('/kds/update-item-status.php', {
+      store_id: _storeId,
+      item_id: itemId,
+      status: 'ready',
+      reason: '配膳完了の取り消し'
+    }).then(function (json) {
+      if (!json.ok) { toast(apiErrorMsg(json), 'error'); return; }
+      toast('提供待ちに戻しました', 'success');
+      if (_currentTab === 'history') loadHistory();
+      if (_currentTab === 'ops') loadOperationsBoard();
+      loadCompactTableContext();
+    }).catch(function (err) {
+      toast(err.message || '通信エラー', 'error');
+    });
   }
 
   // ==== Edit mode ====
@@ -1083,11 +1754,13 @@ var HandyApp = (function () {
 
   var TABLE_STATUS = {
     empty:          { color: '#43a047', label: '空き' },
+    qr_open:        { color: '#00acc1', label: 'QR開放中' },
     seated:         { color: '#1e88e5', label: '着席' },
     no_order:       { color: '#ff9800', label: '未注文' },
     eating:         { color: '#1565c0', label: '食事中' },
     bill_requested: { color: '#e53935', label: '会計待ち' },
-    overtime:       { color: '#e65100', label: '時間超過' }
+    overtime:       { color: '#e65100', label: '時間超過' },
+    cleaning:       { color: '#6d4c41', label: '清掃待ち' }
   };
 
   function loadTableStatus() {
@@ -1168,6 +1841,15 @@ var HandyApp = (function () {
             html += '<div class="ts-card__detail ts-card__detail--warn">' + Math.abs(remain) + '分超過</div>';
           }
         }
+      } else if (t.qrOpen) {
+        html += '<div class="ts-card__detail">QR読込待ち</div>';
+        html += '<div class="ts-card__detail ts-card__detail--muted">残り' + Math.ceil((t.qrOpen.remainingSec || 0) / 60) + '分</div>';
+        if (t.qrOpen.openedByName) {
+          html += '<div class="ts-card__detail ts-card__detail--muted">開放: ' + Utils.escapeHtml(t.qrOpen.openedByName) + '</div>';
+        }
+      }
+      if (t.session && t.session.status === 'bill_requested') {
+        html += '<div class="ts-card__detail ts-card__detail--warn">セルフ追加注文停止中</div>';
       }
       // コースありの場合
       if (t.session && t.session.courseName && t.session.coursePrice) {
@@ -1189,6 +1871,7 @@ var HandyApp = (function () {
       } else if (t.orders && t.orders.orderCount > 0) {
         // 通常テーブル: 注文合計を表示
         html += '<div class="ts-card__detail">' + t.orders.orderCount + '件の注文</div>';
+        html += '<div class="ts-card__detail ts-card__detail--muted">' + getOrderSourceLabel(t.orders) + '</div>';
         html += '<div class="ts-card__amount">¥' + t.orders.totalAmount.toLocaleString() + '</div>';
       }
 
@@ -1217,17 +1900,27 @@ var HandyApp = (function () {
 
       // L-9: 当日の予約バッジ表示 (テーブルに紐付く未着席の予約)
       var rsvForTable = _todayReservationsByTable[t.id] || [];
+      var nextRsv = null;
+      if (rsvForTable.length) {
+        nextRsv = rsvForTable.find(function (r) { return r.status === 'confirmed' || r.status === 'pending'; });
+      }
       // 着席中はバッジ表示せず (現在のセッションが優先)
-      if (!t.session && rsvForTable.length) {
-        var nextRsv = rsvForTable.find(function (r) { return r.status === 'confirmed' || r.status === 'pending'; });
-        if (nextRsv) {
-          var when = nextRsv.reserved_at.substring(11, 16);
-          html += '<div style="background:#e3f2fd;border-left:3px solid #1976d2;padding:6px 8px;margin-top:6px;border-radius:4px;font-size:0.8rem;">';
-          html += '📅 <strong>' + when + '</strong> ' + Utils.escapeHtml(nextRsv.customer_name) + ' (' + nextRsv.party_size + '名)';
-          if (nextRsv.tags && nextRsv.tags.indexOf('VIP') !== -1) html += ' ★VIP';
-          if (nextRsv.memo) html += '<div style="font-size:0.7rem;color:#555;margin-top:2px;">📝 ' + Utils.escapeHtml(nextRsv.memo) + '</div>';
-          html += '</div>';
+      if (!t.session && nextRsv) {
+        var when = nextRsv.reserved_at.substring(11, 16);
+        html += '<div class="ts-card__reservation">';
+        html += '<strong>' + when + '</strong> ' + Utils.escapeHtml(nextRsv.customer_name) + ' (' + nextRsv.party_size + '名)';
+        if (nextRsv.tags && nextRsv.tags.indexOf('VIP') !== -1) html += ' VIP';
+        if (nextRsv.memo) html += '<div>' + Utils.escapeHtml(nextRsv.memo) + '</div>';
+        html += '</div>';
+      }
+
+      var attention = buildAttentionChips(t, nextRsv);
+      if (attention.length > 0) {
+        html += '<div class="table-attention-strip table-attention-strip--card">';
+        for (var ac = 0; ac < attention.length; ac++) {
+          html += '<span class="table-attention-chip table-attention-chip--' + attention[ac].level + '">' + Utils.escapeHtml(attention[ac].text) + '</span>';
         }
+        html += '</div>';
       }
 
       // S6: PIN表示
@@ -1237,14 +1930,13 @@ var HandyApp = (function () {
 
       if (!t.session && (!t.orders || t.orders.orderCount === 0)) {
         html += '<div class="ts-card__detail ts-card__detail--muted">' + t.capacity + '席</div>';
-        html += '<button class="ts-card__seat-btn" data-table-id="' + t.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '">着席</button>';
-        html += '<button class="ts-card__open-btn" data-table-id="' + t.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="margin-top:4px;background:#43a047;color:#fff;border:none;padding:0.5rem;border-radius:6px;cursor:pointer;width:100%;font-size:0.85rem;">📲 QR開放 (5分)</button>';
       }
-      if (t.session) {
-        html += '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">';
-        html += '<button class="ts-card__memo-btn" data-session-id="' + t.session.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="flex:1;min-width:0;font-size:0.85rem;padding:0.5rem;border:1px solid #90a4ae;border-radius:6px;background:#455a64;color:#fff;cursor:pointer">メモ編集</button>';
-        html += '<button class="ts-card__sub-qr-btn" data-session-id="' + t.session.id + '" data-table-id="' + t.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="flex:1;min-width:0;font-size:0.85rem;padding:0.5rem;border:1px solid #ff6f00;border-radius:6px;background:#ff6f00;color:#fff;cursor:pointer">個別QR</button>';
-        html += '<button class="ts-card__cancel-btn" data-session-id="' + t.session.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '" style="flex:1;min-width:0">着席キャンセル</button>';
+
+      html += renderTableActionButtons(t, nextRsv, false);
+
+      if (t.session && t.session.status !== 'cleaning') {
+        html += '<div class="table-secondary-actions">';
+        html += '<button class="ts-card__cancel-btn" data-session-id="' + t.session.id + '" data-table-code="' + Utils.escapeHtml(t.tableCode) + '">着席キャンセル</button>';
         html += '</div>';
         // Batch-X: plan / course なし + プラン登録あり → 「プラン開始」ボタン
         if (!t.session.planName && !t.session.courseName && _timeLimitPlans && _timeLimitPlans.length > 0) {
@@ -1262,6 +1954,7 @@ var HandyApp = (function () {
     // セッションがあればその状態を優先
     if (t.session) {
       var s = t.session.status;
+      if (s === 'cleaning') return 'cleaning';
       if (s === 'bill_requested') return 'bill_requested';
       if (t.session.timeLimitMin && t.session.elapsedMin > t.session.timeLimitMin) return 'overtime';
       // O-1: 着席済みだが注文ゼロ → 未注文
@@ -1270,9 +1963,770 @@ var HandyApp = (function () {
       if (s === 'seated') return 'seated';
       return 'eating';
     }
+    if (t.qrOpen) return 'qr_open';
     // セッションなし → 未会計注文があれば食事中
     if (t.orders && t.orders.orderCount > 0) return 'eating';
     return 'empty';
+  }
+
+  function getOrderSourceLabel(orders) {
+    if (!orders) return '注文なし';
+    var selfCount = parseInt(orders.selfOrderCount, 10) || 0;
+    var handyCount = parseInt(orders.handyOrderCount, 10) || 0;
+    if (selfCount > 0 && handyCount > 0) return 'セルフ+ハンディ';
+    if (selfCount > 0) return 'セルフ注文';
+    if (handyCount > 0) return 'ハンディ注文';
+    return '注文あり';
+  }
+
+  function loadCompactTableContext() {
+    if (!_storeId) return;
+    var today = ymdLocal(new Date());
+    Promise.all([
+      apiFetch('/store/tables-status.php?store_id=' + encodeURIComponent(_storeId)),
+      apiFetch('/store/reservations.php?store_id=' + encodeURIComponent(_storeId) + '&date=' + today).catch(function () { return { ok: true, data: { reservations: [] } }; })
+    ]).then(function (results) {
+      if (results[0] && results[0].ok) {
+        _lastTableData = results[0].data.tables || [];
+      }
+      if (results[1] && results[1].ok) {
+        cacheReservationsByTable(results[1].data.reservations || []);
+      }
+      renderSelectedTablePanel();
+      renderQuickOrderPanel();
+    }).catch(function () {
+      // 注文入力は止めない
+    });
+  }
+
+  function cacheReservationsByTable(reservations) {
+    _todayReservationsByTable = {};
+    var nowTs = Date.now();
+    for (var i = 0; i < reservations.length; i++) {
+      var r = reservations[i];
+      if (r.status === 'cancelled' || r.status === 'no_show' || r.status === 'completed') continue;
+      var rTs = new Date(String(r.reserved_at || '').replace(' ', 'T')).getTime();
+      if (rTs && rTs < nowTs - 3 * 3600 * 1000) continue;
+      var tids = r.assigned_table_ids || [];
+      for (var j = 0; j < tids.length; j++) {
+        if (!_todayReservationsByTable[tids[j]]) _todayReservationsByTable[tids[j]] = [];
+        _todayReservationsByTable[tids[j]].push(r);
+      }
+    }
+    Object.keys(_todayReservationsByTable).forEach(function (tid) {
+      _todayReservationsByTable[tid].sort(function (a, b) { return String(a.reserved_at).localeCompare(String(b.reserved_at)); });
+    });
+  }
+
+  function findTableStatus(tableId) {
+    for (var i = 0; i < _lastTableData.length; i++) {
+      if (String(_lastTableData[i].id) === String(tableId)) return _lastTableData[i];
+    }
+    for (var j = 0; j < _tables.length; j++) {
+      if (String(_tables[j].id) === String(tableId)) {
+        return {
+          id: _tables[j].id,
+          tableCode: _tables[j].table_code,
+          capacity: parseInt(_tables[j].capacity, 10) || 0,
+          session: null,
+          orders: null,
+          itemStatus: null
+        };
+      }
+    }
+    return null;
+  }
+
+  function getNextReservationForTable(tableId) {
+    var list = _todayReservationsByTable[tableId] || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].status === 'confirmed' || list[i].status === 'pending' || list[i].status === 'seated') return list[i];
+    }
+    return null;
+  }
+
+  function renderSelectedTablePanel() {
+    if (!els.selectedTablePanel) return;
+    var tableId = els.tableSel ? els.tableSel.value : '';
+    if (!tableId || _mode !== 'dinein') {
+      els.selectedTablePanel.style.display = 'none';
+      els.selectedTablePanel.innerHTML = '';
+      return;
+    }
+
+    var t = findTableStatus(tableId);
+    if (!t) {
+      els.selectedTablePanel.style.display = 'none';
+      return;
+    }
+
+    var st = getTableDisplayStatus(t);
+    var status = TABLE_STATUS[st] || TABLE_STATUS.empty;
+    var session = t.session || null;
+    var rsv = getNextReservationForTable(tableId);
+    var html = '';
+
+    html += '<div class="table-action-panel__head">';
+    html += '<div><strong>' + Utils.escapeHtml(t.tableCode || '-') + '</strong>';
+    html += '<span class="table-action-panel__status" style="background:' + status.color + '">' + status.label + '</span></div>';
+    html += '<div class="table-action-panel__sub">';
+    if (session && session.guestCount) html += session.guestCount + '名 / ';
+    if (session && session.elapsedMin !== undefined) html += session.elapsedMin + '分経過 / ';
+    if (t.qrOpen && !session) html += 'QR読込待ち 残り' + Math.ceil((t.qrOpen.remainingSec || 0) / 60) + '分 / ';
+    if (t.orders && t.orders.orderCount) html += t.orders.orderCount + '件 ' + Utils.formatYen(t.orders.totalAmount || 0) + ' / ' + getOrderSourceLabel(t.orders);
+    else html += '注文なし';
+    html += '</div></div>';
+
+    if (session && session.status === 'bill_requested') {
+      html += '<div class="table-action-panel__notice">セルフ追加注文は停止中です。追加注文は会計解除後に受けてください。</div>';
+    } else if (t.qrOpen && !session && t.qrOpen.openedByName) {
+      html += '<div class="table-action-panel__notice">QR開放: ' + Utils.escapeHtml(t.qrOpen.openedByName) + '</div>';
+    }
+
+    var attention = buildAttentionChips(t, rsv);
+    if (attention.length > 0) {
+      html += '<div class="table-attention-strip">';
+      for (var i = 0; i < attention.length; i++) {
+        html += '<span class="table-attention-chip table-attention-chip--' + attention[i].level + '">' + Utils.escapeHtml(attention[i].text) + '</span>';
+      }
+      html += '</div>';
+    }
+
+    html += renderTableActionButtons(t, rsv, true);
+    els.selectedTablePanel.innerHTML = html;
+    els.selectedTablePanel.style.display = '';
+  }
+
+  function buildAttentionChips(t, rsv) {
+    var chips = [];
+    function add(text, level) {
+      for (var i = 0; i < chips.length; i++) {
+        if (chips[i].text === text) return;
+      }
+      chips.push({ text: text, level: level || 'info' });
+    }
+    var memo = '';
+    if (t && t.session && t.session.memo) memo += ' ' + t.session.memo;
+    if (rsv) {
+      if (rsv.memo) memo += ' ' + rsv.memo;
+      if (rsv.customer_internal_memo) memo += ' ' + rsv.customer_internal_memo;
+      if (rsv.customer_preferences) memo += ' ' + rsv.customer_preferences;
+      if (rsv.customer_tags) memo += ' ' + rsv.customer_tags;
+      if (rsv.tags) memo += ' ' + rsv.tags;
+      if (rsv.customer_allergies) add('アレルギー: ' + rsv.customer_allergies, 'danger');
+      if (parseInt(rsv.customer_is_vip, 10) === 1) add('VIP', 'vip');
+      if (parseInt(rsv.customer_is_blacklisted, 10) === 1) add('要注意客', 'danger');
+      if (rsv.customer_visit_count && parseInt(rsv.customer_visit_count, 10) >= 5) add('再来店 ' + rsv.customer_visit_count + '回', 'info');
+    }
+    if (/アレル|卵|乳|小麦|そば|落花生|えび|かに|甲殻|ナッツ/.test(memo)) add('アレルギー注意', 'danger');
+    if (/VIP|常連|上客/.test(memo)) add('VIP', 'vip');
+    if (/子連れ|お子|ベビ|乳児|幼児/.test(memo)) add('子連れ', 'warn');
+    if (/誕生日|記念日|お祝い|バースデ/.test(memo)) add('誕生日/記念日', 'info');
+    if (memo.trim()) add('メモあり', 'memo');
+    return chips.slice(0, 6);
+  }
+
+  function renderTableActionButtons(t, rsv, compact) {
+    var session = t.session || null;
+    var tableCode = Utils.escapeHtml(t.tableCode || '');
+    var tableId = Utils.escapeHtml(t.id || '');
+    var sessionId = session ? Utils.escapeHtml(session.id) : '';
+    var guestCount = session && session.guestCount ? session.guestCount : 2;
+    var html = '<div class="' + (compact ? 'table-action-buttons table-action-buttons--compact' : 'table-action-buttons') + '">';
+
+    if ((!session || (session.status !== 'cleaning' && session.status !== 'bill_requested')) && !t.qrOpen) {
+      html += '<button type="button" data-table-action="order" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">注文</button>';
+    }
+    if (session && session.status === 'cleaning') {
+      html += '<button type="button" data-table-action="clean-done" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">清掃完了</button>';
+    } else if (session) {
+      if (session.status === 'bill_requested') {
+        html += '<button type="button" data-table-action="bill-undo" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">会計解除</button>';
+      } else {
+        html += '<button type="button" data-table-action="bill" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">会計呼び出し</button>';
+      }
+      html += '<button type="button" data-table-action="qr" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">QR表示</button>';
+      html += '<button type="button" data-table-action="memo" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">メモ</button>';
+      html += '<button type="button" data-table-action="guests" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '" data-guest-count="' + guestCount + '">人数</button>';
+      html += '<button type="button" data-table-action="move" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">席移動</button>';
+    } else {
+      if (t.qrOpen) {
+        html += '<button type="button" data-table-action="qr-cancel" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">QR取消</button>';
+        html += '<button type="button" data-table-action="qr-reissue" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">QR再発行</button>';
+      } else if (rsv && (rsv.status === 'confirmed' || rsv.status === 'pending')) {
+        html += '<button type="button" data-table-action="reservation-seat" data-rsv-id="' + Utils.escapeHtml(rsv.id) + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">予約着席</button>';
+      } else {
+        html += '<button type="button" data-table-action="seat" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">着席</button>';
+      }
+      if (!t.qrOpen) {
+        html += '<button type="button" data-table-action="qr-open" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">QR開放</button>';
+      }
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function handleTableAction(btn) {
+    var action = btn.getAttribute('data-table-action');
+    var tableId = btn.getAttribute('data-table-id') || '';
+    var tableCode = btn.getAttribute('data-table-code') || '';
+    var sessionId = btn.getAttribute('data-session-id') || '';
+    if (action === 'order') {
+      if (tableId) {
+        switchTab('dinein');
+        els.tableSel.value = tableId;
+        renderSelectedTablePanel();
+        renderQuickOrderPanel();
+      }
+      try { els.menuGrid.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+      return;
+    }
+    if (action === 'seat') {
+      openSeatModal(tableId, tableCode);
+      return;
+    }
+    if (action === 'reservation-seat') {
+      seatReservationFromHandy(btn.getAttribute('data-rsv-id'));
+      return;
+    }
+    if (action === 'qr-open') {
+      openTableForCustomer(tableId, tableCode);
+      return;
+    }
+    if (action === 'qr-cancel') {
+      cancelTableQr(tableId, tableCode);
+      return;
+    }
+    if (action === 'qr-reissue') {
+      reissueTableQr(tableId, tableCode);
+      return;
+    }
+    if (action === 'qr') {
+      if (!sessionId) { openTableForCustomer(tableId, tableCode); return; }
+      _openSubQrModal(sessionId, tableId, tableCode);
+      return;
+    }
+    if (action === 'memo') {
+      var currentMemo = '';
+      var t = findTableStatus(tableId);
+      if (t && t.session) currentMemo = t.session.memo || '';
+      openMemoModal(sessionId, tableCode, currentMemo);
+      return;
+    }
+    if (action === 'guests') {
+      openGuestCountModal(sessionId, tableCode, parseInt(btn.getAttribute('data-guest-count'), 10) || 1);
+      return;
+    }
+    if (action === 'bill') {
+      requestBillForSession(sessionId, tableCode);
+      return;
+    }
+    if (action === 'bill-undo') {
+      undoBillForSession(sessionId, tableCode);
+      return;
+    }
+    if (action === 'move') {
+      openTableMoveModal(sessionId, tableId, tableCode);
+      return;
+    }
+    if (action === 'clean-done') {
+      completeCleaningSession(sessionId, tableCode);
+    }
+  }
+
+  function refreshTableSurfaces() {
+    loadCompactTableContext();
+    if (_currentTab === 'tables') loadTableStatus();
+    if (_currentTab === 'ops') loadOperationsBoard();
+  }
+
+  function cancelTableQr(tableId, tableCode) {
+    if (!tableId) return;
+    if (_guardOfflineOrStale()) return;
+    if (!confirm(tableCode + ' のQR開放を取り消しますか？')) return;
+    apiFetch('/store/table-open.php?store_id=' + encodeURIComponent(_storeId) + '&table_id=' + encodeURIComponent(tableId), {
+      method: 'DELETE'
+    }).then(function (json) {
+      if (!json.ok) { toast(apiErrorMsg(json), 'error'); return; }
+      toast('QR開放を取り消しました', 'success');
+      refreshTableSurfaces();
+    }).catch(function (err) {
+      toast(err.message || '通信エラー', 'error');
+    });
+  }
+
+  function reissueTableQr(tableId, tableCode) {
+    if (!tableId) return;
+    if (_guardOfflineOrStale()) return;
+    apiFetch('/store/table-open.php?store_id=' + encodeURIComponent(_storeId) + '&table_id=' + encodeURIComponent(tableId), {
+      method: 'DELETE'
+    }).then(function (json) {
+      if (!json.ok) { toast(apiErrorMsg(json), 'error'); return; }
+      return apiPost('/store/table-open.php', { store_id: _storeId, table_id: tableId, expires_minutes: 5 });
+    }).then(function (json2) {
+      if (!json2) return;
+      if (!json2.ok) { toast(apiErrorMsg(json2), 'error'); return; }
+      toast(tableCode + ' のQRを再発行しました', 'success');
+      refreshTableSurfaces();
+    }).catch(function (err) {
+      toast(err.message || '通信エラー', 'error');
+    });
+  }
+
+  function completeCleaningSession(sessionId, tableCode) {
+    if (!sessionId) { toast('対象セッションがありません', 'error'); return; }
+    if (_guardOfflineOrStale()) return;
+    if (!confirm(tableCode + ' を清掃完了にして空席に戻しますか？')) return;
+    apiPatch('/store/table-sessions.php?id=' + encodeURIComponent(sessionId), {
+      store_id: _storeId,
+      status: 'closed'
+    }).then(function (json) {
+      if (!json.ok) { toast(apiErrorMsg(json), 'error'); return; }
+      toast(tableCode + ' を空席に戻しました', 'success');
+      refreshTableSurfaces();
+    }).catch(function (err) {
+      toast(err.message || '通信エラー', 'error');
+    });
+  }
+
+  function requestBillForSession(sessionId, tableCode) {
+    if (!sessionId) { toast('着席中の卓ではありません', 'error'); return; }
+    if (_guardOfflineOrStale()) return;
+    if (!confirm(tableCode + ' を会計待ちにしますか？')) return;
+    apiPatch('/store/table-sessions.php?id=' + encodeURIComponent(sessionId), {
+      store_id: _storeId,
+      status: 'bill_requested'
+    }).then(function (json) {
+      if (!json.ok) { toast(apiErrorMsg(json), 'error'); return; }
+      toast(tableCode + ' を会計待ちにしました', 'success');
+      refreshTableSurfaces();
+    }).catch(function (err) {
+      toast(err.message || '通信エラー', 'error');
+    });
+  }
+
+  function undoBillForSession(sessionId, tableCode) {
+    if (!sessionId) { toast('対象セッションがありません', 'error'); return; }
+    if (_guardOfflineOrStale()) return;
+    if (!confirm(tableCode + ' を食事中に戻しますか？')) return;
+    apiPatch('/store/table-sessions.php?id=' + encodeURIComponent(sessionId), {
+      store_id: _storeId,
+      status: 'eating'
+    }).then(function (json) {
+      if (!json.ok) { toast(apiErrorMsg(json), 'error'); return; }
+      toast(tableCode + ' を食事中に戻しました', 'success');
+      refreshTableSurfaces();
+    }).catch(function (err) {
+      toast(err.message || '通信エラー', 'error');
+    });
+  }
+
+  function openTableMoveModal(sessionId, fromTableId, fromTableCode) {
+    if (!sessionId) { toast('対象セッションがありません', 'error'); return; }
+    var options = '';
+    for (var i = 0; i < _lastTableData.length; i++) {
+      var t = _lastTableData[i];
+      if (String(t.id) === String(fromTableId)) continue;
+      if (t.session || t.qrOpen) continue;
+      options += '<option value="' + Utils.escapeHtml(t.id) + '">' + Utils.escapeHtml(t.tableCode || '-') + ' (' + (t.capacity || '-') + '席)</option>';
+    }
+    if (!options) {
+      toast('移動先にできる空席がありません', 'error');
+      return;
+    }
+    els.optTitle.textContent = fromTableCode + ' 席移動';
+    els.optBody.innerHTML =
+      '<div class="opt-group">'
+      + '<div class="opt-group__title">移動先</div>'
+      + '<select id="table-move-target" class="ctx-select" style="width:100%">' + options + '</select>'
+      + '</div>';
+    els.optPrice.textContent = '';
+    els.optAdd.textContent = '移動する';
+    els.optAdd.disabled = false;
+    els.optAdd.style.display = '';
+    els.optOverlay.classList.add('show');
+
+    var newAdd = els.optAdd.cloneNode(true);
+    els.optAdd.parentNode.replaceChild(newAdd, els.optAdd);
+    els.optAdd = newAdd;
+    els.optAdd.addEventListener('click', function () {
+      if (_guardOfflineOrStale()) return;
+      var sel = document.getElementById('table-move-target');
+      var toTableId = sel ? sel.value : '';
+      if (!toTableId) return;
+      els.optAdd.disabled = true;
+      els.optAdd.textContent = '移動中...';
+      apiPost('/store/table-session-move.php', {
+        store_id: _storeId,
+        session_id: sessionId,
+        to_table_id: toTableId
+      }).then(function (json) {
+        if (!json.ok) {
+          toast(apiErrorMsg(json), 'error');
+          els.optAdd.disabled = false;
+          els.optAdd.textContent = '移動する';
+          return;
+        }
+        closeOptionModal();
+        toast((json.data.from_table_code || fromTableCode) + ' から ' + (json.data.to_table_code || '') + ' へ移動しました', 'success');
+        refreshTableSurfaces();
+        loadHistory();
+      }).catch(function (err) {
+        toast(err.message || '通信エラー', 'error');
+        els.optAdd.disabled = false;
+        els.optAdd.textContent = '移動する';
+      });
+    });
+  }
+
+  function openGuestCountModal(sessionId, tableCode, currentCount) {
+    if (!sessionId) { toast('着席中の卓ではありません', 'error'); return; }
+    els.optTitle.textContent = tableCode + ' 人数変更';
+    els.optBody.innerHTML =
+      '<div class="opt-group">'
+      + '<div class="opt-group__title">人数</div>'
+      + '<div class="guest-stepper">'
+      + '<button type="button" id="guest-minus">−</button>'
+      + '<input type="number" id="guest-count-edit" class="ctx-input" min="1" max="99" value="' + currentCount + '">'
+      + '<button type="button" id="guest-plus">+</button>'
+      + '</div>'
+      + '</div>';
+    els.optPrice.textContent = '';
+    els.optAdd.textContent = '人数を保存';
+    els.optAdd.disabled = false;
+    els.optAdd.style.display = '';
+    els.optOverlay.classList.add('show');
+
+    setTimeout(function () {
+      var input = document.getElementById('guest-count-edit');
+      var minus = document.getElementById('guest-minus');
+      var plus = document.getElementById('guest-plus');
+      if (minus) minus.addEventListener('click', function () {
+        var v = Math.max(1, (parseInt(input.value, 10) || 1) - 1);
+        input.value = v;
+      });
+      if (plus) plus.addEventListener('click', function () {
+        var v2 = Math.min(99, (parseInt(input.value, 10) || 1) + 1);
+        input.value = v2;
+      });
+    }, 0);
+
+    var newAdd = els.optAdd.cloneNode(true);
+    els.optAdd.parentNode.replaceChild(newAdd, els.optAdd);
+    els.optAdd = newAdd;
+    els.optAdd.addEventListener('click', function () {
+      if (_guardOfflineOrStale()) return;
+      var input = document.getElementById('guest-count-edit');
+      var guestCount = Math.max(1, parseInt(input.value, 10) || 1);
+      els.optAdd.disabled = true;
+      els.optAdd.textContent = '保存中...';
+      apiPatch('/store/table-sessions.php?id=' + encodeURIComponent(sessionId), {
+        store_id: _storeId,
+        guest_count: guestCount
+      }).then(function (json) {
+        if (!json.ok) {
+          toast(apiErrorMsg(json), 'error');
+          els.optAdd.disabled = false;
+          els.optAdd.textContent = '人数を保存';
+          return;
+        }
+        closeOptionModal();
+        toast(tableCode + ' を' + guestCount + '名に変更しました', 'success');
+        loadCompactTableContext();
+        if (_currentTab === 'tables') loadTableStatus();
+      }).catch(function (err) {
+        toast(err.message || '通信エラー', 'error');
+        els.optAdd.disabled = false;
+        els.optAdd.textContent = '人数を保存';
+      });
+    });
+  }
+
+  // ==== Operations board (壁掛け・運用確認) ====
+  function loadOperationsBoard() {
+    if (!_storeId || !els.panelOps) return;
+    loadPendingOrders();
+    Promise.all([
+      apiFetch('/store/tables-status.php?store_id=' + encodeURIComponent(_storeId)).catch(function () { return { ok: false, data: { tables: [] } }; }),
+      apiFetch('/kds/call-alerts.php?store_id=' + encodeURIComponent(_storeId)).catch(function () { return { ok: true, data: { alerts: [] } }; }),
+      apiFetch('/store/handy-ops-log.php?store_id=' + encodeURIComponent(_storeId)).catch(function () { return { ok: true, data: { logs: [] } }; })
+    ]).then(function (results) {
+      if (results[0] && results[0].ok) {
+        _lastTableData = results[0].data.tables || [];
+      }
+      _opsAlerts = (results[1] && results[1].ok && results[1].data.alerts) ? results[1].data.alerts : [];
+      _opsLogs = (results[2] && results[2].ok && results[2].data.logs) ? results[2].data.logs : [];
+      renderOperationsBoard();
+    }).catch(function () {
+      renderOperationsBoardError();
+    });
+  }
+
+  function renderOperationsBoardError() {
+    if (els.opsTasks) {
+      els.opsTasks.innerHTML = '<div class="ops-empty ops-empty--warn">運用情報を更新できませんでした</div>';
+    }
+  }
+
+  function getOpsBuckets() {
+    var buckets = {
+      qrOpen: [],
+      bill: [],
+      overtime: [],
+      noOrder: [],
+      cleaning: [],
+      occupied: 0,
+      empty: 0
+    };
+    for (var i = 0; i < _lastTableData.length; i++) {
+      var t = _lastTableData[i];
+      var st = getTableDisplayStatus(t);
+      if (!t.session) buckets.empty++;
+      else buckets.occupied++;
+      if (st === 'qr_open') buckets.qrOpen.push(t);
+      if (st === 'bill_requested') buckets.bill.push(t);
+      if (st === 'overtime') buckets.overtime.push(t);
+      if (st === 'no_order') buckets.noOrder.push(t);
+      if (st === 'cleaning') buckets.cleaning.push(t);
+    }
+    return buckets;
+  }
+
+  function countAlertsByType(type) {
+    var count = 0;
+    for (var i = 0; i < _opsAlerts.length; i++) {
+      if ((_opsAlerts[i].type || 'staff_call') === type) count++;
+    }
+    return count;
+  }
+
+  function renderOperationsBoard() {
+    if (!els.opsSummary || !els.opsTasks || !els.opsAlerts || !els.opsTableGrid) return;
+    var buckets = getOpsBuckets();
+    var readyCount = countAlertsByType('product_ready');
+    var kitchenCount = countAlertsByType('kitchen_call');
+    var callCount = _opsAlerts.length - readyCount - kitchenCount;
+
+    els.opsSummary.innerHTML =
+      renderOpsSummaryCard('未送信', _pendingOrders.length, 'pending', 'data-ops-pending="1"') +
+      renderOpsSummaryCard('QR開放中', buckets.qrOpen.length, 'qr-open', '') +
+      renderOpsSummaryCard('料理完成', readyCount, 'ready', '') +
+      renderOpsSummaryCard('呼び出し', callCount + kitchenCount, 'call', '') +
+      renderOpsSummaryCard('会計待ち', buckets.bill.length, 'bill', '') +
+      renderOpsSummaryCard('清掃待ち', buckets.cleaning.length, 'cleaning', '') +
+      renderOpsSummaryCard('時間超過', buckets.overtime.length, 'overtime', '') +
+      renderOpsSummaryCard('未注文', buckets.noOrder.length, 'no-order', '');
+
+    renderOperationAlerts();
+    renderOperationTasks(buckets);
+    renderOperationLog();
+    renderOperationTableGrid();
+  }
+
+  function renderOpsSummaryCard(label, count, level, attrs) {
+    var dangerClass = count > 0 ? ' ops-summary-card--' + level : '';
+    return '<button type="button" class="ops-summary-card' + dangerClass + '" ' + attrs + '>'
+      + '<span>' + Utils.escapeHtml(label) + '</span>'
+      + '<strong>' + count + '</strong>'
+      + '</button>';
+  }
+
+  function formatElapsed(seconds) {
+    seconds = parseInt(seconds, 10) || 0;
+    if (seconds < 60) return seconds + '秒前';
+    if (seconds < 3600) return Math.floor(seconds / 60) + '分前';
+    return Math.floor(seconds / 3600) + '時間前';
+  }
+
+  function isOpsAlertEscalated(alert) {
+    var type = alert.type || 'staff_call';
+    var elapsed = parseInt(alert.elapsed_seconds, 10) || 0;
+    if (type === 'product_ready') return elapsed >= 300;
+    return elapsed >= 180;
+  }
+
+  function renderOperationAlerts() {
+    if (_opsAlerts.length === 0) {
+      els.opsAlerts.innerHTML = '<div class="ops-empty">KDS通知はありません</div>';
+      return;
+    }
+    var html = '<div class="ops-board__section-title">KDS通知</div>';
+    for (var i = 0; i < _opsAlerts.length; i++) {
+      var a = _opsAlerts[i];
+      var type = a.type || 'staff_call';
+      var label = type === 'product_ready' ? '料理完成' : (type === 'kitchen_call' ? '厨房呼出' : '客席呼出');
+      var cardClass = type === 'product_ready' ? ' ops-alert-card--ready' : (type === 'kitchen_call' ? ' ops-alert-card--kitchen' : '');
+      var text = type === 'product_ready'
+        ? (a.item_name || a.reason || '商品完成')
+        : (a.reason || '呼び出し');
+      var ackLabel = type === 'product_ready' ? '配膳完了' : '対応済み';
+      var isProgress = a.status === 'in_progress';
+      var escalated = isOpsAlertEscalated(a);
+      html += '<div class="ops-alert-card' + cardClass + (isProgress ? ' ops-alert-card--progress' : '') + (escalated ? ' ops-alert-card--escalated' : '') + '">';
+      html += '<div><span class="ops-alert-card__type">' + label + '</span>';
+      html += '<strong>' + Utils.escapeHtml(a.table_code || '-') + '</strong>';
+      html += '<p>' + Utils.escapeHtml(text) + '</p>';
+      html += '<small>' + formatElapsed(a.elapsed_seconds);
+      if (escalated) html += ' / 要確認';
+      if (isProgress) html += ' / 対応中' + (a.in_progress_by_name ? ': ' + Utils.escapeHtml(a.in_progress_by_name) : '');
+      html += '</small></div>';
+      html += '<div class="ops-alert-card__actions">';
+      if (!isProgress) {
+        html += '<button type="button" data-ops-start-alert="' + Utils.escapeHtml(a.id) + '">対応開始</button>';
+      }
+      html += '<button type="button" data-ops-ack-alert="' + Utils.escapeHtml(a.id) + '">' + ackLabel + '</button>';
+      html += '</div>';
+      html += '</div>';
+    }
+    els.opsAlerts.innerHTML = html;
+  }
+
+  function renderOperationTasks(buckets) {
+    var html = '<div class="ops-board__section-title">次にやること</div>';
+    var count = 0;
+
+    if (_pendingOrders.length > 0) {
+      html += renderOperationTask('未送信注文を再送してください', _pendingOrders.length + '件', 'pending', 'data-ops-pending="1"');
+      count++;
+    }
+    html += renderTableTaskList(buckets.qrOpen, 'QR開放後の読込待ち', 'qr-open');
+    html += renderTableTaskList(buckets.bill, '会計待ちの卓をレジへ案内', 'bill');
+    html += renderTableTaskList(buckets.cleaning, '会計済みの卓を清掃', 'cleaning');
+    html += renderTableTaskList(buckets.overtime, '時間超過の卓を確認', 'overtime');
+    html += renderTableTaskList(buckets.noOrder, '着席後まだ注文がない卓', 'no-order');
+    count += buckets.qrOpen.length + buckets.bill.length + buckets.cleaning.length + buckets.overtime.length + buckets.noOrder.length;
+
+    if (count === 0 && _opsAlerts.length === 0) {
+      html += '<div class="ops-empty ops-empty--ok">今すぐ対応が必要な項目はありません</div>';
+    }
+    els.opsTasks.innerHTML = html;
+  }
+
+  function renderTableTaskList(list, title, level) {
+    var html = '';
+    for (var i = 0; i < list.length; i++) {
+      var t = list[i];
+      var detail = '';
+      if (t.qrOpen) detail += '残り' + Math.ceil((t.qrOpen.remainingSec || 0) / 60) + '分';
+      if (t.session && t.session.elapsedMin !== undefined) detail += t.session.elapsedMin + '分経過';
+      var escalated = isTableTaskEscalated(t, level);
+      if (escalated) detail += (detail ? ' / ' : '') + '要確認';
+      if (t.orders && t.orders.orderCount) {
+        detail += (detail ? ' / ' : '') + t.orders.orderCount + '件 ' + Utils.formatYen(t.orders.totalAmount || 0);
+      }
+      html += renderOperationTask(title, (t.tableCode || '-') + (detail ? ' / ' + detail : ''), level, 'data-ops-open-table="' + Utils.escapeHtml(t.id) + '"', escalated);
+    }
+    return html;
+  }
+
+  function isTableTaskEscalated(t, level) {
+    if (level === 'bill') {
+      return t.session && t.session.statusChangedAt && (parseInt(t.session.statusElapsedSec, 10) || 0) >= 300;
+    }
+    if (level === 'cleaning') {
+      return t.session && t.session.statusChangedAt && (parseInt(t.session.statusElapsedSec, 10) || 0) >= 600;
+    }
+    return false;
+  }
+
+  function renderOperationTask(title, detail, level, attrs, escalated) {
+    return '<button type="button" class="ops-task ops-task--' + level + (escalated ? ' ops-task--escalated' : '') + '" ' + attrs + '>'
+      + '<span>' + Utils.escapeHtml(title) + '</span>'
+      + '<strong>' + Utils.escapeHtml(detail) + '</strong>'
+      + '</button>';
+  }
+
+  function renderOperationLog() {
+    if (!els.opsLog) return;
+    if (!_opsLogs || _opsLogs.length === 0) {
+      els.opsLog.innerHTML = '';
+      return;
+    }
+    var html = '<div class="ops-board__section-title">担当ログ</div>';
+    html += '<div class="ops-log-list">';
+    var max = _terminalMode === 'wall' ? 6 : 10;
+    for (var i = 0; i < _opsLogs.length && i < max; i++) {
+      var log = _opsLogs[i];
+      html += '<div class="ops-log-row">';
+      html += '<div><strong>' + Utils.escapeHtml(log.title || log.action) + '</strong>';
+      html += '<span>' + Utils.escapeHtml(log.detail || '') + '</span></div>';
+      html += '<small>' + Utils.escapeHtml(log.username || '-') + ' / ' + formatElapsed(log.elapsed_seconds) + '</small>';
+      if (log.can_undo_served && log.order_item_id) {
+        html += '<button type="button" data-ops-undo-served="' + Utils.escapeHtml(log.order_item_id) + '">配膳取消</button>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+    els.opsLog.innerHTML = html;
+  }
+
+  function renderOperationTableGrid() {
+    if (_lastTableData.length === 0) {
+      els.opsTableGrid.innerHTML = '<div class="ops-empty">テーブルが登録されていません</div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < _lastTableData.length; i++) {
+      var t = _lastTableData[i];
+      var st = getTableDisplayStatus(t);
+      var s = TABLE_STATUS[st] || TABLE_STATUS.empty;
+      var escalated = isTableTaskEscalated(t, st === 'bill_requested' ? 'bill' : st);
+      html += '<div class="ops-table-card ops-table-card--' + st + (escalated ? ' ops-table-card--escalated' : '') + '" style="border-left-color:' + s.color + '">';
+      html += '<div class="ops-table-card__top"><strong>' + Utils.escapeHtml(t.tableCode || '-') + '</strong>';
+      html += '<span style="background:' + s.color + '">' + Utils.escapeHtml(s.label) + '</span></div>';
+      if (t.session) {
+        html += '<div class="ops-table-card__meta">';
+        if (t.session.guestCount) html += t.session.guestCount + '名 / ';
+        if (t.session.elapsedMin !== undefined) html += t.session.elapsedMin + '分';
+        if (t.session.status === 'bill_requested' && t.session.statusElapsedSec) html += ' / 会計待ち' + formatElapsed(t.session.statusElapsedSec);
+        if (t.orders && t.orders.orderCount) html += ' / ' + t.orders.orderCount + '件';
+        html += '</div>';
+      } else if (t.qrOpen) {
+        html += '<div class="ops-table-card__meta">QR読込待ち / 残り' + Math.ceil((t.qrOpen.remainingSec || 0) / 60) + '分</div>';
+        if (t.qrOpen.openedByName) html += '<div class="ops-table-card__meta">開放: ' + Utils.escapeHtml(t.qrOpen.openedByName) + '</div>';
+      } else {
+        html += '<div class="ops-table-card__meta">空き / ' + (t.capacity || '-') + '席</div>';
+      }
+      html += renderTableActionButtons(t, null, true);
+      html += '</div>';
+    }
+    els.opsTableGrid.innerHTML = html;
+  }
+
+  function startOperationAlert(alertId) {
+    if (!alertId) return;
+    if (_guardOfflineOrStale()) return;
+    apiPatch('/kds/call-alerts.php', {
+      alert_id: alertId,
+      status: 'in_progress'
+    }).then(function (json) {
+      if (!json.ok) { toast(apiErrorMsg(json), 'error'); return; }
+      toast('対応中にしました', 'success');
+      if (typeof RevisionGate !== 'undefined') {
+        RevisionGate.invalidate('call_alerts', _storeId);
+      }
+      loadOperationsBoard();
+    }).catch(function (err) {
+      toast(err.message || '通信エラー', 'error');
+    });
+  }
+
+  function acknowledgeOperationAlert(alertId) {
+    if (!alertId) return;
+    if (_guardOfflineOrStale()) return;
+    apiPatch('/kds/call-alerts.php', {
+      alert_id: alertId,
+      status: 'acknowledged'
+    }).then(function (json) {
+      if (!json.ok) { toast(apiErrorMsg(json), 'error'); return; }
+      toast('対応済みにしました', 'success');
+      if (typeof RevisionGate !== 'undefined') {
+        RevisionGate.invalidate('call_alerts', _storeId);
+      }
+      loadOperationsBoard();
+    }).catch(function (err) {
+      toast(err.message || '通信エラー', 'error');
+    });
   }
 
   // ==== Seat modal (着席) ====
@@ -1750,6 +3204,7 @@ var HandyApp = (function () {
         if (j.ok) {
           showToast('テーブル ' + tableCode + ' を開放しました (5分有効)', 4000);
           loadTables();
+          refreshTableSurfaces();
         } else {
           var msg = apiErrorMsg(j);
           if (j.error && j.error.code === 'TABLE_IN_USE') msg = 'テーブルは既に使用中です';
@@ -2046,7 +3501,7 @@ var HandyApp = (function () {
     els.optTitle.textContent = tableCode + ' 個別QR発行';
     els.optBody.innerHTML = '<div style="text-align:center;padding:1rem"><p style="color:#aaa">読み込み中...</p></div>';
     els.optAdd.style.display = 'none';
-    els.optOverlay.classList.add('open');
+    els.optOverlay.classList.add('show');
 
     // 既存サブセッション一覧を取得
     apiFetch('/store/sub-sessions.php?store_id=' + encodeURIComponent(_storeId) + '&table_session_id=' + encodeURIComponent(sessionId))

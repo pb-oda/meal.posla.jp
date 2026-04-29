@@ -13,6 +13,7 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/push.php';
+require_once __DIR__ . '/../lib/audit-log.php';
 
 $method = require_method(['GET', 'PATCH', 'POST']);
 $user = require_auth();
@@ -36,18 +37,21 @@ if ($method === 'GET') {
             $hasTypeCol = true;
         } catch (PDOException $e) {}
 
-        $selectCols = 'id, table_code, reason, created_at';
+        $selectCols = 'id, table_code, reason, status, created_at';
         if ($hasTypeCol) {
             $selectCols .= ', type, order_item_id, item_name';
+        }
+        if (call_alerts_has_column($pdo, 'in_progress_by_name')) {
+            $selectCols .= ', in_progress_by_name, acknowledged_by_name';
         }
 
         $stmt = $pdo->prepare(
             'SELECT ' . $selectCols . '
              FROM call_alerts
-             WHERE store_id = ? AND status = ?
+             WHERE store_id = ? AND status IN ("pending", "in_progress")
              ORDER BY created_at ASC'
         );
-        $stmt->execute([$storeId, 'pending']);
+        $stmt->execute([$storeId]);
         $rows = $stmt->fetchAll();
     } catch (PDOException $e) {
         // テーブル未作成時は空配列を返す
@@ -67,6 +71,9 @@ if ($method === 'GET') {
             'elapsed_seconds' => $now - $createdTs,
             'type'            => $r['type'] ?? 'staff_call',
             'item_name'       => $r['item_name'] ?? null,
+            'status'          => $r['status'] ?? 'pending',
+            'in_progress_by_name' => $r['in_progress_by_name'] ?? null,
+            'acknowledged_by_name' => $r['acknowledged_by_name'] ?? null,
         ];
         $alerts[] = $alert;
     }
@@ -84,17 +91,22 @@ if ($method === 'PATCH') {
         json_error('MISSING_ALERT_ID', 'alert_id は必須です', 400);
     }
 
-    if ($status !== 'acknowledged') {
-        json_error('INVALID_STATUS', 'status は acknowledged のみ指定可能です', 400);
+    if (!in_array($status, ['in_progress', 'acknowledged'], true)) {
+        json_error('INVALID_STATUS', 'status は in_progress / acknowledged のみ指定可能です', 400);
+    }
+    if ($status === 'in_progress' && !call_alerts_supports_status($pdo, 'in_progress')) {
+        json_error('MIGRATION_REQUIRED', '対応中にはデータベース更新が必要です', 500);
     }
 
     // O-5: アラート情報を先に取得（product_ready → 品目を提供済に連動）
     $alertType = null;
     $orderItemId = null;
     $alertStoreId = null;
+    $alertTableCode = null;
+    $oldStatus = null;
     try {
         $fetchStmt = $pdo->prepare(
-            'SELECT type, order_item_id, store_id FROM call_alerts WHERE id = ?'
+            'SELECT type, order_item_id, store_id, table_code, status FROM call_alerts WHERE id = ?'
         );
         $fetchStmt->execute([$alertId]);
         $alertRow = $fetchStmt->fetch();
@@ -102,17 +114,45 @@ if ($method === 'PATCH') {
             $alertType = $alertRow['type'] ?? null;
             $orderItemId = $alertRow['order_item_id'] ?? null;
             $alertStoreId = $alertRow['store_id'] ?? null;
+            $alertTableCode = $alertRow['table_code'] ?? null;
+            $oldStatus = $alertRow['status'] ?? null;
         }
     } catch (PDOException $e) {
         // type カラムが無い場合は従来通り
         error_log('[P1-12][api/kds/call-alerts.php:104] fetch_alert_info: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
+    if (!$alertStoreId) {
+        json_error('NOT_FOUND', 'アラートが見つかりません', 404);
+    }
+    require_store_access($alertStoreId);
 
     try {
+        $fields = ['status = ?'];
+        $params = [$status];
+        $actorName = $user['display_name'] ?? $user['username'] ?? $user['email'] ?? null;
+        if ($status === 'acknowledged') {
+            $fields[] = 'acknowledged_at = NOW()';
+            if (call_alerts_has_column($pdo, 'acknowledged_by_user_id')) {
+                $fields[] = 'acknowledged_by_user_id = ?';
+                $params[] = $user['user_id'];
+                $fields[] = 'acknowledged_by_name = ?';
+                $params[] = $actorName;
+            }
+        } else {
+            if (call_alerts_has_column($pdo, 'in_progress_at')) {
+                $fields[] = 'in_progress_at = COALESCE(in_progress_at, NOW())';
+                $fields[] = 'in_progress_by_user_id = COALESCE(in_progress_by_user_id, ?)';
+                $params[] = $user['user_id'];
+                $fields[] = 'in_progress_by_name = COALESCE(in_progress_by_name, ?)';
+                $params[] = $actorName;
+            }
+        }
+        $params[] = $alertId;
+        $params[] = $alertStoreId;
         $stmt = $pdo->prepare(
-            'UPDATE call_alerts SET status = ?, acknowledged_at = NOW() WHERE id = ?'
+            'UPDATE call_alerts SET ' . implode(', ', $fields) . ' WHERE id = ? AND store_id = ?'
         );
-        $stmt->execute([$status, $alertId]);
+        $stmt->execute($params);
     } catch (PDOException $e) {
         json_error('UPDATE_FAILED', 'アラートの更新に失敗しました', 500);
     }
@@ -120,7 +160,7 @@ if ($method === 'PATCH') {
     // O-5: product_ready 対応済み → order_item を served に連動更新
     $itemServed = false;
     $orderCompleted = false;
-    if ($alertType === 'product_ready' && $orderItemId && $alertStoreId) {
+    if ($status === 'acknowledged' && $alertType === 'product_ready' && $orderItemId && $alertStoreId) {
         try {
             $updateItem = $pdo->prepare(
                 'UPDATE order_items SET status = "served", served_at = NOW(), updated_at = NOW()
@@ -157,6 +197,16 @@ if ($method === 'PATCH') {
             error_log('[P1-12][api/kds/call-alerts.php:152] kds_item_served_sync: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
     }
+
+    write_audit_log($pdo, $user, $alertStoreId, $status === 'in_progress' ? 'call_alert_start' : 'call_alert_ack', 'call_alert', $alertId, [
+        'status' => $oldStatus,
+    ], [
+        'status' => $status,
+        'type' => $alertType,
+        'table_code' => $alertTableCode,
+        'order_item_id' => $orderItemId,
+        'item_served' => $itemServed,
+    ], null);
 
     json_response(['alert_id' => $alertId, 'status' => $status, 'item_served' => $itemServed, 'order_completed' => $orderCompleted]);
 }
@@ -200,4 +250,42 @@ if ($method === 'POST') {
     }
 
     json_response(['alert_id' => $alertId]);
+}
+
+function call_alerts_has_column(PDO $pdo, string $column): bool
+{
+    static $cache = [];
+    if (array_key_exists($column, $cache)) return $cache[$column];
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = "call_alerts"
+                AND COLUMN_NAME = ?'
+        );
+        $stmt->execute([$column]);
+        $cache[$column] = ((int)$stmt->fetchColumn()) > 0;
+    } catch (Exception $e) {
+        $cache[$column] = false;
+    }
+    return $cache[$column];
+}
+
+function call_alerts_supports_status(PDO $pdo, string $status): bool
+{
+    static $allowed = null;
+    if ($allowed === null) {
+        $allowed = [];
+        try {
+            $stmt = $pdo->query("SHOW COLUMNS FROM call_alerts LIKE 'status'");
+            $row = $stmt ? $stmt->fetch() : null;
+            if ($row && isset($row['Type']) && preg_match("/^enum\\((.*)\\)$/", $row['Type'], $m)) {
+                preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", $m[1], $matches);
+                $allowed = $matches[1] ?? [];
+            }
+        } catch (Exception $e) {
+            $allowed = ['pending', 'acknowledged'];
+        }
+    }
+    return in_array($status, $allowed, true);
 }

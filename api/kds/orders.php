@@ -116,7 +116,8 @@ $params = [$storeId, $businessDay['start'], $businessDay['end']];
 // KDSキッチン画面: 調理関連ステータスのみ / 会計画面: 未会計全て
 $view = $_GET['view'] ?? 'kitchen';
 if ($view === 'kitchen') {
-    $sql .= ' AND o.status IN ("pending", "preparing", "ready")';
+    $sql .= ' AND (o.status IN ("pending", "preparing", "ready")
+              OR (o.status = "served" AND o.served_at IS NOT NULL AND o.served_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)))';
 } else {
     $sql .= ' AND o.status != "paid"';
 }
@@ -154,7 +155,7 @@ $orderItemsMap = []; // order_id => [items]
 if ($hasOrderItems && !empty($orders)) {
     $orderIdList = array_column($orders, 'id');
     $ph = implode(',', array_fill(0, count($orderIdList), '?'));
-    $oiSelect = 'id AS item_id, order_id, menu_item_id, name, price, qty, options, status';
+    $oiSelect = 'id AS item_id, order_id, menu_item_id, name, price, qty, options, status, served_at';
     if ($hasAllergen) {
         $oiSelect .= ', allergen_selections';
     }

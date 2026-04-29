@@ -39,12 +39,32 @@ if (!$table) json_error('TABLE_NOT_FOUND', 'テーブルが見つかりません
 // S6: アクティブセッション必須 + PIN検証（自動着席を廃止）
 try {
     $stmt = $pdo->prepare(
-        "SELECT id FROM table_sessions WHERE table_id = ? AND store_id = ? AND status NOT IN ('paid', 'closed') LIMIT 1"
+        "SELECT id FROM table_sessions
+         WHERE table_id = ? AND store_id = ?
+           AND status IN ('seated', 'eating', 'bill_requested')
+         LIMIT 1"
     );
     $stmt->execute([$tableId, $storeId]);
     $activeSession = $stmt->fetch();
 
     if (!$activeSession) {
+        // 会計後/清掃待ちは顧客側から新しい session_token を取り直せないよう先に遮断する
+        $cdStmt = $pdo->prepare(
+            "SELECT status, closed_at FROM table_sessions
+             WHERE table_id = ? AND store_id = ?
+               AND status IN ('paid', 'closed', 'cleaning')
+             ORDER BY COALESCE(closed_at, started_at) DESC
+             LIMIT 1"
+        );
+        $cdStmt->execute([$tableId, $storeId]);
+        $cdRow = $cdStmt->fetch();
+        if ($cdRow && (
+            $cdRow['status'] === 'cleaning'
+            || ($cdRow['closed_at'] && (time() - strtotime($cdRow['closed_at'])) < 300)
+        )) {
+            json_error('SESSION_COOLDOWN', 'お会計が完了しています。新しいご注文はスタッフにお声がけください。', 403);
+        }
+
         // L-9: 自動着席判定 — (A) スタッフのテーブル開放認証 OR (B) 予約マッチング
         $autoSeated = null;
 
@@ -110,16 +130,6 @@ try {
             // 着席成功 → activeSession として扱う (以降のロジックで session_token 発行)
             $activeSession = ['id' => $autoSeated];
         } else {
-            // S2: 会計直後のリロード防止 — 直前セッションが5分以内に closed/paid なら拒否
-            $cdStmt = $pdo->prepare(
-                "SELECT closed_at FROM table_sessions WHERE table_id = ? AND store_id = ? AND status IN ('paid', 'closed') ORDER BY closed_at DESC LIMIT 1"
-            );
-            $cdStmt->execute([$tableId, $storeId]);
-            $cdRow = $cdStmt->fetch();
-            if ($cdRow && $cdRow['closed_at'] && (time() - strtotime($cdRow['closed_at'])) < 300) {
-                json_error('SESSION_COOLDOWN', 'お会計が完了しています。新しいご注文はスタッフにお声がけください。', 403);
-            }
-
             // 認証も予約マッチも成立せず → スタッフ操作を待つ
             json_error('NO_ACTIVE_SESSION', 'スタッフが着席操作を行うまでお待ちください。', 403);
         }

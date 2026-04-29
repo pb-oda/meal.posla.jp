@@ -43,6 +43,21 @@ if ($tableRow['session_token_expires_at'] && strtotime($tableRow['session_token_
     json_error('INVALID_SESSION', 'セッションの有効期限が切れています', 403);
 }
 
+try {
+    $activeStmt = $pdo->prepare(
+        "SELECT id FROM table_sessions
+         WHERE table_id = ? AND store_id = ?
+           AND status IN ('seated', 'eating', 'bill_requested')
+         LIMIT 1"
+    );
+    $activeStmt->execute([$tableId, $storeId]);
+    if (!$activeStmt->fetch()) {
+        json_error('INVALID_SESSION', 'セッションが無効です', 403);
+    }
+} catch (PDOException $e) {
+    // table_sessions 未作成時は従来動作
+}
+
 // ── self_checkout_enabled チェック ──
 $selfCheckoutEnabled = false;
 try {

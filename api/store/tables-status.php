@@ -18,11 +18,30 @@ $storeId = require_store_param();   // 内部で require_store_access 済み
 $pdo = get_db();
 
 // テーブル一覧（必須カラムのみ指定）
+$hasNextSessionCols = false;
+$hasNextSessionActorCol = false;
 try {
+    try {
+        $pdo->query('SELECT next_session_token FROM tables LIMIT 0');
+        $hasNextSessionCols = true;
+    } catch (PDOException $e) {}
+    try {
+        $pdo->query('SELECT next_session_opened_by_user_id FROM tables LIMIT 0');
+        $hasNextSessionActorCol = true;
+    } catch (PDOException $e) {}
+    $tableCols = 't.id, t.table_code, t.capacity, t.is_active';
+    if ($hasNextSessionCols) {
+        $tableCols .= ', t.next_session_token, t.next_session_token_expires_at, t.next_session_opened_at';
+        if ($hasNextSessionActorCol) {
+            $tableCols .= ', t.next_session_opened_by_user_id, u.display_name AS next_session_opened_by_display_name, u.username AS next_session_opened_by_username';
+        }
+    }
     $stmt = $pdo->prepare(
-        'SELECT id, table_code, capacity, is_active
-         FROM tables WHERE store_id = ? AND is_active = 1
-         ORDER BY table_code'
+        'SELECT ' . $tableCols . '
+         FROM tables t
+         ' . ($hasNextSessionActorCol ? 'LEFT JOIN users u ON u.id = t.next_session_opened_by_user_id' : '') . '
+         WHERE t.store_id = ? AND t.is_active = 1
+         ORDER BY t.table_code'
     );
     $stmt->execute([$storeId]);
     $tables = $stmt->fetchAll();
@@ -36,6 +55,7 @@ try {
 $sessionMap = [];
 $hasMemoCol = false;
 $hasPinCol = false;
+$hasStatusChangedCol = false;
 try {
     // memo カラム存在チェック
     try {
@@ -46,6 +66,10 @@ try {
     try {
         $pdo->query('SELECT session_pin FROM table_sessions LIMIT 0');
         $hasPinCol = true;
+    } catch (PDOException $e) {}
+    try {
+        $pdo->query('SELECT status_changed_at FROM table_sessions LIMIT 0');
+        $hasStatusChangedCol = true;
     } catch (PDOException $e) {}
 
     $tsCols = 'ts.id, ts.table_id, ts.status, ts.guest_count, ts.started_at,
@@ -58,6 +82,9 @@ try {
     }
     if ($hasPinCol) {
         $tsCols .= ', ts.session_pin';
+    }
+    if ($hasStatusChangedCol) {
+        $tsCols .= ', ts.status_changed_at';
     }
 
     $stmt = $pdo->prepare(
@@ -80,7 +107,12 @@ try {
 $orderMap = [];
 try {
     $stmt = $pdo->prepare(
-        'SELECT table_id, COUNT(*) AS order_count, SUM(total_amount) AS total
+        'SELECT table_id,
+                COUNT(*) AS order_count,
+                SUM(total_amount) AS total,
+                SUM(CASE WHEN order_type = "dine_in" THEN 1 ELSE 0 END) AS self_order_count,
+                SUM(CASE WHEN order_type = "handy" THEN 1 ELSE 0 END) AS handy_order_count,
+                MAX(created_at) AS last_order_at
          FROM orders
          WHERE store_id = ? AND table_id IS NOT NULL
            AND status NOT IN ("paid", "cancelled")
@@ -89,8 +121,11 @@ try {
     $stmt->execute([$storeId]);
     foreach ($stmt->fetchAll() as $row) {
         $orderMap[$row['table_id']] = [
-            'orderCount'  => (int)$row['order_count'],
-            'totalAmount' => (int)$row['total'],
+            'orderCount'      => (int)$row['order_count'],
+            'totalAmount'     => (int)$row['total'],
+            'selfOrderCount'  => (int)($row['self_order_count'] ?? 0),
+            'handyOrderCount' => (int)($row['handy_order_count'] ?? 0),
+            'lastOrderAt'     => $row['last_order_at'] ?? null,
         ];
     }
 } catch (PDOException $e) {
@@ -137,12 +172,16 @@ foreach ($tables as $t) {
     $sessionData = null;
     if ($session) {
         $elapsed = $now - strtotime($session['started_at']);
+        $statusChangedAt = $hasStatusChangedCol ? ($session['status_changed_at'] ?? null) : null;
+        $statusChangedTs = $statusChangedAt ? strtotime($statusChangedAt) : false;
         $sessionData = [
             'id'           => $session['id'],
             'status'       => $session['status'],
             'guestCount'   => (int)($session['guest_count'] ?? 0),
             'startedAt'    => $session['started_at'],
             'elapsedMin'   => max(0, (int)floor($elapsed / 60)),
+            'statusChangedAt' => $statusChangedAt,
+            'statusElapsedSec' => $statusChangedTs ? max(0, $now - $statusChangedTs) : $elapsed,
             'timeLimitMin' => isset($session['time_limit_min']) && $session['time_limit_min'] ? (int)$session['time_limit_min'] : null,
             'expiresAt'    => $session['expires_at'] ?? null,
             'lastOrderAt'  => $session['last_order_at'] ?? null,
@@ -159,6 +198,19 @@ foreach ($tables as $t) {
     }
 
     $itemStatus = $itemStatusMap[$t['id']] ?? null;
+    $qrOpen = null;
+    if ($hasNextSessionCols && !$sessionData && !empty($t['next_session_token']) && !empty($t['next_session_token_expires_at'])) {
+        $expiresTs = strtotime($t['next_session_token_expires_at']);
+        if ($expiresTs && $expiresTs > $now) {
+            $qrOpen = [
+                'openedAt' => $t['next_session_opened_at'] ?? null,
+                'openedByUserId' => $hasNextSessionActorCol ? ($t['next_session_opened_by_user_id'] ?? null) : null,
+                'openedByName' => $hasNextSessionActorCol ? (($t['next_session_opened_by_display_name'] ?? '') ?: ($t['next_session_opened_by_username'] ?? null)) : null,
+                'expiresAt' => $t['next_session_token_expires_at'],
+                'remainingSec' => max(0, $expiresTs - $now),
+            ];
+        }
+    }
 
     $result[] = [
         'id'         => $t['id'],
@@ -167,6 +219,7 @@ foreach ($tables as $t) {
         'session'    => $sessionData,
         'orders'     => $orders,
         'itemStatus' => $itemStatus,
+        'qrOpen'     => $qrOpen,
     ];
 }
 

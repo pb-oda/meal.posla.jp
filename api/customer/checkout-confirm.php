@@ -16,6 +16,30 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/payment-gateway.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
 
+function checkout_confirm_supports_table_session_status(PDO $pdo, string $status): bool
+{
+    static $allowed = null;
+    if ($allowed === null) {
+        $allowed = [];
+        try {
+            $stmt = $pdo->query("SHOW COLUMNS FROM table_sessions LIKE 'status'");
+            $row = $stmt ? $stmt->fetch() : null;
+            if ($row && isset($row['Type']) && preg_match("/^enum\\((.*)\\)$/", $row['Type'], $m)) {
+                preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", $m[1], $matches);
+                $allowed = $matches[1] ?? [];
+            }
+        } catch (Exception $e) {
+            $allowed = ['seated', 'eating', 'bill_requested', 'paid', 'closed'];
+        }
+    }
+    return in_array($status, $allowed, true);
+}
+
+function checkout_confirm_session_close_status(PDO $pdo): string
+{
+    return checkout_confirm_supports_table_session_status($pdo, 'cleaning') ? 'cleaning' : 'paid';
+}
+
 require_method(['POST']);
 
 // H-03: checkout 二重確認濫用 / session_id ブルート防御 — 1IP あたり 20 回 / 5 分
@@ -32,6 +56,7 @@ if (!$storeId || !$tableId || !$sessionToken || !$stripeSessionId) {
 }
 
 $pdo = get_db();
+$sessionCloseStatus = checkout_confirm_session_close_status($pdo);
 
 // ── session_token 検証 ──
 $stmt = $pdo->prepare(
@@ -45,6 +70,21 @@ if (!$tableRow || !$tableRow['session_token'] || !hash_equals($tableRow['session
 }
 if ($tableRow['session_token_expires_at'] && strtotime($tableRow['session_token_expires_at']) < time()) {
     json_error('INVALID_SESSION', 'セッションの有効期限が切れています', 403);
+}
+
+try {
+    $activeStmt = $pdo->prepare(
+        "SELECT id FROM table_sessions
+         WHERE table_id = ? AND store_id = ?
+           AND status IN ('seated', 'eating', 'bill_requested')
+         LIMIT 1"
+    );
+    $activeStmt->execute([$tableId, $storeId]);
+    if (!$activeStmt->fetch()) {
+        json_error('INVALID_SESSION', 'セッションが無効です', 403);
+    }
+} catch (PDOException $e) {
+    // table_sessions 未存在時は従来動作
 }
 
 // ── テナント情報取得 ──
@@ -385,9 +425,11 @@ try {
 
     try {
         $pdo->prepare(
-            'UPDATE table_sessions SET status = \'paid\', closed_at = NOW()
+            'UPDATE table_sessions
+                SET status = ?,
+                    closed_at = CASE WHEN ? = "paid" THEN NOW() ELSE closed_at END
              WHERE store_id = ? AND table_id = ? AND status NOT IN (\'paid\', \'closed\')'
-        )->execute([$storeId, $tableId]);
+        )->execute([$sessionCloseStatus, $sessionCloseStatus, $storeId, $tableId]);
     } catch (PDOException $e) {
         // table_sessions 未存在時はスキップ
         error_log('[P1-12][api/customer/checkout-confirm.php:261] checkout_mark_paid: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);

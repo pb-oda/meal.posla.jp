@@ -41,6 +41,21 @@ if ($tokenRow) {
     }
 }
 
+try {
+    $activeStmt = $pdo->prepare(
+        "SELECT id FROM table_sessions
+         WHERE table_id = ? AND store_id = ?
+           AND status IN ('seated', 'eating', 'bill_requested')
+         LIMIT 1"
+    );
+    $activeStmt->execute([$tableId, $storeId]);
+    if (!$activeStmt->fetch()) {
+        json_error('INVALID_SESSION', 'セッションが無効です', 403);
+    }
+} catch (PDOException $e) {
+    // table_sessions 未作成時は従来動作
+}
+
 // 該当セッションの注文を取得
 $hasMemo = false;
 try {

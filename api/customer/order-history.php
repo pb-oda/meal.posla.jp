@@ -39,6 +39,21 @@ if ($tokenRow['session_token_expires_at'] && strtotime($tokenRow['session_token_
     json_error('INVALID_SESSION', 'このQRコードは無効です。スタッフにお声がけください。', 403);
 }
 
+try {
+    $activeStmt = $pdo->prepare(
+        "SELECT id FROM table_sessions
+         WHERE table_id = ? AND store_id = ?
+           AND status IN ('seated', 'eating', 'bill_requested')
+         LIMIT 1"
+    );
+    $activeStmt->execute([$tableId, $storeId]);
+    if (!$activeStmt->fetch()) {
+        json_error('INVALID_SESSION', 'このQRコードは無効です。スタッフにお声がけください。', 403);
+    }
+} catch (PDOException $e) {
+    // table_sessions 未作成時は従来動作
+}
+
 // SELF-P1-4: guest_alias カラム存在チェック (migration-self-p1-4-guest-alias.sql)
 $hasGuestAliasCol = false;
 try {

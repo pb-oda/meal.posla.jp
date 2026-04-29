@@ -20,6 +20,8 @@ $data = get_json_body();
 $orderId = $data['order_id'] ?? null;
 $newStatus = $data['status'] ?? null;
 $storeId = $data['store_id'] ?? null;
+$reason = isset($data['reason']) ? mb_substr(trim($data['reason']), 0, 200) : null;
+if ($reason === '') $reason = null;
 
 if (!$orderId || !$newStatus || !$storeId) {
     json_error('MISSING_FIELDS', 'order_id, status, store_id は必須です', 400);
@@ -30,6 +32,9 @@ require_store_access($storeId);
 $validStatuses = ['pending', 'preparing', 'ready', 'served', 'paid', 'cancelled'];
 if (!in_array($newStatus, $validStatuses)) {
     json_error('INVALID_STATUS', '無効なステータスです', 400);
+}
+if ($newStatus === 'cancelled' && !$reason) {
+    json_error('REASON_REQUIRED', 'キャンセル理由を入力してください', 400);
 }
 
 $pdo = get_db();
@@ -54,15 +59,23 @@ $params = [$newStatus];
 if (isset($timestampCol[$newStatus])) {
     $sql .= ', ' . $timestampCol[$newStatus] . ' = NOW()';
 }
+if ($newStatus === 'pending') {
+    $sql .= ', prepared_at = NULL, ready_at = NULL, served_at = NULL';
+} elseif ($newStatus === 'preparing') {
+    $sql .= ', ready_at = NULL, served_at = NULL';
+} elseif ($newStatus === 'ready') {
+    $sql .= ', served_at = NULL';
+}
 
-$sql .= ' WHERE id = ?';
+$sql .= ' WHERE id = ? AND store_id = ?';
 $params[] = $orderId;
+$params[] = $storeId;
 
 $pdo->prepare($sql)->execute($params);
 
 // 監査ログ
 $auditAction = ($newStatus === 'cancelled') ? 'order_cancel' : 'order_status';
-write_audit_log($pdo, $user, $storeId, $auditAction, 'order', $orderId, ['status' => $order['status']], ['status' => $newStatus], null);
+write_audit_log($pdo, $user, $storeId, $auditAction, 'order', $orderId, ['status' => $order['status']], ['status' => $newStatus], $reason);
 
 // order_items も連動更新（存在する場合。paid/cancelled は order_items 側では served 扱いしない）
 $oiTimestampCol = [
@@ -79,6 +92,13 @@ if (in_array($oiStatus, ['pending', 'preparing', 'ready', 'served', 'cancelled']
         $oiParams = [$oiStatus];
         if (isset($oiTimestampCol[$oiStatus])) {
             $oiSql .= ', ' . $oiTimestampCol[$oiStatus] . ' = NOW()';
+        }
+        if ($oiStatus === 'pending') {
+            $oiSql .= ', prepared_at = NULL, ready_at = NULL, served_at = NULL';
+        } elseif ($oiStatus === 'preparing') {
+            $oiSql .= ', ready_at = NULL, served_at = NULL';
+        } elseif ($oiStatus === 'ready') {
+            $oiSql .= ', served_at = NULL';
         }
         $oiSql .= ' WHERE order_id = ? AND store_id = ? AND status != "cancelled"';
         $oiParams[] = $orderId;

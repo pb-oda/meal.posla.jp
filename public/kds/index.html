@@ -132,7 +132,7 @@
   <script src="../shared/js/revision-gate.js?v=20260420-rev2"></script>
   <script src="js/kds-auth.js?v=20260418gps"></script>
   <script src="js/polling-data-source.js?v=20260420-pwa3"></script>
-  <script src="js/kds-renderer.js?v=20260423-self-kds1"></script>
+  <script src="js/kds-renderer.js?v=20260429-ops-undo1"></script>
   <script src="js/voice-commander.js?v=20260420-pwa3c"></script>
   <script src="js/ai-kitchen.js"></script>
   <script>
@@ -351,10 +351,13 @@
           // 注文単位のアクションボタン
           var btn = e.target.closest('.kds-card__action') || e.target.closest('.kds-card__cancel');
           if (!btn) return;
+          var reason = null;
           if (btn.dataset.status === 'cancelled') {
             if (!confirm('この注文をキャンセルしますか？')) return;
+            reason = prompt('キャンセル理由を入力してください', '');
+            if (!reason || !reason.trim()) return;
           }
-          KdsRenderer.handleAction(btn.dataset.order, btn.dataset.status, KdsAuth.getStoreId())
+          KdsRenderer.handleAction(btn.dataset.order, btn.dataset.status, KdsAuth.getStoreId(), reason)
             .catch(function () { /* offline/stale or api error */ });
         });
 
@@ -473,6 +476,27 @@
   </script>
   <script src="../js/session-monitor.js?v=20260419-fixurl"></script>
   <script src="pwa-register.js"></script>
+  <script src="../shared/js/install-prompt-banner.js?v=20260429-business-install1"></script>
+  <script>
+    (function () {
+      'use strict';
+      if (typeof InstallPromptBanner === 'undefined') return;
+      InstallPromptBanner.init('kds', {
+        androidOnly: true,
+        iosHint: false,
+        manualAndroidHint: true,
+        background: '#1b5e20',
+        primaryColor: '#1b5e20',
+        padding: '12px 14px',
+        fontSize: '14px',
+        buttonPadding: '8px 14px',
+        buttonFontSize: '13px',
+        message: 'POSLA KDSをホーム画面に追加すると、厨房端末を1タップで起動できます。',
+        manualMessage: 'Chrome右上のメニューから「ホーム画面に追加」を選ぶと、KDSを1タップで起動できます。',
+        installText: 'ホームに追加'
+      });
+    })();
+  </script>
   <script src="../shared/js/standard-env-banner.js?v=20260420-env"></script>
   <script>StandardEnvBanner.init('kds');</script>
   <!-- Phase 1: Wake Lock + PWA 更新マネージャ -->

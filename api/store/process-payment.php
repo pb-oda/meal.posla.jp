@@ -23,6 +23,7 @@ require_once __DIR__ . '/../lib/payment-gateway.php';
 require_once __DIR__ . '/../lib/stripe-connect.php';
 require_once __DIR__ . '/../lib/audit-log.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
+require_once __DIR__ . '/../lib/register-close-lock.php';
 
 function normalize_register_payment_detail($paymentMethod, $paymentDetail)
 {
@@ -55,6 +56,30 @@ function normalize_register_payment_detail($paymentMethod, $paymentDetail)
     return $paymentDetail;
 }
 
+function process_payment_supports_table_session_status(PDO $pdo, string $status): bool
+{
+    static $allowed = null;
+    if ($allowed === null) {
+        $allowed = [];
+        try {
+            $stmt = $pdo->query("SHOW COLUMNS FROM table_sessions LIKE 'status'");
+            $row = $stmt ? $stmt->fetch() : null;
+            if ($row && isset($row['Type']) && preg_match("/^enum\\((.*)\\)$/", $row['Type'], $m)) {
+                preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", $m[1], $matches);
+                $allowed = $matches[1] ?? [];
+            }
+        } catch (Exception $e) {
+            $allowed = ['seated', 'eating', 'bill_requested', 'paid', 'closed'];
+        }
+    }
+    return in_array($status, $allowed, true);
+}
+
+function process_payment_session_close_status(PDO $pdo): string
+{
+    return process_payment_supports_table_session_status($pdo, 'cleaning') ? 'cleaning' : 'paid';
+}
+
 require_method(['POST']);
 $user = require_auth();
 
@@ -71,6 +96,12 @@ $selectedItemIds = $data['selected_item_ids'] ?? null;   // 分割: order_item.i
 $staffPin        = isset($data['staff_pin']) ? trim((string)$data['staff_pin']) : '';   // CP1: 担当スタッフ PIN
 $paymentEntryMode = isset($data['payment_entry_mode']) ? trim((string)$data['payment_entry_mode']) : '';
 $paymentDetail    = isset($data['payment_method_detail']) ? trim((string)$data['payment_method_detail']) : '';
+$externalPaymentNote = isset($data['external_payment_note']) ? trim((string)$data['external_payment_note']) : '';
+if (function_exists('mb_substr')) {
+    $externalPaymentNote = mb_substr($externalPaymentNote, 0, 120);
+} else {
+    $externalPaymentNote = substr($externalPaymentNote, 0, 120);
+}
 
 if (!$storeId) json_error('VALIDATION', 'store_id は必須です', 400);
 if (!$tableId && empty($orderIds)) json_error('VALIDATION', 'table_id または order_ids が必要です', 400);
@@ -87,6 +118,8 @@ if ($paymentEntryMode === 'gateway') {
 require_store_access($storeId);
 
 $pdo = get_db();
+$sessionCloseStatus = process_payment_session_close_status($pdo);
+$postCloseLock = require_register_close_override($pdo, $storeId, $data, '会計記録');
 
 // ── CP1 + S2: 担当スタッフ PIN 検証 (必須化) ──
 // 全ての会計操作で PIN 必須。出勤中スタッフのみ照合可能。
@@ -388,10 +421,28 @@ try {
     $hasPaymentDetailCol = true;
 } catch (PDOException $e) {}
 
+$hasPaymentExternalNoteCol = false;
+try {
+    $pdo->query('SELECT external_payment_note FROM payments LIMIT 0');
+    $hasPaymentExternalNoteCol = true;
+} catch (PDOException $e) {}
+
 $hasOrderPaymentDetailCol = false;
 try {
     $pdo->query('SELECT payment_method_detail FROM orders LIMIT 0');
     $hasOrderPaymentDetailCol = true;
+} catch (PDOException $e) {}
+
+$hasOrderExternalNoteCol = false;
+try {
+    $pdo->query('SELECT external_payment_note FROM orders LIMIT 0');
+    $hasOrderExternalNoteCol = true;
+} catch (PDOException $e) {}
+
+$hasPaymentNoteCol = false;
+try {
+    $pdo->query('SELECT note FROM payments LIMIT 0');
+    $hasPaymentNoteCol = true;
 } catch (PDOException $e) {}
 
 // payment_id カラム存在チェック (order_items)
@@ -470,6 +521,17 @@ try {
             'UPDATE payments SET payment_method_detail = ? WHERE id = ? AND store_id = ?'
         )->execute([$paymentDetail, $paymentId, $storeId]);
     }
+    if ($hasPaymentExternalNoteCol) {
+        $pdo->prepare(
+            'UPDATE payments SET external_payment_note = ? WHERE id = ? AND store_id = ?'
+        )->execute([$externalPaymentNote !== '' ? $externalPaymentNote : null, $paymentId, $storeId]);
+    }
+    if ($hasPaymentNoteCol && !empty($postCloseLock['locked'])) {
+        $postCloseNote = '締め後会計: ' . ($postCloseLock['reason'] ?? '');
+        $pdo->prepare(
+            'UPDATE payments SET note = ? WHERE id = ? AND store_id = ?'
+        )->execute([register_close_lock_trim($postCloseNote, 255), $paymentId, $storeId]);
+    }
 
     // 分割会計時: 対象 order_items の payment_id を記録 (P1 #8: store_id 境界)
     // INV-P1-5 hotfix: rowCount 一致確認を追加。競合で一部が既に payment_id 付きだった場合、
@@ -515,6 +577,14 @@ try {
                 );
                 $detailOrders->execute(array_merge([$paymentDetail], $orderIdList, [$storeId]));
             }
+            if ($hasOrderExternalNoteCol) {
+                $externalNoteOrders = $pdo->prepare(
+                    'UPDATE orders SET external_payment_note = ?
+                     WHERE id IN (' . $placeholders . ')
+                       AND store_id = ?'
+                );
+                $externalNoteOrders->execute(array_merge([$externalPaymentNote !== '' ? $externalPaymentNote : null], $orderIdList, [$storeId]));
+            }
         }
 
         // 合流会計: 全テーブルのセッションクローズ + トークン再生成
@@ -526,9 +596,11 @@ try {
                     ->execute([$newToken, $mTableId, $storeId]);
                 try {
                     $pdo->prepare(
-                        'UPDATE table_sessions SET status = "paid", closed_at = NOW()
+                        'UPDATE table_sessions
+                            SET status = ?,
+                                closed_at = CASE WHEN ? = "paid" THEN NOW() ELSE closed_at END
                          WHERE store_id = ? AND table_id = ? AND status NOT IN ("paid", "closed")'
-                    )->execute([$storeId, $mTableId]);
+                    )->execute([$sessionCloseStatus, $sessionCloseStatus, $storeId, $mTableId]);
                 } catch (PDOException $e) {
                     error_log('[P1-12][api/store/process-payment.php:345] merged_payment_close: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
                 }
@@ -540,9 +612,11 @@ try {
 
             try {
                 $pdo->prepare(
-                    'UPDATE table_sessions SET status = "paid", closed_at = NOW()
+                    'UPDATE table_sessions
+                        SET status = ?,
+                            closed_at = CASE WHEN ? = "paid" THEN NOW() ELSE closed_at END
                      WHERE store_id = ? AND table_id = ? AND status NOT IN ("paid", "closed")'
-                )->execute([$storeId, $tableId]);
+                )->execute([$sessionCloseStatus, $sessionCloseStatus, $storeId, $tableId]);
             } catch (PDOException $e) {
                 // table_sessions 未作成時はスキップ
                 error_log('[P1-12][api/store/process-payment.php:356] single_payment_close: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
@@ -574,9 +648,11 @@ try {
                 ->execute([$newToken, $tableId, $storeId]);
             try {
                 $pdo->prepare(
-                    'UPDATE table_sessions SET status = "paid", closed_at = NOW()
+                    'UPDATE table_sessions
+                        SET status = ?,
+                            closed_at = CASE WHEN ? = "paid" THEN NOW() ELSE closed_at END
                      WHERE store_id = ? AND table_id = ? AND status NOT IN ("paid", "closed")'
-                )->execute([$storeId, $tableId]);
+                )->execute([$sessionCloseStatus, $sessionCloseStatus, $storeId, $tableId]);
             } catch (PDOException $e) {
                 error_log('[P1-12][api/store/process-payment.php:388] split_payment_close: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
             }
@@ -775,9 +851,11 @@ if (function_exists('write_audit_log')) {
         'total'             => $totalAmount,
         'payment_method'    => $paymentMethod,
         'payment_method_detail' => $paymentDetail,
+        'external_payment_note' => $externalPaymentNote,
         'payment_entry_mode'=> $paymentEntryMode ?: 'manual',
         'is_partial'        => $isPartial ? 1 : 0,
         'order_count'       => count($orders),
+        'register_close_lock' => register_close_override_audit_payload($postCloseLock),
     ], null);
 }
 
@@ -792,10 +870,12 @@ json_response([
     'orderCount'        => count($orders),
     'paymentMethod'     => $paymentMethod,
     'paymentMethodDetail' => $paymentDetail,
+    'externalPaymentNote' => $externalPaymentNote,
     'cashierUserId'     => $cashierUserId,
     'cashierUserName'   => $cashierUserName,
     'isPartial'         => $isPartial,
     'paymentEntryMode'  => $paymentEntryMode ?: 'manual',
     'gatewayName'       => $gatewayName,
     'externalPaymentId' => $externalPaymentId,
+    'postCloseOverride' => !empty($postCloseLock['locked']),
 ]);

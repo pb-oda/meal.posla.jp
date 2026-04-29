@@ -13,6 +13,7 @@
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/audit-log.php';
 
 $method = require_method(['POST', 'DELETE']);
 $user = require_role('staff');
@@ -45,6 +46,11 @@ if ($method === 'POST') {
         'UPDATE tables SET next_session_token = ?, next_session_token_expires_at = DATE_ADD(NOW(), INTERVAL ? MINUTE), next_session_opened_by_user_id = ?, next_session_opened_at = NOW() WHERE id = ? AND store_id = ?'
     )->execute([$token, $expiresMin, $user['user_id'], $tableId, $storeId]);
 
+    write_audit_log($pdo, $user, $storeId, 'table_qr_open', 'table', $tableId, null, [
+        'table_code' => $tbl['table_code'],
+        'expires_minutes' => $expiresMin,
+    ], null);
+
     json_response([
         'ok' => true,
         'table_id' => $tableId,
@@ -60,8 +66,18 @@ if ($method === 'DELETE') {
     if (!$storeId || !$tableId) json_error('MISSING_PARAM', 'store_id と table_id が必要です', 400);
     require_store_access($storeId);
 
+    $tStmt = $pdo->prepare('SELECT table_code FROM tables WHERE id = ? AND store_id = ?');
+    $tStmt->execute([$tableId, $storeId]);
+    $tbl = $tStmt->fetch();
+    if (!$tbl) json_error('TABLE_NOT_FOUND', 'テーブルが見つかりません', 404);
+
     $pdo->prepare(
         'UPDATE tables SET next_session_token = NULL, next_session_token_expires_at = NULL, next_session_opened_by_user_id = NULL, next_session_opened_at = NULL WHERE id = ? AND store_id = ?'
     )->execute([$tableId, $storeId]);
+
+    write_audit_log($pdo, $user, $storeId, 'table_qr_cancel', 'table', $tableId, null, [
+        'qr_revoked' => true,
+        'table_code' => $tbl['table_code'],
+    ], null);
     json_response(['ok' => true]);
 }

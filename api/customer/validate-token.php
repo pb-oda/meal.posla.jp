@@ -29,7 +29,15 @@ if (!$storeId || !$tableId || !$token) {
 $pdo = get_db();
 
 $stmt = $pdo->prepare(
-    'SELECT session_token FROM tables WHERE id = ? AND store_id = ? AND is_active = 1'
+    'SELECT t.session_token,
+            EXISTS (
+                SELECT 1 FROM table_sessions ts
+                 WHERE ts.table_id = t.id
+                   AND ts.store_id = t.store_id
+                   AND ts.status IN ("seated", "eating", "bill_requested")
+            ) AS active_session
+       FROM tables t
+      WHERE t.id = ? AND t.store_id = ? AND t.is_active = 1'
 );
 $stmt->execute([$tableId, $storeId]);
 $row = $stmt->fetch();
@@ -38,6 +46,10 @@ if (!$row) {
     json_response(['valid' => false]);
 }
 
-$valid = ($row['session_token'] && hash_equals($row['session_token'], (string)$token));
+$valid = (
+    $row['session_token']
+    && hash_equals($row['session_token'], (string)$token)
+    && (int)($row['active_session'] ?? 0) === 1
+);
 
 json_response(['valid' => $valid]);

@@ -14,6 +14,7 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/order-items.php';
+require_once __DIR__ . '/../lib/audit-log.php';
 
 require_method(['GET', 'POST', 'PATCH', 'DELETE']);
 $user = require_auth();
@@ -153,35 +154,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // memo カラム存在チェック
     $hasMemoCol = false;
+    $hasStatusChangedCol = table_session_has_column($pdo, 'status_changed_at');
     try {
         $pdo->query('SELECT memo FROM table_sessions LIMIT 0');
         $hasMemoCol = true;
     } catch (PDOException $e) {}
 
     if ($hasMemoCol) {
-        $stmt = $pdo->prepare(
-            'INSERT INTO table_sessions (id, store_id, table_id, status, guest_count, started_at,
-             plan_id, time_limit_min, last_order_min, expires_at, last_order_at,
-             course_id, current_phase_number, phase_fired_at, memo)
-             VALUES (?, ?, ?, "seated", ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        );
-        $stmt->execute([
-            $id, $storeId, $tableId, $guestCount,
-            $planId, $timeLimitMin, $lastOrderMin, $expiresAt, $lastOrderAt,
-            $courseId, $currentPhaseNumber, $phaseFiredAt, $memo
-        ]);
+        if ($hasStatusChangedCol) {
+            $stmt = $pdo->prepare(
+                'INSERT INTO table_sessions (id, store_id, table_id, status, status_changed_at, guest_count, started_at,
+                 plan_id, time_limit_min, last_order_min, expires_at, last_order_at,
+                 course_id, current_phase_number, phase_fired_at, memo)
+                 VALUES (?, ?, ?, "seated", NOW(), ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $stmt->execute([
+                $id, $storeId, $tableId, $guestCount,
+                $planId, $timeLimitMin, $lastOrderMin, $expiresAt, $lastOrderAt,
+                $courseId, $currentPhaseNumber, $phaseFiredAt, $memo
+            ]);
+        } else {
+            $stmt = $pdo->prepare(
+                'INSERT INTO table_sessions (id, store_id, table_id, status, guest_count, started_at,
+                 plan_id, time_limit_min, last_order_min, expires_at, last_order_at,
+                 course_id, current_phase_number, phase_fired_at, memo)
+                 VALUES (?, ?, ?, "seated", ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $stmt->execute([
+                $id, $storeId, $tableId, $guestCount,
+                $planId, $timeLimitMin, $lastOrderMin, $expiresAt, $lastOrderAt,
+                $courseId, $currentPhaseNumber, $phaseFiredAt, $memo
+            ]);
+        }
     } else {
-        $stmt = $pdo->prepare(
-            'INSERT INTO table_sessions (id, store_id, table_id, status, guest_count, started_at,
-             plan_id, time_limit_min, last_order_min, expires_at, last_order_at,
-             course_id, current_phase_number, phase_fired_at)
-             VALUES (?, ?, ?, "seated", ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?)'
-        );
-        $stmt->execute([
-            $id, $storeId, $tableId, $guestCount,
-            $planId, $timeLimitMin, $lastOrderMin, $expiresAt, $lastOrderAt,
-            $courseId, $currentPhaseNumber, $phaseFiredAt
-        ]);
+        if ($hasStatusChangedCol) {
+            $stmt = $pdo->prepare(
+                'INSERT INTO table_sessions (id, store_id, table_id, status, status_changed_at, guest_count, started_at,
+                 plan_id, time_limit_min, last_order_min, expires_at, last_order_at,
+                 course_id, current_phase_number, phase_fired_at)
+                 VALUES (?, ?, ?, "seated", NOW(), ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $stmt->execute([
+                $id, $storeId, $tableId, $guestCount,
+                $planId, $timeLimitMin, $lastOrderMin, $expiresAt, $lastOrderAt,
+                $courseId, $currentPhaseNumber, $phaseFiredAt
+            ]);
+        } else {
+            $stmt = $pdo->prepare(
+                'INSERT INTO table_sessions (id, store_id, table_id, status, guest_count, started_at,
+                 plan_id, time_limit_min, last_order_min, expires_at, last_order_at,
+                 course_id, current_phase_number, phase_fired_at)
+                 VALUES (?, ?, ?, "seated", ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $stmt->execute([
+                $id, $storeId, $tableId, $guestCount,
+                $planId, $timeLimitMin, $lastOrderMin, $expiresAt, $lastOrderAt,
+                $courseId, $currentPhaseNumber, $phaseFiredAt
+            ]);
+        }
     }
 
     // コース: フェーズ1の注文を自動生成
@@ -199,6 +229,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // session_pin カラム未作成時はスキップ
         $sessionPin = null;
     }
+
+    write_audit_log($pdo, $user, $storeId, 'table_session_start', 'table_session', $id, null, [
+        'table_id' => $tableId,
+        'guest_count' => $guestCount,
+        'plan_id' => $planId,
+        'course_id' => $courseId,
+        'memo' => $memo,
+    ], null);
 
     json_response([
         'id'          => $id,
@@ -228,12 +266,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $params = [];
 
     if (isset($data['status'])) {
-        $allowed = ['seated', 'eating', 'bill_requested', 'paid', 'closed'];
+        $allowed = ['seated', 'eating', 'bill_requested', 'paid', 'cleaning', 'closed'];
         if (!in_array($data['status'], $allowed)) {
             json_error('INVALID_STATUS', '無効なステータスです', 400);
         }
+        if ($data['status'] === 'cleaning' && !table_session_supports_status($pdo, 'cleaning')) {
+            json_error('MIGRATION_REQUIRED', '清掃待ちにはデータベース更新が必要です', 500);
+        }
         $fields[] = 'status = ?';
         $params[] = $data['status'];
+        if ($data['status'] !== $session['status'] && table_session_has_column($pdo, 'status_changed_at')) {
+            $fields[] = 'status_changed_at = NOW()';
+        }
 
         if (in_array($data['status'], ['paid', 'closed'])) {
             $fields[] = 'closed_at = NOW()';
@@ -297,6 +341,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $params[] = $id;
     $pdo->prepare('UPDATE table_sessions SET ' . implode(', ', $fields) . ' WHERE id = ?')->execute($params);
 
+    if (isset($data['status']) && in_array($data['status'], ['paid', 'cleaning', 'closed'], true)) {
+        table_session_reset_customer_access($pdo, $storeId, $session['table_id']);
+    }
+
+    write_audit_log($pdo, $user, $storeId, 'table_session_update', 'table_session', $id, [
+        'status' => $session['status'],
+        'guest_count' => $session['guest_count'] ?? null,
+        'memo' => $session['memo'] ?? null,
+    ], [
+        'status' => $data['status'] ?? $session['status'],
+        'guest_count' => $data['guest_count'] ?? ($session['guest_count'] ?? null),
+        'memo' => array_key_exists('memo', $data) ? $data['memo'] : ($session['memo'] ?? null),
+    ], null);
+
     json_response(['ok' => true]);
 }
 
@@ -312,8 +370,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     $stmt->execute([$id, $storeId]);
     $sessionTableId = $stmt->fetchColumn();
 
+    $deleteFields = 'status = "closed", closed_at = NOW()';
+    if (table_session_has_column($pdo, 'status_changed_at')) {
+        $deleteFields .= ', status_changed_at = NOW()';
+    }
     $pdo->prepare(
-        'UPDATE table_sessions SET status = "closed", closed_at = NOW() WHERE id = ? AND store_id = ?'
+        'UPDATE table_sessions SET ' . $deleteFields . ' WHERE id = ? AND store_id = ?'
     )->execute([$id, $storeId]);
 
     // 未会計注文をキャンセル（テーブルリセット）
@@ -325,10 +387,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
 
     // セッショントークンをリセット（古いQRコードを無効化）
     if ($sessionTableId) {
-        $newToken = bin2hex(random_bytes(16));
-        $pdo->prepare('UPDATE tables SET session_token = ?, session_token_expires_at = DATE_ADD(NOW(), INTERVAL 4 HOUR) WHERE id = ?')
-            ->execute([$newToken, $sessionTableId]);
+        table_session_reset_customer_access($pdo, $storeId, $sessionTableId);
     }
+
+    write_audit_log($pdo, $user, $storeId, 'table_session_delete', 'table_session', $id, null, [
+        'table_id' => $sessionTableId,
+        'orders_cancelled' => true,
+        'qr_revoked' => true,
+    ], null);
 
     json_response(['ok' => true]);
 }
@@ -362,4 +428,76 @@ function fire_course_phase_orders(PDO $pdo, string $storeId, string $tableId, st
 
     // order_items テーブルにも書き込み
     insert_order_items($pdo, $orderId, $storeId, $orderItems);
+}
+
+function table_session_supports_status(PDO $pdo, string $status): bool
+{
+    static $allowed = null;
+    if ($allowed === null) {
+        $allowed = [];
+        try {
+            $stmt = $pdo->query("SHOW COLUMNS FROM table_sessions LIKE 'status'");
+            $row = $stmt ? $stmt->fetch() : null;
+            if ($row && isset($row['Type']) && preg_match("/^enum\\((.*)\\)$/", $row['Type'], $m)) {
+                preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", $m[1], $matches);
+                $allowed = $matches[1] ?? [];
+            }
+        } catch (Exception $e) {
+            $allowed = ['seated', 'eating', 'bill_requested', 'paid', 'closed'];
+        }
+    }
+    return in_array($status, $allowed, true);
+}
+
+function table_session_has_column(PDO $pdo, string $column): bool
+{
+    static $cache = [];
+    if (array_key_exists($column, $cache)) return $cache[$column];
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = "table_sessions"
+                AND COLUMN_NAME = ?'
+        );
+        $stmt->execute([$column]);
+        $cache[$column] = ((int)$stmt->fetchColumn()) > 0;
+    } catch (Exception $e) {
+        $cache[$column] = false;
+    }
+    return $cache[$column];
+}
+
+function table_session_reset_customer_access(PDO $pdo, string $storeId, string $tableId): void
+{
+    $newToken = bin2hex(random_bytes(16));
+    try {
+        $pdo->prepare(
+            'UPDATE tables
+                SET session_token = ?,
+                    session_token_expires_at = DATE_ADD(NOW(), INTERVAL 4 HOUR),
+                    next_session_token = NULL,
+                    next_session_token_expires_at = NULL,
+                    next_session_opened_by_user_id = NULL,
+                    next_session_opened_at = NULL
+              WHERE id = ? AND store_id = ?'
+        )->execute([$newToken, $tableId, $storeId]);
+    } catch (PDOException $e) {
+        $pdo->prepare(
+            'UPDATE tables
+                SET session_token = ?,
+                    session_token_expires_at = DATE_ADD(NOW(), INTERVAL 4 HOUR)
+              WHERE id = ? AND store_id = ?'
+        )->execute([$newToken, $tableId, $storeId]);
+    }
+
+    try {
+        $pdo->prepare(
+            'UPDATE table_sub_sessions
+                SET closed_at = COALESCE(closed_at, NOW())
+              WHERE table_id = ? AND store_id = ? AND closed_at IS NULL'
+        )->execute([$tableId, $storeId]);
+    } catch (PDOException $e) {
+        // table_sub_sessions 未作成時はスキップ
+    }
 }

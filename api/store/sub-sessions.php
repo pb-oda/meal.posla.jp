@@ -92,7 +92,8 @@ require_store_access($storeId);
 // 親セッションの存在確認
 $stmt = $pdo->prepare(
     "SELECT id FROM table_sessions
-     WHERE id = ? AND store_id = ? AND status NOT IN ('paid', 'closed')"
+     WHERE id = ? AND store_id = ?
+       AND status IN ('seated', 'eating', 'bill_requested')"
 );
 $stmt->execute([$sessionId, $storeId]);
 if (!$stmt->fetch()) {

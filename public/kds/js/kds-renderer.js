@@ -13,6 +13,7 @@ var KdsRenderer = (function () {
     preparing: null,
     ready: null
   };
+  var _servedUndoEl = null;
   // KDS-P1-1: expeditor (まとめ表示) モード用
   var _expeditorEl = null;
   var _mode = 'normal'; // 'normal' | 'expeditor'
@@ -58,6 +59,8 @@ var KdsRenderer = (function () {
   }
 
   function render() {
+    renderServedUndo();
+
     // KDS-P1-1: expeditor モードでは専用レンダラへ委譲 (通常 3 列カンバンは維持)
     if (_mode === 'expeditor' && _expeditorEl) {
       renderExpeditor();
@@ -138,6 +141,51 @@ var KdsRenderer = (function () {
 
     // Phase 3: stale 状態なら action ボタンを無効化 (read-only 表示)
     _applyStaleReadonlyIfNeeded();
+  }
+
+  function ensureServedUndoEl() {
+    if (_servedUndoEl) return _servedUndoEl;
+    var board = document.getElementById('kds-board');
+    if (!board) return null;
+    _servedUndoEl = document.createElement('div');
+    _servedUndoEl.id = 'kds-served-undo';
+    _servedUndoEl.className = 'kds-served-undo';
+    board.insertBefore(_servedUndoEl, board.firstChild);
+    return _servedUndoEl;
+  }
+
+  function renderServedUndo() {
+    var el = ensureServedUndoEl();
+    if (!el) return;
+    var rows = [];
+    Object.keys(_orders).forEach(function (id) {
+      var o = _orders[id];
+      var items = o.items || [];
+      for (var i = 0; i < items.length; i++) {
+        if ((items[i].status || '') !== 'served' || !items[i].item_id) continue;
+        rows.push({
+          itemId: items[i].item_id,
+          name: items[i].name || '',
+          table: o.table_code || o.customer_name || '-',
+          servedAt: items[i].served_at || o.served_at || o.updated_at || ''
+        });
+      }
+    });
+    rows.sort(function (a, b) { return String(b.servedAt).localeCompare(String(a.servedAt)); });
+    rows = rows.slice(0, 8);
+    if (rows.length === 0) {
+      el.innerHTML = '';
+      el.style.display = 'none';
+      return;
+    }
+    var html = '<div class="kds-served-undo__title">直近の配膳完了</div><div class="kds-served-undo__list">';
+    for (var j = 0; j < rows.length; j++) {
+      html += '<button type="button" class="kds-item-action kds-item-action--ready kds-served-undo__btn" data-item-id="' + Utils.escapeHtml(rows[j].itemId) + '" data-item-status="ready">'
+        + Utils.escapeHtml(rows[j].table) + ' / ' + Utils.escapeHtml(rows[j].name) + ' を戻す</button>';
+    }
+    html += '</div>';
+    el.innerHTML = html;
+    el.style.display = '';
   }
 
   // Phase 3: OfflineStateBanner.isStale() が true の間、
@@ -517,7 +565,7 @@ var KdsRenderer = (function () {
     return true;
   }
 
-  function handleAction(orderId, newStatus, storeId) {
+  function handleAction(orderId, newStatus, storeId, reason) {
     // Phase 3: offline/stale ならローカル状態変更も API 呼び出しもせず、呼び出し側に
     // reject で通知する (voice-commander 等の .then() が成功音を鳴らさないように)
     if (_guardOfflineOrStale('handleAction')) {
@@ -539,7 +587,7 @@ var KdsRenderer = (function () {
     return fetch('../../api/kds/update-status.php', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order_id: orderId, status: newStatus, store_id: storeId }),
+      body: JSON.stringify({ order_id: orderId, status: newStatus, store_id: storeId, reason: reason || null }),
       credentials: 'same-origin'
     }).then(function (r) {
       return r.text().then(function (body) {

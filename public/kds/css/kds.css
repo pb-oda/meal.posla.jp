@@ -417,6 +417,35 @@ html.light-theme .kds-order-allergen { background: rgba(255,59,48,0.1); }
 .kds-item--served { opacity: 0.5; text-decoration: line-through; }
 .kds-item--cancelled { opacity: 0.3; text-decoration: line-through; }
 
+.kds-served-undo {
+  grid-column: 1 / -1;
+  padding: 0.65rem;
+  border: 1px solid rgba(76,175,80,0.28);
+  border-radius: 8px;
+  background: rgba(46,125,50,0.12);
+}
+
+.kds-served-undo__title {
+  margin-bottom: 0.45rem;
+  color: var(--kds-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.kds-served-undo__list {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.kds-served-undo__btn {
+  flex: 0 0 auto;
+  min-height: 34px;
+  margin-left: 0;
+  white-space: nowrap;
+}
+
 .kds-empty {
   text-align: center;
   padding: 2rem;

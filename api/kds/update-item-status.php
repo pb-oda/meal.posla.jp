@@ -21,6 +21,8 @@ $data = get_json_body();
 $itemId = $data['item_id'] ?? null;
 $newStatus = $data['status'] ?? null;
 $storeId = $data['store_id'] ?? null;
+$reason = isset($data['reason']) ? mb_substr(trim($data['reason']), 0, 200) : null;
+if ($reason === '') $reason = null;
 
 if (!$itemId || !$newStatus || !$storeId) {
     json_error('MISSING_FIELDS', 'item_id, status, store_id は必須です', 400);
@@ -32,6 +34,9 @@ $validStatuses = ['pending', 'preparing', 'ready', 'served', 'cancelled'];
 if (!in_array($newStatus, $validStatuses)) {
     json_error('INVALID_STATUS', '無効なステータスです', 400);
 }
+if ($newStatus === 'cancelled' && !$reason) {
+    json_error('REASON_REQUIRED', '取消理由を入力してください', 400);
+}
 
 $pdo = get_db();
 
@@ -40,6 +45,14 @@ $stmt = $pdo->prepare('SELECT id, order_id, name, status FROM order_items WHERE 
 $stmt->execute([$itemId, $storeId]);
 $item = $stmt->fetch();
 if (!$item) json_error('ITEM_NOT_FOUND', '品目が見つかりません', 404);
+if ($item['status'] === $newStatus) {
+    json_response([
+        'item_id' => $itemId,
+        'status' => $newStatus,
+        'order_completed' => false,
+        'unchanged' => true,
+    ]);
+}
 
 // ステータス更新 + タイムスタンプ
 $sql = 'UPDATE order_items SET status = ?, updated_at = NOW()';
@@ -53,6 +66,13 @@ $timestampMap = [
 if (isset($timestampMap[$newStatus])) {
     $sql .= ', ' . $timestampMap[$newStatus] . ' = NOW()';
 }
+if ($newStatus === 'pending') {
+    $sql .= ', prepared_at = NULL, ready_at = NULL, served_at = NULL';
+} elseif ($newStatus === 'preparing') {
+    $sql .= ', ready_at = NULL, served_at = NULL';
+} elseif ($newStatus === 'ready') {
+    $sql .= ', served_at = NULL';
+}
 
 $sql .= ' WHERE id = ? AND store_id = ?';
 $params[] = $itemId;
@@ -61,7 +81,7 @@ $params[] = $storeId;
 $pdo->prepare($sql)->execute($params);
 
 // 監査ログ
-write_audit_log($pdo, $user, $storeId, 'item_status', 'order_item', $itemId, ['status' => $item['status']], ['status' => $newStatus], null);
+write_audit_log($pdo, $user, $storeId, $newStatus === 'cancelled' ? 'order_item_cancel' : 'item_status', 'order_item', $itemId, ['status' => $item['status']], ['status' => $newStatus], $reason);
 
 // O-5: ready になったらハンディに通知（call_alerts に product_ready レコード作成）
 if ($newStatus === 'ready') {
@@ -120,12 +140,16 @@ if ($active > 0) {
     } elseif ((int)$counts['preparing_count'] > 0) {
         $newOrderStatus = 'preparing';
     }
+} else {
+    $newOrderStatus = 'cancelled';
 }
 
 if ($newOrderStatus) {
     $orderUpdateSql = 'UPDATE orders SET status = ?, updated_at = NOW()';
     if ($newOrderStatus === 'served') {
         $orderUpdateSql .= ', served_at = NOW()';
+    } else {
+        $orderUpdateSql .= ', served_at = NULL';
     }
     $orderUpdateSql .= ' WHERE id = ? AND store_id = ?';
     $pdo->prepare($orderUpdateSql)->execute([$newOrderStatus, $orderId, $storeId]);

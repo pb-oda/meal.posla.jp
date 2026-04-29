@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#1a237e">
   <title>ハンディPOS</title>
-  <link rel="stylesheet" href="css/handy.css?v=20260423-connect-handy3">
+  <link rel="stylesheet" href="css/handy.css?v=20260429-handy-ops4">
   <!-- PWA -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -20,6 +20,8 @@
     </div>
     <div class="handy-header__right">
       <a href="#" class="handy-header__link" id="handy-change-store" style="display:none">店舗切替</a>
+      <div id="handy-terminal-mode" class="handy-terminal-mode" aria-label="端末モード"></div>
+      <button id="handy-pending-btn" class="handy-header__pending" type="button" style="display:none">未送信 <span id="handy-pending-count">0</span></button>
       <span id="handy-user-name" class="handy-header__user">-</span>
       <button id="btn-logout" class="handy-header__logout">ログアウト</button>
     </div>
@@ -30,6 +32,7 @@
     <button class="handy-tabs__btn active" data-tab="dinein">店内注文</button>
     <button class="handy-tabs__btn" data-tab="takeout">テイクアウト</button>
     <button class="handy-tabs__btn" data-tab="tables">テーブル状況</button>
+    <button class="handy-tabs__btn" data-tab="ops">運用</button>
     <button class="handy-tabs__btn" data-tab="reservations">📅 予約</button>
     <button class="handy-tabs__btn" data-tab="history">注文履歴</button>
   </nav>
@@ -48,6 +51,7 @@
       <select id="table-select" class="ctx-select">
         <option value="">テーブルを選択</option>
       </select>
+      <div id="selected-table-panel" class="table-action-panel" style="display:none"></div>
     </div>
 
     <!-- テイクアウト: 顧客情報 -->
@@ -63,6 +67,7 @@
     </div>
 
     <!-- カテゴリタブ -->
+    <div id="quick-order-panel" class="quick-order-panel" style="display:none"></div>
     <div id="category-tabs" class="cat-tabs"></div>
 
     <!-- メニューグリッド -->
@@ -73,6 +78,23 @@
   <div id="panel-tables" class="handy-panel" style="display:none">
     <div id="table-status-info" class="table-status__info"></div>
     <div id="table-status-grid" class="table-status__grid"></div>
+  </div>
+
+  <!-- 運用パネル -->
+  <div id="panel-ops" class="handy-panel handy-ops-panel" style="display:none">
+    <div class="ops-board__header">
+      <div>
+        <div class="ops-board__title">運用ボード</div>
+        <div class="ops-board__sub">未対応だけを上から処理します</div>
+      </div>
+      <button id="ops-refresh" class="ops-board__refresh" type="button">更新</button>
+    </div>
+    <div id="ops-summary" class="ops-summary"></div>
+    <div id="ops-alerts" class="ops-alerts"></div>
+    <div id="ops-tasks" class="ops-tasks"></div>
+    <div id="ops-log" class="ops-log"></div>
+    <div class="ops-board__section-title">卓クイック操作</div>
+    <div id="ops-table-grid" class="ops-table-grid"></div>
   </div>
 
   <!-- 予約パネル (L-9) -->
@@ -168,7 +190,7 @@
 
   <script src="../shared/js/utils.js?v=20260419-phaseB"></script>
   <script src="../shared/js/revision-gate.js?v=20260420-rev2"></script>
-  <script src="js/handy-app.js?v=20260423-connect-handy3"></script>
+  <script src="js/handy-app.js?v=20260429-handy-ops4"></script>
   <script>
   (function () {
     'use strict';
@@ -197,6 +219,27 @@
   </script>
   <script src="../js/session-monitor.js?v=20260419-fixurl"></script>
   <script src="pwa-register.js"></script>
+  <script src="../shared/js/install-prompt-banner.js?v=20260429-business-install1"></script>
+  <script>
+    (function () {
+      'use strict';
+      if (typeof InstallPromptBanner === 'undefined') return;
+      InstallPromptBanner.init('handy', {
+        androidOnly: true,
+        iosHint: false,
+        manualAndroidHint: true,
+        background: '#ef6c00',
+        primaryColor: '#ef6c00',
+        padding: '12px 14px',
+        fontSize: '14px',
+        buttonPadding: '8px 14px',
+        buttonFontSize: '13px',
+        message: 'POSLAハンディをホーム画面に追加すると、注文入力を1タップで起動できます。',
+        manualMessage: 'Chrome右上のメニューから「ホーム画面に追加」を選ぶと、ハンディを1タップで起動できます。',
+        installText: 'ホームに追加'
+      });
+    })();
+  </script>
   <script src="../shared/js/standard-env-banner.js?v=20260420-env"></script>
   <script>StandardEnvBanner.init('handy');</script>
   <!-- Phase 1: PWA 更新マネージャ -->
