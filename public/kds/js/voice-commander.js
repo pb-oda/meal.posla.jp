@@ -15,9 +15,14 @@ var VoiceCommander = (function () {
   var _recognition = null;
   var _btn = null;
   var _aiFallbackBtn = null;
+  var _diagBtn = null;
+  var _diagOverlay = null;
+  var _diagMicPermission = '未確認';
   var _statusEl = null;
   var _lastOrders = [];
   var _aiFallbackEnabled = false;
+  var _voiceDiag = null;
+  var _lastRuntimeTranscript = '';
 
   // ── 状態 ──
   // 'off' | 'standby' | 'processing'
@@ -66,15 +71,19 @@ var VoiceCommander = (function () {
     // KDS画面操作
     'まとめ', '提供順', 'エクスペディター', '通常', '3列',
     '戻して', '今のなし', '直前', '残り', '未完成', '注意', 'アレルギー',
-    '次フェーズ', '次のフェーズ', '全品'
+    '次フェーズ', '次のフェーズ', '全品',
+    // 端末診断
+    '音声診断', 'マイク診断'
   ];
 
   var _VOICE_KEY = 'mt_kds_voice_active';
   var _AI_FALLBACK_KEY = 'mt_kds_voice_ai_fallback';
+  var _VOICE_DIAG_KEY = 'mt_kds_voice_diag_v1';
 
   // ── 初期化 ──
   function init() {
     _loadAiFallbackSetting();
+    _loadVoiceDiag();
     _createUI();
     _checkAiConfig();
     _loadMenu();
@@ -125,6 +134,123 @@ var VoiceCommander = (function () {
     _aiFallbackBtn.style.borderColor = _aiFallbackEnabled ? '#42a5f5' : (isLight ? '#bbb' : 'rgba(255,255,255,0.3)');
     _aiFallbackBtn.style.background = _aiFallbackEnabled ? 'rgba(66,165,245,0.18)' : 'none';
     _aiFallbackBtn.style.color = isLight ? (_aiFallbackEnabled ? '#1565c0' : '#555') : '#fff';
+    _updateDiagButton();
+  }
+
+  function _updateDiagButton() {
+    if (!_diagBtn) return;
+    var isLight = document.documentElement.classList.contains('light-theme');
+    _diagBtn.style.borderColor = isLight ? '#bbb' : 'rgba(255,255,255,0.3)';
+    _diagBtn.style.color = isLight ? '#555' : '#fff';
+  }
+
+  function _defaultVoiceDiag() {
+    var now = new Date().toISOString();
+    return {
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+      starts: 0,
+      finalResults: 0,
+      commandSuccess: 0,
+      commandFailure: 0,
+      aiFallbackCalls: 0,
+      aiFallbackBlocked: 0,
+      autoRefreshes: 0,
+      manualRestarts: 0,
+      noSpeechErrors: 0,
+      networkErrors: 0,
+      audioCaptureErrors: 0,
+      otherErrors: 0,
+      lastStartAt: '',
+      lastFinalAt: '',
+      lastSuccessAt: '',
+      lastFailureAt: '',
+      lastRefreshAt: '',
+      lastRefreshReason: '',
+      lastCommandType: ''
+    };
+  }
+
+  function _loadVoiceDiag() {
+    _voiceDiag = _defaultVoiceDiag();
+    try {
+      var raw = localStorage.getItem(_VOICE_DIAG_KEY);
+      if (!raw) return;
+      var parsed = JSON.parse(raw);
+      if (!parsed || parsed.version !== 1) return;
+      var keys = Object.keys(_voiceDiag);
+      for (var i = 0; i < keys.length; i++) {
+        if (parsed[keys[i]] !== undefined) _voiceDiag[keys[i]] = parsed[keys[i]];
+      }
+    } catch (e) {}
+  }
+
+  function _saveVoiceDiag() {
+    if (!_voiceDiag) _voiceDiag = _defaultVoiceDiag();
+    _voiceDiag.updatedAt = new Date().toISOString();
+    try { localStorage.setItem(_VOICE_DIAG_KEY, JSON.stringify(_voiceDiag)); } catch (e) {}
+    _renderVoiceDiagnostics();
+  }
+
+  function _diagInc(key) {
+    if (!_voiceDiag) _loadVoiceDiag();
+    _voiceDiag[key] = (parseInt(_voiceDiag[key], 10) || 0) + 1;
+    _saveVoiceDiag();
+  }
+
+  function _recordVoiceStart() {
+    if (!_voiceDiag) _loadVoiceDiag();
+    _voiceDiag.starts = (parseInt(_voiceDiag.starts, 10) || 0) + 1;
+    _voiceDiag.lastStartAt = new Date().toISOString();
+    _saveVoiceDiag();
+  }
+
+  function _recordFinalResult(transcript) {
+    if (!_voiceDiag) _loadVoiceDiag();
+    _voiceDiag.finalResults = (parseInt(_voiceDiag.finalResults, 10) || 0) + 1;
+    _voiceDiag.lastFinalAt = new Date().toISOString();
+    _lastRuntimeTranscript = transcript || '';
+    _saveVoiceDiag();
+  }
+
+  function _recordCommandSuccess(type) {
+    if (!_voiceDiag) _loadVoiceDiag();
+    _voiceDiag.commandSuccess = (parseInt(_voiceDiag.commandSuccess, 10) || 0) + 1;
+    _voiceDiag.lastSuccessAt = new Date().toISOString();
+    _voiceDiag.lastCommandType = type || '';
+    _saveVoiceDiag();
+  }
+
+  function _recordCommandFailure(type) {
+    if (!_voiceDiag) _loadVoiceDiag();
+    _voiceDiag.commandFailure = (parseInt(_voiceDiag.commandFailure, 10) || 0) + 1;
+    _voiceDiag.lastFailureAt = new Date().toISOString();
+    _voiceDiag.lastCommandType = type || '';
+    _saveVoiceDiag();
+  }
+
+  function _recordAiFallbackCall() {
+    _diagInc('aiFallbackCalls');
+  }
+
+  function _recordAiFallbackBlocked() {
+    _diagInc('aiFallbackBlocked');
+  }
+
+  function _recordAutoRefresh(reason) {
+    if (!_voiceDiag) _loadVoiceDiag();
+    _voiceDiag.autoRefreshes = (parseInt(_voiceDiag.autoRefreshes, 10) || 0) + 1;
+    _voiceDiag.lastRefreshAt = new Date().toISOString();
+    _voiceDiag.lastRefreshReason = reason || '';
+    _saveVoiceDiag();
+  }
+
+  function _resetVoiceDiag() {
+    _voiceDiag = _defaultVoiceDiag();
+    _lastRuntimeTranscript = '';
+    _saveVoiceDiag();
+    _showStatus('音声診断ログをリセットしました', 1800);
   }
 
   // ── UI生成 ──
@@ -155,6 +281,19 @@ var VoiceCommander = (function () {
       });
       headerRight.insertBefore(_aiFallbackBtn, _btn.nextSibling);
       _updateAiFallbackButton();
+
+      _diagBtn = document.createElement('button');
+      _diagBtn.type = 'button';
+      _diagBtn.className = 'kds-header__link';
+      _diagBtn.textContent = '音声診断';
+      _diagBtn.title = 'この端末の音声認識状態を表示します';
+      _diagBtn.style.cssText = 'cursor:pointer;background:none;border:2px solid rgba(255,255,255,0.3);border-radius:4px;color:#fff;padding:0.25rem 0.6rem;font-size:0.78rem;font-weight:700;';
+      _diagBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        _showVoiceDiagnostics();
+      });
+      headerRight.insertBefore(_diagBtn, _aiFallbackBtn.nextSibling);
+      _updateDiagButton();
     }
 
     // クリック（タップ）トグル
@@ -295,6 +434,7 @@ var VoiceCommander = (function () {
 
   function _executeNavigateSoldOut() {
     _showStatus('品切れ管理画面へ移動します...', 1500);
+    _recordCommandSuccess('navigate_sold_out');
     try { localStorage.setItem(_VOICE_KEY, '1'); } catch (e) {}
     _shouldRestart = false;
     if (_recognition) { try { _recognition.abort(); } catch (ex) {} }
@@ -365,9 +505,11 @@ var VoiceCommander = (function () {
     if (target) {
       target.click();
       _beepSuccess();
+      _recordCommandSuccess('station_switch');
       _showStatus('ステーション切替: ' + target.textContent.trim(), 2000);
     } else {
       _beepError();
+      _recordCommandFailure('station_switch');
       _showStatus('ステーションが見つかりません', 2000);
     }
     _returnToStandby();
@@ -376,6 +518,7 @@ var VoiceCommander = (function () {
   function _executeThemeSwitch(theme) {
     if (typeof ThemeSwitcher !== 'undefined' && ThemeSwitcher.set) {
       _beepSuccess();
+      _recordCommandSuccess('theme_switch');
       setTimeout(function () {
         ThemeSwitcher.set(theme);
         _showStatus(theme === 'light' ? '\u2600 ライトモードに切替' : '\uD83C\uDF19 ダークモードに切替', 2000);
@@ -385,6 +528,7 @@ var VoiceCommander = (function () {
       }, 200);
     } else {
       _beepError();
+      _recordCommandFailure('theme_switch');
       _showStatus('テーマ切替に失敗しました', 2000);
     }
   }
@@ -400,6 +544,7 @@ var VoiceCommander = (function () {
   function _executeAiFallbackSwitch(enabled) {
     _setAiFallbackEnabled(enabled);
     _beepSuccess();
+    _recordCommandSuccess('ai_fallback_switch');
     _showStatus(enabled ? '音声AI補助をONにしました' : '音声AI補助をOFFにしました', 2000);
     _speak(enabled ? '音声AI補助をオンにしました' : '音声AI補助をオフにしました');
     _returnToStandby();
@@ -417,12 +562,14 @@ var VoiceCommander = (function () {
     var btn = document.querySelector('[data-kds-mode="' + mode + '"]');
     if (!btn) {
       _beepError();
+      _recordCommandFailure('mode_switch');
       _showStatus('表示モードを切り替えられません', 2000);
       _returnToStandby();
       return;
     }
     btn.click();
     _beepSuccess();
+    _recordCommandSuccess('mode_switch');
     _showStatus(mode === 'expeditor' ? 'まとめ表示に切替' : '通常3列に切替', 2000);
     _speak(mode === 'expeditor' ? 'まとめ表示にしました' : '通常表示にしました');
     _returnToStandby();
@@ -441,6 +588,7 @@ var VoiceCommander = (function () {
   function _executeUndoLast() {
     if (!window.KdsRenderer || !KdsRenderer.undoLastAction) {
       _beepError();
+      _recordCommandFailure('undo');
       _showStatus('戻せる操作がありません', 2000);
       _returnToStandby();
       return;
@@ -449,12 +597,14 @@ var VoiceCommander = (function () {
     KdsRenderer.undoLastAction(KdsAuth.getStoreId())
       .then(function () {
         _beepSuccess();
+        _recordCommandSuccess('undo');
         _showStatus('直前操作を戻しました', 2000);
         _speak('戻しました');
         _returnToStandby();
       })
       .catch(function () {
         _beepError();
+        _recordCommandFailure('undo');
         _showStatus('戻せる操作がありません', 2500);
         _speak('戻せる操作がありません');
         _returnToStandby();
@@ -533,6 +683,7 @@ var VoiceCommander = (function () {
     var orders = _activeOrdersForTableText(text);
     if (orders.length === 0) {
       _beepError();
+      _recordCommandFailure(kind === 'notice' ? 'table_notice' : 'table_remaining');
       _showStatus('該当する卓の未完了注文がありません', 2500);
       _speak('未完了注文がありません');
       _returnToStandby();
@@ -562,6 +713,7 @@ var VoiceCommander = (function () {
       ? tableLabel + ' 注意: ' + lines.join(' / ')
       : tableLabel + ' 残り' + (ready + preparing + pending) + '品。提供待ち' + ready + '、調理中' + preparing + '、受付' + pending + '。' + lines.join(' / ');
     _beepSuccess();
+    _recordCommandSuccess(kind === 'notice' ? 'table_notice' : 'table_remaining');
     _showStatus(msg, 7000);
     _speak(msg);
     _returnToStandby();
@@ -579,6 +731,7 @@ var VoiceCommander = (function () {
     var orders = _activeOrdersForTableText(text);
     if (orders.length === 0) {
       _beepError();
+      _recordCommandFailure('table_bulk');
       _showStatus('該当する卓の未完了注文がありません', 2500);
       _returnToStandby();
       return;
@@ -596,12 +749,14 @@ var VoiceCommander = (function () {
         KdsRenderer.handleOrderBatch(ids, newStatus, KdsAuth.getStoreId(), tableLabel + ' 全品' + statusLabel)
           .then(function () {
             _beepSuccess();
+            _recordCommandSuccess('table_bulk');
             _showStatus(tableLabel + ' 全品' + statusLabel + ' 完了', 2500);
             _speak('完了しました');
             _returnToStandby();
           })
           .catch(function () {
             _beepError();
+            _recordCommandFailure('table_bulk');
             _showStatus('一括操作に失敗しました', 3000);
             _returnToStandby();
           });
@@ -643,6 +798,7 @@ var VoiceCommander = (function () {
     var order = _pickTableOrderForStatus(orders, newStatus);
     if (!order) {
       _beepError();
+      _recordCommandFailure('table_status');
       _showStatus('該当する卓の未完了注文がありません', 2500);
       _returnToStandby();
       return;
@@ -663,6 +819,7 @@ var VoiceCommander = (function () {
     var orders = _activeOrdersForTableText(text);
     if (orders.length === 0) {
       _beepError();
+      _recordCommandFailure('cancel_order');
       _showStatus('該当する卓の未完了注文がありません', 2500);
       _returnToStandby();
       return;
@@ -681,12 +838,14 @@ var VoiceCommander = (function () {
         KdsRenderer.handleOrderBatch(ids, 'cancelled', KdsAuth.getStoreId(), tableLabel + ' 注文取消', reason)
           .then(function () {
             _beepSuccess();
+            _recordCommandSuccess('cancel_order');
             _showStatus(tableLabel + ' 注文を取消しました', 2500);
             _speak('取消しました');
             _returnToStandby();
           })
           .catch(function () {
             _beepError();
+            _recordCommandFailure('cancel_order');
             _showStatus('取消に失敗しました', 3000);
             _returnToStandby();
           });
@@ -719,6 +878,7 @@ var VoiceCommander = (function () {
     var order = _findCourseTableForText(text);
     if (!order) {
       _beepError();
+      _recordCommandFailure('course_advance');
       _showStatus('該当するコース卓が見つかりません', 2500);
       _returnToStandby();
       return;
@@ -733,16 +893,19 @@ var VoiceCommander = (function () {
           .then(function (json) {
             if (json && json.ok) {
               _beepSuccess();
+              _recordCommandSuccess('course_advance');
               _showStatus(tableLabel + ' 次フェーズに進めました', 2500);
               _speak('次フェーズに進めました');
             } else {
               _beepError();
+              _recordCommandFailure('course_advance');
               _showStatus('次フェーズ処理に失敗しました', 3000);
             }
             _returnToStandby();
           })
           .catch(function () {
             _beepError();
+            _recordCommandFailure('course_advance');
             _showStatus('次フェーズ処理に失敗しました', 3000);
             _returnToStandby();
           });
@@ -789,7 +952,7 @@ var VoiceCommander = (function () {
       + '「AI補助オン」「AI補助オフ」<br>'
       + '<span style="font-size:0.75rem;color:#bbb;">通常はOFF推奨。OFF時は未対応の言い回しをAI解析しません。</span></div>'
       + '<div><span style="color:#4CAF50;font-weight:700;">■ システム</span><br>'
-      + '「音声再起動」「コマンド一覧」</div>'
+      + '「音声再起動」「音声診断」「コマンド一覧」</div>'
       + '<div style="margin-top:1rem;font-size:0.75rem;color:#999;">タップで閉じる</div>';
 
     overlay.innerHTML = html;
@@ -802,6 +965,133 @@ var VoiceCommander = (function () {
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
     }, 15000);
 
+    _beepSuccess();
+    _recordCommandSuccess('help');
+    _returnToStandby();
+  }
+
+  // ── 音声診断ファストパス ──
+  var _diagWords = ['音声診断', 'マイク診断', '音声状態', 'マイク状態'];
+
+  function _detectVoiceDiagnosticsFastPath(text) {
+    for (var i = 0; i < _diagWords.length; i++) {
+      if (text.indexOf(_diagWords[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  function _diagAge(iso) {
+    if (!iso) return '-';
+    var t = new Date(iso).getTime();
+    if (!t || isNaN(t)) return '-';
+    var sec = Math.max(0, Math.floor((Date.now() - t) / 1000));
+    if (sec < 60) return sec + '秒前';
+    if (sec < 3600) return Math.floor(sec / 60) + '分前';
+    return Math.floor(sec / 3600) + '時間前';
+  }
+
+  function _diagRow(label, value) {
+    return '<div style="display:flex;justify-content:space-between;gap:1rem;border-bottom:1px solid rgba(255,255,255,0.08);padding:0.38rem 0;">'
+      + '<span style="color:#b0bec5;">' + Utils.escapeHtml(label) + '</span>'
+      + '<strong style="text-align:right;color:#fff;">' + Utils.escapeHtml(String(value)) + '</strong>'
+      + '</div>';
+  }
+
+  function _diagRate() {
+    var ok = parseInt((_voiceDiag && _voiceDiag.commandSuccess) || 0, 10) || 0;
+    var ng = parseInt((_voiceDiag && _voiceDiag.commandFailure) || 0, 10) || 0;
+    var total = ok + ng;
+    if (total === 0) return '-';
+    return Math.round((ok / total) * 100) + '% (' + ok + '/' + total + ')';
+  }
+
+  function _showVoiceDiagnostics() {
+    if (_diagOverlay && _diagOverlay.parentNode) {
+      _diagOverlay.parentNode.removeChild(_diagOverlay);
+      _diagOverlay = null;
+    }
+    _diagOverlay = document.createElement('div');
+    _diagOverlay.id = 'vc-diagnostics-overlay';
+    _diagOverlay.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#263238;color:#fff;padding:1.2rem 1.4rem;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:10002;max-width:94vw;max-height:84vh;overflow-y:auto;font-size:0.85rem;line-height:1.55;min-width:340px;';
+    document.body.appendChild(_diagOverlay);
+    _queryMicPermission();
+    _renderVoiceDiagnostics();
+  }
+
+  function _queryMicPermission() {
+    _diagMicPermission = '未確認';
+    if (!navigator.permissions || !navigator.permissions.query) {
+      _diagMicPermission = 'ブラウザ未対応';
+      _renderVoiceDiagnostics();
+      return;
+    }
+    try {
+      navigator.permissions.query({ name: 'microphone' }).then(function (status) {
+        _diagMicPermission = status && status.state ? status.state : '不明';
+        _renderVoiceDiagnostics();
+      }).catch(function () {
+        _diagMicPermission = '取得不可';
+        _renderVoiceDiagnostics();
+      });
+    } catch (e) {
+      _diagMicPermission = '取得不可';
+      _renderVoiceDiagnostics();
+    }
+  }
+
+  function _renderVoiceDiagnostics() {
+    if (!_diagOverlay || !_diagOverlay.parentNode) return;
+    if (!_voiceDiag) _loadVoiceDiag();
+    var supported = (window.SpeechRecognition || window.webkitSpeechRecognition) ? '対応' : '非対応';
+    var audioState = _audioCtx ? _audioCtx.state : '未初期化';
+    var lastRuntime = _lastRuntimeTranscript ? _lastRuntimeTranscript.substring(0, 60) : '-';
+    var html = '<div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:0.8rem;">'
+      + '<div style="font-size:1.05rem;font-weight:800;color:#42a5f5;">音声診断</div>'
+      + '<button type="button" id="vc-diagnostics-close" style="background:none;border:1px solid rgba(255,255,255,0.35);color:#fff;border-radius:4px;padding:0.2rem 0.55rem;cursor:pointer;">閉じる</button>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr;gap:0.25rem;">'
+      + _diagRow('音声状態', _state)
+      + _diagRow('Web Speech API', supported)
+      + _diagRow('マイク権限', _diagMicPermission)
+      + _diagRow('AudioContext', audioState)
+      + _diagRow('AI補助', _aiFallbackEnabled ? 'ON' : 'OFF')
+      + _diagRow('AI設定', _aiConfigLoaded ? (_aiConfigured ? '設定済み' : '未設定') : '確認中')
+      + _diagRow('最後の起動', _diagAge(_voiceDiag.lastStartAt))
+      + _diagRow('最後のfinal', _diagAge(_voiceDiag.lastFinalAt))
+      + _diagRow('最後の成功', _diagAge(_voiceDiag.lastSuccessAt))
+      + _diagRow('最後の失敗', _diagAge(_voiceDiag.lastFailureAt))
+      + _diagRow('最後の自動更新', _diagAge(_voiceDiag.lastRefreshAt) + (_voiceDiag.lastRefreshReason ? ' / ' + _voiceDiag.lastRefreshReason : ''))
+      + _diagRow('直近聞き取り', lastRuntime)
+      + _diagRow('成功率', _diagRate())
+      + _diagRow('音声起動回数', _voiceDiag.starts)
+      + _diagRow('final回数', _voiceDiag.finalResults)
+      + _diagRow('成功/失敗', _voiceDiag.commandSuccess + ' / ' + _voiceDiag.commandFailure)
+      + _diagRow('AI補助使用/OFF停止', _voiceDiag.aiFallbackCalls + ' / ' + _voiceDiag.aiFallbackBlocked)
+      + _diagRow('自動/手動リフレッシュ', _voiceDiag.autoRefreshes + ' / ' + _voiceDiag.manualRestarts)
+      + _diagRow('no-speech/network/mic', _voiceDiag.noSpeechErrors + ' / ' + _voiceDiag.networkErrors + ' / ' + _voiceDiag.audioCaptureErrors)
+      + '</div>'
+      + '<div style="display:flex;justify-content:flex-end;margin-top:0.9rem;">'
+      + '<button type="button" id="vc-diagnostics-reset" style="background:#455a64;border:none;color:#fff;border-radius:4px;padding:0.45rem 0.8rem;font-weight:700;cursor:pointer;">統計リセット</button>'
+      + '</div>';
+    _diagOverlay.innerHTML = html;
+    var closeBtn = document.getElementById('vc-diagnostics-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function () {
+        if (_diagOverlay && _diagOverlay.parentNode) _diagOverlay.parentNode.removeChild(_diagOverlay);
+        _diagOverlay = null;
+      });
+    }
+    var resetBtn = document.getElementById('vc-diagnostics-reset');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', function () {
+        _resetVoiceDiag();
+      });
+    }
+  }
+
+  function _executeVoiceDiagnostics() {
+    _showVoiceDiagnostics();
+    _recordCommandSuccess('voice_diagnostics');
     _beepSuccess();
     _returnToStandby();
   }
@@ -824,6 +1114,7 @@ var VoiceCommander = (function () {
     var amount = Math.round(window.innerHeight * 0.6);
     window.scrollBy({ top: direction === 'down' ? amount : -amount, behavior: 'smooth' });
     _beepSuccess();
+    _recordCommandSuccess('scroll');
     _showStatus(direction === 'down' ? '↓ 下にスクロール' : '↑ 上にスクロール', 1500);
     _returnToStandby();
   }
@@ -855,6 +1146,7 @@ var VoiceCommander = (function () {
     // Phase 3 レビュー指摘 #2: offline/stale では POST を叩かない
     if (_voiceIsOfflineOrStale()) {
       _beepError();
+      _recordCommandFailure('staff_call');
       _showStatus('通信が不安定です。通信復帰後に操作してください', 3000);
       _returnToStandby();
       return;
@@ -862,6 +1154,7 @@ var VoiceCommander = (function () {
 
     var storeId = KdsAuth.getStoreId();
     if (!storeId) {
+      _recordCommandFailure('staff_call');
       _showStatus('店舗情報が取得できません', 3000);
       _returnToStandby();
       return;
@@ -880,15 +1173,18 @@ var VoiceCommander = (function () {
     .then(function (json) {
       if (json.ok) {
         _beepSuccess();
+        _recordCommandSuccess('staff_call');
         _showStaffCallPopup(true);
       } else {
         _beepError();
+        _recordCommandFailure('staff_call');
         _showStaffCallPopup(false);
       }
       _returnToStandby();
     })
     .catch(function () {
       _beepError();
+      _recordCommandFailure('staff_call');
       _showStaffCallPopup(false);
       _returnToStandby();
     });
@@ -944,6 +1240,7 @@ var VoiceCommander = (function () {
 
   function _executeVoiceRestart() {
     _showStatus('音声を再起動しています...', 2000);
+    _diagInc('manualRestarts');
     // 停止
     _shouldRestart = false;
     _hardResetPending = false;
@@ -967,6 +1264,7 @@ var VoiceCommander = (function () {
     setTimeout(function () {
       _beepSuccess();
       _startContinuousListening();
+      _recordCommandSuccess('voice_restart');
       _showStatus('音声を再起動しました', 2000);
     }, 300);
   }
@@ -996,6 +1294,7 @@ var VoiceCommander = (function () {
 
   function _executeAiKitchenAction(action) {
     if (!window.AiKitchen) {
+      _recordCommandFailure('ai_kitchen');
       _showStatus('AIキッチンダッシュボードが利用できません', 2000);
       _returnToStandby();
       return;
@@ -1013,6 +1312,7 @@ var VoiceCommander = (function () {
       else { AiKitchen.refresh(); }
       msg = 'AIシェフを更新します';
     }
+    _recordCommandSuccess('ai_kitchen');
     _showStatus(msg, 2000);
     _returnToStandby();
   }
@@ -1037,6 +1337,7 @@ var VoiceCommander = (function () {
     _shouldRestart = true;
     _lastHardResetTime = Date.now();
     _resetVoiceHealthCounters();
+    _recordVoiceStart();
     _setState('standby');
     localStorage.setItem(_VOICE_KEY, '1');
     _showStatus(_standbyHint, 0);
@@ -1124,6 +1425,11 @@ var VoiceCommander = (function () {
     // コマンド一覧: ファストパス（Gemini不要）
     if (_detectHelpFastPath(cmd)) {
       _executeHelp();
+      return;
+    }
+
+    if (_detectVoiceDiagnosticsFastPath(cmd)) {
+      _executeVoiceDiagnostics();
       return;
     }
 
@@ -1477,6 +1783,9 @@ var VoiceCommander = (function () {
     if (type === 'no-speech') _noSpeechErrors++;
     if (type === 'network') _networkErrors++;
     if (type === 'audio-capture') _audioCaptureErrors++;
+    if (type === 'no-speech') _diagInc('noSpeechErrors');
+    else if (type === 'network') _diagInc('networkErrors');
+    else if (type === 'audio-capture') _diagInc('audioCaptureErrors');
   }
 
   // ── 音声認識結果ハンドラ ──
@@ -1495,10 +1804,13 @@ var VoiceCommander = (function () {
         _interimOnlySince = 0;
         _interimStreak = 0;
         _resetVoiceErrorWindow();
+        _recordFinalResult(transcript);
       } else {
         _lastInterimTime = now;
         _interimStreak++;
         if (!_interimOnlySince) _interimOnlySince = now;
+        _lastRuntimeTranscript = transcript || '';
+        _renderVoiceDiagnostics();
       }
 
       if (_pendingVoiceConfirm) {
@@ -1523,6 +1835,10 @@ var VoiceCommander = (function () {
           // コマンド一覧: ファストパス
           if (_detectHelpFastPath(transcript)) {
             _executeHelp();
+            continue;
+          }
+          if (_detectVoiceDiagnosticsFastPath(transcript)) {
+            _executeVoiceDiagnostics();
             continue;
           }
           var aiFallbackSwitch2 = _detectAiFallbackSwitchFastPath(transcript);
@@ -1639,7 +1955,7 @@ var VoiceCommander = (function () {
           }
         } else {
           // interim結果
-          if (_isCommand(transcript) || _detectThemeFastPath(transcript) || _detectStationFastPath(transcript) !== null || _detectRestartFastPath(transcript) || _detectHelpFastPath(transcript) || _detectScrollFastPath(transcript) || _detectStaffCallFastPath(transcript) || _detectUndoFastPath(transcript) || _detectModeFastPath(transcript) || _detectTableReadFastPath(transcript) || _detectCancelFastPath(transcript) || _detectCourseAdvanceFastPath(transcript) || _detectTableBulkFastPath(transcript) || _detectTableStatusFastPath(transcript) || _detectSoldOutNavigationFastPath(transcript) || _detectSoldOutToggleFastPath(transcript) || _detectAiFallbackSwitchFastPath(transcript) !== null) {
+          if (_isCommand(transcript) || _detectThemeFastPath(transcript) || _detectStationFastPath(transcript) !== null || _detectRestartFastPath(transcript) || _detectHelpFastPath(transcript) || _detectVoiceDiagnosticsFastPath(transcript) || _detectScrollFastPath(transcript) || _detectStaffCallFastPath(transcript) || _detectUndoFastPath(transcript) || _detectModeFastPath(transcript) || _detectTableReadFastPath(transcript) || _detectCancelFastPath(transcript) || _detectCourseAdvanceFastPath(transcript) || _detectTableBulkFastPath(transcript) || _detectTableStatusFastPath(transcript) || _detectSoldOutNavigationFastPath(transcript) || _detectSoldOutToggleFastPath(transcript) || _detectAiFallbackSwitchFastPath(transcript) !== null) {
             // コマンドパターン検出 → 1.5秒後に確定（finalが来なかった場合の保険）
             _interimCmd = transcript;
             if (_interimTimer) clearTimeout(_interimTimer);
@@ -1682,6 +1998,7 @@ var VoiceCommander = (function () {
       return;
     }
     _consecutiveErrors++;
+    _diagInc('otherErrors');
     _showStatus('音声認識エラー: ' + event.error, 3000);
   }
 
@@ -1786,6 +2103,7 @@ var VoiceCommander = (function () {
 
   function _autoHardResetRecognition(reason) {
     if (!_isVoiceMaintenanceSafe()) return;
+    _recordAutoRefresh(reason);
     _showStatus('音声認識を自動リフレッシュ中（' + reason + '）', 1400);
     _hardResetRecognition();
   }
@@ -1866,11 +2184,14 @@ var VoiceCommander = (function () {
   function _analyzeWithGemini(transcript) {
     if (!_aiFallbackEnabled) {
       _beepError();
+      _recordAiFallbackBlocked();
+      _recordCommandFailure('ai_fallback_off');
       _showStatus('AI補助OFF: 未対応の音声コマンドです。「コマンド一覧」で確認してください', 3500);
       _returnToStandby();
       return;
     }
     if (!_aiConfigured) {
+      _recordCommandFailure('ai_not_configured');
       _showStatus('APIキー未設定: POSLA管理画面で設定してください', 3000);
       _returnToStandby();
       return;
@@ -1926,6 +2247,7 @@ var VoiceCommander = (function () {
       + '■ 現在のアクティブ注文:\n' + JSON.stringify(ordersSummary) + '\n\n'
       + '■ 音声:「' + transcript + '」';
 
+    _recordAiFallbackCall();
     fetch('../../api/store/ai-generate.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1955,6 +2277,7 @@ var VoiceCommander = (function () {
       _handleGeminiResponse(text, transcript);
     })
     .catch(function (err) {
+      _recordCommandFailure('gemini_error');
       _showStatus('Geminiエラー: ' + err.message, 4000);
       _returnToStandby();
     });
@@ -1967,12 +2290,14 @@ var VoiceCommander = (function () {
     var parsed;
     try { parsed = JSON.parse(cleaned); }
     catch (e) {
+      _recordCommandFailure('gemini_parse');
       _showStatus('AI応答の解析に失敗しました: ' + Utils.escapeHtml(text.substring(0, 100)), 4000);
       _returnToStandby();
       return;
     }
 
     if (parsed.action === 'unknown' || !parsed.action) {
+      _recordCommandFailure('gemini_unknown');
       _showStatus('該当する注文が見つかりませんでした。「' + Utils.escapeHtml(transcript) + '」', 3000);
       _returnToStandby();
       return;
@@ -2065,6 +2390,7 @@ var VoiceCommander = (function () {
 
     } else if (parsed.action === 'navigate_sold_out') {
       _showStatus('品切れ管理画面へ移動します...', 1500);
+      _recordCommandSuccess('navigate_sold_out');
       localStorage.setItem(_VOICE_KEY, '1');
       _shouldRestart = false;
       if (_recognition) { try { _recognition.abort(); } catch (e) {} }
@@ -2081,6 +2407,7 @@ var VoiceCommander = (function () {
       _executeAiKitchenAction('refresh');
 
     } else {
+      _recordCommandFailure('gemini_unsupported');
       _showStatus('未対応のアクション: ' + Utils.escapeHtml(parsed.action), 3000);
       _returnToStandby();
     }
@@ -2108,6 +2435,7 @@ var VoiceCommander = (function () {
     // Phase 3 レビュー指摘 #1: offline/stale で実際に更新されない経路を「成功」と誤発話しない
     if (_voiceIsOfflineOrStale()) {
       _beepError();
+      _recordCommandFailure('update_status');
       _showStatus('通信が不安定です。通信復帰後に操作してください', 3000);
       _returnToStandby();
       return;
@@ -2122,16 +2450,19 @@ var VoiceCommander = (function () {
         // 既存の fetch catch が undefined resolve するケースもここで失敗判定する。
         if (!_isResultSuccess(json)) {
           _beepError();
+          _recordCommandFailure('update_status');
           _showStatus('更新に失敗しました', 3000);
           _returnToStandby();
           return;
         }
         _beepSuccess();
+        _recordCommandSuccess('update_status');
         _showStatus('✓ ' + orderLabel + ' → ' + statusLabel, 2000);
         _returnToStandby();
       })
       .catch(function () {
         _beepError();
+        _recordCommandFailure('update_status');
         _showStatus('更新に失敗しました', 3000);
         _returnToStandby();
       });
@@ -2142,6 +2473,7 @@ var VoiceCommander = (function () {
     // Phase 3: 同上
     if (_voiceIsOfflineOrStale()) {
       _beepError();
+      _recordCommandFailure('update_item_status');
       _showStatus('通信が不安定です。通信復帰後に操作してください', 3000);
       _returnToStandby();
       return;
@@ -2154,16 +2486,19 @@ var VoiceCommander = (function () {
       .then(function (json) {
         if (!_isResultSuccess(json)) {
           _beepError();
+          _recordCommandFailure('update_item_status');
           _showStatus('更新に失敗しました', 3000);
           _returnToStandby();
           return;
         }
         _beepSuccess();
+        _recordCommandSuccess('update_item_status');
         _showStatus('✓ ' + itemName + ' → ' + statusLabel, 2000);
         _returnToStandby();
       })
       .catch(function () {
         _beepError();
+        _recordCommandFailure('update_item_status');
         _showStatus('更新に失敗しました', 3000);
         _returnToStandby();
       });
@@ -2174,6 +2509,7 @@ var VoiceCommander = (function () {
     // Phase 3 レビュー指摘 #2: offline/stale では PATCH を叩かない
     if (_voiceIsOfflineOrStale()) {
       _beepError();
+      _recordCommandFailure('sold_out_toggle');
       _showStatus('通信が不安定です。通信復帰後に操作してください', 3000);
       _returnToStandby();
       return;
@@ -2205,6 +2541,7 @@ var VoiceCommander = (function () {
     })
     .then(function () {
       _beepSuccess();
+      _recordCommandSuccess('sold_out_toggle');
       _showSoldOutConfirm(menuName, isSoldOut);
       // ローカルのメニュー状態を更新
       for (var i = 0; i < _menuItems.length; i++) {
@@ -2217,6 +2554,7 @@ var VoiceCommander = (function () {
     })
     .catch(function (err) {
       _beepError();
+      _recordCommandFailure('sold_out_toggle');
       _showSoldOutConfirm(menuName, isSoldOut, err.message);
       _returnToStandby();
     });
@@ -2231,6 +2569,7 @@ var VoiceCommander = (function () {
       }
     }
     _showSoldOutOverlay(soldOutNames);
+    _recordCommandSuccess('list_sold_out');
     _returnToStandby();
   }
 
