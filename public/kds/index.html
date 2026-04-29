@@ -132,8 +132,8 @@
   <script src="../shared/js/revision-gate.js?v=20260420-rev2"></script>
   <script src="js/kds-auth.js?v=20260418gps"></script>
   <script src="js/polling-data-source.js?v=20260420-pwa3"></script>
-  <script src="js/kds-renderer.js?v=20260429-ops-undo1"></script>
-  <script src="js/voice-commander.js?v=20260420-pwa3c"></script>
+  <script src="js/kds-renderer.js?v=20260429-kds-p0a"></script>
+  <script src="js/voice-commander.js?v=20260429-kds-p0a"></script>
   <script src="js/ai-kitchen.js"></script>
   <script>
   (function () {
@@ -158,6 +158,13 @@
         overlay.style.display = 'none';
         onSelect(btn.dataset.storeId);
       });
+    }
+
+    function findStore(stores, storeId) {
+      for (var i = 0; i < stores.length; i++) {
+        if (stores[i].id === storeId) return stores[i];
+      }
+      return null;
     }
 
     // Phase 1 (修正版): Wake Lock 取得を共通化。
@@ -212,7 +219,7 @@
       // 店舗名テキスト表示
       var storeNameEl = document.getElementById('kds-store-name');
       var changeLinkEl = document.getElementById('kds-change-store');
-      var currentStore = ctx.stores.find(function (s) { return s.id === ctx.storeId; });
+      var currentStore = findStore(ctx.stores, ctx.storeId);
       if (currentStore) storeNameEl.textContent = currentStore.name;
 
       // 複数店舗: オーバーレイまたは切替リンク
@@ -225,7 +232,7 @@
             // 経路 2: 店舗選択クリック (user gesture あり)
             _tryAcquireWakeLock();
             KdsAuth.setStore(selectedId);
-            var s = ctx.stores.find(function (x) { return x.id === selectedId; });
+            var s = findStore(ctx.stores, selectedId);
             storeNameEl.textContent = s ? s.name : '-';
             changeLinkEl.style.display = '';
             sessionStorage.setItem('mt_kds_started', '1');
@@ -243,7 +250,7 @@
             // 経路 2: 店舗切替クリック (user gesture あり) — sentinel が release されている場合の再取得
             _tryAcquireWakeLock();
             KdsAuth.setStore(selectedId);
-            var s = ctx.stores.find(function (x) { return x.id === selectedId; });
+            var s = findStore(ctx.stores, selectedId);
             storeNameEl.textContent = s ? s.name : '-';
             // GPS チェック後に再開
             KdsAuth.checkGps(selectedId, function () {
@@ -337,6 +344,24 @@
 
         VoiceCommander.init();
         startPolling();
+
+        document.addEventListener('click', function (e) {
+          var undoBtn = e.target.closest('[data-kds-undo-action]');
+          if (undoBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            KdsRenderer.undoLastAction(KdsAuth.getStoreId())
+              .catch(function () { /* expired/offline/api error */ });
+            return;
+          }
+          var servedUndoBtn = e.target.closest('.kds-served-undo__btn');
+          if (servedUndoBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            KdsRenderer.handleItemAction(servedUndoBtn.dataset.itemId, servedUndoBtn.dataset.itemStatus, KdsAuth.getStoreId())
+              .catch(function () { /* offline/stale or api error */ });
+          }
+        });
 
         // カンバンのアクションボタン
         document.getElementById('kds-board').addEventListener('click', function (e) {

@@ -250,13 +250,26 @@ body {
 .kds-card__time {
   font-size: 0.75rem;
   color: var(--kds-text-muted);
+  text-align: right;
 }
 
 /* N-3: メモ・アレルギー表示 */
-.kds-order-memo { background: var(--kds-bg-surface, #1a1a2e); padding: 6px 10px; border-radius: 6px; font-size: 0.85rem; color: var(--kds-text, #e0e0e0); margin: 4px 8px; border-left: 3px solid #ffd700; }
-.kds-order-allergen { background: rgba(255,59,48,0.15); padding: 6px 10px; border-radius: 6px; font-size: 0.85rem; color: #ff3b30; font-weight: bold; margin: 4px 8px; border-left: 3px solid #ff3b30; }
+.kds-order-memo { background: var(--kds-bg-surface, #1a1a2e); padding: 8px 12px; border-radius: 6px; font-size: 0.95rem; color: var(--kds-text, #e0e0e0); margin: 5px 8px; border-left: 4px solid #ffd700; font-weight: 700; }
+.kds-order-allergen { background: rgba(255,59,48,0.18); padding: 9px 12px; border-radius: 6px; font-size: 1rem; color: #ff3b30; font-weight: 900; margin: 5px 8px; border-left: 5px solid #ff3b30; }
+.kds-order-caution { background: rgba(255,152,0,0.18); padding: 8px 12px; border-radius: 6px; font-size: 0.98rem; color: #ffb74d; font-weight: 900; margin: 5px 8px; border-left: 5px solid #ff9800; }
 html.light-theme .kds-order-memo { background: #f5f5f5; color: #333; }
 html.light-theme .kds-order-allergen { background: rgba(255,59,48,0.1); }
+html.light-theme .kds-order-caution { background: #fff3e0; color: #e65100; }
+
+.kds-urgency-reason {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.kds-urgency-reason--warning { color: #ffb300; }
+.kds-urgency-reason--danger { color: #ff5252; }
 
 .kds-card__items {
   list-style: none;
@@ -418,7 +431,7 @@ html.light-theme .kds-order-allergen { background: rgba(255,59,48,0.1); }
 .kds-item--cancelled { opacity: 0.3; text-decoration: line-through; }
 
 .kds-served-undo {
-  grid-column: 1 / -1;
+  margin: 0.45rem 0.75rem;
   padding: 0.65rem;
   border: 1px solid rgba(76,175,80,0.28);
   border-radius: 8px;
@@ -444,6 +457,112 @@ html.light-theme .kds-order-allergen { background: rgba(255,59,48,0.1); }
   min-height: 34px;
   margin-left: 0;
   white-space: nowrap;
+}
+
+.kds-action-undo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.45rem 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border: 2px solid rgba(255,193,7,0.75);
+  border-radius: 8px;
+  background: rgba(255,193,7,0.16);
+  color: var(--kds-text);
+}
+
+.kds-action-undo__text {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.kds-action-undo__btn {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 1.1rem;
+  border: none;
+  border-radius: 4px;
+  background: #f9a825;
+  color: #111;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.kds-expeditor-summary {
+  display: grid;
+  grid-template-columns: 120px 120px 1fr;
+  gap: 0.6rem;
+  margin: 0 0 0.75rem;
+  padding: 0.65rem;
+  border: 1px solid var(--kds-border);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+}
+
+.kds-expeditor-summary__metric {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-radius: 6px;
+  background: rgba(66,165,245,0.14);
+  min-height: 58px;
+}
+
+.kds-expeditor-summary__metric span {
+  font-size: 0.72rem;
+  color: var(--kds-text-muted);
+  font-weight: 800;
+}
+
+.kds-expeditor-summary__metric strong {
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+.kds-expeditor-summary__tables {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.kds-expeditor-summary__table {
+  flex: 0 0 auto;
+  min-width: 150px;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--kds-border);
+  background: rgba(0,0,0,0.14);
+}
+
+.kds-expeditor-summary__table strong,
+.kds-expeditor-summary__table span {
+  display: block;
+}
+
+.kds-expeditor-summary__table strong {
+  font-size: 0.95rem;
+}
+
+.kds-expeditor-summary__table span {
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  color: var(--kds-text-muted);
+  font-weight: 700;
+}
+
+.kds-expeditor-summary__table--warning { border-color: #f0ad4e; background: rgba(240,173,78,0.16); }
+.kds-expeditor-summary__table--danger { border-color: #d9534f; background: rgba(217,83,79,0.18); }
+
+@media (max-width: 900px) {
+  .kds-expeditor-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+  .kds-expeditor-summary__tables {
+    grid-column: 1 / -1;
+  }
 }
 
 .kds-empty {

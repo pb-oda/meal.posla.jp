@@ -14,6 +14,9 @@ var KdsRenderer = (function () {
     ready: null
   };
   var _servedUndoEl = null;
+  var _actionUndoEl = null;
+  var _actionUndo = null;
+  var _actionUndoTimer = null;
   // KDS-P1-1: expeditor (まとめ表示) モード用
   var _expeditorEl = null;
   var _mode = 'normal'; // 'normal' | 'expeditor'
@@ -21,6 +24,7 @@ var KdsRenderer = (function () {
   // 時間超過アラート閾値（秒）
   var WARNING_THRESHOLD_SEC = 600;  // 10分
   var DANGER_THRESHOLD_SEC  = 1200; // 20分
+  var UNDO_WINDOW_SEC = 10;
 
   function init(pendingEl, preparingEl, readyEl) {
     _columns.pending = pendingEl;
@@ -59,6 +63,7 @@ var KdsRenderer = (function () {
   }
 
   function render() {
+    renderActionUndo();
     renderServedUndo();
 
     // KDS-P1-1: expeditor モードでは専用レンダラへ委譲 (通常 3 列カンバンは維持)
@@ -95,6 +100,10 @@ var KdsRenderer = (function () {
         vo._allItems = o.items;
         groups[status].push(vo);
       });
+    });
+
+    Object.keys(groups).forEach(function (status) {
+      groups[status].sort(compareOrderPriority);
     });
 
     // 変更前の注文数を記録
@@ -150,8 +159,74 @@ var KdsRenderer = (function () {
     _servedUndoEl = document.createElement('div');
     _servedUndoEl.id = 'kds-served-undo';
     _servedUndoEl.className = 'kds-served-undo';
-    board.insertBefore(_servedUndoEl, board.firstChild);
+    var actionUndo = document.getElementById('kds-action-undo');
+    if (board.parentNode && actionUndo && actionUndo.nextSibling) {
+      board.parentNode.insertBefore(_servedUndoEl, actionUndo.nextSibling);
+    } else if (board.parentNode) {
+      board.parentNode.insertBefore(_servedUndoEl, board);
+    } else {
+      board.insertBefore(_servedUndoEl, board.firstChild);
+    }
     return _servedUndoEl;
+  }
+
+  function ensureActionUndoEl() {
+    if (_actionUndoEl) return _actionUndoEl;
+    var board = document.getElementById('kds-board');
+    if (!board) return null;
+    _actionUndoEl = document.createElement('div');
+    _actionUndoEl.id = 'kds-action-undo';
+    _actionUndoEl.className = 'kds-action-undo';
+    if (board.parentNode) {
+      board.parentNode.insertBefore(_actionUndoEl, board);
+    } else {
+      board.insertBefore(_actionUndoEl, board.firstChild);
+    }
+    return _actionUndoEl;
+  }
+
+  function _clearActionUndo() {
+    if (_actionUndoTimer) {
+      clearInterval(_actionUndoTimer);
+      _actionUndoTimer = null;
+    }
+    _actionUndo = null;
+    renderActionUndo();
+  }
+
+  function _startActionUndo(snapshot) {
+    if (!snapshot) return;
+    if (_actionUndoTimer) {
+      clearInterval(_actionUndoTimer);
+      _actionUndoTimer = null;
+    }
+    snapshot.expiresAt = Date.now() + (UNDO_WINDOW_SEC * 1000);
+    _actionUndo = snapshot;
+    renderActionUndo();
+    _actionUndoTimer = setInterval(function () {
+      if (!_actionUndo || Date.now() >= _actionUndo.expiresAt) {
+        _clearActionUndo();
+        return;
+      }
+      renderActionUndo();
+    }, 250);
+  }
+
+  function renderActionUndo() {
+    var el = ensureActionUndoEl();
+    if (!el) return;
+    if (!_actionUndo || Date.now() >= _actionUndo.expiresAt) {
+      el.innerHTML = '';
+      el.style.display = 'none';
+      return;
+    }
+    var remain = Math.max(0, Math.ceil((_actionUndo.expiresAt - Date.now()) / 1000));
+    el.innerHTML = '<div class="kds-action-undo__text">'
+      + '<strong>10秒取り消し</strong> '
+      + Utils.escapeHtml(_actionUndo.label || '直前の操作') + ' / 残り' + remain + '秒'
+      + '</div>'
+      + '<button type="button" class="kds-action-undo__btn" data-kds-undo-action="last">戻す</button>';
+    el.style.display = '';
   }
 
   function renderServedUndo() {
@@ -193,7 +268,7 @@ var KdsRenderer = (function () {
   // 通信が復帰して次の render() が走れば disabled は消える (stale=false のため)。
   function _applyStaleReadonlyIfNeeded() {
     if (typeof OfflineStateBanner === 'undefined' || !OfflineStateBanner.isStale()) return;
-    var selectors = '.kds-card__action, .kds-card__cancel, .kds-item-action';
+    var selectors = '.kds-card__action, .kds-card__cancel, .kds-item-action, [data-kds-undo-action]';
     var staleTitle = '\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044';
     Object.keys(_columns).forEach(function (status) {
       if (!_columns[status]) return;
@@ -206,10 +281,186 @@ var KdsRenderer = (function () {
         btns[i].style.cursor = 'not-allowed';
       }
     });
+    var extraBtns = document.querySelectorAll('#kds-action-undo [data-kds-undo-action], #kds-served-undo .kds-item-action');
+    for (var j = 0; j < extraBtns.length; j++) {
+      extraBtns[j].disabled = true;
+      extraBtns[j].title = staleTitle;
+      extraBtns[j].setAttribute('aria-disabled', 'true');
+      extraBtns[j].style.opacity = '0.5';
+      extraBtns[j].style.cursor = 'not-allowed';
+    }
+  }
+
+  function _statusLabel(status) {
+    var labels = {
+      pending: '受付',
+      preparing: '調理開始',
+      ready: '完成',
+      served: '提供済み',
+      cancelled: '取消'
+    };
+    return labels[status] || status;
+  }
+
+  function _formatClock(date) {
+    if (!date || isNaN(date.getTime())) return '';
+    return ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
+  }
+
+  function _orderLabel(order) {
+    if (!order) return '-';
+    if (order.order_type === 'takeout') return order.customer_name || 'テイクアウト';
+    return order.table_code || order.customer_name || '-';
+  }
+
+  function _priorityRank(level) {
+    if (level === 'danger') return 2;
+    if (level === 'warning') return 1;
+    return 0;
+  }
+
+  function _getUrgency(order) {
+    var now = Date.now();
+    var elapsed = _elapsedSec(order);
+    var level = 'normal';
+    var reasons = [];
+
+    if (elapsed >= DANGER_THRESHOLD_SEC) {
+      level = 'danger';
+      reasons.push('経過' + Utils.formatDuration(elapsed));
+    } else if (elapsed >= WARNING_THRESHOLD_SEC) {
+      level = 'warning';
+      reasons.push('経過' + Utils.formatDuration(elapsed));
+    }
+
+    if (order && order.order_type === 'takeout' && order.pickup_at) {
+      var pickup = new Date(order.pickup_at);
+      if (!isNaN(pickup.getTime())) {
+        var pickupDiffSec = Math.floor((pickup.getTime() - now) / 1000);
+        if (pickupDiffSec <= 0) {
+          level = 'danger';
+          reasons.push('受取' + _formatClock(pickup) + '超過');
+        } else if (pickupDiffSec <= WARNING_THRESHOLD_SEC && _priorityRank(level) < 1) {
+          level = 'warning';
+          reasons.push('受取' + _formatClock(pickup) + 'まで' + Utils.formatDuration(pickupDiffSec));
+        }
+      }
+    }
+
+    if (order && order.reservation_reserved_at) {
+      var reserved = new Date(order.reservation_reserved_at);
+      if (!isNaN(reserved.getTime())) {
+        var reservedOverSec = Math.floor((now - reserved.getTime()) / 1000);
+        if (reservedOverSec >= WARNING_THRESHOLD_SEC) {
+          level = 'danger';
+          reasons.push('予約' + _formatClock(reserved) + '超過');
+        } else if (reservedOverSec >= 0 && _priorityRank(level) < 1) {
+          level = 'warning';
+          reasons.push('予約' + _formatClock(reserved));
+        }
+      }
+    }
+
+    return {
+      level: level,
+      elapsed: elapsed,
+      reason: reasons.length ? reasons[0] : ''
+    };
+  }
+
+  function compareOrderPriority(a, b) {
+    var ua = _getUrgency(a);
+    var ub = _getUrgency(b);
+    var pr = _priorityRank(ub.level) - _priorityRank(ua.level);
+    if (pr !== 0) return pr;
+    return ub.elapsed - ua.elapsed;
+  }
+
+  function _uniquePush(list, value) {
+    if (!value) return;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] === value) return;
+    }
+    list.push(value);
+  }
+
+  function _itemOptionText(item) {
+    var labels = [];
+    if (item && item.options && item.options.length > 0) {
+      for (var i = 0; i < item.options.length; i++) {
+        labels.push(item.options[i].choiceName || item.options[i].name || '');
+      }
+    }
+    return labels.join(' ');
+  }
+
+  function _collectNotice(order) {
+    var allergenSet = {};
+    var cautions = [];
+    var allergenLabels = { egg: '\u5375', milk: '\u4E73', wheat: '\u5C0F\u9EA6', shrimp: '\u3048\u3073', crab: '\u304B\u306B', buckwheat: '\u305D\u3070', peanut: '\u843D\u82B1\u751F' };
+    var cautionRules = [
+      { label: '辛さ指定', words: ['辛', '激辛', 'ピリ辛', '唐辛子', 'チリ', 'spicy'] },
+      { label: '抜き/なし指定', words: ['抜き', 'なし', '無し', '除く', '不使用', '入れない'] },
+      { label: '温度/温め指定', words: ['温め', 'あたため', '熱め', 'ぬるめ', '冷たい', '冷やし'] },
+      { label: '焼き加減/仕上げ指定', words: ['よく焼き', 'ウェルダン', 'レア', '固め', '柔らか', '別添え', '少なめ', '多め'] }
+    ];
+    var texts = [];
+    if (order && order.memo) texts.push(order.memo);
+    (order && (order._allItems || order.items) || []).forEach(function (item) {
+      if (item.allergen_selections) {
+        try {
+          var sels = typeof item.allergen_selections === 'string' ? JSON.parse(item.allergen_selections) : item.allergen_selections;
+          if (sels && sels.forEach) {
+            sels.forEach(function (a) { allergenSet[a] = true; });
+          }
+        } catch (e) {}
+      }
+      var optText = _itemOptionText(item);
+      if (optText) texts.push(optText);
+    });
+
+    var source = texts.join(' ');
+    for (var i = 0; i < cautionRules.length; i++) {
+      for (var j = 0; j < cautionRules[i].words.length; j++) {
+        if (source.indexOf(cautionRules[i].words[j]) !== -1) {
+          _uniquePush(cautions, cautionRules[i].label);
+          break;
+        }
+      }
+    }
+
+    var allergenKeys = Object.keys(allergenSet);
+    var allergenText = '';
+    if (allergenKeys.length > 0) {
+      var labels = allergenKeys.map(function (k) { return allergenLabels[k] || k; });
+      allergenText = labels.join(', ');
+    }
+    return {
+      allergenText: allergenText,
+      cautionText: cautions.join(' / ')
+    };
+  }
+
+  function _noticeHtml(order) {
+    var memoHtml = order && order.memo ? '<div class="kds-order-memo">' + Utils.escapeHtml(order.memo) + '</div>' : '';
+    var notice = _collectNotice(order);
+    var allergenHtml = notice.allergenText
+      ? '<div class="kds-order-allergen">\u26A0\uFE0F \u30A2\u30EC\u30EB\u30AE\u30FC: ' + Utils.escapeHtml(notice.allergenText) + '</div>'
+      : '';
+    var cautionHtml = notice.cautionText
+      ? '<div class="kds-order-caution">\u26A0\uFE0F \u6307\u5B9A: ' + Utils.escapeHtml(notice.cautionText) + '</div>'
+      : '';
+    return memoHtml + allergenHtml + cautionHtml;
+  }
+
+  function _urgencyHtml(urgency) {
+    if (!urgency || !urgency.reason) return '';
+    return '<span class="kds-urgency-reason kds-urgency-reason--' + urgency.level + '">' + Utils.escapeHtml(urgency.reason) + '</span>';
   }
 
   function renderCard(order, status) {
-    var elapsed = Math.floor((Date.now() - new Date(order.created_at).getTime()) / 1000);
+    var urgency = _getUrgency(order);
+    var elapsed = urgency.elapsed;
     var timeStr = Utils.formatDuration(elapsed);
 
     var itemsHtml = (order.items || []).map(function (item) {
@@ -285,44 +536,21 @@ var KdsRenderer = (function () {
     var cardClass = 'kds-card';
     if (order.order_type === 'takeout') cardClass += ' kds-card--takeout';
     if (order.course_id) cardClass += ' kds-card--course';
-    if (elapsed >= DANGER_THRESHOLD_SEC) {
+    if (urgency.level === 'danger') {
       cardClass += ' kds-card--danger';
-    } else if (elapsed >= WARNING_THRESHOLD_SEC) {
+    } else if (urgency.level === 'warning') {
       cardClass += ' kds-card--warning';
     }
-
-    // N-3: メモ表示
-    var memoHtml = '';
-    if (order.memo) {
-      memoHtml = '<div class="kds-order-memo">' + Utils.escapeHtml(order.memo) + '</div>';
-    }
-
-    // N-3: アレルギー表示（items から集約）
-    var allergenSet = {};
-    (order._allItems || order.items || []).forEach(function (item) {
-      if (item.allergen_selections) {
-        var sels = typeof item.allergen_selections === 'string' ? JSON.parse(item.allergen_selections) : item.allergen_selections;
-        if (sels && sels.forEach) {
-          sels.forEach(function (a) { allergenSet[a] = true; });
-        }
-      }
-    });
-    var allergenKeys = Object.keys(allergenSet);
-    var allergenHtml = '';
-    if (allergenKeys.length > 0) {
-      var allergenLabels = { egg: '\u5375', milk: '\u4E73', wheat: '\u5C0F\u9EA6', shrimp: '\u3048\u3073', crab: '\u304B\u306B', buckwheat: '\u305D\u3070', peanut: '\u843D\u82B1\u751F' };
-      var labels = allergenKeys.map(function (k) { return allergenLabels[k] || k; });
-      allergenHtml = '<div class="kds-order-allergen">\u26A0\uFE0F \u30A2\u30EC\u30EB\u30AE\u30FC: ' + labels.join(', ') + '</div>';
-    }
+    var noticeHtml = _noticeHtml(order);
 
     return '<div class="' + cardClass + '" data-order-id="' + order.id + '"'
       + (order.course_id ? ' data-course-id="' + order.course_id + '" data-table-id="' + (order.table_id || '') + '"' : '')
       + '>'
       + '<div class="kds-card__header">'
       + '<span class="kds-card__table">' + typeBadge + courseBadge + Utils.escapeHtml(tableLabel) + '</span>'
-      + '<span class="kds-card__time">' + timeStr + '</span>'
+      + '<span class="kds-card__time">' + timeStr + _urgencyHtml(urgency) + '</span>'
       + '</div>'
-      + memoHtml + allergenHtml
+      + noticeHtml
       + '<ul class="kds-card__items">' + itemsHtml + '</ul>'
       + '<div class="kds-card__footer">'
       + '<span class="kds-card__total">' + (order.course_id ? '' : Utils.formatYen(order.total_amount)) + '</span>'
@@ -352,7 +580,7 @@ var KdsRenderer = (function () {
       if (!hasItems) {
         // レガシー互換: items なし注文は order.status で判定
         if (o.status === 'pending' || o.status === 'preparing' || o.status === 'ready') {
-          activeOrders.push({ order: o, hasReady: o.status === 'ready', elapsed: _elapsedSec(o) });
+          activeOrders.push({ order: o, hasReady: o.status === 'ready', urgency: _getUrgency(o) });
         }
         return;
       }
@@ -365,13 +593,15 @@ var KdsRenderer = (function () {
         if (s === 'ready') hasReady = true;
       }
       if (!anyActive) return; // 全品完了/取消
-      activeOrders.push({ order: o, hasReady: hasReady, elapsed: _elapsedSec(o) });
+      activeOrders.push({ order: o, hasReady: hasReady, urgency: _getUrgency(o) });
     });
 
-    // ソート: ready 持ちが先頭、続いて経過時間が長い順
+    // ソート: ready 持ちが先頭、続いて赤/黄、最後に経過時間が長い順
     activeOrders.sort(function (a, b) {
       if (a.hasReady !== b.hasReady) return a.hasReady ? -1 : 1;
-      return b.elapsed - a.elapsed;
+      var pr = _priorityRank(b.urgency.level) - _priorityRank(a.urgency.level);
+      if (pr !== 0) return pr;
+      return b.urgency.elapsed - a.urgency.elapsed;
     });
 
     // counts 更新 (通常モードと同じ count-* 要素を共有)
@@ -389,9 +619,9 @@ var KdsRenderer = (function () {
     });
 
     // カードを描画
-    var html = '';
+    var html = _renderExpeditorSummary(activeOrders);
     for (var k = 0; k < activeOrders.length; k++) {
-      html += _renderExpeditorCard(activeOrders[k].order, activeOrders[k].hasReady, activeOrders[k].elapsed);
+      html += _renderExpeditorCard(activeOrders[k].order, activeOrders[k].hasReady, activeOrders[k].urgency);
     }
     _expeditorEl.innerHTML = html || '<div class="kds-empty">\u6D3B\u6027\u306A\u6CE8\u6587\u306F\u3042\u308A\u307E\u305B\u3093</div>';
 
@@ -412,7 +642,56 @@ var KdsRenderer = (function () {
     return Math.floor((Date.now() - t) / 1000);
   }
 
-  function _renderExpeditorCard(order, hasReady, elapsed) {
+  function _renderExpeditorSummary(activeOrders) {
+    if (!activeOrders || activeOrders.length === 0) return '';
+    var tableMap = {};
+    var totalReady = 0;
+    var totalUnfinished = 0;
+    for (var i = 0; i < activeOrders.length; i++) {
+      var order = activeOrders[i].order;
+      var key = _orderLabel(order);
+      if (!tableMap[key]) {
+        tableMap[key] = { label: key, ready: 0, preparing: 0, pending: 0, total: 0, priority: 'normal' };
+      }
+      var summary = tableMap[key];
+      if (_priorityRank(activeOrders[i].urgency.level) > _priorityRank(summary.priority)) {
+        summary.priority = activeOrders[i].urgency.level;
+      }
+      var items = order.items || [];
+      for (var j = 0; j < items.length; j++) {
+        var s = items[j].status || 'pending';
+        if (s === 'served' || s === 'cancelled') continue;
+        summary.total++;
+        if (s === 'ready') { summary.ready++; totalReady++; }
+        else if (s === 'preparing') { summary.preparing++; totalUnfinished++; }
+        else if (s === 'pending') { summary.pending++; totalUnfinished++; }
+      }
+    }
+
+    var tables = Object.keys(tableMap).map(function (k) { return tableMap[k]; });
+    tables.sort(function (a, b) {
+      var pr = _priorityRank(b.priority) - _priorityRank(a.priority);
+      if (pr !== 0) return pr;
+      if (b.ready !== a.ready) return b.ready - a.ready;
+      return b.total - a.total;
+    });
+
+    var html = '<div class="kds-expeditor-summary">';
+    html += '<div class="kds-expeditor-summary__metric"><span>提供待ち</span><strong>' + totalReady + '</strong></div>';
+    html += '<div class="kds-expeditor-summary__metric"><span>未完成品</span><strong>' + totalUnfinished + '</strong></div>';
+    html += '<div class="kds-expeditor-summary__tables">';
+    for (var t = 0; t < tables.length && t < 12; t++) {
+      html += '<div class="kds-expeditor-summary__table kds-expeditor-summary__table--' + tables[t].priority + '">'
+        + '<strong>' + Utils.escapeHtml(tables[t].label) + '</strong>'
+        + '<span>残り' + tables[t].total + ' / 提供' + tables[t].ready + ' / 調理' + tables[t].preparing + ' / 受付' + tables[t].pending + '</span>'
+        + '</div>';
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function _renderExpeditorCard(order, hasReady, urgency) {
+    var elapsed = urgency.elapsed;
     var timeStr = Utils.formatDuration(elapsed);
 
     // テーブル/テイクアウト ラベル (既存 renderCard と同じ)
@@ -441,9 +720,9 @@ var KdsRenderer = (function () {
     if (hasReady) cardClass += ' kds-card--ready-priority';
     if (order.order_type === 'takeout') cardClass += ' kds-card--takeout';
     if (order.course_id) cardClass += ' kds-card--course';
-    if (elapsed >= DANGER_THRESHOLD_SEC) {
+    if (urgency.level === 'danger') {
       cardClass += ' kds-card--danger';
-    } else if (elapsed >= WARNING_THRESHOLD_SEC) {
+    } else if (urgency.level === 'warning') {
       cardClass += ' kds-card--warning';
     }
 
@@ -487,24 +766,7 @@ var KdsRenderer = (function () {
       return out;
     }
 
-    // N-3: メモ / アレルギー (既存 renderCard と同じ)
-    var memoHtml = order.memo ? '<div class="kds-order-memo">' + Utils.escapeHtml(order.memo) + '</div>' : '';
-    var allergenSet = {};
-    (order._allItems || order.items || []).forEach(function (item) {
-      if (item.allergen_selections) {
-        var sels = typeof item.allergen_selections === 'string' ? JSON.parse(item.allergen_selections) : item.allergen_selections;
-        if (sels && sels.forEach) {
-          sels.forEach(function (a) { allergenSet[a] = true; });
-        }
-      }
-    });
-    var allergenKeys = Object.keys(allergenSet);
-    var allergenHtml = '';
-    if (allergenKeys.length > 0) {
-      var allergenLabels = { egg: '\u5375', milk: '\u4E73', wheat: '\u5C0F\u9EA6', shrimp: '\u3048\u3073', crab: '\u304B\u306B', buckwheat: '\u305D\u3070', peanut: '\u843D\u82B1\u751F' };
-      var labels = allergenKeys.map(function (k) { return allergenLabels[k] || k; });
-      allergenHtml = '<div class="kds-order-allergen">\u26A0\uFE0F \u30A2\u30EC\u30EB\u30AE\u30FC: ' + labels.join(', ') + '</div>';
-    }
+    var noticeHtml = _noticeHtml(order);
 
     // KDS-P1-1 hotfix: 一括ボタンは「単一ステータス状態」のときだけ出す。
     // 混在 (例: ready + pending) で全品○○を押すと handleAction() が全items を巻き戻すため、
@@ -539,9 +801,9 @@ var KdsRenderer = (function () {
       + '>'
       + '<div class="kds-card__header">'
       + '<span class="kds-card__table">' + typeBadge + courseBadge + Utils.escapeHtml(tableLabel) + '</span>'
-      + '<span class="kds-card__time">' + timeStr + '</span>'
+      + '<span class="kds-card__time">' + timeStr + _urgencyHtml(urgency) + '</span>'
       + '</div>'
-      + memoHtml + allergenHtml
+      + noticeHtml
       + _section('\u63d0\u4f9b\u53ef\u80fd', byStatus.ready, 'ready')
       + _section('\u8abf\u7406\u4e2d', byStatus.preparing, 'preparing')
       + _section('\u53d7\u4ed8', byStatus.pending, 'pending')
@@ -565,25 +827,67 @@ var KdsRenderer = (function () {
     return true;
   }
 
-  function handleAction(orderId, newStatus, storeId, reason) {
-    // Phase 3: offline/stale ならローカル状態変更も API 呼び出しもせず、呼び出し側に
-    // reject で通知する (voice-commander 等の .then() が成功音を鳴らさないように)
-    if (_guardOfflineOrStale('handleAction')) {
-      return Promise.reject(new Error('offline_or_stale'));
-    }
-    // 楽観的更新
-    if (_orders[orderId]) {
-      _orders[orderId].status = newStatus;
-      // 全品ステータスも連動（update-status.php と同様の挙動）
-      var oiStatus = newStatus === 'paid' ? 'served' : newStatus;
-      (_orders[orderId].items || []).forEach(function (item) {
-        if ((item.status || 'pending') !== 'cancelled') {
-          item.status = oiStatus;
-        }
+  function _snapshotOrders(orderIds, newStatus, label) {
+    var rows = [];
+    for (var i = 0; i < orderIds.length; i++) {
+      var orderId = orderIds[i];
+      var o = _orders[orderId];
+      if (!o) continue;
+      var itemRows = [];
+      var items = o.items || [];
+      for (var j = 0; j < items.length; j++) {
+        if (!items[j].item_id) continue;
+        if ((items[j].status || 'pending') === 'cancelled') continue;
+        itemRows.push({ itemId: items[j].item_id, status: items[j].status || 'pending' });
+      }
+      rows.push({
+        orderId: orderId,
+        status: o.status || 'pending',
+        items: itemRows
       });
-      render();
     }
+    if (rows.length === 0) return null;
+    return {
+      label: label || (_orderLabel(_orders[orderIds[0]]) + ' → ' + _statusLabel(newStatus)),
+      orders: rows
+    };
+  }
 
+  function _snapshotItem(itemId, newStatus) {
+    var row = null;
+    Object.keys(_orders).forEach(function (orderId) {
+      if (row) return;
+      var o = _orders[orderId];
+      var items = o.items || [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].item_id === itemId) {
+          row = {
+            label: _orderLabel(o) + ' / ' + (items[i].name || '') + ' → ' + _statusLabel(newStatus),
+            orders: [{
+              orderId: orderId,
+              status: o.status || 'pending',
+              items: [{ itemId: itemId, status: items[i].status || 'pending' }]
+            }]
+          };
+          break;
+        }
+      }
+    });
+    return row;
+  }
+
+  function _applyOrderStatusOptimistic(orderId, newStatus) {
+    if (!_orders[orderId]) return;
+    _orders[orderId].status = newStatus;
+    var oiStatus = newStatus === 'paid' ? 'served' : newStatus;
+    (_orders[orderId].items || []).forEach(function (item) {
+      if ((item.status || 'pending') !== 'cancelled') {
+        item.status = oiStatus;
+      }
+    });
+  }
+
+  function _patchOrderStatus(orderId, newStatus, storeId, reason) {
     return fetch('../../api/kds/update-status.php', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -597,10 +901,45 @@ var KdsRenderer = (function () {
         if (!r.ok || !json.ok) throw ((window.Utils && Utils.createApiError) ? Utils.createApiError(json, 'update failed') : new Error((json.error && json.error.message) || 'update failed'));
         return json;
       });
+    });
+  }
+
+  function _patchItemStatus(itemId, newStatus, storeId, reason) {
+    return fetch('../../api/kds/update-item-status.php', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item_id: itemId, status: newStatus, store_id: storeId, reason: reason || null }),
+      credentials: 'same-origin'
+    }).then(function (r) {
+      return r.text().then(function (body) {
+        if (!body) throw new Error('empty response');
+        try { var json = JSON.parse(body); }
+        catch (e) { throw new Error('invalid JSON'); }
+        if (!r.ok || !json.ok) throw ((window.Utils && Utils.createApiError) ? Utils.createApiError(json, 'update failed') : new Error((json.error && json.error.message) || 'update failed'));
+        return json;
+      });
+    });
+  }
+
+  function handleAction(orderId, newStatus, storeId, reason) {
+    // Phase 3: offline/stale ならローカル状態変更も API 呼び出しもせず、呼び出し側に
+    // reject で通知する (voice-commander 等の .then() が成功音を鳴らさないように)
+    if (_guardOfflineOrStale('handleAction')) {
+      return Promise.reject(new Error('offline_or_stale'));
+    }
+    var undoSnapshot = _snapshotOrders([orderId], newStatus, null);
+    _applyOrderStatusOptimistic(orderId, newStatus);
+    render();
+
+    return _patchOrderStatus(orderId, newStatus, storeId, reason)
+    .then(function (json) {
+      _startActionUndo(undoSnapshot);
+      return json;
     })
-    .catch(function () {
+    .catch(function (err) {
       // ロールバック — 次のポーリングで修正
       PollingDataSource.forceRefresh();
+      throw err;
     });
   }
 
@@ -610,6 +949,8 @@ var KdsRenderer = (function () {
     if (_guardOfflineOrStale('handleItemAction')) {
       return Promise.reject(new Error('offline_or_stale'));
     }
+    var undoSnapshot = _snapshotItem(itemId, newStatus);
+
     // 楽観的更新: _orders 内の該当品目の status を変更
     var parentOrderId = null;
     Object.keys(_orders).forEach(function (orderId) {
@@ -651,23 +992,75 @@ var KdsRenderer = (function () {
 
     render();
 
-    return fetch('../../api/kds/update-item-status.php', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ item_id: itemId, status: newStatus, store_id: storeId }),
-      credentials: 'same-origin'
-    }).then(function (r) {
-      return r.text().then(function (body) {
-        if (!body) throw new Error('empty response');
-        try { var json = JSON.parse(body); }
-        catch (e) { throw new Error('invalid JSON'); }
-        if (!r.ok || !json.ok) throw ((window.Utils && Utils.createApiError) ? Utils.createApiError(json, 'update failed') : new Error((json.error && json.error.message) || 'update failed'));
-        return json;
-      });
+    return _patchItemStatus(itemId, newStatus, storeId)
+    .then(function (json) {
+      _startActionUndo(undoSnapshot);
+      return json;
     })
-    .catch(function () {
+    .catch(function (err) {
       PollingDataSource.forceRefresh();
+      throw err;
     });
+  }
+
+  function handleOrderBatch(orderIds, newStatus, storeId, label, reason) {
+    if (_guardOfflineOrStale('handleOrderBatch')) {
+      return Promise.reject(new Error('offline_or_stale'));
+    }
+    var ids = orderIds || [];
+    if (ids.length === 0) return Promise.reject(new Error('no_orders'));
+    var undoSnapshot = _snapshotOrders(ids, newStatus, label);
+    for (var i = 0; i < ids.length; i++) {
+      _applyOrderStatusOptimistic(ids[i], newStatus);
+    }
+    render();
+    var calls = [];
+    for (var j = 0; j < ids.length; j++) {
+      calls.push(_patchOrderStatus(ids[j], newStatus, storeId, reason || null));
+    }
+    return Promise.all(calls)
+      .then(function () {
+        _startActionUndo(undoSnapshot);
+        return { ok: true };
+      })
+      .catch(function (err) {
+        PollingDataSource.forceRefresh();
+        throw err;
+      });
+  }
+
+  function undoLastAction(storeId) {
+    if (_guardOfflineOrStale('undoLastAction')) {
+      return Promise.reject(new Error('offline_or_stale'));
+    }
+    if (!_actionUndo || Date.now() >= _actionUndo.expiresAt) {
+      _clearActionUndo();
+      return Promise.reject(new Error('undo_expired'));
+    }
+    var snapshot = _actionUndo;
+    _clearActionUndo();
+    var calls = [];
+    for (var i = 0; i < snapshot.orders.length; i++) {
+      var row = snapshot.orders[i];
+      if (row.items && row.items.length > 0) {
+        for (var j = 0; j < row.items.length; j++) {
+          if (row.items[j].status === 'cancelled') continue;
+          calls.push(_patchItemStatus(row.items[j].itemId, row.items[j].status, storeId, null));
+        }
+      } else {
+        calls.push(_patchOrderStatus(row.orderId, row.status, storeId, null));
+      }
+    }
+    if (calls.length === 0) return Promise.reject(new Error('nothing_to_undo'));
+    return Promise.all(calls)
+      .then(function () {
+        PollingDataSource.forceRefresh();
+        return { ok: true };
+      })
+      .catch(function (err) {
+        PollingDataSource.forceRefresh();
+        throw err;
+      });
   }
 
   // コーステーブルの一覧を返す（手動発火ボタン用）
@@ -685,7 +1078,11 @@ var KdsRenderer = (function () {
         };
       }
     });
-    return Object.values(tables);
+    var rows = [];
+    Object.keys(tables).forEach(function (key) {
+      rows.push(tables[key]);
+    });
+    return rows;
   }
 
   // 手動フェーズ発火
@@ -749,6 +1146,8 @@ var KdsRenderer = (function () {
     onData: onData,
     handleAction: handleAction,
     handleItemAction: handleItemAction,
+    handleOrderBatch: handleOrderBatch,
+    undoLastAction: undoLastAction,
     getCourseTableIds: getCourseTableIds,
     advancePhase: advancePhase
   };

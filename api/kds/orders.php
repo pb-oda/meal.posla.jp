@@ -40,6 +40,18 @@ $hasCourseId    = isset($orderCols['course_id']);
 $hasRemovedItems = isset($orderCols['removed_items']);
 $hasMemo        = isset($orderCols['memo']);
 
+// 予約時刻はKDSの優先度判定に使う。予約系テーブルが未適用の環境では無視する。
+$hasTableSessions = false;
+$hasReservations = false;
+try {
+    $pdo->query('SELECT reservation_id FROM table_sessions LIMIT 0');
+    $hasTableSessions = true;
+} catch (PDOException $e) {}
+try {
+    $pdo->query('SELECT reserved_at FROM reservations LIMIT 0');
+    $hasReservations = true;
+} catch (PDOException $e) {}
+
 // ステーションフィルタリング用: 許可カテゴリIDを取得
 $allowedCategories = null;
 if ($stationId) {
@@ -127,6 +139,42 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $orders = $stmt->fetchAll();
 
+// KDS優先度用: 注文が紐づく現在の卓セッションから予約時刻を引く。
+$reservationTimeMap = [];
+if ($hasTableSessions && $hasReservations && !empty($orders)) {
+    $tableIds = [];
+    foreach ($orders as $orderRow) {
+        if (!empty($orderRow['table_id'])) {
+            $tableIds[$orderRow['table_id']] = true;
+        }
+    }
+    if (!empty($tableIds)) {
+        try {
+            $tableIdList = array_keys($tableIds);
+            $phTables = implode(',', array_fill(0, count($tableIdList), '?'));
+            $resParams = array_merge([$storeId], $tableIdList);
+            $resStmt = $pdo->prepare(
+                'SELECT ts.table_id, r.reserved_at, ts.started_at
+                 FROM table_sessions ts
+                 JOIN reservations r ON r.id = ts.reservation_id AND r.store_id = ts.store_id
+                 WHERE ts.store_id = ?
+                   AND ts.table_id IN (' . $phTables . ')
+                   AND ts.status IN ("seated","eating","bill_requested")
+                 ORDER BY ts.started_at DESC'
+            );
+            $resStmt->execute($resParams);
+            foreach ($resStmt->fetchAll() as $resRow) {
+                if (!isset($reservationTimeMap[$resRow['table_id']])) {
+                    $reservationTimeMap[$resRow['table_id']] = $resRow['reserved_at'];
+                }
+            }
+        } catch (PDOException $e) {
+            error_log('[KDS][api/kds/orders.php] fetch_reservation_time: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+            $reservationTimeMap = [];
+        }
+    }
+}
+
 // order_items テーブル存在チェック
 $hasOrderItems = false;
 try {
@@ -207,6 +255,9 @@ foreach ($orders as &$o) {
     if (!$hasMemo) {
         $o['memo'] = null;
     }
+    $o['reservation_reserved_at'] = !empty($o['table_id']) && isset($reservationTimeMap[$o['table_id']])
+        ? $reservationTimeMap[$o['table_id']]
+        : null;
 
     // ステーション指定時: 該当カテゴリの品目のみ残す
     if ($allowedCategories !== null) {

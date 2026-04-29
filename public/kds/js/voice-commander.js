@@ -26,7 +26,7 @@ var VoiceCommander = (function () {
   var _interimTimer = null;     // interim コマンド確定タイマー
   var _menuItems = [];          // 全メニュー [{menuItemId, source, name, soldOut}]
   var _menuLoaded = false;
-  var _standbyHint = '🎤 音声待機中（例:「T01完成」「スタッフ呼んで」「コマンド一覧」）';
+  var _standbyHint = '🎤 音声待機中（例:「T01完成」「T01残り」「まとめ表示」「戻して」）';
   var _consecutiveErrors = 0;  // 連続エラー回数（バックオフ用）
 
   // ── コマンドパターン ──
@@ -46,7 +46,11 @@ var VoiceCommander = (function () {
     // AIキッチンダッシュボード
     'シェフ', 'ダッシュボード', '最新にして',
     // テーマ切替
-    'ライトモード', 'ダークモード', '明るく', '暗く', 'テーマ'
+    'ライトモード', 'ダークモード', '明るく', '暗く', 'テーマ',
+    // KDS画面操作
+    'まとめ', '提供順', 'エクスペディター', '通常', '3列',
+    '戻して', '今のなし', '直前', '残り', '未完成', '注意', 'アレルギー',
+    '次フェーズ', '次のフェーズ', '全品'
   ];
 
   var _VOICE_KEY = 'mt_kds_voice_active';
@@ -295,6 +299,309 @@ var VoiceCommander = (function () {
     }
   }
 
+  // ── KDS表示モード切替ファストパス ──
+  function _detectModeFastPath(text) {
+    if (_tablePattern.test(text)) return null;
+    if (text.indexOf('まとめ表示') !== -1 || text.indexOf('提供順') !== -1 || text.indexOf('エクスペ') !== -1) return 'expeditor';
+    if (text.indexOf('通常表示') !== -1 || text.indexOf('通常モード') !== -1 || text.indexOf('3列') !== -1 || text.indexOf('三列') !== -1) return 'normal';
+    return null;
+  }
+
+  function _executeModeSwitch(mode) {
+    var btn = document.querySelector('[data-kds-mode="' + mode + '"]');
+    if (!btn) {
+      _beepError();
+      _showStatus('表示モードを切り替えられません', 2000);
+      _returnToStandby();
+      return;
+    }
+    btn.click();
+    _beepSuccess();
+    _showStatus(mode === 'expeditor' ? 'まとめ表示に切替' : '通常3列に切替', 2000);
+    _speak(mode === 'expeditor' ? 'まとめ表示にしました' : '通常表示にしました');
+    _returnToStandby();
+  }
+
+  // ── 直前操作Undoファストパス ──
+  function _detectUndoFastPath(text) {
+    if (text.indexOf('表示') !== -1 || text.indexOf('モード') !== -1) return false;
+    var words = ['戻して', '戻す', '今のなし', 'さっきのなし', '直前を戻す', '直前戻して'];
+    for (var i = 0; i < words.length; i++) {
+      if (text.indexOf(words[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  function _executeUndoLast() {
+    if (!window.KdsRenderer || !KdsRenderer.undoLastAction) {
+      _beepError();
+      _showStatus('戻せる操作がありません', 2000);
+      _returnToStandby();
+      return;
+    }
+    _showStatus('直前操作を戻しています...', 0);
+    KdsRenderer.undoLastAction(KdsAuth.getStoreId())
+      .then(function () {
+        _beepSuccess();
+        _showStatus('直前操作を戻しました', 2000);
+        _speak('戻しました');
+        _returnToStandby();
+      })
+      .catch(function () {
+        _beepError();
+        _showStatus('戻せる操作がありません', 2500);
+        _speak('戻せる操作がありません');
+        _returnToStandby();
+      });
+  }
+
+  // ── 卓指定ヘルパ ──
+  function _extractTableNumber(text) {
+    var m = text.match(/[TＴｔt]\s*0*(\d{1,3})/);
+    if (m) return String(parseInt(m[1], 10));
+    m = text.match(/テーブル\s*0*(\d{1,3})/);
+    if (m) return String(parseInt(m[1], 10));
+    m = text.match(/0*(\d{1,3})\s*番/);
+    if (m) return String(parseInt(m[1], 10));
+    return '';
+  }
+
+  function _tableCodeMatches(order, text) {
+    var code = order.table_code || '';
+    if (!code) return false;
+    if (text.indexOf(code) !== -1) return true;
+    var n = _extractTableNumber(text);
+    if (!n) return false;
+    var digits = code.replace(/[^\d]/g, '');
+    if (!digits) return false;
+    return String(parseInt(digits, 10)) === n;
+  }
+
+  function _activeOrdersForTableText(text) {
+    var rows = [];
+    for (var i = 0; i < _lastOrders.length; i++) {
+      var order = _lastOrders[i];
+      if (!_tableCodeMatches(order, text)) continue;
+      if (order.status === 'served' || order.status === 'paid' || order.status === 'cancelled') continue;
+      rows.push(order);
+    }
+    return rows;
+  }
+
+  function _activeItems(order) {
+    var rows = [];
+    var items = order.items || [];
+    for (var i = 0; i < items.length; i++) {
+      var s = items[i].status || 'pending';
+      if (s === 'served' || s === 'cancelled') continue;
+      rows.push(items[i]);
+    }
+    return rows;
+  }
+
+  function _detectTableReadFastPath(text) {
+    if (!_tablePattern.test(text)) return null;
+    if (text.indexOf('残り') !== -1 || text.indexOf('未完成') !== -1 || text.indexOf('何が') !== -1) return 'remaining';
+    if (text.indexOf('注意') !== -1 || text.indexOf('アレルギー') !== -1 || text.indexOf('指定') !== -1) return 'notice';
+    return null;
+  }
+
+  function _noticeTextForOrder(order) {
+    var lines = [];
+    if (order.memo) lines.push('メモ ' + order.memo);
+    var items = order.items || [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].allergen_selections) lines.push(items[i].name + ' アレルギーあり');
+      if (items[i].options && items[i].options.length > 0) {
+        var opts = [];
+        for (var j = 0; j < items[i].options.length; j++) {
+          opts.push(items[i].options[j].choiceName || items[i].options[j].name || '');
+        }
+        if (opts.length) lines.push(items[i].name + ' ' + opts.join('、'));
+      }
+    }
+    return lines;
+  }
+
+  function _executeTableRead(text, kind) {
+    var orders = _activeOrdersForTableText(text);
+    if (orders.length === 0) {
+      _beepError();
+      _showStatus('該当する卓の未完了注文がありません', 2500);
+      _speak('未完了注文がありません');
+      _returnToStandby();
+      return;
+    }
+    var tableLabel = orders[0].table_code || '卓';
+    var lines = [];
+    var ready = 0;
+    var preparing = 0;
+    var pending = 0;
+    for (var i = 0; i < orders.length; i++) {
+      if (kind === 'notice') {
+        lines = lines.concat(_noticeTextForOrder(orders[i]));
+        continue;
+      }
+      var items = _activeItems(orders[i]);
+      for (var j = 0; j < items.length; j++) {
+        var s = items[j].status || 'pending';
+        if (s === 'ready') ready++;
+        else if (s === 'preparing') preparing++;
+        else pending++;
+        lines.push(items[j].name + ' ' + (items[j].qty || 1) + '個 ' + (s === 'ready' ? '提供待ち' : (s === 'preparing' ? '調理中' : '受付')));
+      }
+    }
+    if (lines.length === 0) lines.push(kind === 'notice' ? '注意指定はありません' : '残りはありません');
+    var msg = kind === 'notice'
+      ? tableLabel + ' 注意: ' + lines.join(' / ')
+      : tableLabel + ' 残り' + (ready + preparing + pending) + '品。提供待ち' + ready + '、調理中' + preparing + '、受付' + pending + '。' + lines.join(' / ');
+    _beepSuccess();
+    _showStatus(msg, 7000);
+    _speak(msg);
+    _returnToStandby();
+  }
+
+  function _detectTableBulkFastPath(text) {
+    if (!_tablePattern.test(text)) return null;
+    if (text.indexOf('全品') === -1 && text.indexOf('全部') === -1 && text.indexOf('まとめて') === -1) return null;
+    var status = _detectItemStatusFromText(text);
+    if (!status) return null;
+    return status;
+  }
+
+  function _executeTableBulk(text, newStatus) {
+    var orders = _activeOrdersForTableText(text);
+    if (orders.length === 0) {
+      _beepError();
+      _showStatus('該当する卓の未完了注文がありません', 2500);
+      _returnToStandby();
+      return;
+    }
+    var ids = [];
+    for (var i = 0; i < orders.length; i++) ids.push(orders[i].id);
+    var tableLabel = orders[0].table_code || '卓';
+    var labels = { preparing: '調理開始', ready: '完成', served: '提供済み' };
+    var statusLabel = labels[newStatus] || newStatus;
+    _hideStatus();
+    _showConfirmDialog(
+      tableLabel + ' の未完了注文 ' + ids.length + '件を全品' + statusLabel + 'にしますか？',
+      function () {
+        _showStatus(tableLabel + ' 全品' + statusLabel + ' 実行中...', 0);
+        KdsRenderer.handleOrderBatch(ids, newStatus, KdsAuth.getStoreId(), tableLabel + ' 全品' + statusLabel)
+          .then(function () {
+            _beepSuccess();
+            _showStatus(tableLabel + ' 全品' + statusLabel + ' 完了', 2500);
+            _speak('完了しました');
+            _returnToStandby();
+          })
+          .catch(function () {
+            _beepError();
+            _showStatus('一括操作に失敗しました', 3000);
+            _returnToStandby();
+          });
+      },
+      function () { _showStatus('キャンセルしました', 2000); _returnToStandby(); }
+    );
+  }
+
+  function _detectCancelFastPath(text) {
+    if (!_tablePattern.test(text)) return false;
+    if (text.indexOf('キャンセル') !== -1 || text.indexOf('取消') !== -1 || text.indexOf('取り消') !== -1) return true;
+    return false;
+  }
+
+  function _executeCancelOrder(text) {
+    var orders = _activeOrdersForTableText(text);
+    if (orders.length === 0) {
+      _beepError();
+      _showStatus('該当する卓の未完了注文がありません', 2500);
+      _returnToStandby();
+      return;
+    }
+    var all = text.indexOf('全品') !== -1 || text.indexOf('全部') !== -1 || text.indexOf('まとめて') !== -1;
+    var targetOrders = all ? orders : [orders[0]];
+    var ids = [];
+    for (var i = 0; i < targetOrders.length; i++) ids.push(targetOrders[i].id);
+    var tableLabel = targetOrders[0].table_code || '卓';
+    var reason = '音声取消: ' + text.substring(0, 80);
+    _hideStatus();
+    _showConfirmDialog(
+      tableLabel + ' の注文 ' + ids.length + '件を取消しますか？',
+      function () {
+        _showStatus(tableLabel + ' 取消中...', 0);
+        KdsRenderer.handleOrderBatch(ids, 'cancelled', KdsAuth.getStoreId(), tableLabel + ' 注文取消', reason)
+          .then(function () {
+            _beepSuccess();
+            _showStatus(tableLabel + ' 注文を取消しました', 2500);
+            _speak('取消しました');
+            _returnToStandby();
+          })
+          .catch(function () {
+            _beepError();
+            _showStatus('取消に失敗しました', 3000);
+            _returnToStandby();
+          });
+      },
+      function () { _showStatus('キャンセルしました', 2000); _returnToStandby(); }
+    );
+  }
+
+  function _detectCourseAdvanceFastPath(text) {
+    if (text.indexOf('次フェーズ') !== -1 || text.indexOf('次のフェーズ') !== -1 || text.indexOf('コース進め') !== -1) {
+      return true;
+    }
+    return false;
+  }
+
+  function _findCourseTableForText(text) {
+    var seen = {};
+    for (var i = 0; i < _lastOrders.length; i++) {
+      var o = _lastOrders[i];
+      if (!o.course_id || !o.table_id) continue;
+      if (!_tableCodeMatches(o, text)) continue;
+      if (seen[o.table_id]) continue;
+      seen[o.table_id] = true;
+      return o;
+    }
+    return null;
+  }
+
+  function _executeCourseAdvance(text) {
+    var order = _findCourseTableForText(text);
+    if (!order) {
+      _beepError();
+      _showStatus('該当するコース卓が見つかりません', 2500);
+      _returnToStandby();
+      return;
+    }
+    var tableLabel = order.table_code || '卓';
+    _hideStatus();
+    _showConfirmDialog(
+      tableLabel + ' を次フェーズに進めますか？',
+      function () {
+        _showStatus(tableLabel + ' 次フェーズ処理中...', 0);
+        KdsRenderer.advancePhase(KdsAuth.getStoreId(), order.table_id)
+          .then(function (json) {
+            if (json && json.ok) {
+              _beepSuccess();
+              _showStatus(tableLabel + ' 次フェーズに進めました', 2500);
+              _speak('次フェーズに進めました');
+            } else {
+              _beepError();
+              _showStatus('次フェーズ処理に失敗しました', 3000);
+            }
+            _returnToStandby();
+          })
+          .catch(function () {
+            _beepError();
+            _showStatus('次フェーズ処理に失敗しました', 3000);
+            _returnToStandby();
+          });
+      },
+      function () { _showStatus('キャンセルしました', 2000); _returnToStandby(); }
+    );
+  }
+
   // ── コマンド一覧ファストパス ──
   var _helpWords = ['コマンド一覧', 'コマンドリスト', 'ヘルプ', '使い方', '何ができる'];
 
@@ -315,7 +622,9 @@ var VoiceCommander = (function () {
 
     var html = '<div style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;color:#42a5f5;">音声コマンド一覧</div>'
       + '<div style="margin-bottom:0.75rem;"><span style="color:#4CAF50;font-weight:700;">■ 注文操作</span><br>'
-      + '「T01 完成」「T01 調理開始」「T01 キャンセル」</div>'
+      + '「T01 完成」「T01 調理開始」「T01 全品提供済み」「T01 キャンセル」「戻して」</div>'
+      + '<div style="margin-bottom:0.75rem;"><span style="color:#4CAF50;font-weight:700;">■ Expeditor</span><br>'
+      + '「まとめ表示」「通常表示」「T01 残り」「T01 注意確認」「T01 次フェーズ」</div>'
       + '<div style="margin-bottom:0.75rem;"><span style="color:#4CAF50;font-weight:700;">■ ステーション切替</span><br>'
       + '「全品目」「ドリンク」（設定したステーション名）</div>'
       + '<div style="margin-bottom:0.75rem;"><span style="color:#4CAF50;font-weight:700;">■ 品切れ管理</span><br>'
@@ -652,6 +961,39 @@ var VoiceCommander = (function () {
       return;
     }
 
+    if (_detectUndoFastPath(cmd)) {
+      _executeUndoLast();
+      return;
+    }
+
+    var modeCmd = _detectModeFastPath(cmd);
+    if (modeCmd) {
+      _executeModeSwitch(modeCmd);
+      return;
+    }
+
+    var tableRead = _detectTableReadFastPath(cmd);
+    if (tableRead) {
+      _executeTableRead(cmd, tableRead);
+      return;
+    }
+
+    if (_detectCancelFastPath(cmd)) {
+      _executeCancelOrder(cmd);
+      return;
+    }
+
+    if (_detectCourseAdvanceFastPath(cmd)) {
+      _executeCourseAdvance(cmd);
+      return;
+    }
+
+    var tableBulk = _detectTableBulkFastPath(cmd);
+    if (tableBulk) {
+      _executeTableBulk(cmd, tableBulk);
+      return;
+    }
+
     // スクロール: ファストパス（Gemini不要）
     var scrollCmd = _detectScrollFastPath(cmd);
     if (scrollCmd) {
@@ -761,12 +1103,26 @@ var VoiceCommander = (function () {
     _beep(330, 200);
   }
 
+  function _speak(text) {
+    if (!text || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
+    try {
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ja-JP';
+      u.rate = 1.05;
+      u.volume = 1;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
   // ── 確認モーダル（U-4: confirm() 置き換え） ──
   var _confirmOverlay = null;
   var _confirmTimeout = null;
+  var _pendingVoiceConfirm = null;
 
   function _showConfirmDialog(message, onOk, onCancel) {
     _hideConfirmDialog();
+    _pendingVoiceConfirm = { ok: onOk, cancel: onCancel };
 
     _confirmOverlay = document.createElement('div');
     _confirmOverlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;'
@@ -787,7 +1143,7 @@ var VoiceCommander = (function () {
 
     var hint = document.createElement('p');
     hint.style.cssText = 'margin:0 0 24px;font-size:13px;color:#999;';
-    hint.textContent = '5秒後に自動キャンセルされます';
+    hint.textContent = '声で「実行」または「やめる」。5秒後に自動キャンセルされます';
 
     var btnWrap = document.createElement('div');
     btnWrap.style.cssText = 'display:flex;gap:16px;justify-content:center;';
@@ -822,6 +1178,8 @@ var VoiceCommander = (function () {
     card.appendChild(btnWrap);
     _confirmOverlay.appendChild(card);
     document.body.appendChild(_confirmOverlay);
+    _setState('standby');
+    _speak(message + '。実行、または、やめる、と言ってください。');
 
     // 5秒タイムアウトで自動キャンセル
     _confirmTimeout = setTimeout(function () {
@@ -836,6 +1194,37 @@ var VoiceCommander = (function () {
       _confirmOverlay.parentNode.removeChild(_confirmOverlay);
     }
     _confirmOverlay = null;
+    _pendingVoiceConfirm = null;
+  }
+
+  function _detectConfirmDecision(text) {
+    var okWords = ['実行', 'はい', 'お願い', '確定', '進めて', 'やって'];
+    var cancelWords = ['やめる', 'キャンセル', '中止', '違う', 'いいえ', 'なし'];
+    var i;
+    for (i = 0; i < cancelWords.length; i++) {
+      if (text.indexOf(cancelWords[i]) !== -1) return 'cancel';
+    }
+    for (i = 0; i < okWords.length; i++) {
+      if (text.indexOf(okWords[i]) !== -1) return 'ok';
+    }
+    return null;
+  }
+
+  function _handlePendingVoiceConfirm(text) {
+    if (!_pendingVoiceConfirm) return false;
+    var decision = _detectConfirmDecision(text);
+    if (!decision) {
+      _showStatus('確認中:「実行」または「やめる」と言ってください', 0);
+      return true;
+    }
+    var pending = _pendingVoiceConfirm;
+    _hideConfirmDialog();
+    if (decision === 'ok') {
+      if (pending.ok) pending.ok();
+    } else {
+      if (pending.cancel) pending.cancel();
+    }
+    return true;
   }
 
   // ── 認識感度の動的調整（U-4） ──
@@ -880,6 +1269,15 @@ var VoiceCommander = (function () {
       result = event.results[i];
       transcript = result[0].transcript;
 
+      if (_pendingVoiceConfirm) {
+        if (result.isFinal) {
+          _handlePendingVoiceConfirm(transcript);
+        } else {
+          _showStatus('確認中: ' + Utils.escapeHtml(transcript) + ' ...', 0);
+        }
+        continue;
+      }
+
       if (_state === 'standby') {
         // ノイズ除外
         if (_isNoise(result)) {
@@ -893,6 +1291,33 @@ var VoiceCommander = (function () {
           // コマンド一覧: ファストパス
           if (_detectHelpFastPath(transcript)) {
             _executeHelp();
+            continue;
+          }
+          if (_detectUndoFastPath(transcript)) {
+            _executeUndoLast();
+            continue;
+          }
+          var modeCmd2 = _detectModeFastPath(transcript);
+          if (modeCmd2) {
+            _executeModeSwitch(modeCmd2);
+            continue;
+          }
+          var tableRead2 = _detectTableReadFastPath(transcript);
+          if (tableRead2) {
+            _executeTableRead(transcript, tableRead2);
+            continue;
+          }
+          if (_detectCancelFastPath(transcript)) {
+            _executeCancelOrder(transcript);
+            continue;
+          }
+          if (_detectCourseAdvanceFastPath(transcript)) {
+            _executeCourseAdvance(transcript);
+            continue;
+          }
+          var tableBulk2 = _detectTableBulkFastPath(transcript);
+          if (tableBulk2) {
+            _executeTableBulk(transcript, tableBulk2);
             continue;
           }
           // スクロール: ファストパス
@@ -959,7 +1384,7 @@ var VoiceCommander = (function () {
           }
         } else {
           // interim結果
-          if (_isCommand(transcript) || _detectThemeFastPath(transcript) || _detectStationFastPath(transcript) !== null || _detectRestartFastPath(transcript) || _detectHelpFastPath(transcript) || _detectScrollFastPath(transcript) || _detectStaffCallFastPath(transcript)) {
+          if (_isCommand(transcript) || _detectThemeFastPath(transcript) || _detectStationFastPath(transcript) !== null || _detectRestartFastPath(transcript) || _detectHelpFastPath(transcript) || _detectScrollFastPath(transcript) || _detectStaffCallFastPath(transcript) || _detectUndoFastPath(transcript) || _detectModeFastPath(transcript) || _detectTableReadFastPath(transcript) || _detectCancelFastPath(transcript) || _detectCourseAdvanceFastPath(transcript) || _detectTableBulkFastPath(transcript)) {
             // コマンドパターン検出 → 1.5秒後に確定（finalが来なかった場合の保険）
             _interimCmd = transcript;
             if (_interimTimer) clearTimeout(_interimTimer);
