@@ -18,6 +18,13 @@ var VoiceCommander = (function () {
   var _diagBtn = null;
   var _diagOverlay = null;
   var _diagMicPermission = '未確認';
+  var _diagMicStream = null;
+  var _diagMicAudioCtx = null;
+  var _diagMicAnalyser = null;
+  var _diagMicRaf = null;
+  var _diagMicLevel = 0;
+  var _diagMicPeak = 0;
+  var _diagMicStatus = '未測定';
   var _statusEl = null;
   var _lastOrders = [];
   var _aiFallbackEnabled = false;
@@ -1005,8 +1012,106 @@ var VoiceCommander = (function () {
     return Math.round((ok / total) * 100) + '% (' + ok + '/' + total + ')';
   }
 
+  function _diagMicLevelText() {
+    var pct = Math.round((_diagMicPeak || 0) * 100);
+    if (_diagMicStatus === '測定中' || _diagMicStatus === '入力あり' || _diagMicStatus === '入力小') {
+      return _diagMicStatus + ' / 最大' + pct + '%';
+    }
+    return _diagMicStatus;
+  }
+
+  function _diagMicMeterHtml() {
+    return '<div style="margin:0.35rem 0 0.55rem;">'
+      + '<div style="height:10px;background:rgba(255,255,255,0.12);border-radius:999px;overflow:hidden;">'
+      + '<div id="vc-mic-level-fill" style="height:10px;width:' + Math.round((_diagMicLevel || 0) * 100) + '%;background:#42a5f5;"></div>'
+      + '</div>'
+      + '<div id="vc-mic-level-text" style="font-size:0.72rem;color:#b0bec5;margin-top:0.2rem;text-align:right;">' + Utils.escapeHtml(_diagMicLevelText()) + '</div>'
+      + '</div>';
+  }
+
+  function _updateDiagMicMeter() {
+    var fill = document.getElementById('vc-mic-level-fill');
+    var text = document.getElementById('vc-mic-level-text');
+    if (fill) fill.style.width = Math.round((_diagMicLevel || 0) * 100) + '%';
+    if (text) text.textContent = _diagMicLevelText();
+  }
+
+  function _stopDiagMicLevel() {
+    if (_diagMicRaf) {
+      cancelAnimationFrame(_diagMicRaf);
+      _diagMicRaf = null;
+    }
+    if (_diagMicStream) {
+      var tracks = _diagMicStream.getTracks();
+      for (var i = 0; i < tracks.length; i++) {
+        try { tracks[i].stop(); } catch (e) {}
+      }
+      _diagMicStream = null;
+    }
+    if (_diagMicAudioCtx) {
+      try { _diagMicAudioCtx.close(); } catch (ex) {}
+      _diagMicAudioCtx = null;
+    }
+    _diagMicAnalyser = null;
+  }
+
+  function _startDiagMicLevel() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      _diagMicStatus = 'ブラウザ未対応';
+      _renderVoiceDiagnostics();
+      return;
+    }
+    _stopDiagMicLevel();
+    _diagMicStatus = '測定中';
+    _diagMicLevel = 0;
+    _diagMicPeak = 0;
+    _renderVoiceDiagnostics();
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      _diagMicStream = stream;
+      _diagMicPermission = 'granted';
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) {
+        _diagMicStatus = 'Audio未対応';
+        _stopDiagMicLevel();
+        _renderVoiceDiagnostics();
+        return;
+      }
+      _diagMicAudioCtx = new Ctx();
+      if (_diagMicAudioCtx.state === 'suspended') {
+        try { _diagMicAudioCtx.resume(); } catch (e) {}
+      }
+      var source = _diagMicAudioCtx.createMediaStreamSource(stream);
+      _diagMicAnalyser = _diagMicAudioCtx.createAnalyser();
+      _diagMicAnalyser.fftSize = 1024;
+      source.connect(_diagMicAnalyser);
+      var data = new Uint8Array(_diagMicAnalyser.fftSize);
+      function tick() {
+        if (!_diagMicAnalyser) return;
+        _diagMicAnalyser.getByteTimeDomainData(data);
+        var sum = 0;
+        for (var i = 0; i < data.length; i++) {
+          var v = (data[i] - 128) / 128;
+          sum += v * v;
+        }
+        var rms = Math.sqrt(sum / data.length);
+        _diagMicLevel = Math.max(0, Math.min(1, rms * 8));
+        if (_diagMicLevel > _diagMicPeak) _diagMicPeak = _diagMicLevel;
+        _diagMicStatus = _diagMicPeak >= 0.06 ? '入力あり' : '入力小';
+        _updateDiagMicMeter();
+        _diagMicRaf = requestAnimationFrame(tick);
+      }
+      tick();
+      _renderVoiceDiagnostics();
+    }).catch(function () {
+      _diagMicStatus = '取得不可';
+      _diagMicPermission = 'denied/blocked';
+      _renderVoiceDiagnostics();
+    });
+  }
+
   function _showVoiceDiagnostics() {
     if (_diagOverlay && _diagOverlay.parentNode) {
+      _stopDiagMicLevel();
       _diagOverlay.parentNode.removeChild(_diagOverlay);
       _diagOverlay = null;
     }
@@ -1016,6 +1121,7 @@ var VoiceCommander = (function () {
     document.body.appendChild(_diagOverlay);
     _queryMicPermission();
     _renderVoiceDiagnostics();
+    _startDiagMicLevel();
   }
 
   function _queryMicPermission() {
@@ -1027,6 +1133,7 @@ var VoiceCommander = (function () {
     }
     try {
       navigator.permissions.query({ name: 'microphone' }).then(function (status) {
+        if (_diagMicStream && _diagMicPermission === 'granted') return;
         _diagMicPermission = status && status.state ? status.state : '不明';
         _renderVoiceDiagnostics();
       }).catch(function () {
@@ -1053,6 +1160,8 @@ var VoiceCommander = (function () {
       + _diagRow('音声状態', _state)
       + _diagRow('Web Speech API', supported)
       + _diagRow('マイク権限', _diagMicPermission)
+      + _diagRow('マイク入力', _diagMicLevelText())
+      + _diagMicMeterHtml()
       + _diagRow('AudioContext', audioState)
       + _diagRow('AI補助', _aiFallbackEnabled ? 'ON' : 'OFF')
       + _diagRow('AI設定', _aiConfigLoaded ? (_aiConfigured ? '設定済み' : '未設定') : '確認中')
@@ -1077,6 +1186,7 @@ var VoiceCommander = (function () {
     var closeBtn = document.getElementById('vc-diagnostics-close');
     if (closeBtn) {
       closeBtn.addEventListener('click', function () {
+        _stopDiagMicLevel();
         if (_diagOverlay && _diagOverlay.parentNode) _diagOverlay.parentNode.removeChild(_diagOverlay);
         _diagOverlay = null;
       });

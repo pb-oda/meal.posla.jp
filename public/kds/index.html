@@ -81,6 +81,7 @@
     <div class="kds-header__right">
       <a href="#" class="kds-header__link" id="kds-change-store" style="display:none">店舗切替</a>
       <a href="sold-out.html" class="kds-header__link">品切れ管理</a>
+      <button type="button" class="kds-header__link kds-preflight-btn" id="kds-preflight-btn">開店前チェック</button>
       <button id="btn-ai-kitchen" onclick="AiKitchen.toggle()">&#x1F9D1;&#x200D;&#x1F373; AIシェフ</button>
       <span id="kds-wake-lock-status" class="kds-header__link" style="font-size:0.75rem;opacity:0.7;cursor:default;" title="画面が暗くならないようにする補助機能 (端末側設定の影響あり)"></span>
       <span id="kds-push-status" class="kds-header__link" style="font-size:0.75rem;opacity:0.7;cursor:pointer;" title="この端末で通知を受け取る設定 (タップで許可)"></span>
@@ -153,7 +154,7 @@
   <script src="js/kds-auth.js?v=20260418gps"></script>
   <script src="js/polling-data-source.js?v=20260420-pwa3"></script>
   <script src="js/kds-renderer.js?v=20260429-kds-p0g"></script>
-  <script src="js/voice-commander.js?v=20260429-kds-p0f"></script>
+  <script src="js/voice-commander.js?v=20260429-kds-p0g"></script>
   <script src="js/ai-kitchen.js"></script>
   <script>
   (function () {
@@ -162,6 +163,13 @@
     var _stationId = '';
     var _stationSoundCtx = null;
     var _stationSoundSnapshot = {};
+    var _lastPollingAt = 0;
+    var _lastPollingError = '';
+    var _lastStationSummary = null;
+    var _preflightOverlay = null;
+    var _preflightMicStream = null;
+    var _preflightMicCtx = null;
+    var _preflightMicRaf = null;
 
     function _stationKey() {
       return _stationId || '__all__';
@@ -212,6 +220,243 @@
         tone(880, 0, 80, 0.03);
         tone(1100, 115, 80, 0.03);
       }
+    }
+
+    function _stopPreflightMic() {
+      if (_preflightMicRaf) {
+        cancelAnimationFrame(_preflightMicRaf);
+        _preflightMicRaf = null;
+      }
+      if (_preflightMicStream) {
+        var tracks = _preflightMicStream.getTracks();
+        for (var i = 0; i < tracks.length; i++) {
+          try { tracks[i].stop(); } catch (e) {}
+        }
+        _preflightMicStream = null;
+      }
+      if (_preflightMicCtx) {
+        try { _preflightMicCtx.close(); } catch (ex) {}
+        _preflightMicCtx = null;
+      }
+    }
+
+    function _preflightRowsHtml() {
+      var rows = [
+        ['orders', 'KDS通信'],
+        ['polling', '自動更新'],
+        ['sound', '通知音'],
+        ['mic', 'マイク'],
+        ['wake', '画面維持'],
+        ['station', 'ステーション']
+      ];
+      var html = '';
+      for (var i = 0; i < rows.length; i++) {
+        html += '<div class="kds-preflight-row" data-preflight-row="' + rows[i][0] + '">'
+          + '<div class="kds-preflight-label">' + Utils.escapeHtml(rows[i][1]) + '</div>'
+          + '<div class="kds-preflight-state" data-preflight-state="' + rows[i][0] + '">待機</div>'
+          + '<div class="kds-preflight-detail" data-preflight-detail="' + rows[i][0] + '">-</div>'
+          + '</div>';
+      }
+      return html;
+    }
+
+    function _setPreflightRow(id, state, detail) {
+      var stateEl = document.querySelector('[data-preflight-state="' + id + '"]');
+      var detailEl = document.querySelector('[data-preflight-detail="' + id + '"]');
+      if (stateEl) {
+        stateEl.className = 'kds-preflight-state kds-preflight-state--' + state;
+        stateEl.textContent = state === 'ok' ? 'OK' : (state === 'warn' ? '確認' : (state === 'ng' ? 'NG' : '確認中'));
+      }
+      if (detailEl) detailEl.textContent = detail || '-';
+    }
+
+    function _setPreflightMicMeter(level, text) {
+      var detailEl = document.querySelector('[data-preflight-detail="mic"]');
+      if (!detailEl) return;
+      var pct = Math.max(0, Math.min(100, Math.round((level || 0) * 100)));
+      detailEl.innerHTML = Utils.escapeHtml(text || '') + '<div class="kds-preflight-meter"><div class="kds-preflight-meter__fill" style="width:' + pct + '%"></div></div>';
+    }
+
+    function _showPreflightOverlay() {
+      _stopPreflightMic();
+      if (_preflightOverlay && _preflightOverlay.parentNode) {
+        _preflightOverlay.parentNode.removeChild(_preflightOverlay);
+      }
+      _preflightOverlay = document.createElement('div');
+      _preflightOverlay.className = 'kds-preflight-overlay';
+      _preflightOverlay.innerHTML = '<div class="kds-preflight-panel" role="dialog" aria-modal="true" aria-label="開店前チェック">'
+        + '<div class="kds-preflight-header">'
+        + '<div class="kds-preflight-title">開店前チェック</div>'
+        + '<button type="button" class="kds-preflight-close" data-preflight-close="1">閉じる</button>'
+        + '</div>'
+        + '<div class="kds-preflight-body">' + _preflightRowsHtml() + '</div>'
+        + '<div class="kds-preflight-actions">'
+        + '<button type="button" class="kds-preflight-run" data-preflight-run="1">再チェック</button>'
+        + '</div>'
+        + '</div>';
+      document.body.appendChild(_preflightOverlay);
+      _preflightOverlay.addEventListener('click', function (e) {
+        if (e.target.getAttribute('data-preflight-close') === '1' || e.target === _preflightOverlay) {
+          _stopPreflightMic();
+          if (_preflightOverlay && _preflightOverlay.parentNode) _preflightOverlay.parentNode.removeChild(_preflightOverlay);
+          _preflightOverlay = null;
+          return;
+        }
+        if (e.target.getAttribute('data-preflight-run') === '1') {
+          _runPreflight();
+        }
+      });
+      _runPreflight();
+    }
+
+    function _checkPreflightOrders() {
+      var storeId = (typeof KdsAuth !== 'undefined' && KdsAuth.getStoreId) ? KdsAuth.getStoreId() : '';
+      if (!storeId) {
+        _setPreflightRow('orders', 'ng', '店舗未選択');
+        return Promise.resolve();
+      }
+      _setPreflightRow('orders', 'run', 'KDS注文APIを確認中');
+      var url = '../../api/kds/orders.php?store_id=' + encodeURIComponent(storeId);
+      if (_stationId) url += '&station_id=' + encodeURIComponent(_stationId);
+      return fetch(url, { credentials: 'same-origin' })
+        .then(function (res) { return res.text(); })
+        .then(function (body) {
+          var json = body ? JSON.parse(body) : {};
+          if (json && json.ok) {
+            var count = json.data && json.data.orders ? json.data.orders.length : 0;
+            _setPreflightRow('orders', 'ok', '取得OK / 注文' + count + '件');
+          } else {
+            _setPreflightRow('orders', 'ng', (json.error && json.error.message) || '取得失敗');
+          }
+        })
+        .catch(function () {
+          _setPreflightRow('orders', 'ng', '通信失敗');
+        });
+    }
+
+    function _checkPreflightPolling() {
+      var age = _lastPollingAt ? Math.floor((Date.now() - _lastPollingAt) / 1000) : null;
+      if (_lastPollingError) {
+        _setPreflightRow('polling', 'ng', _lastPollingError);
+      } else if (age !== null && age <= 10) {
+        _setPreflightRow('polling', 'ok', '最終更新' + age + '秒前');
+      } else if (age !== null) {
+        _setPreflightRow('polling', 'warn', '最終更新' + age + '秒前');
+      } else {
+        _setPreflightRow('polling', 'warn', 'まだ自動更新前');
+      }
+    }
+
+    function _checkPreflightSound() {
+      _setPreflightRow('sound', 'run', 'テスト音を再生');
+      var ctx = _unlockStationAudio();
+      _playStationTone('ready');
+      if (ctx) {
+        _setPreflightRow('sound', 'ok', '再生要求OK / ' + ctx.state);
+      } else {
+        _setPreflightRow('sound', 'warn', 'AudioContext未対応');
+      }
+    }
+
+    function _checkPreflightWakeLock() {
+      _setPreflightRow('wake', 'run', '画面維持を確認中');
+      if (typeof WakeLockHelper === 'undefined' || !WakeLockHelper.isSupported || !WakeLockHelper.isSupported()) {
+        _setPreflightRow('wake', 'warn', '端末またはブラウザ未対応');
+        return;
+      }
+      WakeLockHelper.acquire();
+      setTimeout(function () {
+        var el = document.getElementById('kds-wake-lock-status');
+        var state = el ? (el.getAttribute('data-wake-lock') || '') : '';
+        if (state === 'active') {
+          _setPreflightRow('wake', 'ok', '有効');
+        } else {
+          _setPreflightRow('wake', 'warn', state ? ('状態: ' + state) : '端末設定を確認');
+        }
+      }, 600);
+    }
+
+    function _checkPreflightStation() {
+      var summary = _lastStationSummary;
+      var label = (typeof getStationLabel === 'function') ? getStationLabel() : (_stationId ? '選択ステーション' : '全品目');
+      var detail = label;
+      if (summary) {
+        detail += ' / 注文' + summary.orders + ' / 提供待ち' + summary.ready;
+      }
+      _setPreflightRow('station', 'ok', detail);
+    }
+
+    function _checkPreflightMic() {
+      _stopPreflightMic();
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        _setPreflightRow('mic', 'warn', 'ブラウザ未対応');
+        return Promise.resolve();
+      }
+      _setPreflightRow('mic', 'run', '測定中');
+      _setPreflightMicMeter(0, '測定中');
+      return navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+        _preflightMicStream = stream;
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) {
+          _setPreflightRow('mic', 'warn', 'AudioContext未対応');
+          _stopPreflightMic();
+          return;
+        }
+        _preflightMicCtx = new Ctx();
+        if (_preflightMicCtx.state === 'suspended') {
+          try { _preflightMicCtx.resume(); } catch (e) {}
+        }
+        var source = _preflightMicCtx.createMediaStreamSource(stream);
+        var analyser = _preflightMicCtx.createAnalyser();
+        analyser.fftSize = 1024;
+        source.connect(analyser);
+        var data = new Uint8Array(analyser.fftSize);
+        var peak = 0;
+        var startedAt = Date.now();
+        return new Promise(function (resolve) {
+          function tick() {
+            analyser.getByteTimeDomainData(data);
+            var sum = 0;
+            for (var i = 0; i < data.length; i++) {
+              var v = (data[i] - 128) / 128;
+              sum += v * v;
+            }
+            var rms = Math.sqrt(sum / data.length);
+            var level = Math.max(0, Math.min(1, rms * 8));
+            if (level > peak) peak = level;
+            _setPreflightMicMeter(level, '最大' + Math.round(peak * 100) + '%');
+            if (Date.now() - startedAt >= 2200) {
+              _stopPreflightMic();
+              if (peak >= 0.06) {
+                _setPreflightRow('mic', 'ok', '入力あり / 最大' + Math.round(peak * 100) + '%');
+              } else {
+                _setPreflightRow('mic', 'warn', '入力小 / 最大' + Math.round(peak * 100) + '%');
+              }
+              resolve();
+              return;
+            }
+            _preflightMicRaf = requestAnimationFrame(tick);
+          }
+          tick();
+        });
+      }).catch(function () {
+        _setPreflightRow('mic', 'ng', 'マイク取得不可');
+      });
+    }
+
+    function _runPreflight() {
+      _setPreflightRow('orders', 'run', '確認中');
+      _setPreflightRow('polling', 'run', '確認中');
+      _setPreflightRow('sound', 'run', '確認中');
+      _setPreflightRow('mic', 'run', '確認中');
+      _setPreflightRow('wake', 'run', '確認中');
+      _setPreflightRow('station', 'run', '確認中');
+      _checkPreflightPolling();
+      _checkPreflightSound();
+      _checkPreflightWakeLock();
+      _checkPreflightStation();
+      _checkPreflightOrders();
+      _checkPreflightMic();
     }
 
     function showStoreOverlay(stores, onSelect) {
@@ -352,6 +597,12 @@
         }
         renderStationButtons([]);
         renderStationFocusLoading();
+        var preflightBtn = document.getElementById('kds-preflight-btn');
+        if (preflightBtn) {
+          preflightBtn.addEventListener('click', function () {
+            _showPreflightOverlay();
+          });
+        }
 
         // ステーションバーのクリック
         document.getElementById('kds-station-bar').addEventListener('click', function (e) {
@@ -497,6 +748,8 @@
         var sid = _stationId === '__cashier__' ? '' : _stationId;
         PollingDataSource.start(storeId, function (data) {
           clearError();
+          _lastPollingAt = Date.now();
+          _lastPollingError = '';
           if (data.stations) renderStationButtons(data.stations);
           KdsRenderer.onData(data);
           updateStationFocus(false);
@@ -603,6 +856,7 @@
         var el = document.getElementById('kds-station-focus');
         if (!el || !KdsRenderer.getOperationalSummary) return;
         var summary = KdsRenderer.getOperationalSummary();
+        _lastStationSummary = summary;
         var level = summary.topLevel || 'normal';
         var label = getStationLabel();
         applyStationButtonLevel(level);
@@ -620,6 +874,7 @@
 
       function handleError(errMsg) {
         console.error('KDS polling error:', errMsg);
+        _lastPollingError = errMsg || 'polling error';
         var errEl = document.getElementById('kds-error');
         if (!errEl) {
           errEl = document.createElement('div');
