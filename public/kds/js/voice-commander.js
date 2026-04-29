@@ -30,6 +30,18 @@ var VoiceCommander = (function () {
   var _menuLoaded = false;
   var _standbyHint = '🎤 音声待機中（例:「T01完成」「T01残り」「まとめ表示」「戻して」）';
   var _consecutiveErrors = 0;  // 連続エラー回数（バックオフ用）
+  var _lastStartTime = 0;
+  var _lastResultTime = 0;
+  var _lastFinalTime = 0;
+  var _lastInterimTime = 0;
+  var _lastHardResetTime = 0;
+  var _interimOnlySince = 0;
+  var _interimStreak = 0;
+  var _voiceErrorWindowStartedAt = 0;
+  var _noSpeechErrors = 0;
+  var _networkErrors = 0;
+  var _audioCaptureErrors = 0;
+  var _hardResetPending = false;
 
   // ── コマンドパターン ──
   // テーブル番号パターン（T01, t1, テーブル1, 1番テーブル, 1番 等）
@@ -934,6 +946,8 @@ var VoiceCommander = (function () {
     _showStatus('音声を再起動しています...', 2000);
     // 停止
     _shouldRestart = false;
+    _hardResetPending = false;
+    _resetVoiceHealthCounters();
     _clearInterimTimer();
     _stopWatchdog();
     if (_recognition) {
@@ -1021,6 +1035,8 @@ var VoiceCommander = (function () {
     }
 
     _shouldRestart = true;
+    _lastHardResetTime = Date.now();
+    _resetVoiceHealthCounters();
     _setState('standby');
     localStorage.setItem(_VOICE_KEY, '1');
     _showStatus(_standbyHint, 0);
@@ -1044,18 +1060,18 @@ var VoiceCommander = (function () {
   }
 
   // ── 認識開始（既存インスタンスを再利用） ──
-  var _lastStartTime = 0;
-
   function _startRecognition() {
     if (!_recognition) return;
     try {
       _recognition.start();
-      _lastStartTime = Date.now();
+      var now = Date.now();
+      _lastStartTime = now;
+      if (!_lastHardResetTime) _lastHardResetTime = now;
       _consecutiveErrors = 0;
     } catch (e) {
       if (e.name === 'InvalidStateError') {
         // 既にstartされている場合 → 正常
-        _lastStartTime = Date.now();
+        if (!_lastStartTime) _lastStartTime = Date.now();
       } else {
         // その他のエラー → ハードリセット
         _consecutiveErrors++;
@@ -1070,6 +1086,11 @@ var VoiceCommander = (function () {
   function _hardResetRecognition() {
     var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
+    if (_hardResetPending) return;
+    _hardResetPending = true;
+    _clearInterimTimer();
+    _resetVoiceHealthCounters();
+    _lastHardResetTime = Date.now();
     if (_recognition) {
       _recognition.onresult = null;
       _recognition.onerror = null;
@@ -1077,7 +1098,12 @@ var VoiceCommander = (function () {
       try { _recognition.abort(); } catch (e) {}
       _recognition = null;
     }
-    _ensureRecognition(SpeechRecognition);
+    setTimeout(function () {
+      _hardResetPending = false;
+      if (!_shouldRestart) return;
+      _ensureRecognition(SpeechRecognition);
+      if (_state !== 'processing') _setState('standby');
+    }, 350);
   }
 
   // ── interim コマンド確定タイマーをクリア ──
@@ -1424,16 +1450,56 @@ var VoiceCommander = (function () {
     return false;
   }
 
+  function _resetVoiceHealthCounters() {
+    _lastResultTime = 0;
+    _lastFinalTime = 0;
+    _lastInterimTime = 0;
+    _interimOnlySince = 0;
+    _interimStreak = 0;
+    _resetVoiceErrorWindow();
+  }
+
+  function _resetVoiceErrorWindow() {
+    _voiceErrorWindowStartedAt = 0;
+    _noSpeechErrors = 0;
+    _networkErrors = 0;
+    _audioCaptureErrors = 0;
+  }
+
+  function _rememberVoiceError(type) {
+    var now = Date.now();
+    if (!_voiceErrorWindowStartedAt || now - _voiceErrorWindowStartedAt > _VOICE_ERROR_WINDOW_MS) {
+      _voiceErrorWindowStartedAt = now;
+      _noSpeechErrors = 0;
+      _networkErrors = 0;
+      _audioCaptureErrors = 0;
+    }
+    if (type === 'no-speech') _noSpeechErrors++;
+    if (type === 'network') _networkErrors++;
+    if (type === 'audio-capture') _audioCaptureErrors++;
+  }
+
   // ── 音声認識結果ハンドラ ──
   function _onResult(event) {
     var i, result, transcript;
+    var now = Date.now();
     // 認識結果が来た → 正常動作中
     _consecutiveErrors = 0;
-    _lastStartTime = Date.now();
+    _lastResultTime = now;
 
     for (i = event.resultIndex; i < event.results.length; i++) {
       result = event.results[i];
       transcript = result[0].transcript;
+      if (result.isFinal) {
+        _lastFinalTime = now;
+        _interimOnlySince = 0;
+        _interimStreak = 0;
+        _resetVoiceErrorWindow();
+      } else {
+        _lastInterimTime = now;
+        _interimStreak++;
+        if (!_interimOnlySince) _interimOnlySince = now;
+      }
 
       if (_pendingVoiceConfirm) {
         if (result.isFinal) {
@@ -1592,6 +1658,7 @@ var VoiceCommander = (function () {
   function _onError(event) {
     if (event.error === 'no-speech') {
       // 無音による自動停止 → onend で即再起動するので何もしない
+      _rememberVoiceError('no-speech');
       return;
     }
     if (event.error === 'aborted') {
@@ -1604,11 +1671,13 @@ var VoiceCommander = (function () {
     }
     if (event.error === 'network') {
       // ネットワークエラー → onend で再起動
+      _rememberVoiceError('network');
       _consecutiveErrors++;
       return;
     }
     if (event.error === 'audio-capture') {
       _showStatus('マイクにアクセスできません。他のアプリが使用中の可能性があります', 3000);
+      _rememberVoiceError('audio-capture');
       _consecutiveErrors++;
       return;
     }
@@ -1644,18 +1713,20 @@ var VoiceCommander = (function () {
 
   // ── ウォッチドッグ（認識が沈黙死した場合の保険） ──
   var _watchdogTimer = null;
-  var _WATCHDOG_INTERVAL = 60000; // 60秒
+  var _WATCHDOG_INTERVAL = 20000; // 20秒ごとに監視
+  var _WATCHDOG_STALE_MS = 90000; // 90秒応答なしならハードリセット
+  var _PERIODIC_HARD_RESET_MS = 12 * 60 * 1000; // 12分ごとに予防リフレッシュ
+  var _NO_FINAL_RESET_MS = 3 * 60 * 1000; // 3分final未確定なら品質低下として扱う
+  var _INTERIM_STUCK_RESET_MS = 45 * 1000; // interimだけ45秒続く場合は滞留
+  var _VOICE_ERROR_WINDOW_MS = 3 * 60 * 1000;
+  var _MAX_NO_SPEECH_ERRORS = 4;
+  var _MAX_NETWORK_ERRORS = 2;
+  var _MAX_AUDIO_CAPTURE_ERRORS = 2;
 
   function _startWatchdog() {
     _stopWatchdog();
     _watchdogTimer = setInterval(function () {
-      if (!_shouldRestart) return;
-      if (_state === 'processing') return;
-      // 最後のstart()から60秒以上経過 → 認識が死んでいる可能性
-      if (Date.now() - _lastStartTime > _WATCHDOG_INTERVAL) {
-        // 穏やかにリスタート（既存インスタンスを再利用）
-        _startRecognition();
-      }
+      _checkRecognitionHealth();
     }, _WATCHDOG_INTERVAL);
   }
 
@@ -1663,9 +1734,66 @@ var VoiceCommander = (function () {
     if (_watchdogTimer) { clearInterval(_watchdogTimer); _watchdogTimer = null; }
   }
 
+  function _isVoiceMaintenanceSafe() {
+    if (!_shouldRestart) return false;
+    if (_hardResetPending) return false;
+    if (_state === 'processing') return false;
+    if (_pendingVoiceConfirm || _confirmOverlay) return false;
+    return true;
+  }
+
+  function _checkRecognitionHealth() {
+    var now = Date.now();
+    var finalBase;
+    if (!_isVoiceMaintenanceSafe()) return;
+    if (!_lastHardResetTime) _lastHardResetTime = now;
+
+    if (now - _lastHardResetTime >= _PERIODIC_HARD_RESET_MS) {
+      _autoHardResetRecognition('定期');
+      return;
+    }
+
+    if (_networkErrors >= _MAX_NETWORK_ERRORS) {
+      _autoHardResetRecognition('network');
+      return;
+    }
+
+    if (_audioCaptureErrors >= _MAX_AUDIO_CAPTURE_ERRORS) {
+      _autoHardResetRecognition('マイク');
+      return;
+    }
+
+    if (_noSpeechErrors >= _MAX_NO_SPEECH_ERRORS) {
+      _autoHardResetRecognition('無音');
+      return;
+    }
+
+    if (_interimOnlySince && now - _interimOnlySince >= _INTERIM_STUCK_RESET_MS) {
+      _autoHardResetRecognition('聞取滞留');
+      return;
+    }
+
+    finalBase = _lastFinalTime || _lastStartTime;
+    if (finalBase && now - finalBase >= _NO_FINAL_RESET_MS && (_interimStreak >= 3 || _noSpeechErrors > 0 || _networkErrors > 0)) {
+      _autoHardResetRecognition('final未確定');
+      return;
+    }
+
+    if (_lastStartTime && now - _lastStartTime >= _WATCHDOG_STALE_MS && (!_lastResultTime || _lastResultTime < _lastStartTime)) {
+      _autoHardResetRecognition('応答なし');
+    }
+  }
+
+  function _autoHardResetRecognition(reason) {
+    if (!_isVoiceMaintenanceSafe()) return;
+    _showStatus('音声認識を自動リフレッシュ中（' + reason + '）', 1400);
+    _hardResetRecognition();
+  }
+
   // ── 常時リスニング停止 ──
   function _stopContinuousListening() {
     _shouldRestart = false;
+    _hardResetPending = false;
     _clearInterimTimer();
     _stopWatchdog();
     _consecutiveErrors = 0;
