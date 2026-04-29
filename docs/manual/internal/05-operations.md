@@ -2820,6 +2820,35 @@ SELECT p.id, p.payment_method, p.gateway_name, p.external_payment_id,
 
 ---
 
+## 5.14a KDS端末状態帯と着手時間設定
+
+KDSキッチン画面は、開きっぱなし端末が止まっていることに現場で早く気づけるよう、ステーション状況帯の下に端末状態帯を常時表示する。
+
+| 表示 | 実装元 | 判定 |
+|---|---|---|
+| 最終更新 | `public/kds/index.html` の `_lastPollingAt` | `PollingDataSource.start()` 成功時に更新 |
+| 遅延 | `Date.now() - _lastPollingAt` | 10秒超で黄、20秒超で赤 |
+| live/stale | `OfflineStateBanner.isStale()` | staleなら赤 |
+| 音声成功 | `localStorage: mt_kds_voice_diag_v1.lastSuccessAt` | 音声コマンド成功時刻を端末内から読む |
+| 通信異常 | `_lastPollingError` | エラーがあれば赤 |
+
+この表示は監査ログではない。ログインしているのはdeviceアカウントであり、個人スタッフの識別には使わない。
+
+予約/テイクアウトの事前表示は、従来の固定20分からKDS端末ごとの設定に変更している。
+
+| 設定 | 保存先 | 適用 |
+|---|---|---|
+| 全体 | `localStorage: mt_kds_prep_lead_v1.defaultMin` | カテゴリ指定なしの基準 |
+| テイクアウト | `takeoutMin` | `orders.order_type='takeout'` + `pickup_at` |
+| 予約 | `reservationMin` | `reservation_reserved_at` |
+| カテゴリ別 | `categories[category_id]` | 注文品目の `category_id` で上書き |
+
+`api/kds/orders.php` は各品目に `category_id` / `category_name` を付与する。KDSレンダラーは `KdsRenderer.setPrepLeadConfig()` で端末設定を受け取り、同じ注文に複数カテゴリがある場合は未完了品目の中で最も長い着手時間を使う。
+
+店舗全体で統一したい場合は、将来 `store_settings` と管理画面設定へ昇格する。現行実装はDB変更なしの端末設定であり、複数KDS端末を置く店舗では開店前に各端末の設定確認が必要。
+
+---
+
 ## 5.14b 軽量リビジョン確認 (RevisionGate)
 
 POSLA は **WebSocket / SSE を使わず**、既存のポーリング方式を維持したまま、変更が無いときに重い API を叩かない仕組みを導入しています。これによりポーリング間隔自体は変更せず（KDS 注文 3 秒 / 呼び出しアラート 5 秒のまま）、サーバ DB 負荷だけを軽量化しています。
