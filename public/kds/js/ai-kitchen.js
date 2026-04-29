@@ -113,6 +113,9 @@ var AiKitchen = (function () {
       + '#' + BTN_ID + '.aik-active {'
       + '  background: rgba(66,165,245,0.3); border-color: rgba(66,165,245,0.6); color: #fff;'
       + '}'
+      + '#' + BTN_ID + '.aik-unavailable {'
+      + '  background: rgba(249,168,37,0.18); border-color: rgba(249,168,37,0.55); color: #ffe082;'
+      + '}'
 
       // レスポンシブ
       + '@media (max-width: 1024px) {'
@@ -165,6 +168,10 @@ var AiKitchen = (function () {
     panel.classList.add('aik-open');
     if (btn) btn.classList.add('aik-active');
     _isOpen = true;
+    if (_available === false) {
+      _renderError('AI機能が設定されていません。POSLA管理画面のAPI設定を確認してください。');
+      return;
+    }
     _fetchAnalysis();
     _startAutoRefresh();
   }
@@ -307,7 +314,7 @@ var AiKitchen = (function () {
       if (!json.ok) {
         var errMsg = (json.error && json.error.message) || 'エラーが発生しました';
         if (json.error && json.error.code === 'AI_NOT_CONFIGURED') {
-          _hideButton();
+          _markUnavailable();
         }
         _renderError(errMsg);
         return;
@@ -430,11 +437,24 @@ var AiKitchen = (function () {
     }
   }
 
-  // ── ボタン表示/非表示 ──
-  function _hideButton() {
+  // ── AI可用性表示 ──
+  function _markUnavailable() {
     var btn = document.getElementById(BTN_ID);
-    if (btn) btn.style.display = 'none';
+    if (btn) {
+      btn.classList.add('aik-unavailable');
+      btn.title = 'AI機能が未設定です。押すと状態を確認できます。';
+    }
     _available = false;
+    _stopAutoRefresh();
+  }
+
+  function _markAvailable() {
+    var btn = document.getElementById(BTN_ID);
+    if (btn) {
+      btn.classList.remove('aik-unavailable');
+      btn.title = 'AIキッチンダッシュボードを開きます';
+    }
+    _available = true;
   }
 
   // ── APIキー可用性チェック（遅延実行） ──
@@ -462,9 +482,9 @@ var AiKitchen = (function () {
       var json;
       try { json = JSON.parse(text); } catch (e) { return; }
       if (!json.ok && json.error && json.error.code === 'AI_NOT_CONFIGURED') {
-        _hideButton();
+        _markUnavailable();
       } else {
-        _available = true;
+        _markAvailable();
       }
     }).catch(function () {
       // ネットワークエラー等は無視（ボタンは表示したまま）
