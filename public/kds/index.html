@@ -18,9 +18,28 @@
     .kds-station-btn { background:var(--kds-bg-surface); color:var(--kds-text-muted); border:1px solid var(--kds-border); padding:0.35rem 0.75rem; border-radius:4px; font-size:0.8rem; cursor:pointer; }
     .kds-station-btn:hover { background:var(--kds-bg-surface-subtle); }
     .kds-station-btn.active { background:rgba(66,165,245,0.3); color:#fff; border-color:rgba(66,165,245,0.6); }
+    .kds-station-btn--prep.active { background:rgba(66,165,245,0.32); border-color:#42a5f5; color:#fff; }
+    .kds-station-btn--warning.active { background:rgba(255,179,0,0.32); border-color:#ffb300; color:#fff; }
+    .kds-station-btn--danger.active { background:rgba(255,82,82,0.36); border-color:#ff5252; color:#fff; animation:kds-station-pulse 1.2s infinite; }
+    @keyframes kds-station-pulse { 50% { box-shadow:0 0 0 3px rgba(255,82,82,0.18); } }
+    .kds-station-focus { display:flex; align-items:center; gap:0.75rem; min-height:42px; padding:0.45rem 1rem; background:rgba(255,255,255,0.035); border-bottom:1px solid var(--kds-border); border-left:4px solid transparent; font-size:0.82rem; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .kds-station-focus__name { font-weight:900; color:var(--kds-text); white-space:nowrap; }
+    .kds-station-focus__status { font-weight:900; white-space:nowrap; }
+    .kds-station-focus__metric { color:var(--kds-text-muted); white-space:nowrap; }
+    .kds-station-focus__reason { color:var(--kds-text-secondary); font-weight:800; white-space:nowrap; }
+    .kds-station-focus--prep { border-left-color:#42a5f5; background:rgba(66,165,245,0.08); }
+    .kds-station-focus--prep .kds-station-focus__status { color:#64b5f6; }
+    .kds-station-focus--warning { border-left-color:#ffb300; background:rgba(255,179,0,0.10); }
+    .kds-station-focus--warning .kds-station-focus__status { color:#ffcc33; }
+    .kds-station-focus--danger { border-left-color:#ff5252; background:rgba(255,82,82,0.12); }
+    .kds-station-focus--danger .kds-station-focus__status { color:#ff6b6b; }
     html.light-theme .kds-station-btn { color:#555; background:#fff; border-color:#ccc; }
     html.light-theme .kds-station-btn:hover { background:#f0f0f0; }
     html.light-theme .kds-station-btn.active { background:#e3f2fd; color:#1565c0; border-color:#42a5f5; }
+    html.light-theme .kds-station-focus { background:#fff; }
+    html.light-theme .kds-station-focus--prep { background:#e3f2fd; }
+    html.light-theme .kds-station-focus--warning { background:#fff8e1; }
+    html.light-theme .kds-station-focus--danger { background:#ffebee; }
     /* KDS-P1-1: モード切替バー (通常 / まとめ表示) */
     .kds-mode-bar { display:flex; gap:0.5rem; padding:0.4rem 1rem; background:var(--kds-bg-surface); align-items:center; border-bottom:1px solid var(--kds-border); }
     .kds-mode-bar__label { font-size:0.72rem; color:var(--kds-text-muted); letter-spacing:0.05em; }
@@ -72,6 +91,7 @@
 
   <!-- ステーション選択バー -->
   <div class="kds-station-bar" id="kds-station-bar"></div>
+  <div class="kds-station-focus" id="kds-station-focus"></div>
 
   <!-- コースフェーズ操作バー -->
   <div class="kds-course-bar" id="kds-course-bar"></div>
@@ -132,7 +152,7 @@
   <script src="../shared/js/revision-gate.js?v=20260420-rev2"></script>
   <script src="js/kds-auth.js?v=20260418gps"></script>
   <script src="js/polling-data-source.js?v=20260420-pwa3"></script>
-  <script src="js/kds-renderer.js?v=20260429-kds-p0a"></script>
+  <script src="js/kds-renderer.js?v=20260429-kds-p0g"></script>
   <script src="js/voice-commander.js?v=20260429-kds-p0f"></script>
   <script src="js/ai-kitchen.js"></script>
   <script>
@@ -140,6 +160,59 @@
     'use strict';
 
     var _stationId = '';
+    var _stationSoundCtx = null;
+    var _stationSoundSnapshot = {};
+
+    function _stationKey() {
+      return _stationId || '__all__';
+    }
+
+    function _unlockStationAudio() {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      if (!_stationSoundCtx) {
+        try { _stationSoundCtx = new Ctx(); } catch (e) { return null; }
+      }
+      if (_stationSoundCtx && _stationSoundCtx.state === 'suspended') {
+        try { _stationSoundCtx.resume(); } catch (ex) {}
+      }
+      return _stationSoundCtx;
+    }
+
+    function _playStationTone(kind) {
+      var ctx = _unlockStationAudio();
+      if (!ctx) return;
+      function tone(freq, delayMs, durationMs, volume) {
+        try {
+          var osc = ctx.createOscillator();
+          var gain = ctx.createGain();
+          var start = ctx.currentTime + (delayMs / 1000);
+          var end = start + (durationMs / 1000);
+          osc.type = kind === 'danger' ? 'square' : 'sine';
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(volume || 0.035, start + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0001, end);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(start);
+          osc.stop(end + 0.02);
+        } catch (e) {}
+      }
+      if (kind === 'danger') {
+        tone(330, 0, 120, 0.04);
+        tone(660, 150, 120, 0.04);
+        tone(330, 300, 160, 0.04);
+      } else if (kind === 'warning') {
+        tone(740, 0, 90, 0.035);
+        tone(740, 130, 90, 0.035);
+      } else if (kind === 'prep') {
+        tone(660, 0, 80, 0.025);
+      } else if (kind === 'ready') {
+        tone(880, 0, 80, 0.03);
+        tone(1100, 115, 80, 0.03);
+      }
+    }
 
     function showStoreOverlay(stores, onSelect) {
       var overlay = document.getElementById('kds-store-overlay');
@@ -195,6 +268,7 @@
       if (sessionStorage.getItem('mt_kds_started')) {
         // 経路 3: ユーザー操作なしで自動取得を試す。失敗時はステータス要素クリックで復旧
         _tryAcquireWakeLock();
+        _unlockStationAudio();
         callback();
         return;
       }
@@ -204,6 +278,7 @@
       overlay.style.display = 'flex';
       document.getElementById('kds-startup-btn').addEventListener('click', function () {
         VoiceCommander.unlockAudio();
+        _unlockStationAudio();
         // 経路 1: 起動ボタン (user gesture あり)
         _tryAcquireWakeLock();
         sessionStorage.setItem('mt_kds_started', '1');
@@ -229,6 +304,7 @@
           // 初回: オーバーレイで選択を強制（クリックでオーディオも解禁）
           showStoreOverlay(ctx.stores, function (selectedId) {
             VoiceCommander.unlockAudio();
+            _unlockStationAudio();
             // 経路 2: 店舗選択クリック (user gesture あり)
             _tryAcquireWakeLock();
             KdsAuth.setStore(selectedId);
@@ -247,6 +323,7 @@
           e.preventDefault();
           showStoreOverlay(ctx.stores, function (selectedId) {
             VoiceCommander.unlockAudio();
+            _unlockStationAudio();
             // 経路 2: 店舗切替クリック (user gesture あり) — sentinel が release されている場合の再取得
             _tryAcquireWakeLock();
             KdsAuth.setStore(selectedId);
@@ -269,12 +346,12 @@
       // ── メイン初期化 ──
       function initMain() {
         _stationId = localStorage.getItem('mt_kds_station') || '';
-        renderStationButtons([]);
-
         if (_stationId === '__cashier__') {
           _stationId = '';
           localStorage.removeItem('mt_kds_station');
         }
+        renderStationButtons([]);
+        renderStationFocusLoading();
 
         // ステーションバーのクリック
         document.getElementById('kds-station-bar').addEventListener('click', function (e) {
@@ -289,6 +366,8 @@
             btns[i].classList.toggle('active', btns[i].dataset.station === _stationId);
           }
 
+          _stationSoundSnapshot[_stationKey()] = null;
+          renderStationFocusLoading();
           restartPolling();
         });
 
@@ -420,6 +499,7 @@
           clearError();
           if (data.stations) renderStationButtons(data.stations);
           KdsRenderer.onData(data);
+          updateStationFocus(false);
           VoiceCommander.updateOrders(data.orders || []);
           if (window.AiKitchen) AiKitchen.onPollingData(data);
           updateCourseBar();
@@ -445,11 +525,97 @@
       // ── ステーションボタン描画 ──
       function renderStationButtons(stations) {
         var bar = document.getElementById('kds-station-bar');
-        var html = '<button class="kds-station-btn' + (_stationId === '' ? ' active' : '') + '" data-station="">全品目</button>';
+        var html = '<button class="kds-station-btn' + (_stationId === '' ? ' active' : '') + '" data-station="" data-station-name="全品目">全品目</button>';
         (stations || []).forEach(function (st) {
-          html += '<button class="kds-station-btn' + (_stationId === st.id ? ' active' : '') + '" data-station="' + Utils.escapeHtml(st.id) + '">' + Utils.escapeHtml(st.name) + '</button>';
+          var id = st.id || '';
+          var name = st.name || '';
+          html += '<button class="kds-station-btn' + (_stationId === id ? ' active' : '') + '" data-station="' + Utils.escapeHtml(id) + '" data-station-name="' + Utils.escapeHtml(name) + '">' + Utils.escapeHtml(name) + '</button>';
         });
         bar.innerHTML = html;
+      }
+
+      function getStationLabel() {
+        var active = document.querySelector('.kds-station-btn.active');
+        if (active && active.getAttribute('data-station-name')) {
+          return active.getAttribute('data-station-name');
+        }
+        return _stationId ? '選択ステーション' : '全品目';
+      }
+
+      function clearStationButtonLevels() {
+        var btns = document.querySelectorAll('.kds-station-btn');
+        for (var i = 0; i < btns.length; i++) {
+          btns[i].classList.remove('kds-station-btn--prep');
+          btns[i].classList.remove('kds-station-btn--warning');
+          btns[i].classList.remove('kds-station-btn--danger');
+        }
+      }
+
+      function applyStationButtonLevel(level) {
+        clearStationButtonLevels();
+        if (level !== 'prep' && level !== 'warning' && level !== 'danger') return;
+        var active = document.querySelector('.kds-station-btn.active');
+        if (active) active.classList.add('kds-station-btn--' + level);
+      }
+
+      function renderStationFocusLoading() {
+        var el = document.getElementById('kds-station-focus');
+        if (!el) return;
+        clearStationButtonLevels();
+        el.className = 'kds-station-focus';
+        el.innerHTML = '<span class="kds-station-focus__name">' + Utils.escapeHtml(getStationLabel()) + '</span>'
+          + '<span class="kds-station-focus__metric">読込中</span>';
+      }
+
+      function stationLevelText(summary) {
+        if (!summary) return '通常';
+        if (summary.danger > 0) return '赤 ' + summary.danger;
+        if (summary.warning > 0) return '黄 ' + summary.warning;
+        if (summary.prep > 0) return '事前 ' + summary.prep;
+        if (summary.ready > 0) return '提供待ち ' + summary.ready;
+        return '通常';
+      }
+
+      function maybePlayStationSound(summary, skipSound) {
+        var key = _stationKey();
+        var current = {
+          ready: summary.ready || 0,
+          prep: summary.prep || 0,
+          warning: summary.warning || 0,
+          danger: summary.danger || 0
+        };
+        var prev = _stationSoundSnapshot[key];
+        if (!skipSound && prev) {
+          if (current.danger > prev.danger) {
+            _playStationTone('danger');
+          } else if (current.warning > prev.warning) {
+            _playStationTone('warning');
+          } else if (current.ready > prev.ready) {
+            _playStationTone('ready');
+          } else if (current.prep > prev.prep) {
+            _playStationTone('prep');
+          }
+        }
+        _stationSoundSnapshot[key] = current;
+      }
+
+      function updateStationFocus(skipSound) {
+        var el = document.getElementById('kds-station-focus');
+        if (!el || !KdsRenderer.getOperationalSummary) return;
+        var summary = KdsRenderer.getOperationalSummary();
+        var level = summary.topLevel || 'normal';
+        var label = getStationLabel();
+        applyStationButtonLevel(level);
+        el.className = 'kds-station-focus kds-station-focus--' + level;
+        el.innerHTML = '<span class="kds-station-focus__name">' + Utils.escapeHtml(label) + '</span>'
+          + '<span class="kds-station-focus__status">' + Utils.escapeHtml(stationLevelText(summary)) + '</span>'
+          + '<span class="kds-station-focus__metric">注文' + summary.orders + '</span>'
+          + '<span class="kds-station-focus__metric">品目' + summary.active + '</span>'
+          + '<span class="kds-station-focus__metric">受付' + summary.pending + '</span>'
+          + '<span class="kds-station-focus__metric">調理' + summary.preparing + '</span>'
+          + '<span class="kds-station-focus__metric">提供待ち' + summary.ready + '</span>'
+          + (summary.topReason ? '<span class="kds-station-focus__reason">' + Utils.escapeHtml(summary.topReason) + '</span>' : '');
+        maybePlayStationSound(summary, skipSound);
       }
 
       function handleError(errMsg) {

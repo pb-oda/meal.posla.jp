@@ -24,6 +24,7 @@ var KdsRenderer = (function () {
   // 時間超過アラート閾値（秒）
   var WARNING_THRESHOLD_SEC = 600;  // 10分
   var DANGER_THRESHOLD_SEC  = 1200; // 20分
+  var PREP_THRESHOLD_SEC = 1200;    // 予約/テイクアウトの事前着手目安
   var UNDO_WINDOW_SEC = 10;
 
   function init(pendingEl, preparingEl, readyEl) {
@@ -314,23 +315,34 @@ var KdsRenderer = (function () {
   }
 
   function _priorityRank(level) {
-    if (level === 'danger') return 2;
-    if (level === 'warning') return 1;
+    if (level === 'danger') return 3;
+    if (level === 'warning') return 2;
+    if (level === 'prep') return 1;
     return 0;
+  }
+
+  function _applyUrgency(urgency, level, reason) {
+    if (_priorityRank(level) > _priorityRank(urgency.level)) {
+      urgency.level = level;
+      urgency.reason = reason || '';
+    } else if (_priorityRank(level) === _priorityRank(urgency.level) && !urgency.reason && reason) {
+      urgency.reason = reason;
+    }
   }
 
   function _getUrgency(order) {
     var now = Date.now();
     var elapsed = _elapsedSec(order);
-    var level = 'normal';
-    var reasons = [];
+    var urgency = {
+      level: 'normal',
+      elapsed: elapsed,
+      reason: ''
+    };
 
     if (elapsed >= DANGER_THRESHOLD_SEC) {
-      level = 'danger';
-      reasons.push('経過' + Utils.formatDuration(elapsed));
+      _applyUrgency(urgency, 'danger', '経過' + Utils.formatDuration(elapsed));
     } else if (elapsed >= WARNING_THRESHOLD_SEC) {
-      level = 'warning';
-      reasons.push('経過' + Utils.formatDuration(elapsed));
+      _applyUrgency(urgency, 'warning', '経過' + Utils.formatDuration(elapsed));
     }
 
     if (order && order.order_type === 'takeout' && order.pickup_at) {
@@ -338,11 +350,11 @@ var KdsRenderer = (function () {
       if (!isNaN(pickup.getTime())) {
         var pickupDiffSec = Math.floor((pickup.getTime() - now) / 1000);
         if (pickupDiffSec <= 0) {
-          level = 'danger';
-          reasons.push('受取' + _formatClock(pickup) + '超過');
-        } else if (pickupDiffSec <= WARNING_THRESHOLD_SEC && _priorityRank(level) < 1) {
-          level = 'warning';
-          reasons.push('受取' + _formatClock(pickup) + 'まで' + Utils.formatDuration(pickupDiffSec));
+          _applyUrgency(urgency, 'danger', '受取' + _formatClock(pickup) + '超過');
+        } else if (pickupDiffSec <= WARNING_THRESHOLD_SEC) {
+          _applyUrgency(urgency, 'warning', '受取' + _formatClock(pickup) + 'まで' + Utils.formatDuration(pickupDiffSec));
+        } else if (pickupDiffSec <= PREP_THRESHOLD_SEC) {
+          _applyUrgency(urgency, 'prep', '受取' + _formatClock(pickup) + 'まで' + Utils.formatDuration(pickupDiffSec));
         }
       }
     }
@@ -351,21 +363,18 @@ var KdsRenderer = (function () {
       var reserved = new Date(order.reservation_reserved_at);
       if (!isNaN(reserved.getTime())) {
         var reservedOverSec = Math.floor((now - reserved.getTime()) / 1000);
+        var reservedDiffSec = Math.floor((reserved.getTime() - now) / 1000);
         if (reservedOverSec >= WARNING_THRESHOLD_SEC) {
-          level = 'danger';
-          reasons.push('予約' + _formatClock(reserved) + '超過');
-        } else if (reservedOverSec >= 0 && _priorityRank(level) < 1) {
-          level = 'warning';
-          reasons.push('予約' + _formatClock(reserved));
+          _applyUrgency(urgency, 'danger', '予約' + _formatClock(reserved) + '超過');
+        } else if (reservedOverSec >= 0) {
+          _applyUrgency(urgency, 'warning', '予約' + _formatClock(reserved));
+        } else if (reservedDiffSec <= PREP_THRESHOLD_SEC) {
+          _applyUrgency(urgency, 'prep', '予約' + _formatClock(reserved) + 'まで' + Utils.formatDuration(reservedDiffSec));
         }
       }
     }
 
-    return {
-      level: level,
-      elapsed: elapsed,
-      reason: reasons.length ? reasons[0] : ''
-    };
+    return urgency;
   }
 
   function compareOrderPriority(a, b) {
@@ -540,6 +549,8 @@ var KdsRenderer = (function () {
       cardClass += ' kds-card--danger';
     } else if (urgency.level === 'warning') {
       cardClass += ' kds-card--warning';
+    } else if (urgency.level === 'prep') {
+      cardClass += ' kds-card--prep';
     }
     var noticeHtml = _noticeHtml(order);
 
@@ -724,6 +735,8 @@ var KdsRenderer = (function () {
       cardClass += ' kds-card--danger';
     } else if (urgency.level === 'warning') {
       cardClass += ' kds-card--warning';
+    } else if (urgency.level === 'prep') {
+      cardClass += ' kds-card--prep';
     }
 
     // 品目を status でグルーピング
@@ -825,6 +838,56 @@ var KdsRenderer = (function () {
       window.alert('\u30AA\u30D5\u30E9\u30A4\u30F3\u4E2D\u307E\u305F\u306F\u53E4\u3044\u30C7\u30FC\u30BF\u8868\u793A\u4E2D\u3067\u3059\u3002\u901A\u4FE1\u5FA9\u5E30\u5F8C\u306B\u518D\u5EA6\u64CD\u4F5C\u3057\u3066\u304F\u3060\u3055\u3044\u3002');
     } catch (e) {}
     return true;
+  }
+
+  function getOperationalSummary() {
+    var summary = {
+      orders: 0,
+      active: 0,
+      pending: 0,
+      preparing: 0,
+      ready: 0,
+      prep: 0,
+      warning: 0,
+      danger: 0,
+      topLevel: 'normal',
+      topReason: ''
+    };
+
+    Object.keys(_orders).forEach(function (id) {
+      var order = _orders[id];
+      var items = order.items || [];
+      var activeInOrder = 0;
+      if (items.length > 0) {
+        for (var i = 0; i < items.length; i++) {
+          var s = items[i].status || 'pending';
+          if (s === 'served' || s === 'cancelled') continue;
+          if (summary[s] !== undefined) summary[s]++;
+          activeInOrder++;
+        }
+      } else {
+        var os = order.status || 'pending';
+        if (summary[os] !== undefined) {
+          summary[os]++;
+          activeInOrder++;
+        }
+      }
+      if (activeInOrder === 0) return;
+      summary.orders++;
+      summary.active += activeInOrder;
+
+      var urgency = _getUrgency(order);
+      if (urgency.level === 'prep') summary.prep++;
+      else if (urgency.level === 'warning') summary.warning++;
+      else if (urgency.level === 'danger') summary.danger++;
+
+      if (_priorityRank(urgency.level) > _priorityRank(summary.topLevel)) {
+        summary.topLevel = urgency.level;
+        summary.topReason = urgency.reason || '';
+      }
+    });
+
+    return summary;
   }
 
   function _snapshotOrders(orderIds, newStatus, label) {
@@ -1148,6 +1211,7 @@ var KdsRenderer = (function () {
     handleItemAction: handleItemAction,
     handleOrderBatch: handleOrderBatch,
     undoLastAction: undoLastAction,
+    getOperationalSummary: getOperationalSummary,
     getCourseTableIds: getCourseTableIds,
     advancePhase: advancePhase
   };
