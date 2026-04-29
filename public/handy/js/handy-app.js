@@ -29,10 +29,21 @@ var HandyApp = (function () {
   var _opsAlerts = [];
   var _opsLogs = [];
   var _terminalMode = 'handy';
+  var _deviceUid = '';
+  var _terminalSynced = false;
+  var _opsSoundEnabled = false;
+  var _opsRealertEnabled = true;
+  var _opsRealertIntervalSec = 180;
+  var _opsAudioCtx = null;
+  var _opsNoticeState = {};
 
   var API_BASE = '../../api';
   var PENDING_KEY_PREFIX = 'posla_handy_pending_orders_';
   var TERMINAL_MODE_KEY = 'posla_handy_terminal_mode';
+  var TERMINAL_DEVICE_KEY = 'posla_handy_device_uid';
+  var TERMINAL_SOUND_KEY = 'posla_handy_sound_enabled';
+  var TERMINAL_REALERT_KEY = 'posla_handy_realert_enabled';
+  var TERMINAL_REALERT_INTERVAL_KEY = 'posla_handy_realert_interval_sec';
 
   // ==== DOM cache ====
   var els = {};
@@ -145,6 +156,7 @@ var HandyApp = (function () {
     els.storeName    = document.getElementById('handy-store-name');
     els.changeStore  = document.getElementById('handy-change-store');
     els.terminalMode = document.getElementById('handy-terminal-mode');
+    els.soundBtn     = document.getElementById('handy-sound-btn');
     els.pendingBtn   = document.getElementById('handy-pending-btn');
     els.pendingCount = document.getElementById('handy-pending-count');
     els.userName     = document.getElementById('handy-user-name');
@@ -212,7 +224,10 @@ var HandyApp = (function () {
 
     setDefaultPickupTime();
     loadTerminalMode();
+    initTerminalProfile();
     renderTerminalModeControls();
+    renderOpsNotifyControls();
+    syncTerminalProfile(false);
     loadPendingOrders();
     renderPendingBadge();
   }
@@ -234,6 +249,7 @@ var HandyApp = (function () {
     try { localStorage.setItem(TERMINAL_MODE_KEY, mode); } catch (e) {}
     applyTerminalModeClass();
     renderTerminalModeControls();
+    syncTerminalProfile(true);
     if (_currentTab === 'ops') renderOperationsBoard();
     if (_currentTab === 'tables') renderTableStatus(_lastTableData);
   }
@@ -259,6 +275,124 @@ var HandyApp = (function () {
     els.terminalMode.innerHTML = html;
   }
 
+  function initTerminalProfile() {
+    _deviceUid = getOrCreateTerminalDeviceUid();
+    _opsSoundEnabled = loadLocalBool(TERMINAL_SOUND_KEY, false);
+    _opsRealertEnabled = loadLocalBool(TERMINAL_REALERT_KEY, true);
+    _opsRealertIntervalSec = loadLocalInt(TERMINAL_REALERT_INTERVAL_KEY, 180, 60, 900);
+  }
+
+  function getOrCreateTerminalDeviceUid() {
+    var saved = '';
+    try { saved = localStorage.getItem(TERMINAL_DEVICE_KEY) || ''; } catch (e) {}
+    if (/^[a-zA-Z0-9_-]{12,80}$/.test(saved)) return saved;
+    saved = 'hdy_' + String(Date.now()) + '_' + String(Math.floor(Math.random() * 1000000000));
+    try { localStorage.setItem(TERMINAL_DEVICE_KEY, saved); } catch (e2) {}
+    return saved;
+  }
+
+  function loadLocalBool(key, defaultValue) {
+    var raw = null;
+    try { raw = localStorage.getItem(key); } catch (e) {}
+    if (raw === '1') return true;
+    if (raw === '0') return false;
+    return !!defaultValue;
+  }
+
+  function loadLocalInt(key, defaultValue, min, max) {
+    var raw = null;
+    var val;
+    try { raw = localStorage.getItem(key); } catch (e) {}
+    val = parseInt(raw, 10);
+    if (isNaN(val)) val = defaultValue;
+    return Math.max(min, Math.min(max, val));
+  }
+
+  function persistTerminalLocal() {
+    try {
+      localStorage.setItem(TERMINAL_MODE_KEY, _terminalMode);
+      localStorage.setItem(TERMINAL_SOUND_KEY, _opsSoundEnabled ? '1' : '0');
+      localStorage.setItem(TERMINAL_REALERT_KEY, _opsRealertEnabled ? '1' : '0');
+      localStorage.setItem(TERMINAL_REALERT_INTERVAL_KEY, String(_opsRealertIntervalSec));
+    } catch (e) {}
+  }
+
+  function getTerminalLabel() {
+    if (_terminalMode === 'wall') return '壁掛け端末';
+    if (_terminalMode === 'register') return 'レジ横端末';
+    return 'ハンディ端末';
+  }
+
+  function syncTerminalProfile(showToast) {
+    if (!_storeId || !_deviceUid) return;
+    persistTerminalLocal();
+    apiPatch('/store/handy-terminal.php', {
+      store_id: _storeId,
+      device_uid: _deviceUid,
+      device_label: getTerminalLabel(),
+      terminal_mode: _terminalMode,
+      sound_enabled: _opsSoundEnabled ? 1 : 0,
+      realert_enabled: _opsRealertEnabled ? 1 : 0,
+      realert_interval_sec: _opsRealertIntervalSec
+    }).then(function (json) {
+      if (!json.ok) {
+        _terminalSynced = false;
+        renderOpsNotifyControls();
+        if (showToast) toast(apiErrorMsg(json), 'error');
+        return;
+      }
+      _terminalSynced = true;
+      if (json.data && json.data.terminal) {
+        applyTerminalProfile(json.data.terminal);
+      }
+      renderOpsNotifyControls();
+    }).catch(function () {
+      _terminalSynced = false;
+      renderOpsNotifyControls();
+      if (showToast) toast('端末設定を同期できませんでした', 'error');
+    });
+  }
+
+  function applyTerminalProfile(profile) {
+    if (!profile) return;
+    if (profile.terminalMode === 'handy' || profile.terminalMode === 'wall' || profile.terminalMode === 'register') {
+      _terminalMode = profile.terminalMode;
+      applyTerminalModeClass();
+      renderTerminalModeControls();
+    }
+    _opsSoundEnabled = !!profile.soundEnabled;
+    _opsRealertEnabled = profile.realertEnabled !== false;
+    _opsRealertIntervalSec = loadProfileInterval(profile.realertIntervalSec);
+    persistTerminalLocal();
+  }
+
+  function loadProfileInterval(value) {
+    var val = parseInt(value, 10);
+    if (isNaN(val)) val = 180;
+    return Math.max(60, Math.min(900, val));
+  }
+
+  function renderOpsNotifyControls() {
+    if (!els.soundBtn) return;
+    els.soundBtn.textContent = _opsSoundEnabled ? '音ON' : '音OFF';
+    els.soundBtn.className = 'handy-header__sound' + (_opsSoundEnabled ? ' handy-header__sound--on' : '') + (_terminalSynced ? '' : ' handy-header__sound--unsynced');
+    els.soundBtn.title = '通知音: ' + (_opsSoundEnabled ? 'ON' : 'OFF') + ' / 再通知' + Math.floor(_opsRealertIntervalSec / 60) + '分' + (_terminalSynced ? '' : ' / 端末設定未同期');
+  }
+
+  function toggleOpsSound() {
+    _opsSoundEnabled = !_opsSoundEnabled;
+    persistTerminalLocal();
+    renderOpsNotifyControls();
+    syncTerminalProfile(false);
+    if (_opsSoundEnabled) {
+      unlockOpsAudio();
+      playOpsTone(false);
+      toast('通知音をONにしました', 'success');
+    } else {
+      toast('通知音をOFFにしました', 'success');
+    }
+  }
+
   function bindEvents() {
     // 店舗切替リンク
     els.changeStore.addEventListener('click', function (e) {
@@ -269,6 +403,7 @@ var HandyApp = (function () {
         var s = _stores.find(function (x) { return x.id === selectedId; });
         els.storeName.textContent = s ? s.name : '-';
         clearCart();
+        syncTerminalProfile(false);
         loadStoreData().then(function () {
           renderCategories();
           renderMenuItems();
@@ -342,6 +477,16 @@ var HandyApp = (function () {
         setTerminalMode(btn.getAttribute('data-terminal-mode'));
       });
     }
+
+    if (els.soundBtn) {
+      els.soundBtn.addEventListener('click', function () {
+        toggleOpsSound();
+      });
+    }
+
+    document.addEventListener('pointerdown', function () {
+      if (_opsSoundEnabled) unlockOpsAudio();
+    }, false);
 
     if (els.panelOps) {
       els.panelOps.addEventListener('click', function (e) {
@@ -2521,6 +2666,7 @@ var HandyApp = (function () {
     renderOperationTasks(buckets);
     renderOperationLog();
     renderOperationTableGrid();
+    processOpsNotifications(buckets);
   }
 
   function renderOpsSummaryCard(label, count, level, attrs) {
@@ -2691,6 +2837,138 @@ var HandyApp = (function () {
       html += '</div>';
     }
     els.opsTableGrid.innerHTML = html;
+  }
+
+  function processOpsNotifications(buckets) {
+    var targets;
+    var now;
+    var intervalMs;
+    var active = {};
+    var shouldPlay = false;
+    var urgent = false;
+    var i;
+    var t;
+    var st;
+    if (!_opsSoundEnabled) return;
+    targets = buildOpsNotificationTargets(buckets);
+    now = Date.now();
+    intervalMs = Math.max(60, _opsRealertIntervalSec) * 1000;
+    for (i = 0; i < targets.length; i++) {
+      t = targets[i];
+      active[t.key] = true;
+      st = _opsNoticeState[t.key] || { lastAt: 0, urgentNotified: false };
+      if (!st.lastAt || (t.urgent && !st.urgentNotified) || (_opsRealertEnabled && now - st.lastAt >= intervalMs)) {
+        shouldPlay = true;
+        if (t.urgent) urgent = true;
+        st.lastAt = now;
+        st.urgentNotified = !!t.urgent;
+      }
+      _opsNoticeState[t.key] = st;
+    }
+    Object.keys(_opsNoticeState).forEach(function (key) {
+      if (!active[key]) delete _opsNoticeState[key];
+    });
+    if (shouldPlay) playOpsTone(urgent);
+  }
+
+  function buildOpsNotificationTargets(buckets) {
+    var targets = [];
+    var i;
+    var a;
+    var type;
+    var elapsed;
+    var escalated;
+    var list;
+    var t;
+    for (i = 0; i < _opsAlerts.length; i++) {
+      a = _opsAlerts[i];
+      type = a.type || 'staff_call';
+      elapsed = parseInt(a.elapsed_seconds, 10) || 0;
+      escalated = isOpsAlertEscalated(a);
+      targets.push({
+        key: 'alert:' + a.id,
+        urgent: escalated,
+        type: type,
+        elapsed: elapsed
+      });
+    }
+
+    list = buckets.bill || [];
+    for (i = 0; i < list.length; i++) {
+      t = list[i];
+      if (t.session && (parseInt(t.session.statusElapsedSec, 10) || 0) >= 300) {
+        targets.push({ key: 'bill:' + t.session.id, urgent: true, type: 'bill' });
+      }
+    }
+
+    list = buckets.cleaning || [];
+    for (i = 0; i < list.length; i++) {
+      t = list[i];
+      if (t.session && (parseInt(t.session.statusElapsedSec, 10) || 0) >= 600) {
+        targets.push({ key: 'cleaning:' + t.session.id, urgent: true, type: 'cleaning' });
+      }
+    }
+
+    list = buckets.overtime || [];
+    for (i = 0; i < list.length; i++) {
+      t = list[i];
+      if (t.session && t.session.id) {
+        targets.push({ key: 'overtime:' + t.session.id, urgent: true, type: 'overtime' });
+      }
+    }
+    return targets;
+  }
+
+  function unlockOpsAudio() {
+    var ctx = getOpsAudioContext();
+    if (ctx && ctx.state === 'suspended' && ctx.resume) {
+      try { ctx.resume(); } catch (e) {}
+    }
+  }
+
+  function getOpsAudioContext() {
+    if (_opsAudioCtx) return _opsAudioCtx;
+    if (!window.AudioContext && !window.webkitAudioContext) return null;
+    try {
+      _opsAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      _opsAudioCtx = null;
+    }
+    return _opsAudioCtx;
+  }
+
+  function playOpsTone(urgent) {
+    var ctx = getOpsAudioContext();
+    var now;
+    if (!ctx) return;
+    if (ctx.state === 'suspended' && ctx.resume) {
+      try { ctx.resume(); } catch (e) {}
+    }
+    if (ctx.state === 'suspended') return;
+    now = ctx.currentTime || 0;
+    playToneSegment(ctx, urgent ? 880 : 660, now, 0.12, 0.07);
+    playToneSegment(ctx, urgent ? 1175 : 880, now + 0.16, urgent ? 0.16 : 0.11, urgent ? 0.09 : 0.06);
+    if (urgent) {
+      playToneSegment(ctx, 988, now + 0.38, 0.18, 0.08);
+    }
+  }
+
+  function playToneSegment(ctx, frequency, startAt, duration, volume) {
+    var osc;
+    var gain;
+    try {
+      osc = ctx.createOscillator();
+      gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.001, startAt);
+      gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(startAt);
+      osc.stop(startAt + duration + 0.02);
+    } catch (e) {}
   }
 
   function startOperationAlert(alertId) {

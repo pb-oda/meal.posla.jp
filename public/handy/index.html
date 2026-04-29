@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#1a237e">
   <title>ハンディPOS</title>
-  <link rel="stylesheet" href="css/handy.css?v=20260429-handy-ops4">
+  <link rel="stylesheet" href="css/handy.css?v=20260429-handy-alerts1">
   <!-- PWA -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -21,6 +21,7 @@
     <div class="handy-header__right">
       <a href="#" class="handy-header__link" id="handy-change-store" style="display:none">店舗切替</a>
       <div id="handy-terminal-mode" class="handy-terminal-mode" aria-label="端末モード"></div>
+      <button id="handy-sound-btn" class="handy-header__sound" type="button">音OFF</button>
       <button id="handy-pending-btn" class="handy-header__pending" type="button" style="display:none">未送信 <span id="handy-pending-count">0</span></button>
       <span id="handy-user-name" class="handy-header__user">-</span>
       <button id="btn-logout" class="handy-header__logout">ログアウト</button>
@@ -190,7 +191,7 @@
 
   <script src="../shared/js/utils.js?v=20260419-phaseB"></script>
   <script src="../shared/js/revision-gate.js?v=20260420-rev2"></script>
-  <script src="js/handy-app.js?v=20260429-handy-ops4"></script>
+  <script src="js/handy-app.js?v=20260429-handy-alerts1"></script>
   <script>
   (function () {
     'use strict';
