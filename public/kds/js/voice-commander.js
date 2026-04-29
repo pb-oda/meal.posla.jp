@@ -1,8 +1,8 @@
 /**
  * KDS 音声コマンダー（コマンドパターン検出方式）
  * Web Speech API continuous モード + コマンドパターンフィルタ
- * タップでON/OFF切替 → 常時リスニング → テーブル番号+動作語を検出したらGeminiへ送信
- * 雑談・雑音はフィルタされGemini APIを呼ばない
+ * タップでON/OFF切替 → 常時リスニング → 主要操作はファストパスで処理
+ * 未対応の言い回しだけ、端末ごとの「AI補助ON」時にGeminiへ送信
  *
  * 依存: KdsAuth, KdsRenderer, PollingDataSource, Utils
  * ES5 IIFE パターン
@@ -14,8 +14,10 @@ var VoiceCommander = (function () {
   var _aiConfigLoaded = false;
   var _recognition = null;
   var _btn = null;
+  var _aiFallbackBtn = null;
   var _statusEl = null;
   var _lastOrders = [];
+  var _aiFallbackEnabled = false;
 
   // ── 状態 ──
   // 'off' | 'standby' | 'processing'
@@ -45,6 +47,8 @@ var VoiceCommander = (function () {
     '品切れ管理',
     // AIキッチンダッシュボード
     'シェフ', 'ダッシュボード', '最新にして',
+    // 音声AI補助
+    'AI補助', 'AI解析', 'AIフォールバック',
     // テーマ切替
     'ライトモード', 'ダークモード', '明るく', '暗く', 'テーマ',
     // KDS画面操作
@@ -54,9 +58,11 @@ var VoiceCommander = (function () {
   ];
 
   var _VOICE_KEY = 'mt_kds_voice_active';
+  var _AI_FALLBACK_KEY = 'mt_kds_voice_ai_fallback';
 
   // ── 初期化 ──
   function init() {
+    _loadAiFallbackSetting();
     _createUI();
     _checkAiConfig();
     _loadMenu();
@@ -80,6 +86,35 @@ var VoiceCommander = (function () {
     document.addEventListener('touchstart', handler, true);
   }
 
+  function _loadAiFallbackSetting() {
+    try {
+      _aiFallbackEnabled = localStorage.getItem(_AI_FALLBACK_KEY) === '1';
+    } catch (e) {
+      _aiFallbackEnabled = false;
+    }
+  }
+
+  function _setAiFallbackEnabled(enabled) {
+    _aiFallbackEnabled = !!enabled;
+    try {
+      if (_aiFallbackEnabled) localStorage.setItem(_AI_FALLBACK_KEY, '1');
+      else localStorage.removeItem(_AI_FALLBACK_KEY);
+    } catch (e) {}
+    _updateAiFallbackButton();
+  }
+
+  function _updateAiFallbackButton() {
+    if (!_aiFallbackBtn) return;
+    var isLight = document.documentElement.classList.contains('light-theme');
+    _aiFallbackBtn.textContent = _aiFallbackEnabled ? 'AI補助ON' : 'AI補助OFF';
+    _aiFallbackBtn.title = _aiFallbackEnabled
+      ? '未対応の音声コマンドをGeminiで補助解析します'
+      : '未対応の音声コマンドをAI解析せず、誤操作を防ぎます';
+    _aiFallbackBtn.style.borderColor = _aiFallbackEnabled ? '#42a5f5' : (isLight ? '#bbb' : 'rgba(255,255,255,0.3)');
+    _aiFallbackBtn.style.background = _aiFallbackEnabled ? 'rgba(66,165,245,0.18)' : 'none';
+    _aiFallbackBtn.style.color = isLight ? (_aiFallbackEnabled ? '#1565c0' : '#555') : '#fff';
+  }
+
   // ── UI生成 ──
   function _createUI() {
     _btn = document.createElement('button');
@@ -97,6 +132,17 @@ var VoiceCommander = (function () {
     var headerRight = document.querySelector('.kds-header__right');
     if (headerRight) {
       headerRight.insertBefore(_btn, headerRight.firstChild);
+      _aiFallbackBtn = document.createElement('button');
+      _aiFallbackBtn.type = 'button';
+      _aiFallbackBtn.className = 'kds-header__link';
+      _aiFallbackBtn.style.cssText = 'cursor:pointer;background:none;border:2px solid rgba(255,255,255,0.3);border-radius:4px;color:#fff;padding:0.25rem 0.6rem;font-size:0.78rem;font-weight:700;';
+      _aiFallbackBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        _setAiFallbackEnabled(!_aiFallbackEnabled);
+        _showStatus(_aiFallbackEnabled ? '音声AI補助をONにしました' : '音声AI補助をOFFにしました', 2000);
+      });
+      headerRight.insertBefore(_aiFallbackBtn, _btn.nextSibling);
+      _updateAiFallbackButton();
     }
 
     // クリック（タップ）トグル
@@ -323,11 +369,28 @@ var VoiceCommander = (function () {
         _showStatus(theme === 'light' ? '\u2600 ライトモードに切替' : '\uD83C\uDF19 ダークモードに切替', 2000);
         // テーマ変更後にボタン色を再適用
         _setState(_state);
+        _updateAiFallbackButton();
       }, 200);
     } else {
       _beepError();
       _showStatus('テーマ切替に失敗しました', 2000);
     }
+  }
+
+  function _detectAiFallbackSwitchFastPath(text) {
+    var hasKeyword = text.indexOf('AI補助') !== -1 || text.indexOf('AI解析') !== -1 || text.indexOf('AIフォールバック') !== -1;
+    if (!hasKeyword) return null;
+    if (text.indexOf('オフ') !== -1 || text.indexOf('OFF') !== -1 || text.indexOf('切って') !== -1 || text.indexOf('無効') !== -1) return false;
+    if (text.indexOf('オン') !== -1 || text.indexOf('ON') !== -1 || text.indexOf('入れて') !== -1 || text.indexOf('有効') !== -1) return true;
+    return null;
+  }
+
+  function _executeAiFallbackSwitch(enabled) {
+    _setAiFallbackEnabled(enabled);
+    _beepSuccess();
+    _showStatus(enabled ? '音声AI補助をONにしました' : '音声AI補助をOFFにしました', 2000);
+    _speak(enabled ? '音声AI補助をオンにしました' : '音声AI補助をオフにしました');
+    _returnToStandby();
   }
 
   // ── KDS表示モード切替ファストパス ──
@@ -710,6 +773,9 @@ var VoiceCommander = (function () {
       + '「下にスクロール」「上にスクロール」</div>'
       + '<div style="margin-bottom:0.75rem;"><span style="color:#4CAF50;font-weight:700;">■ AIシェフ</span><br>'
       + '「シェフ」「ダッシュボード」「最新にして」</div>'
+      + '<div style="margin-bottom:0.75rem;"><span style="color:#4CAF50;font-weight:700;">■ 音声AI補助</span><br>'
+      + '「AI補助オン」「AI補助オフ」<br>'
+      + '<span style="font-size:0.75rem;color:#bbb;">通常はOFF推奨。OFF時は未対応の言い回しをAI解析しません。</span></div>'
       + '<div><span style="color:#4CAF50;font-weight:700;">■ システム</span><br>'
       + '「音声再起動」「コマンド一覧」</div>'
       + '<div style="margin-top:1rem;font-size:0.75rem;color:#999;">タップで閉じる</div>';
@@ -1032,6 +1098,12 @@ var VoiceCommander = (function () {
     // コマンド一覧: ファストパス（Gemini不要）
     if (_detectHelpFastPath(cmd)) {
       _executeHelp();
+      return;
+    }
+
+    var aiFallbackSwitch = _detectAiFallbackSwitchFastPath(cmd);
+    if (aiFallbackSwitch !== null) {
+      _executeAiFallbackSwitch(aiFallbackSwitch);
       return;
     }
 
@@ -1387,6 +1459,11 @@ var VoiceCommander = (function () {
             _executeHelp();
             continue;
           }
+          var aiFallbackSwitch2 = _detectAiFallbackSwitchFastPath(transcript);
+          if (aiFallbackSwitch2 !== null) {
+            _executeAiFallbackSwitch(aiFallbackSwitch2);
+            continue;
+          }
           if (_detectUndoFastPath(transcript)) {
             _executeUndoLast();
             continue;
@@ -1496,7 +1573,7 @@ var VoiceCommander = (function () {
           }
         } else {
           // interim結果
-          if (_isCommand(transcript) || _detectThemeFastPath(transcript) || _detectStationFastPath(transcript) !== null || _detectRestartFastPath(transcript) || _detectHelpFastPath(transcript) || _detectScrollFastPath(transcript) || _detectStaffCallFastPath(transcript) || _detectUndoFastPath(transcript) || _detectModeFastPath(transcript) || _detectTableReadFastPath(transcript) || _detectCancelFastPath(transcript) || _detectCourseAdvanceFastPath(transcript) || _detectTableBulkFastPath(transcript) || _detectTableStatusFastPath(transcript) || _detectSoldOutNavigationFastPath(transcript) || _detectSoldOutToggleFastPath(transcript)) {
+          if (_isCommand(transcript) || _detectThemeFastPath(transcript) || _detectStationFastPath(transcript) !== null || _detectRestartFastPath(transcript) || _detectHelpFastPath(transcript) || _detectScrollFastPath(transcript) || _detectStaffCallFastPath(transcript) || _detectUndoFastPath(transcript) || _detectModeFastPath(transcript) || _detectTableReadFastPath(transcript) || _detectCancelFastPath(transcript) || _detectCourseAdvanceFastPath(transcript) || _detectTableBulkFastPath(transcript) || _detectTableStatusFastPath(transcript) || _detectSoldOutNavigationFastPath(transcript) || _detectSoldOutToggleFastPath(transcript) || _detectAiFallbackSwitchFastPath(transcript) !== null) {
             // コマンドパターン検出 → 1.5秒後に確定（finalが来なかった場合の保険）
             _interimCmd = transcript;
             if (_interimTimer) clearTimeout(_interimTimer);
@@ -1659,6 +1736,12 @@ var VoiceCommander = (function () {
 
   // ── Gemini API 呼び出し（ai-generate.php プロキシ経由） ──
   function _analyzeWithGemini(transcript) {
+    if (!_aiFallbackEnabled) {
+      _beepError();
+      _showStatus('AI補助OFF: 未対応の音声コマンドです。「コマンド一覧」で確認してください', 3500);
+      _returnToStandby();
+      return;
+    }
     if (!_aiConfigured) {
       _showStatus('APIキー未設定: POSLA管理画面で設定してください', 3000);
       _returnToStandby();
