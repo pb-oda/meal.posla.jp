@@ -24,7 +24,13 @@ var KdsRenderer = (function () {
   // 時間超過アラート閾値（秒）
   var WARNING_THRESHOLD_SEC = 600;  // 10分
   var DANGER_THRESHOLD_SEC  = 1200; // 20分
-  var PREP_THRESHOLD_SEC = 1200;    // 予約/テイクアウトの事前着手目安
+  var DEFAULT_PREP_LEAD_MIN = 20;   // 予約/テイクアウトの事前着手目安
+  var _prepLeadConfig = {
+    defaultMin: DEFAULT_PREP_LEAD_MIN,
+    takeoutMin: DEFAULT_PREP_LEAD_MIN,
+    reservationMin: DEFAULT_PREP_LEAD_MIN,
+    categories: {}
+  };
   var UNDO_WINDOW_SEC = 10;
 
   function init(pendingEl, preparingEl, readyEl) {
@@ -47,6 +53,32 @@ var KdsRenderer = (function () {
 
   function getMode() {
     return _mode;
+  }
+
+  function _normalizePrepLeadMin(value, fallback) {
+    var n = parseInt(value, 10);
+    if (isNaN(n)) return fallback;
+    if (n < 0) return 0;
+    if (n > 180) return 180;
+    return n;
+  }
+
+  function setPrepLeadConfig(config) {
+    var src = config || {};
+    var normalized = {
+      defaultMin: _normalizePrepLeadMin(src.defaultMin, DEFAULT_PREP_LEAD_MIN),
+      takeoutMin: _normalizePrepLeadMin(src.takeoutMin, DEFAULT_PREP_LEAD_MIN),
+      reservationMin: _normalizePrepLeadMin(src.reservationMin, DEFAULT_PREP_LEAD_MIN),
+      categories: {}
+    };
+    var cats = src.categories || {};
+    Object.keys(cats).forEach(function (catId) {
+      if (!catId) return;
+      var min = _normalizePrepLeadMin(cats[catId], null);
+      if (min !== null) normalized.categories[catId] = min;
+    });
+    _prepLeadConfig = normalized;
+    render();
   }
 
   function onData(data) {
@@ -330,6 +362,30 @@ var KdsRenderer = (function () {
     }
   }
 
+  function _getPrepLeadSec(order, kind) {
+    var baseMin = _prepLeadConfig.defaultMin;
+    if (kind === 'takeout') baseMin = _prepLeadConfig.takeoutMin;
+    else if (kind === 'reservation') baseMin = _prepLeadConfig.reservationMin;
+
+    var items = order && order.items ? order.items : [];
+    if (!items.length) return baseMin * 60;
+
+    var maxMin = null;
+    var cats = _prepLeadConfig.categories || {};
+    for (var i = 0; i < items.length; i++) {
+      var status = items[i].status || 'pending';
+      if (status === 'served' || status === 'cancelled') continue;
+      var catId = items[i].category_id || items[i].categoryId || '';
+      var itemMin = baseMin;
+      if (catId && Object.prototype.hasOwnProperty.call(cats, catId)) {
+        itemMin = _normalizePrepLeadMin(cats[catId], baseMin);
+      }
+      if (maxMin === null || itemMin > maxMin) maxMin = itemMin;
+    }
+
+    return (maxMin === null ? baseMin : maxMin) * 60;
+  }
+
   function _getUrgency(order) {
     var now = Date.now();
     var elapsed = _elapsedSec(order);
@@ -349,11 +405,13 @@ var KdsRenderer = (function () {
       var pickup = new Date(order.pickup_at);
       if (!isNaN(pickup.getTime())) {
         var pickupDiffSec = Math.floor((pickup.getTime() - now) / 1000);
+        var pickupLeadSec = _getPrepLeadSec(order, 'takeout');
+        var pickupWarningSec = Math.min(WARNING_THRESHOLD_SEC, pickupLeadSec);
         if (pickupDiffSec <= 0) {
           _applyUrgency(urgency, 'danger', '受取' + _formatClock(pickup) + '超過');
-        } else if (pickupDiffSec <= WARNING_THRESHOLD_SEC) {
+        } else if (pickupWarningSec > 0 && pickupDiffSec <= pickupWarningSec) {
           _applyUrgency(urgency, 'warning', '受取' + _formatClock(pickup) + 'まで' + Utils.formatDuration(pickupDiffSec));
-        } else if (pickupDiffSec <= PREP_THRESHOLD_SEC) {
+        } else if (pickupLeadSec > 0 && pickupDiffSec <= pickupLeadSec) {
           _applyUrgency(urgency, 'prep', '受取' + _formatClock(pickup) + 'まで' + Utils.formatDuration(pickupDiffSec));
         }
       }
@@ -364,11 +422,12 @@ var KdsRenderer = (function () {
       if (!isNaN(reserved.getTime())) {
         var reservedOverSec = Math.floor((now - reserved.getTime()) / 1000);
         var reservedDiffSec = Math.floor((reserved.getTime() - now) / 1000);
+        var reservedLeadSec = _getPrepLeadSec(order, 'reservation');
         if (reservedOverSec >= WARNING_THRESHOLD_SEC) {
           _applyUrgency(urgency, 'danger', '予約' + _formatClock(reserved) + '超過');
         } else if (reservedOverSec >= 0) {
           _applyUrgency(urgency, 'warning', '予約' + _formatClock(reserved));
-        } else if (reservedDiffSec <= PREP_THRESHOLD_SEC) {
+        } else if (reservedLeadSec > 0 && reservedDiffSec <= reservedLeadSec) {
           _applyUrgency(urgency, 'prep', '予約' + _formatClock(reserved) + 'まで' + Utils.formatDuration(reservedDiffSec));
         }
       }
@@ -1206,6 +1265,7 @@ var KdsRenderer = (function () {
     initExpeditor: initExpeditor,
     setMode: setMode,
     getMode: getMode,
+    setPrepLeadConfig: setPrepLeadConfig,
     onData: onData,
     handleAction: handleAction,
     handleItemAction: handleItemAction,

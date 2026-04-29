@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#263238">
   <title>KDS - キッチンディスプレイ</title>
-  <link rel="stylesheet" href="css/kds.css?v=20260429-kds-preflight-contrast">
+  <link rel="stylesheet" href="css/kds.css?v=20260429-kds-terminal-prep">
   <style>
     .kds-badge-course { background:#2e7d32; color:#fff; font-size:0.65rem; padding:1px 5px; border-radius:3px; white-space:nowrap; }
     .kds-card--course { border-left:3px solid #2e7d32; }
@@ -81,6 +81,7 @@
     <div class="kds-header__right">
       <a href="#" class="kds-header__link" id="kds-change-store" style="display:none">店舗切替</a>
       <a href="sold-out.html" class="kds-header__link">品切れ管理</a>
+      <button type="button" class="kds-header__link kds-prep-settings-btn" id="kds-prep-lead-btn">着手時間</button>
       <button type="button" class="kds-header__link kds-preflight-btn" id="kds-preflight-btn">開店前チェック</button>
       <button id="btn-ai-kitchen" onclick="AiKitchen.toggle()">&#x1F9D1;&#x200D;&#x1F373; AIシェフ</button>
       <span id="kds-wake-lock-status" class="kds-header__link" style="font-size:0.75rem;opacity:0.7;cursor:default;" title="画面が暗くならないようにする補助機能 (端末側設定の影響あり)"></span>
@@ -93,6 +94,7 @@
   <!-- ステーション選択バー -->
   <div class="kds-station-bar" id="kds-station-bar"></div>
   <div class="kds-station-focus" id="kds-station-focus"></div>
+  <div class="kds-terminal-status" id="kds-terminal-status" aria-live="polite"></div>
 
   <!-- コースフェーズ操作バー -->
   <div class="kds-course-bar" id="kds-course-bar"></div>
@@ -153,7 +155,7 @@
   <script src="../shared/js/revision-gate.js?v=20260420-rev2"></script>
   <script src="js/kds-auth.js?v=20260418gps"></script>
   <script src="js/polling-data-source.js?v=20260420-pwa3"></script>
-  <script src="js/kds-renderer.js?v=20260429-kds-p0g"></script>
+  <script src="js/kds-renderer.js?v=20260429-kds-terminal-prep"></script>
   <script src="js/voice-commander.js?v=20260429-kds-p0g"></script>
   <script src="js/ai-kitchen.js?v=20260429-visible"></script>
   <script>
@@ -170,6 +172,12 @@
     var _preflightMicStream = null;
     var _preflightMicCtx = null;
     var _preflightMicRaf = null;
+    var _PREP_LEAD_KEY = 'mt_kds_prep_lead_v1';
+    var _VOICE_DIAG_KEY = 'mt_kds_voice_diag_v1';
+    var _prepLeadConfig = null;
+    var _prepCategoryMap = {};
+    var _prepSettingsOverlay = null;
+    var _terminalStatusTimer = null;
 
     function _stationKey() {
       return _stationId || '__all__';
@@ -220,6 +228,252 @@
         tone(880, 0, 80, 0.03);
         tone(1100, 115, 80, 0.03);
       }
+    }
+
+    function _normalizePrepMin(value, fallback) {
+      var n = parseInt(value, 10);
+      if (isNaN(n)) return fallback;
+      if (n < 0) return 0;
+      if (n > 180) return 180;
+      return n;
+    }
+
+    function _defaultPrepLeadConfig() {
+      return {
+        version: 1,
+        defaultMin: 20,
+        takeoutMin: 20,
+        reservationMin: 20,
+        categories: {}
+      };
+    }
+
+    function _loadPrepLeadConfig() {
+      var cfg = _defaultPrepLeadConfig();
+      try {
+        var raw = localStorage.getItem(_PREP_LEAD_KEY);
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            cfg.defaultMin = _normalizePrepMin(parsed.defaultMin, cfg.defaultMin);
+            cfg.takeoutMin = _normalizePrepMin(parsed.takeoutMin, cfg.takeoutMin);
+            cfg.reservationMin = _normalizePrepMin(parsed.reservationMin, cfg.reservationMin);
+            var cats = parsed.categories || {};
+            Object.keys(cats).forEach(function (catId) {
+              var min = _normalizePrepMin(cats[catId], null);
+              if (catId && min !== null) cfg.categories[catId] = min;
+            });
+          }
+        }
+      } catch (e) {}
+      _prepLeadConfig = cfg;
+      return cfg;
+    }
+
+    function _applyPrepLeadConfig() {
+      if (!_prepLeadConfig) _loadPrepLeadConfig();
+      if (typeof KdsRenderer !== 'undefined' && KdsRenderer.setPrepLeadConfig) {
+        KdsRenderer.setPrepLeadConfig(_prepLeadConfig);
+      }
+    }
+
+    function _savePrepLeadConfig(config) {
+      _prepLeadConfig = config || _defaultPrepLeadConfig();
+      try { localStorage.setItem(_PREP_LEAD_KEY, JSON.stringify(_prepLeadConfig)); } catch (e) {}
+      _applyPrepLeadConfig();
+    }
+
+    function _rememberPrepCategory(id, name) {
+      if (!id) return;
+      _prepCategoryMap[id] = name || 'カテゴリ';
+    }
+
+    function _collectPrepCategoriesFromOrders(orders) {
+      var list = orders || [];
+      for (var i = 0; i < list.length; i++) {
+        var items = list[i].items || [];
+        for (var j = 0; j < items.length; j++) {
+          _rememberPrepCategory(items[j].category_id, items[j].category_name || '');
+        }
+      }
+    }
+
+    function _fetchPrepCategories() {
+      var storeId = (typeof KdsAuth !== 'undefined' && KdsAuth.getStoreId) ? KdsAuth.getStoreId() : '';
+      if (!storeId) return Promise.resolve();
+      return fetch('../../api/kds/sold-out.php?store_id=' + encodeURIComponent(storeId), { credentials: 'same-origin' })
+        .then(function (res) { return res.text(); })
+        .then(function (body) {
+          var json = body ? JSON.parse(body) : {};
+          if (!json || !json.ok || !json.data) return;
+          var categories = json.data.categories || [];
+          for (var i = 0; i < categories.length; i++) {
+            _rememberPrepCategory(categories[i].categoryId, categories[i].categoryName || '');
+          }
+        });
+    }
+
+    function _prepInputRowHtml(label, field, value, hint) {
+      return '<label class="kds-prep-settings-row">'
+        + '<span class="kds-prep-settings-label">' + Utils.escapeHtml(label) + '</span>'
+        + '<input class="kds-prep-settings-input" type="number" min="0" max="180" step="1" data-prep-field="' + Utils.escapeHtml(field) + '" value="' + Utils.escapeHtml(String(value)) + '">'
+        + '<span class="kds-prep-settings-hint">' + Utils.escapeHtml(hint || '分前') + '</span>'
+        + '</label>';
+    }
+
+    function _prepCategoryRowsHtml(cfg) {
+      var ids = Object.keys(_prepCategoryMap).sort(function (a, b) {
+        var na = _prepCategoryMap[a] || '';
+        var nb = _prepCategoryMap[b] || '';
+        return na > nb ? 1 : (na < nb ? -1 : 0);
+      });
+      if (ids.length === 0) {
+        return '<div class="kds-prep-settings-empty">カテゴリ未取得</div>';
+      }
+      var html = '';
+      for (var i = 0; i < ids.length; i++) {
+        var catId = ids[i];
+        var hasValue = Object.prototype.hasOwnProperty.call(cfg.categories || {}, catId);
+        var value = hasValue ? cfg.categories[catId] : '';
+        html += '<label class="kds-prep-settings-row">'
+          + '<span class="kds-prep-settings-label">' + Utils.escapeHtml(_prepCategoryMap[catId] || 'カテゴリ') + '</span>'
+          + '<input class="kds-prep-settings-input" type="number" min="0" max="180" step="1" data-prep-cat-id="' + Utils.escapeHtml(catId) + '" value="' + Utils.escapeHtml(String(value)) + '" placeholder="既定">'
+          + '<span class="kds-prep-settings-hint">分前</span>'
+          + '</label>';
+      }
+      return html;
+    }
+
+    function _renderPrepSettingsOverlay(note) {
+      if (!_prepSettingsOverlay) return;
+      var cfg = _prepLeadConfig || _loadPrepLeadConfig();
+      _prepSettingsOverlay.innerHTML = '<div class="kds-prep-settings-panel" role="dialog" aria-modal="true" aria-label="着手時間設定">'
+        + '<div class="kds-prep-settings-header">'
+        + '<div class="kds-prep-settings-title">着手時間</div>'
+        + '<button type="button" class="kds-prep-settings-close" data-prep-close="1">閉じる</button>'
+        + '</div>'
+        + '<div class="kds-prep-settings-body">'
+        + _prepInputRowHtml('全体', 'defaultMin', cfg.defaultMin, '分前')
+        + _prepInputRowHtml('テイクアウト', 'takeoutMin', cfg.takeoutMin, '分前')
+        + _prepInputRowHtml('予約', 'reservationMin', cfg.reservationMin, '分前')
+        + '<div class="kds-prep-settings-section">カテゴリ別</div>'
+        + _prepCategoryRowsHtml(cfg)
+        + (note ? '<div class="kds-prep-settings-note">' + Utils.escapeHtml(note) + '</div>' : '')
+        + '</div>'
+        + '<div class="kds-prep-settings-actions">'
+        + '<button type="button" class="kds-prep-settings-save" data-prep-save="1">保存</button>'
+        + '</div>'
+        + '</div>';
+    }
+
+    function _readPrepSettingsFromOverlay() {
+      var cfg = _defaultPrepLeadConfig();
+      var fields = _prepSettingsOverlay ? _prepSettingsOverlay.querySelectorAll('[data-prep-field]') : [];
+      for (var i = 0; i < fields.length; i++) {
+        var field = fields[i].getAttribute('data-prep-field');
+        if (field === 'defaultMin' || field === 'takeoutMin' || field === 'reservationMin') {
+          cfg[field] = _normalizePrepMin(fields[i].value, cfg[field]);
+        }
+      }
+      var cats = _prepSettingsOverlay ? _prepSettingsOverlay.querySelectorAll('[data-prep-cat-id]') : [];
+      for (var j = 0; j < cats.length; j++) {
+        var catId = cats[j].getAttribute('data-prep-cat-id');
+        var raw = cats[j].value;
+        if (raw === '') continue;
+        var min = _normalizePrepMin(raw, null);
+        if (catId && min !== null) cfg.categories[catId] = min;
+      }
+      return cfg;
+    }
+
+    function _closePrepSettingsOverlay() {
+      if (_prepSettingsOverlay && _prepSettingsOverlay.parentNode) {
+        _prepSettingsOverlay.parentNode.removeChild(_prepSettingsOverlay);
+      }
+      _prepSettingsOverlay = null;
+    }
+
+    function _showPrepSettingsOverlay() {
+      _loadPrepLeadConfig();
+      _closePrepSettingsOverlay();
+      _prepSettingsOverlay = document.createElement('div');
+      _prepSettingsOverlay.className = 'kds-prep-settings-overlay';
+      document.body.appendChild(_prepSettingsOverlay);
+      _prepSettingsOverlay.addEventListener('click', function (e) {
+        if (e.target.getAttribute('data-prep-close') === '1' || e.target === _prepSettingsOverlay) {
+          _closePrepSettingsOverlay();
+          return;
+        }
+        if (e.target.getAttribute('data-prep-save') === '1') {
+          _savePrepLeadConfig(_readPrepSettingsFromOverlay());
+          _renderPrepSettingsOverlay('保存しました');
+        }
+      });
+      _renderPrepSettingsOverlay('カテゴリ確認中');
+      _fetchPrepCategories()
+        .then(function () { _renderPrepSettingsOverlay(''); })
+        .catch(function () { _renderPrepSettingsOverlay('カテゴリ取得失敗'); });
+    }
+
+    function _parseIsoTime(value) {
+      if (!value) return 0;
+      var t = Date.parse(value);
+      return isNaN(t) ? 0 : t;
+    }
+
+    function _formatAge(ts) {
+      if (!ts) return '-';
+      var sec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+      if (sec < 60) return sec + '秒前';
+      var min = Math.floor(sec / 60);
+      if (min < 60) return min + '分前';
+      return Math.floor(min / 60) + '時間前';
+    }
+
+    function _readVoiceDiag() {
+      try {
+        var raw = localStorage.getItem(_VOICE_DIAG_KEY);
+        return raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function updateTerminalStatus() {
+      var el = document.getElementById('kds-terminal-status');
+      if (!el) return;
+      var ageSec = _lastPollingAt ? Math.floor((Date.now() - _lastPollingAt) / 1000) : null;
+      var stale = false;
+      if (typeof OfflineStateBanner !== 'undefined' && OfflineStateBanner.isStale) {
+        try { stale = OfflineStateBanner.isStale(); } catch (e) { stale = false; }
+      }
+      var level = 'ok';
+      if (_lastPollingError || stale || ageSec === null || ageSec > 20) level = 'danger';
+      else if (ageSec > 10) level = 'warn';
+
+      var diag = _readVoiceDiag();
+      var voiceSuccessAt = _parseIsoTime(diag.lastSuccessAt);
+      var pollText = ageSec === null ? '最終更新 -' : '最終更新 ' + _formatAge(_lastPollingAt);
+      var delayText = ageSec === null ? '遅延 -' : '遅延 ' + ageSec + '秒';
+      var staleText = stale ? 'stale' : 'live';
+      var voiceText = voiceSuccessAt ? ('音声成功 ' + _formatAge(voiceSuccessAt)) : '音声成功 -';
+      var errorText = _lastPollingError ? ('通信異常 ' + _lastPollingError) : '';
+
+      el.className = 'kds-terminal-status kds-terminal-status--' + level;
+      el.innerHTML = '<span class="kds-terminal-status__pill">' + Utils.escapeHtml(pollText) + '</span>'
+        + '<span class="kds-terminal-status__pill">' + Utils.escapeHtml(delayText) + '</span>'
+        + '<span class="kds-terminal-status__pill">' + Utils.escapeHtml(staleText) + '</span>'
+        + '<span class="kds-terminal-status__pill">' + Utils.escapeHtml(voiceText) + '</span>'
+        + (errorText ? '<span class="kds-terminal-status__error">' + Utils.escapeHtml(errorText) + '</span>' : '');
+    }
+
+    function startTerminalStatusMonitor() {
+      if (_terminalStatusTimer) {
+        clearInterval(_terminalStatusTimer);
+        _terminalStatusTimer = null;
+      }
+      updateTerminalStatus();
+      _terminalStatusTimer = setInterval(updateTerminalStatus, 1000);
     }
 
     function _stopPreflightMic() {
@@ -603,6 +857,12 @@
             _showPreflightOverlay();
           });
         }
+        var prepLeadBtn = document.getElementById('kds-prep-lead-btn');
+        if (prepLeadBtn) {
+          prepLeadBtn.addEventListener('click', function () {
+            _showPrepSettingsOverlay();
+          });
+        }
 
         // ステーションバーのクリック
         document.getElementById('kds-station-bar').addEventListener('click', function (e) {
@@ -629,6 +889,8 @@
         );
         // KDS-P1-1: expeditor モード用コンテナを登録
         KdsRenderer.initExpeditor(document.getElementById('col-expeditor'));
+        _loadPrepLeadConfig();
+        _applyPrepLeadConfig();
 
         // KDS-P1-1: 表示モード切替 (localStorage で保持)
         (function () {
@@ -673,6 +935,7 @@
         })();
 
         VoiceCommander.init();
+        startTerminalStatusMonitor();
         startPolling();
 
         document.addEventListener('click', function (e) {
@@ -751,8 +1014,10 @@
           _lastPollingAt = Date.now();
           _lastPollingError = '';
           if (data.stations) renderStationButtons(data.stations);
+          _collectPrepCategoriesFromOrders(data.orders || []);
           KdsRenderer.onData(data);
           updateStationFocus(false);
+          updateTerminalStatus();
           VoiceCommander.updateOrders(data.orders || []);
           if (window.AiKitchen) AiKitchen.onPollingData(data);
           updateCourseBar();
@@ -875,6 +1140,7 @@
       function handleError(errMsg) {
         console.error('KDS polling error:', errMsg);
         _lastPollingError = errMsg || 'polling error';
+        updateTerminalStatus();
         var errEl = document.getElementById('kds-error');
         if (!errEl) {
           errEl = document.createElement('div');

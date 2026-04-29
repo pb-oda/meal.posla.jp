@@ -69,27 +69,41 @@ if ($stationId) {
     }
 }
 
-// メニューアイテムID → カテゴリID のマップ（ステーション用）
+// メニューアイテムID → カテゴリID/カテゴリ名 のマップ（ステーション/着手時間用）
 $itemCategoryMap = [];
-if ($allowedCategories !== null && !empty($allowedCategories)) {
-    // テンプレートメニュー
+$itemCategoryNameMap = [];
+// テンプレートメニュー
+try {
     $stmt = $pdo->prepare(
-        'SELECT s.id AS store_id, mt.id AS item_id, mt.category_id
-         FROM stores s JOIN menu_templates mt ON mt.tenant_id = s.tenant_id
+        'SELECT s.id AS store_id, mt.id AS item_id, mt.category_id, c.name AS category_name
+         FROM stores s
+         JOIN menu_templates mt ON mt.tenant_id = s.tenant_id
+         LEFT JOIN categories c ON c.id = mt.category_id
          WHERE s.id = ? AND mt.is_active = 1'
     );
     $stmt->execute([$storeId]);
     foreach ($stmt->fetchAll() as $row) {
         $itemCategoryMap[$row['item_id']] = $row['category_id'];
+        $itemCategoryNameMap[$row['item_id']] = $row['category_name'] ?? '';
     }
-    // ローカルメニュー
+} catch (PDOException $e) {
+    error_log('[KDS][api/kds/orders.php] fetch_template_categories: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+}
+// ローカルメニュー
+try {
     $stmt = $pdo->prepare(
-        'SELECT id AS item_id, category_id FROM store_local_items WHERE store_id = ?'
+        'SELECT sli.id AS item_id, sli.category_id, c.name AS category_name
+         FROM store_local_items sli
+         LEFT JOIN categories c ON c.id = sli.category_id
+         WHERE sli.store_id = ?'
     );
     $stmt->execute([$storeId]);
     foreach ($stmt->fetchAll() as $row) {
         $itemCategoryMap[$row['item_id']] = $row['category_id'];
+        $itemCategoryNameMap[$row['item_id']] = $row['category_name'] ?? '';
     }
+} catch (PDOException $e) {
+    error_log('[KDS][api/kds/orders.php] fetch_local_categories: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
 }
 
 // コースフェーズ自動発火チェック（ポーリング駆動）
@@ -259,10 +273,21 @@ foreach ($orders as &$o) {
         ? $reservationTimeMap[$o['table_id']]
         : null;
 
+    foreach ($o['items'] as &$item) {
+        $lookupItemId = $item['id'] ?? ($item['menu_item_id'] ?? null);
+        $item['category_id'] = $lookupItemId && isset($itemCategoryMap[$lookupItemId])
+            ? $itemCategoryMap[$lookupItemId]
+            : null;
+        $item['category_name'] = $lookupItemId && isset($itemCategoryNameMap[$lookupItemId])
+            ? $itemCategoryNameMap[$lookupItemId]
+            : '';
+    }
+    unset($item);
+
     // ステーション指定時: 該当カテゴリの品目のみ残す
     if ($allowedCategories !== null) {
-        $o['items'] = array_values(array_filter($o['items'], function ($item) use ($allowedCategories, $itemCategoryMap) {
-            $catId = $itemCategoryMap[$item['id']] ?? null;
+        $o['items'] = array_values(array_filter($o['items'], function ($item) use ($allowedCategories) {
+            $catId = $item['category_id'] ?? null;
             return $catId && in_array($catId, $allowedCategories, true);
         }));
         // 該当品目0件の注文は除外
