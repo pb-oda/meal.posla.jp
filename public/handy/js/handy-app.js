@@ -500,11 +500,6 @@ var HandyApp = (function () {
           openPendingOrdersModal();
           return;
         }
-        var startBtn = e.target.closest('[data-ops-start-alert]');
-        if (startBtn) {
-          startOperationAlert(startBtn.getAttribute('data-ops-start-alert'));
-          return;
-        }
         var ackBtn = e.target.closest('[data-ops-ack-alert]');
         if (ackBtn) {
           acknowledgeOperationAlert(ackBtn.getAttribute('data-ops-ack-alert'));
@@ -2272,43 +2267,81 @@ var HandyApp = (function () {
   }
 
   function renderTableActionButtons(t, rsv, compact) {
-    var session = t.session || null;
-    var tableCode = Utils.escapeHtml(t.tableCode || '');
-    var tableId = Utils.escapeHtml(t.id || '');
-    var sessionId = session ? Utils.escapeHtml(session.id) : '';
-    var guestCount = session && session.guestCount ? session.guestCount : 2;
-    var html = '<div class="' + (compact ? 'table-action-buttons table-action-buttons--compact' : 'table-action-buttons') + '">';
+    var primary = getTablePrimaryAction(t, rsv);
+    var secondary = getTableSecondaryActions(t, rsv, primary, compact);
+    var html = '<div class="' + (compact ? 'table-action-buttons table-action-buttons--compact table-action-buttons--one-tap' : 'table-action-buttons table-action-buttons--one-tap') + '">';
 
-    if ((!session || (session.status !== 'cleaning' && session.status !== 'bill_requested')) && !t.qrOpen) {
-      html += '<button type="button" data-table-action="order" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">注文</button>';
+    if (primary) {
+      html += renderTableActionButton(t, primary, 'table-action-button--primary');
     }
-    if (session && session.status === 'cleaning') {
-      html += '<button type="button" data-table-action="clean-done" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">清掃完了</button>';
-    } else if (session) {
-      if (session.status === 'bill_requested') {
-        html += '<button type="button" data-table-action="bill-undo" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">会計解除</button>';
-      } else {
-        html += '<button type="button" data-table-action="bill" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">会計呼び出し</button>';
+    if (secondary.length > 0) {
+      html += '<div class="table-action-buttons__secondary">';
+      for (var i = 0; i < secondary.length; i++) {
+        html += renderTableActionButton(t, secondary[i], 'table-action-button--secondary');
       }
-      html += '<button type="button" data-table-action="qr" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">QR表示</button>';
-      html += '<button type="button" data-table-action="memo" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">メモ</button>';
-      html += '<button type="button" data-table-action="guests" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '" data-guest-count="' + guestCount + '">人数</button>';
-      html += '<button type="button" data-table-action="move" data-session-id="' + sessionId + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">席移動</button>';
-    } else {
-      if (t.qrOpen) {
-        html += '<button type="button" data-table-action="qr-cancel" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">QR取消</button>';
-        html += '<button type="button" data-table-action="qr-reissue" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">QR再発行</button>';
-      } else if (rsv && (rsv.status === 'confirmed' || rsv.status === 'pending')) {
-        html += '<button type="button" data-table-action="reservation-seat" data-rsv-id="' + Utils.escapeHtml(rsv.id) + '" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">予約着席</button>';
-      } else {
-        html += '<button type="button" data-table-action="seat" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">着席</button>';
-      }
-      if (!t.qrOpen) {
-        html += '<button type="button" data-table-action="qr-open" data-table-id="' + tableId + '" data-table-code="' + tableCode + '">QR開放</button>';
-      }
+      html += '</div>';
     }
     html += '</div>';
     return html;
+  }
+
+  function getTablePrimaryAction(t, rsv) {
+    var session = t.session || null;
+    var st = getTableDisplayStatus(t);
+    if (session) {
+      if (session.status === 'cleaning') return { action: 'clean-done', label: '清掃完了' };
+      if (session.status === 'bill_requested') return { action: 'open-register', label: 'レジへ' };
+      if (st === 'overtime') return { action: 'bill', label: '会計待ち' };
+      return { action: 'order', label: st === 'no_order' ? '注文確認' : '注文' };
+    }
+    if (t.qrOpen) return { action: 'qr-reissue', label: 'QR再発行' };
+    if (rsv && (rsv.status === 'confirmed' || rsv.status === 'pending')) return { action: 'qr-open', label: 'QR開放' };
+    return { action: 'qr-open', label: 'QR開放' };
+  }
+
+  function getTableSecondaryActions(t, rsv, primary, compact) {
+    var session = t.session || null;
+    var actions = [];
+    function add(action, label, extra) {
+      if (primary && primary.action === action) return;
+      extra = extra || {};
+      extra.action = action;
+      extra.label = label;
+      actions.push(extra);
+    }
+    if (session) {
+      if (session.status === 'bill_requested') {
+        add('bill-undo', '食事中へ戻す');
+      } else if (session.status !== 'cleaning') {
+        add('bill', '会計待ち');
+      }
+      if (!compact && session.status !== 'cleaning') {
+        add('qr', 'QR表示');
+        add('memo', 'メモ');
+        add('guests', '人数');
+        add('move', '席移動');
+      }
+    } else if (t.qrOpen) {
+      add('qr-cancel', 'QR取消');
+    } else {
+      if (rsv && (rsv.status === 'confirmed' || rsv.status === 'pending')) {
+        add('reservation-seat', '予約着席', { rsvId: rsv.id });
+      } else {
+        add('seat', '着席');
+      }
+    }
+    return actions;
+  }
+
+  function renderTableActionButton(t, action, className) {
+    var session = t.session || null;
+    var attrs = ' data-table-action="' + Utils.escapeHtml(action.action) + '"'
+      + ' data-table-id="' + Utils.escapeHtml(t.id || '') + '"'
+      + ' data-table-code="' + Utils.escapeHtml(t.tableCode || '') + '"';
+    if (session && session.id) attrs += ' data-session-id="' + Utils.escapeHtml(session.id) + '"';
+    if (action.rsvId) attrs += ' data-rsv-id="' + Utils.escapeHtml(action.rsvId) + '"';
+    if (action.action === 'guests') attrs += ' data-guest-count="' + (session && session.guestCount ? session.guestCount : 2) + '"';
+    return '<button type="button" class="' + className + '" ' + attrs + '>' + Utils.escapeHtml(action.label) + '</button>';
   }
 
   function handleTableAction(btn) {
@@ -2370,6 +2403,10 @@ var HandyApp = (function () {
       undoBillForSession(sessionId, tableCode);
       return;
     }
+    if (action === 'open-register') {
+      openRegisterForTable(tableId);
+      return;
+    }
     if (action === 'move') {
       openTableMoveModal(sessionId, tableId, tableCode);
       return;
@@ -2421,7 +2458,6 @@ var HandyApp = (function () {
   function completeCleaningSession(sessionId, tableCode) {
     if (!sessionId) { toast('対象セッションがありません', 'error'); return; }
     if (_guardOfflineOrStale()) return;
-    if (!confirm(tableCode + ' を清掃完了にして空席に戻しますか？')) return;
     apiPatch('/store/table-sessions.php?id=' + encodeURIComponent(sessionId), {
       store_id: _storeId,
       status: 'closed'
@@ -2437,7 +2473,6 @@ var HandyApp = (function () {
   function requestBillForSession(sessionId, tableCode) {
     if (!sessionId) { toast('着席中の卓ではありません', 'error'); return; }
     if (_guardOfflineOrStale()) return;
-    if (!confirm(tableCode + ' を会計待ちにしますか？')) return;
     apiPatch('/store/table-sessions.php?id=' + encodeURIComponent(sessionId), {
       store_id: _storeId,
       status: 'bill_requested'
@@ -2448,6 +2483,13 @@ var HandyApp = (function () {
     }).catch(function (err) {
       toast(err.message || '通信エラー', 'error');
     });
+  }
+
+  function openRegisterForTable(tableId) {
+    if (tableId) {
+      try { localStorage.setItem('mt_handy_register_focus_table', tableId); } catch (e) {}
+    }
+    window.location.href = 'pos-register.html';
   }
 
   function undoBillForSession(sessionId, tableCode) {
@@ -2714,12 +2756,9 @@ var HandyApp = (function () {
       html += '<p>' + Utils.escapeHtml(text) + '</p>';
       html += '<small>' + formatElapsed(a.elapsed_seconds);
       if (escalated) html += ' / 要確認';
-      if (isProgress) html += ' / 対応中' + (a.in_progress_by_name ? ': ' + Utils.escapeHtml(a.in_progress_by_name) : '');
+      if (isProgress) html += ' / 対応中';
       html += '</small></div>';
       html += '<div class="ops-alert-card__actions">';
-      if (!isProgress) {
-        html += '<button type="button" data-ops-start-alert="' + Utils.escapeHtml(a.id) + '">対応開始</button>';
-      }
       html += '<button type="button" data-ops-ack-alert="' + Utils.escapeHtml(a.id) + '">' + ackLabel + '</button>';
       html += '</div>';
       html += '</div>';
@@ -2760,7 +2799,7 @@ var HandyApp = (function () {
       if (t.orders && t.orders.orderCount) {
         detail += (detail ? ' / ' : '') + t.orders.orderCount + '件 ' + Utils.formatYen(t.orders.totalAmount || 0);
       }
-      html += renderOperationTask(title, (t.tableCode || '-') + (detail ? ' / ' + detail : ''), level, 'data-ops-open-table="' + Utils.escapeHtml(t.id) + '"', escalated);
+      html += renderOperationWorkItem(title, (t.tableCode || '-') + (detail ? ' / ' + detail : ''), level, t, escalated);
     }
     return html;
   }
@@ -2782,13 +2821,30 @@ var HandyApp = (function () {
       + '</button>';
   }
 
+  function renderOperationWorkItem(title, detail, level, t, escalated) {
+    var primary = getTablePrimaryAction(t, null);
+    var secondary = getTableSecondaryActions(t, null, primary, true);
+    var html = '<div class="ops-task ops-task--' + level + (escalated ? ' ops-task--escalated' : '') + '">';
+    html += '<div class="ops-task__body" data-ops-open-table="' + Utils.escapeHtml(t.id || '') + '">';
+    html += '<span>' + Utils.escapeHtml(title) + '</span>';
+    html += '<strong>' + Utils.escapeHtml(detail) + '</strong>';
+    html += '</div>';
+    html += '<div class="ops-task__actions">';
+    if (primary) html += renderTableActionButton(t, primary, 'ops-task__primary');
+    for (var i = 0; i < secondary.length && i < 1; i++) {
+      html += renderTableActionButton(t, secondary[i], 'ops-task__secondary');
+    }
+    html += '</div></div>';
+    return html;
+  }
+
   function renderOperationLog() {
     if (!els.opsLog) return;
     if (!_opsLogs || _opsLogs.length === 0) {
       els.opsLog.innerHTML = '';
       return;
     }
-    var html = '<div class="ops-board__section-title">担当ログ</div>';
+    var html = '<div class="ops-board__section-title">端末ログ</div>';
     html += '<div class="ops-log-list">';
     var max = _terminalMode === 'wall' ? 6 : 10;
     for (var i = 0; i < _opsLogs.length && i < max; i++) {
@@ -2796,7 +2852,7 @@ var HandyApp = (function () {
       html += '<div class="ops-log-row">';
       html += '<div><strong>' + Utils.escapeHtml(log.title || log.action) + '</strong>';
       html += '<span>' + Utils.escapeHtml(log.detail || '') + '</span></div>';
-      html += '<small>' + Utils.escapeHtml(log.username || '-') + ' / ' + formatElapsed(log.elapsed_seconds) + '</small>';
+      html += '<small>端末: ' + Utils.escapeHtml(log.username || '-') + ' / ' + formatElapsed(log.elapsed_seconds) + '</small>';
       if (log.can_undo_served && log.order_item_id) {
         html += '<button type="button" data-ops-undo-served="' + Utils.escapeHtml(log.order_item_id) + '">配膳取消</button>';
       }
@@ -3476,7 +3532,6 @@ var HandyApp = (function () {
   // 客が QR を読むと自動的にセッション作成、トークンは即消費される
   function openTableForCustomer(tableId, tableCode) {
     if (_guardOfflineOrStale()) return;
-    if (!confirm('テーブル ' + tableCode + ' を客向けに開放します。\n5分以内に客が QR を読み込むと自動着席します。\nよろしいですか?')) return;
     apiPost('/store/table-open.php', { store_id: _storeId, table_id: tableId, expires_minutes: 5 })
       .then(function (j) {
         if (j.ok) {

@@ -27,6 +27,7 @@ var PosRegister = (function () {
   var _tax8 = 0;
   var _sessionInfo = null;    // プラン/コース情報
   var _pollTimer = null;
+  var _focusTableId = null;
 
   // ==== DOM cache ====
   var els = {};
@@ -80,6 +81,13 @@ var PosRegister = (function () {
           startPolling();
         });
         return;
+      }
+
+      try {
+        _focusTableId = localStorage.getItem('mt_handy_register_focus_table') || null;
+        if (_focusTableId) localStorage.removeItem('mt_handy_register_focus_table');
+      } catch (e) {
+        _focusTableId = null;
       }
 
       setupUI();
@@ -210,6 +218,7 @@ var PosRegister = (function () {
       if (!json.ok) return;
       _tables = json.data.tables || [];
       renderTables();
+      focusRequestedTable();
 
       // 選択中テーブルを更新
       if (_selectedTable && !_isTakeoutMode) {
@@ -515,6 +524,18 @@ var PosRegister = (function () {
     });
 
     els.tableGrid.innerHTML = html;
+  }
+
+  function focusRequestedTable() {
+    if (!_focusTableId || _selectedTable || _isTakeoutMode) return;
+    for (var i = 0; i < _tables.length; i++) {
+      if (String(_tables[i].id) === String(_focusTableId)) {
+        var target = _focusTableId;
+        _focusTableId = null;
+        selectTable(target);
+        return;
+      }
+    }
   }
 
   function renderOrders() {

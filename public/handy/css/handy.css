@@ -425,6 +425,10 @@ html.light-theme .table-attention-chip--memo { background: #607d8b; color: #fff;
   margin-top: 0.55rem;
 }
 
+.table-action-buttons--one-tap {
+  grid-template-columns: 1fr;
+}
+
 .table-action-buttons button {
   min-height: 44px;
   border: 1px solid rgba(255,255,255,0.16);
@@ -436,8 +440,26 @@ html.light-theme .table-attention-chip--memo { background: #607d8b; color: #fff;
   cursor: pointer;
 }
 
+.table-action-button--primary {
+  min-height: 52px !important;
+  font-size: 0.95rem !important;
+}
+
+.table-action-buttons__secondary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.table-action-button--secondary {
+  min-height: 34px !important;
+  font-size: 0.72rem !important;
+  opacity: 0.82;
+}
+
 .table-action-buttons button[data-table-action="order"] { background: #1e88e5; }
 .table-action-buttons button[data-table-action="bill"] { background: #d84315; }
+.table-action-buttons button[data-table-action="open-register"] { background: #c62828; }
 .table-action-buttons button[data-table-action="qr"],
 .table-action-buttons button[data-table-action="qr-open"],
 .table-action-buttons button[data-table-action="qr-reissue"] { background: #2e7d32; }
@@ -730,6 +752,49 @@ html.light-theme .quick-order-chip {
   cursor: pointer;
 }
 
+div.ops-task {
+  cursor: default;
+}
+
+.ops-task__body {
+  min-width: 0;
+  flex: 1 1 auto;
+  cursor: pointer;
+}
+
+.ops-task__actions {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 0.35rem;
+  min-width: 100px;
+}
+
+.ops-task__actions button {
+  min-height: 42px;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.ops-task__primary {
+  background: #2e7d32;
+}
+
+.ops-task__secondary {
+  background: rgba(255,255,255,0.18);
+}
+
+.ops-task__actions button[data-table-action="order"] { background: #1e88e5; }
+.ops-task__actions button[data-table-action="bill"],
+.ops-task__actions button[data-table-action="open-register"] { background: #c62828; }
+.ops-task__actions button[data-table-action="qr-open"],
+.ops-task__actions button[data-table-action="qr-reissue"] { background: #2e7d32; }
+.ops-task__actions button[data-table-action="clean-done"] { background: #6d4c41; }
+.ops-task__actions button[data-table-action="qr-cancel"],
+.ops-task__actions button[data-table-action="bill-undo"] { background: #00838f; }
+
 .ops-task span {
   display: block;
   color: rgba(255,255,255,0.78);
@@ -871,7 +936,7 @@ html.light-theme .quick-order-chip {
 }
 
 .ops-table-card .table-action-buttons {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 0.35rem;
   margin-top: 0.5rem;
 }
@@ -879,6 +944,10 @@ html.light-theme .quick-order-chip {
 .ops-table-card .table-action-buttons button {
   min-height: 38px;
   font-size: 0.74rem;
+}
+
+.ops-table-card .table-action-buttons__secondary {
+  grid-template-columns: 1fr;
 }
 
 html.light-theme .ops-board__header,
