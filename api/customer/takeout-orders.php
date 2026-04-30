@@ -18,6 +18,135 @@ require_once __DIR__ . '/../lib/order-validator.php';
 require_method(['GET', 'POST']);
 $pdo = get_db();
 
+function takeout_default_settings(): array
+{
+    return [
+        'takeout_enabled' => 0,
+        'takeout_min_prep_minutes' => 30,
+        'takeout_available_from' => '10:00:00',
+        'takeout_available_to' => '20:00:00',
+        'takeout_slot_capacity' => 5,
+        'takeout_slot_item_capacity' => 0,
+        'takeout_peak_start_time' => null,
+        'takeout_peak_end_time' => null,
+        'takeout_peak_slot_capacity' => 0,
+        'takeout_peak_slot_item_capacity' => 0,
+        'takeout_acceptance_delay_minutes' => 0,
+        'takeout_sla_warning_minutes' => 10,
+        'takeout_online_payment' => 0,
+        'brand_color' => null,
+        'brand_logo_url' => null,
+        'brand_display_name' => null,
+    ];
+}
+
+function takeout_fetch_settings(PDO $pdo, string $storeId): array
+{
+    $settings = takeout_default_settings();
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT takeout_enabled, takeout_min_prep_minutes, takeout_available_from,
+                    takeout_available_to, takeout_slot_capacity, takeout_slot_item_capacity,
+                    takeout_peak_start_time, takeout_peak_end_time, takeout_peak_slot_capacity,
+                    takeout_peak_slot_item_capacity, takeout_acceptance_delay_minutes,
+                    takeout_sla_warning_minutes, takeout_online_payment,
+                    brand_color, brand_logo_url, brand_display_name
+             FROM store_settings WHERE store_id = ?'
+        );
+        $stmt->execute([$storeId]);
+        $row = $stmt->fetch();
+        if ($row) {
+            return array_merge($settings, $row);
+        }
+    } catch (PDOException $e) {
+        try {
+            $stmt = $pdo->prepare(
+                'SELECT takeout_enabled, takeout_min_prep_minutes, takeout_available_from,
+                        takeout_available_to, takeout_slot_capacity, takeout_online_payment,
+                        brand_color, brand_logo_url, brand_display_name
+                 FROM store_settings WHERE store_id = ?'
+            );
+            $stmt->execute([$storeId]);
+            $row = $stmt->fetch();
+            if ($row) {
+                return array_merge($settings, $row);
+            }
+        } catch (PDOException $e2) {
+            error_log('[P1-65][customer/takeout-orders.php] fetch_takeout_settings: ' . $e2->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+        }
+    }
+    return $settings;
+}
+
+function takeout_time_in_window(string $time, ?string $start, ?string $end): bool
+{
+    if (!$start || !$end) return false;
+    $time = substr($time, 0, 5);
+    $start = substr($start, 0, 5);
+    $end = substr($end, 0, 5);
+    if ($start === $end) return false;
+    if ($start < $end) {
+        return $time >= $start && $time < $end;
+    }
+    return $time >= $start || $time < $end;
+}
+
+function takeout_capacity_for_slot(array $settings, string $slotTime): array
+{
+    $orderCapacity = max(1, (int)($settings['takeout_slot_capacity'] ?: 5));
+    $itemCapacity = max(0, (int)($settings['takeout_slot_item_capacity'] ?: 0));
+    $isPeak = takeout_time_in_window(
+        $slotTime,
+        $settings['takeout_peak_start_time'] ?? null,
+        $settings['takeout_peak_end_time'] ?? null
+    );
+    if ($isPeak && (int)($settings['takeout_peak_slot_capacity'] ?? 0) > 0) {
+        $orderCapacity = (int)$settings['takeout_peak_slot_capacity'];
+    }
+    if ($isPeak && (int)($settings['takeout_peak_slot_item_capacity'] ?? 0) > 0) {
+        $itemCapacity = (int)$settings['takeout_peak_slot_item_capacity'];
+    }
+    return [
+        'order_capacity' => $orderCapacity,
+        'item_capacity' => $itemCapacity,
+        'is_peak' => $isPeak,
+    ];
+}
+
+function takeout_item_qty($items): int
+{
+    if (is_string($items)) {
+        $items = json_decode($items, true);
+    }
+    if (!is_array($items)) return 0;
+    $qty = 0;
+    foreach ($items as $item) {
+        $qty += max(0, (int)($item['qty'] ?? 1));
+    }
+    return $qty;
+}
+
+function takeout_load_slot_usage(PDO $pdo, string $storeId, string $date): array
+{
+    $stmt = $pdo->prepare(
+        "SELECT pickup_at, items
+           FROM orders
+          WHERE store_id = ? AND order_type = 'takeout'
+            AND DATE(pickup_at) = ? AND status NOT IN ('cancelled', 'paid')"
+    );
+    $stmt->execute([$storeId, $date]);
+    $usage = [];
+    while ($row = $stmt->fetch()) {
+        $slot = substr((string)$row['pickup_at'], 11, 5);
+        if (!isset($usage[$slot])) {
+            $usage[$slot] = ['orders' => 0, 'items' => 0];
+        }
+        $usage[$slot]['orders'] += 1;
+        $usage[$slot]['items'] += takeout_item_qty($row['items']);
+    }
+    return $usage;
+}
+
 // ===== GET =====
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $action = $_GET['action'] ?? '';
@@ -33,31 +162,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $store = $stmt->fetch();
         if (!$store) json_error('STORE_NOT_FOUND', '店舗が見つかりません', 404);
 
-        // テイクアウト設定取得（カラム未存在時はデフォルト値）
-        $takeoutSettings = [
-            'takeout_enabled' => 0,
-            'takeout_min_prep_minutes' => 30,
-            'takeout_available_from' => '10:00:00',
-            'takeout_available_to' => '20:00:00',
-            'takeout_slot_capacity' => 5,
-            'takeout_online_payment' => 0,
-        ];
-        try {
-            $ssStmt = $pdo->prepare(
-                'SELECT takeout_enabled, takeout_min_prep_minutes, takeout_available_from,
-                        takeout_available_to, takeout_slot_capacity, takeout_online_payment,
-                        brand_color, brand_logo_url, brand_display_name
-                 FROM store_settings WHERE store_id = ?'
-            );
-            $ssStmt->execute([$storeId]);
-            $ssRow = $ssStmt->fetch();
-            if ($ssRow) {
-                $takeoutSettings = $ssRow;
-            }
-        } catch (PDOException $e) {
-            // マイグレーション未適用時はデフォルト値のまま
-            error_log('[P1-12][customer/takeout-orders.php:56] fetch_takeout_settings: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
-        }
+        // テイクアウト設定取得（追加カラム未適用時は従来設定にフォールバック）
+        $takeoutSettings = takeout_fetch_settings($pdo, $storeId);
 
         // オンライン決済可否判定 (S3-strict): payment_gateway=stripe + 実キーが揃っている場合のみ true
         $onlinePaymentAvailable = false;
@@ -87,6 +193,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'available_from' => $takeoutSettings['takeout_available_from'],
             'available_to' => $takeoutSettings['takeout_available_to'],
             'slot_capacity' => (int)$takeoutSettings['takeout_slot_capacity'],
+            'slot_item_capacity' => (int)$takeoutSettings['takeout_slot_item_capacity'],
+            'peak_start_time' => $takeoutSettings['takeout_peak_start_time'],
+            'peak_end_time' => $takeoutSettings['takeout_peak_end_time'],
+            'peak_slot_capacity' => (int)$takeoutSettings['takeout_peak_slot_capacity'],
+            'peak_slot_item_capacity' => (int)$takeoutSettings['takeout_peak_slot_item_capacity'],
+            'acceptance_delay_minutes' => (int)$takeoutSettings['takeout_acceptance_delay_minutes'],
             'online_payment_available' => $onlinePaymentAvailable,
             'store_name' => $store['name'],
             'store_name_en' => $store['name_en'] ?? '',
@@ -103,41 +215,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if (!$storeId) json_error('MISSING_STORE', 'store_idが必要です', 400);
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) json_error('INVALID_DATE', '日付形式が不正です', 400);
 
-        // テイクアウト設定取得
-        $fromTime = '10:00:00';
-        $toTime = '20:00:00';
-        $capacity = 5;
-        $minPrep = 30;
-        try {
-            $ssStmt = $pdo->prepare(
-                'SELECT takeout_available_from, takeout_available_to, takeout_slot_capacity, takeout_min_prep_minutes
-                 FROM store_settings WHERE store_id = ?'
-            );
-            $ssStmt->execute([$storeId]);
-            $ssRow = $ssStmt->fetch();
-            if ($ssRow) {
-                $fromTime = $ssRow['takeout_available_from'] ?: '10:00:00';
-                $toTime = $ssRow['takeout_available_to'] ?: '20:00:00';
-                $capacity = (int)($ssRow['takeout_slot_capacity'] ?: 5);
-                $minPrep = (int)($ssRow['takeout_min_prep_minutes'] ?: 30);
-            }
-        } catch (PDOException $e) {
-            error_log('[P1-12][customer/takeout-orders.php:115] fetch_slot_settings: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
-        }
-
-        // 各スロットの既存注文数を一括取得
-        $countStmt = $pdo->prepare(
-            "SELECT TIME_FORMAT(pickup_at, '%H:%i') AS slot_time, COUNT(*) AS cnt
-             FROM orders
-             WHERE store_id = ? AND order_type = 'takeout'
-             AND DATE(pickup_at) = ? AND status NOT IN ('cancelled', 'paid')
-             GROUP BY slot_time"
-        );
-        $countStmt->execute([$storeId, $date]);
-        $countMap = [];
-        while ($row = $countStmt->fetch()) {
-            $countMap[$row['slot_time']] = (int)$row['cnt'];
-        }
+        // テイクアウト設定取得 + 各スロットの既存注文数/品数を一括取得
+        $ssRow = takeout_fetch_settings($pdo, $storeId);
+        $fromTime = $ssRow['takeout_available_from'] ?: '10:00:00';
+        $toTime = $ssRow['takeout_available_to'] ?: '20:00:00';
+        $minPrep = (int)($ssRow['takeout_min_prep_minutes'] ?: 30)
+                 + max(0, (int)($ssRow['takeout_acceptance_delay_minutes'] ?? 0));
+        $usageMap = takeout_load_slot_usage($pdo, $storeId, $date);
 
         // 15分刻みでスロット生成
         $now = new DateTime();
@@ -159,18 +243,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 continue;
             }
 
-            $used = isset($countMap[$slotKey]) ? $countMap[$slotKey] : 0;
-            $available = max(0, $capacity - $used);
+            $capacity = takeout_capacity_for_slot($ssRow, $slotKey);
+            $used = isset($usageMap[$slotKey]) ? (int)$usageMap[$slotKey]['orders'] : 0;
+            $usedItems = isset($usageMap[$slotKey]) ? (int)$usageMap[$slotKey]['items'] : 0;
+            $available = max(0, $capacity['order_capacity'] - $used);
+            $itemAvailable = $capacity['item_capacity'] > 0
+                ? max(0, $capacity['item_capacity'] - $usedItems)
+                : null;
 
             $slots[] = [
                 'time' => $slotKey,
                 'available' => $available,
+                'capacity' => $capacity['order_capacity'],
+                'used' => $used,
+                'item_available' => $itemAvailable,
+                'item_capacity' => $capacity['item_capacity'],
+                'item_used' => $usedItems,
+                'is_peak' => $capacity['is_peak'],
             ];
 
             $current->modify('+15 minutes');
         }
 
-        json_response(['slots' => $slots]);
+        json_response([
+            'slots' => $slots,
+            'min_prep_minutes' => $minPrep,
+            'acceptance_delay_minutes' => max(0, (int)($ssRow['takeout_acceptance_delay_minutes'] ?? 0)),
+        ]);
     }
 
     // --- 注文ステータス確認 ---
@@ -185,6 +284,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $stmt = $pdo->prepare(
             "SELECT o.id, o.store_id, o.status, o.customer_name, o.customer_phone,
                     o.pickup_at, o.total_amount, o.items, o.memo, o.created_at,
+                    o.takeout_ops_status, o.takeout_ready_notification_status,
                     s.tenant_id
              FROM orders o
              JOIN stores s ON s.id = o.store_id
@@ -238,6 +338,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'items' => json_decode($order['items'], true) ?: [],
             'payment_status' => $paymentStatus,
             'created_at' => $order['created_at'],
+            'takeout_ops_status' => $order['takeout_ops_status'] ?? 'normal',
+            'ready_notification_status' => $order['takeout_ready_notification_status'] ?? 'not_requested',
             'line_enabled' => $lineEnabled,
             'takeout_ready_enabled' => $takeoutReadyEnabled,
         ]);
@@ -277,16 +379,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$store) json_error('STORE_NOT_FOUND', '店舗が見つかりません', 404);
 
     // テイクアウト有効チェック
-    $takeoutEnabled = 0;
-    try {
-        $ssStmt = $pdo->prepare('SELECT takeout_enabled, takeout_min_prep_minutes, takeout_available_from, takeout_available_to, takeout_slot_capacity FROM store_settings WHERE store_id = ?');
-        $ssStmt->execute([$storeId]);
-        $ss = $ssStmt->fetch();
-        if ($ss) $takeoutEnabled = (int)$ss['takeout_enabled'];
-    } catch (PDOException $e) {
-        error_log('[P1-12][customer/takeout-orders.php:245] check_takeout_enabled: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
-    }
-    if (!$takeoutEnabled) json_error('TAKEOUT_DISABLED', '現在テイクアウトは受け付けていません', 400);
+    $ss = takeout_fetch_settings($pdo, $storeId);
+    if ((int)$ss['takeout_enabled'] !== 1) json_error('TAKEOUT_DISABLED', '現在テイクアウトは受け付けていません', 400);
 
     // 冪等キーチェック
     if ($idempotencyKey) {
@@ -301,28 +395,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 受取時間バリデーション
     $pickupDt = new DateTime($pickupAt);
     $nowDt = new DateTime();
-    $minPrepMinutes = $ss ? (int)$ss['takeout_min_prep_minutes'] : 30;
+    $minPrepMinutes = (int)($ss['takeout_min_prep_minutes'] ?: 30)
+                    + max(0, (int)($ss['takeout_acceptance_delay_minutes'] ?? 0));
     $minPickupDt = (clone $nowDt)->modify('+' . $minPrepMinutes . ' minutes');
     if ($pickupDt < $minPickupDt) {
         json_error('PICKUP_TOO_EARLY', '受取時間は現在から' . $minPrepMinutes . '分以降を指定してください', 400);
     }
 
-    // スロット空き確認 (事前判定)
-    $slotCapacity = $ss ? (int)$ss['takeout_slot_capacity'] : 5;
     $slotTime = $pickupDt->format('H:i');
     $slotDate = $pickupDt->format('Y-m-d');
-    $slotStmt = $pdo->prepare(
-        "SELECT COUNT(*) AS cnt FROM orders
-         WHERE store_id = ? AND order_type = 'takeout'
-         AND DATE(pickup_at) = ? AND TIME_FORMAT(pickup_at, '%H:%i') = ?
-         AND status NOT IN ('cancelled', 'paid')"
-    );
-    $slotStmt->execute([$storeId, $slotDate, $slotTime]);
-    $slotCount = (int)$slotStmt->fetch()['cnt'];
-    if ($slotCount >= $slotCapacity) {
-        json_error('SLOT_FULL', 'この時間枠は満席です。別の時間を選択してください', 409);
+    $fromHm = substr((string)$ss['takeout_available_from'], 0, 5);
+    $toHm = substr((string)$ss['takeout_available_to'], 0, 5);
+    if (!takeout_time_in_window($slotTime, $fromHm, $toHm)) {
+        json_error('PICKUP_OUT_OF_HOURS', '受付時間外の受取時間です', 400);
     }
-    // S3 #8: 並列受注のレース検出は INSERT トランザクション内で再カウントする (下記)
 
     // 品数・金額チェック
     $maxItems = 10;
@@ -352,6 +438,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($totalQty > $maxItems) json_error('TOO_MANY_ITEMS', '品数が上限（' . $maxItems . '品）を超えています', 400);
     if ($totalAmount > $maxAmount) json_error('AMOUNT_EXCEEDED', '金額が上限（¥' . number_format($maxAmount) . '）を超えています', 400);
 
+    // スロット空き確認 (事前判定)。注文数に加えて品数上限も見る。
+    $slotCapacity = takeout_capacity_for_slot($ss, $slotTime);
+    $usageMap = takeout_load_slot_usage($pdo, $storeId, $slotDate);
+    $slotCount = isset($usageMap[$slotTime]) ? (int)$usageMap[$slotTime]['orders'] : 0;
+    $slotItemCount = isset($usageMap[$slotTime]) ? (int)$usageMap[$slotTime]['items'] : 0;
+    if ($slotCount >= $slotCapacity['order_capacity']) {
+        json_error('SLOT_FULL', 'この時間枠は満席です。別の時間を選択してください', 409);
+    }
+    if ($slotCapacity['item_capacity'] > 0 && ($slotItemCount + $totalQty) > $slotCapacity['item_capacity']) {
+        json_error('SLOT_ITEM_FULL', 'この時間枠は厨房キャパを超えるため受付できません。別の時間を選択してください', 409);
+    }
+    // S3 #8: 並列受注のレース検出は INSERT トランザクション内で再カウントする (下記)
+
     // 注文ステータス決定
     $status = ($paymentMethod === 'online') ? 'pending_payment' : 'pending';
 
@@ -367,7 +466,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // 同スロットの既存 takeout 注文を FOR UPDATE で行ロック
         $lockStmt = $pdo->prepare(
-            "SELECT id FROM orders
+            "SELECT id, items FROM orders
              WHERE store_id = ? AND order_type = 'takeout'
                AND DATE(pickup_at) = ? AND TIME_FORMAT(pickup_at, '%H:%i') = ?
                AND status NOT IN ('cancelled','paid')
@@ -375,9 +474,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         $lockStmt->execute([$storeId, $slotDate, $slotTime]);
         $lockedRows = $lockStmt->fetchAll();
-        if (count($lockedRows) >= $slotCapacity) {
+        $lockedItemCount = 0;
+        foreach ($lockedRows as $lockedRow) {
+            $lockedItemCount += takeout_item_qty($lockedRow['items']);
+        }
+        if (count($lockedRows) >= $slotCapacity['order_capacity']) {
             $pdo->rollBack();
             json_error('SLOT_FULL', 'この時間枠は満席になりました。別の時間を選択してください', 409);
+        }
+        if ($slotCapacity['item_capacity'] > 0 && ($lockedItemCount + $totalQty) > $slotCapacity['item_capacity']) {
+            $pdo->rollBack();
+            json_error('SLOT_ITEM_FULL', 'この時間枠は厨房キャパを超えました。別の時間を選択してください', 409);
         }
 
         $stmt = $pdo->prepare(

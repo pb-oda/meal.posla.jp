@@ -433,6 +433,10 @@
   // ===== セクション2: お客様情報 =====
   function renderInfoForm() {
     var sec = document.getElementById('to-section-2');
+    var minPrep = parseInt(_settings.min_prep_minutes, 10);
+    var extraDelay = parseInt(_settings.acceptance_delay_minutes, 10);
+    if (isNaN(minPrep)) minPrep = 30;
+    if (isNaN(extraDelay)) extraDelay = 0;
     var html = '<h2 class="to-section__title">お客様情報</h2>';
     html += '<div class="to-form">';
     html += '<div class="to-form__group"><label class="to-form__label">お名前 <span class="to-required">*</span></label>';
@@ -443,6 +447,9 @@
     html += '<textarea class="to-form__input to-form__textarea" id="to-memo" placeholder="ご要望があればご記入ください"></textarea></div>';
     html += '<div class="to-form__group"><label class="to-form__label">受取時間 <span class="to-required">*</span></label>';
     html += '<div class="to-slots" id="to-slots"><div style="text-align:center;padding:1rem;color:#888;">時間枠を読み込み中...</div></div></div>';
+    if (minPrep > 0 || extraDelay > 0) {
+      html += '<div style="font-size:0.75rem;color:#666;margin-top:-0.5rem;margin-bottom:1rem;">最短準備時間: ' + (minPrep + extraDelay) + '分</div>';
+    }
     html += '</div>';
     html += '<div class="to-nav-btns">';
     html += '<button class="to-btn to-btn--secondary" id="to-back-1">戻る</button>';
@@ -479,10 +486,18 @@
         for (var i = 0; i < slots.length; i++) {
           var s = slots[i];
           var full = s.available <= 0;
+          if (!full && s.item_available !== null && s.item_available <= 0) full = true;
           var selected = (_selectedSlot === s.time);
+          var capText = full ? ' <span class="to-slot__full">満</span>' : ' <span class="to-slot__avail">残' + s.available + '</span>';
+          if (!full && s.item_available !== null) {
+            capText += '<span class="to-slot__avail"> 品' + s.item_available + '</span>';
+          }
+          if (s.is_peak) {
+            capText += '<span class="to-slot__avail"> 混雑</span>';
+          }
           html += '<button class="to-slot' + (full ? ' to-slot--full' : '') + (selected ? ' to-slot--selected' : '') + '"'
             + ' data-time="' + s.time + '"' + (full ? ' disabled' : '') + '>'
-            + s.time + (full ? ' <span class="to-slot__full">満</span>' : ' <span class="to-slot__avail">残' + s.available + '</span>')
+            + s.time + capText
             + '</button>';
         }
         container.innerHTML = html;
@@ -788,8 +803,13 @@
           'ready': '準備完了 - お受け取りいただけます',
           'served': 'お受け取り済み',
           'paid': 'お受け取り済み',
+          'cancelled': 'キャンセル済み',
         };
         var label = statusMap[data.status] || data.status;
+        if (data.takeout_ops_status === 'late') label += '（準備遅延中）';
+        if (data.takeout_ops_status === 'customer_delayed') label += '（受取遅れ連絡済み）';
+        if (data.takeout_ops_status === 'refund_pending') label += '（返金手続き中）';
+        if (data.takeout_ops_status === 'refunded') label += '（返金済み）';
 
         display.textContent = 'ステータス: ' + label;
         display.className = 'to-complete__status';

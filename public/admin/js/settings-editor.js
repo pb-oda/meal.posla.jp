@@ -110,8 +110,20 @@ var SettingsEditor = (function () {
       + '<div class="form-group"><label class="form-label">最短準備時間（分）</label><input class="form-input" id="set-takeout-prep" type="number" value="' + (s.takeout_min_prep_minutes || 30) + '"></div>'
       + '<div class="form-group"><label class="form-label">時間枠あたり最大注文数</label><input class="form-input" id="set-takeout-capacity" type="number" value="' + (s.takeout_slot_capacity || 5) + '"></div></div>'
       + '<div class="form-row">'
+      + '<div class="form-group"><label class="form-label">時間枠あたり最大品数（0=無制限）</label><input class="form-input" id="set-takeout-item-capacity" type="number" min="0" value="' + (s.takeout_slot_item_capacity || 0) + '"></div>'
+      + '<div class="form-group"><label class="form-label">混雑時追加待ち時間（分）</label><input class="form-input" id="set-takeout-delay" type="number" min="0" value="' + (s.takeout_acceptance_delay_minutes || 0) + '"></div></div>'
+      + '<div class="form-row">'
       + '<div class="form-group"><label class="form-label">受付開始時刻</label><input class="form-input" id="set-takeout-from" type="time" value="' + (s.takeout_available_from ? s.takeout_available_from.substring(0, 5) : '10:00') + '"></div>'
       + '<div class="form-group"><label class="form-label">受付終了時刻</label><input class="form-input" id="set-takeout-to" type="time" value="' + (s.takeout_available_to ? s.takeout_available_to.substring(0, 5) : '20:00') + '"></div></div>'
+      + '<div class="form-row">'
+      + '<div class="form-group"><label class="form-label">ピーク開始時刻</label><input class="form-input" id="set-takeout-peak-from" type="time" value="' + (s.takeout_peak_start_time ? s.takeout_peak_start_time.substring(0, 5) : '') + '"></div>'
+      + '<div class="form-group"><label class="form-label">ピーク終了時刻</label><input class="form-input" id="set-takeout-peak-to" type="time" value="' + (s.takeout_peak_end_time ? s.takeout_peak_end_time.substring(0, 5) : '') + '"></div></div>'
+      + '<div class="form-row">'
+      + '<div class="form-group"><label class="form-label">ピーク最大注文数（0=通常設定）</label><input class="form-input" id="set-takeout-peak-capacity" type="number" min="0" value="' + (s.takeout_peak_slot_capacity || 0) + '"></div>'
+      + '<div class="form-group"><label class="form-label">ピーク最大品数（0=通常設定）</label><input class="form-input" id="set-takeout-peak-item-capacity" type="number" min="0" value="' + (s.takeout_peak_slot_item_capacity || 0) + '"></div></div>'
+      + '<div class="form-row">'
+      + '<div class="form-group"><label class="form-label">SLA警告（受取何分前）</label><input class="form-input" id="set-takeout-sla-warning" type="number" min="1" value="' + (s.takeout_sla_warning_minutes || 10) + '"></div>'
+      + '</div>'
       + '<div class="form-group"><label class="form-label">オンライン決済</label>'
       + '<div class="settings-toggle-group">'
       + '<label class="settings-toggle"><input type="checkbox" class="settings-toggle__input" id="set-takeout-online"' + (parseInt(s.takeout_online_payment, 10) ? ' checked' : '') + '> 有効</label>'
@@ -405,6 +417,8 @@ var SettingsEditor = (function () {
 
       var loTimeVal = document.getElementById('set-lo-time') ? document.getElementById('set-lo-time').value : '';
       var regCloseTimeVal = document.getElementById('set-register-close-time') ? document.getElementById('set-register-close-time').value : '';
+      var takeoutPeakFrom = document.getElementById('set-takeout-peak-from') ? document.getElementById('set-takeout-peak-from').value : '';
+      var takeoutPeakTo = document.getElementById('set-takeout-peak-to') ? document.getElementById('set-takeout-peak-to').value : '';
       var payload = {
         day_cutoff_time: (document.getElementById('set-cutoff').value || '05:00').replace(/^(\d{2}:\d{2})$/, '$1:00'),
         tax_rate: parseFloat(document.getElementById('set-tax').value) || 10,
@@ -433,6 +447,13 @@ var SettingsEditor = (function () {
         takeout_available_from: (document.getElementById('set-takeout-from').value || '10:00').replace(/^(\d{2}:\d{2})$/, '$1:00'),
         takeout_available_to: (document.getElementById('set-takeout-to').value || '20:00').replace(/^(\d{2}:\d{2})$/, '$1:00'),
         takeout_slot_capacity: parseInt(document.getElementById('set-takeout-capacity').value, 10) || 5,
+        takeout_slot_item_capacity: parseInt(document.getElementById('set-takeout-item-capacity').value, 10) || 0,
+        takeout_peak_start_time: takeoutPeakFrom ? takeoutPeakFrom.replace(/^(\d{2}:\d{2})$/, '$1:00') : null,
+        takeout_peak_end_time: takeoutPeakTo ? takeoutPeakTo.replace(/^(\d{2}:\d{2})$/, '$1:00') : null,
+        takeout_peak_slot_capacity: parseInt(document.getElementById('set-takeout-peak-capacity').value, 10) || 0,
+        takeout_peak_slot_item_capacity: parseInt(document.getElementById('set-takeout-peak-item-capacity').value, 10) || 0,
+        takeout_acceptance_delay_minutes: parseInt(document.getElementById('set-takeout-delay').value, 10) || 0,
+        takeout_sla_warning_minutes: parseInt(document.getElementById('set-takeout-sla-warning').value, 10) || 10,
         takeout_online_payment: document.getElementById('set-takeout-online').checked ? 1 : 0,
         brand_color: document.getElementById('set-brand-color').value.trim() || null,
         brand_logo_url: document.getElementById('set-brand-logo-url').value.trim() || null,

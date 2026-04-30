@@ -128,6 +128,7 @@ try {
     $stmt = $pdo->prepare(
         'SELECT id, total_amount, payment_method, gateway_name, external_payment_id,
                 gateway_status, refund_status, refund_amount, store_id' . $voidSelectFrag . '
+                , order_ids
          FROM payments
          WHERE id = ? AND store_id = ?
          FOR UPDATE'
@@ -336,6 +337,29 @@ try {
     // Stripe 側は返金済みだが DB 反映に失敗した状態
     error_log('[S3#10][refund-payment] finalize_failed payment=' . $paymentId . ' refund=' . $refundResult['refund_id'] . ' err=' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     json_error('DB_ERROR', '返金は完了しましたが DB 反映に失敗しました。サポートへご連絡ください。 refund_id=' . $refundResult['refund_id'], 500);
+}
+
+// P1-65: テイクアウトオンライン決済の返金成功を、店舗側テイクアウト運用ボードにも反映する。
+// payments.order_ids は JSON だが、既存テーブルには専用の payment_order_links がないため
+// decoded IDs を store_id + order_type='takeout' で二重絞り込みして更新する。
+$refundedOrderIds = json_decode($payment['order_ids'] ?? '[]', true);
+if (is_array($refundedOrderIds)) {
+    foreach ($refundedOrderIds as $refundedOrderId) {
+        if (!is_string($refundedOrderId) || $refundedOrderId === '') continue;
+        try {
+            $pdo->prepare(
+                "UPDATE orders
+                    SET takeout_ops_status = 'refunded',
+                        takeout_ops_note = COALESCE(takeout_ops_note, '決済返金済み'),
+                        takeout_ops_updated_at = NOW(),
+                        takeout_ops_updated_by_user_id = ?,
+                        updated_at = NOW()
+                  WHERE id = ? AND store_id = ? AND order_type = 'takeout'"
+            )->execute([$cashierUserId, $refundedOrderId, $storeId]);
+        } catch (PDOException $e) {
+            error_log('[P1-65][refund-payment] takeout_refund_status_failed order=' . $refundedOrderId . ' err=' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+        }
+    }
 }
 
 // 監査ログ（CP1b: write_audit_log() 経由で正しいスキーマで書き込む）

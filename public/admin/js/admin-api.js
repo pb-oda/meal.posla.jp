@@ -974,8 +974,19 @@ var AdminApi = (function () {
     return storeGet('/store/takeout-management.php', { date: date, status: status });
   }
 
-  function patchTakeoutOrder(orderId, status) {
-    return request('PATCH', '/store/takeout-management.php', { store_id: _currentStoreId, order_id: orderId, status: status });
+  function patchTakeoutOrder(orderId, statusOrPayload) {
+    var payload = { store_id: _currentStoreId, order_id: orderId };
+    var k;
+    if (statusOrPayload && typeof statusOrPayload === 'object') {
+      for (k in statusOrPayload) {
+        if (Object.prototype.hasOwnProperty.call(statusOrPayload, k)) {
+          payload[k] = statusOrPayload[k];
+        }
+      }
+    } else {
+      payload.status = statusOrPayload;
+    }
+    return request('PATCH', '/store/takeout-management.php', payload);
   }
 
   // L-5: 領収書/インボイス

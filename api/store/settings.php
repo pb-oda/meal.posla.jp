@@ -68,7 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
             'welcome_message', 'welcome_message_en',
             'last_order_time', 'google_place_id',
             'takeout_enabled', 'takeout_min_prep_minutes', 'takeout_available_from',
-            'takeout_available_to', 'takeout_slot_capacity', 'takeout_online_payment',
+            'takeout_available_to', 'takeout_slot_capacity', 'takeout_slot_item_capacity',
+            'takeout_peak_start_time', 'takeout_peak_end_time', 'takeout_peak_slot_capacity',
+            'takeout_peak_slot_item_capacity', 'takeout_acceptance_delay_minutes',
+            'takeout_sla_warning_minutes', 'takeout_online_payment',
             'brand_color', 'brand_logo_url', 'brand_display_name',
             'self_checkout_enabled' // P1-10b: セルフレジ有効フラグ
         ];
