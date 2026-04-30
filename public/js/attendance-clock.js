@@ -253,6 +253,9 @@
                     self.status = 'working';
                     self.currentRecord = { id: json.data.id, clock_in: json.data.clock_in };
                     self._updateUI();
+                    if (window.ShiftManager && typeof window.ShiftManager.loadStaffHome === 'function') {
+                        window.ShiftManager.loadStaffHome();
+                    }
                     if (json.data.warning) {
                         alert(json.data.warning);
                     }
@@ -260,6 +263,9 @@
                     self.status = 'idle';
                     self.currentRecord = null;
                     self._updateUI();
+                    if (window.ShiftManager && typeof window.ShiftManager.loadStaffHome === 'function') {
+                        window.ShiftManager.loadStaffHome();
+                    }
                 }
             })
             .catch(function(err) {

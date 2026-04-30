@@ -4832,6 +4832,182 @@ body.sidebar-open .admin-sidebar-backdrop {
   text-align: center;
 }
 
+.staff-home-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.staff-home-status__main {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.staff-home-status__title {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.staff-home-status__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.staff-home-status__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.staff-home-status__badge--work { color: var(--success); background: var(--success-light); border-color: rgba(46, 125, 50, 0.25); }
+.staff-home-status__badge--warn { color: #e65100; background: var(--warning-light); border-color: rgba(230, 81, 0, 0.28); }
+.staff-home-status__badge--muted { color: var(--text-muted); }
+
+.staff-home-status__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.staff-home-status__note {
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.staff-home-todos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.staff-home-todo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  min-height: 116px;
+}
+
+.staff-home-todo--warn {
+  border-color: rgba(230, 81, 0, 0.35);
+  background: var(--warning-light);
+}
+
+.staff-home-todo__label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.staff-home-todo__value {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.staff-home-todo__desc {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.staff-home-todo__action {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+.staff-home-empty {
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.staff-home-attendance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.staff-home-attendance__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.staff-home-attendance__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.staff-home-attendance__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.staff-home-attendance__time {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.staff-home-attendance__sub {
+  margin-top: 2px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.attendance-correction-list {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  background: var(--warning-light);
+}
+
+.attendance-correction-list__title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: #e65100;
+}
+
 /* ── 勤怠打刻 (attendance-clock.js の staff panel 分岐) ── */
 .staff-clock {
   display: flex;
@@ -4951,6 +5127,16 @@ body.sidebar-open .admin-sidebar-backdrop {
     padding: var(--space-3) var(--space-4) var(--space-4);
   }
   .staff-home__card-body--grid {
+    grid-template-columns: 1fr;
+  }
+  .staff-home-status__main,
+  .staff-home-attendance__row {
+    grid-template-columns: 1fr;
+  }
+  .staff-home-status__actions {
+    justify-content: flex-start;
+  }
+  .staff-home-todos {
     grid-template-columns: 1fr;
   }
   .staff-home__tools-grid {

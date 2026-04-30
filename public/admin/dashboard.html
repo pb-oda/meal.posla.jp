@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3f51b5">
   <title>管理ダッシュボード</title>
-  <link rel="stylesheet" href="css/admin.css?v=20260430-shift-attendance-followup">
+  <link rel="stylesheet" href="css/admin.css?v=20260430-staff-home-ops">
   <link rel="stylesheet" href="css/reservation-board.css?v=20260422-batch-a">
   <style>
     /* L-3 Phase 3: ヘルプスタッフ表示 */
@@ -653,8 +653,18 @@
       <div class="staff-home">
         <header class="staff-home__header">
           <h2 class="staff-home__title">スタッフ画面</h2>
-          <p class="staff-home__subtitle">今日の業務、おつかれさまです。まず勤怠打刻からどうぞ。</p>
+          <p class="staff-home__subtitle">今日の勤務、打刻、未対応をここで確認します。</p>
         </header>
+
+        <section class="staff-home__card" id="staff-home-summary-section" style="display:none;">
+          <div class="staff-home__card-head">
+            <h3 class="staff-home__card-title"><span class="staff-home__card-icon">本</span>今日の勤務</h3>
+            <p class="staff-home__card-desc">今日のシフト、持ち場、休憩予定、出勤状態を確認できます。</p>
+          </div>
+          <div class="staff-home__card-body">
+            <div id="staff-home-summary" class="staff-home-status"></div>
+          </div>
+        </section>
 
         <!-- Primary: 勤怠打刻（最優先） -->
         <section class="staff-home__card staff-home__card--primary" id="staff-attendance-section" style="display:none;">
@@ -664,6 +674,26 @@
           </div>
           <div class="staff-home__card-body">
             <div id="staff-attendance-slot"></div>
+          </div>
+        </section>
+
+        <section class="staff-home__card" id="staff-home-todos-section" style="display:none;">
+          <div class="staff-home__card-head">
+            <h3 class="staff-home__card-title"><span class="staff-home__card-icon">確</span>未対応</h3>
+            <p class="staff-home__card-desc">変更確認、担当作業、募集シフト、申請状況をまとめて表示します。</p>
+          </div>
+          <div class="staff-home__card-body">
+            <div id="staff-home-todos" class="staff-home-todos"></div>
+          </div>
+        </section>
+
+        <section class="staff-home__card" id="staff-home-attendance-history-section" style="display:none;">
+          <div class="staff-home__card-head">
+            <h3 class="staff-home__card-title"><span class="staff-home__card-icon">勤</span>勤怠履歴・修正申請</h3>
+            <p class="staff-home__card-desc">今日の打刻履歴を確認し、打刻忘れや時刻誤りを店長へ申請できます。</p>
+          </div>
+          <div class="staff-home__card-body">
+            <div id="staff-home-attendance-history" class="staff-home-attendance"></div>
           </div>
         </section>
 
@@ -852,10 +882,10 @@
   <script src="js/receipt-settings.js?v=20260405c"></script>
   <script src="js/takeout-manager.js"></script>
   <script src="js/ai-assistant.js?v=20260422-batch-a2b"></script>
-  <script src="../js/shift-manager.js?v=20260430-shift-attendance-followup"></script>
+  <script src="../js/shift-manager.js?v=20260430-staff-home-ops"></script>
   <script src="../js/shift-calendar.js?v=20260430-shift-ops"></script>
   <script src="js/shift-help.js?v=20260430-shift-attendance-followup"></script>
-  <script src="../js/attendance-clock.js?v=20260422-staffhome"></script>
+  <script src="../js/attendance-clock.js?v=20260430-staff-home-ops"></script>
   <script src="js/reservation-board.js?v=20260422-batch-a"></script>
   <script>
   // L-9 予約管理 — タブ表示時に ReservationBoard を初期化
@@ -1292,6 +1322,10 @@
         var attSection = document.getElementById('staff-attendance-section');
         if (attSection) attSection.style.display = '';
       }
+      if (_role === 'staff' && typeof ShiftManager !== 'undefined' && StoreSelector.getSelectedStoreId()) {
+        ShiftManager.storeId = StoreSelector.getSelectedStoreId();
+        ShiftManager.loadStaffHome();
+      }
 
       // スタッフには「注文画面」リンク不要（ハンディで確認可能）
       if (_role === 'staff') {
@@ -1360,6 +1394,10 @@
           // staff-home 表示
           var home = document.getElementById('panel-staff-home');
           if (home) { home.style.display = ''; home.classList.add('active'); }
+          if (typeof ShiftManager !== 'undefined') {
+            ShiftManager.storeId = StoreSelector.getSelectedStoreId();
+            ShiftManager.loadStaffHome();
+          }
           // staff のリロード時復元用タブ情報をクリア (次回リロードでスタッフ画面に戻る)
           try { localStorage.removeItem('posla_last_tab'); localStorage.removeItem('posla_last_group'); } catch (e) {}
           window.scrollTo(0, 0);
@@ -1382,10 +1420,18 @@
           } else {
             document.getElementById('panel-staff-home').style.display = '';
             document.getElementById('panel-staff-home').classList.add('active');
+            if (typeof ShiftManager !== 'undefined') {
+              ShiftManager.storeId = StoreSelector.getSelectedStoreId();
+              ShiftManager.loadStaffHome();
+            }
           }
         } else {
           document.getElementById('panel-staff-home').style.display = '';
           document.getElementById('panel-staff-home').classList.add('active');
+          if (typeof ShiftManager !== 'undefined') {
+            ShiftManager.storeId = StoreSelector.getSelectedStoreId();
+            ShiftManager.loadStaffHome();
+          }
         }
       } else if (!_waitingForOverlay) {
         // CB1c: 前回開いていたタブを localStorage から復元 (なければメニュー管理)

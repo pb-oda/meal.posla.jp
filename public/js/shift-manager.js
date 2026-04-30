@@ -233,6 +233,258 @@
         },
 
         // ──────────────────────────────
+        // スタッフホーム
+        // ──────────────────────────────
+        _staffHomeData: null,
+
+        loadStaffHome: function() {
+            var self = this;
+            var summary = document.getElementById('staff-home-summary');
+            var todos = document.getElementById('staff-home-todos');
+            var attendance = document.getElementById('staff-home-attendance-history');
+            if (!summary || !todos || !attendance || !self.storeId) return;
+
+            self._showStaffHomeSections();
+            summary.innerHTML = '<p class="empty-msg">読み込み中...</p>';
+            todos.innerHTML = '<p class="empty-msg">読み込み中...</p>';
+            attendance.innerHTML = '<p class="empty-msg">読み込み中...</p>';
+
+            apiGet('staff-home.php', { store_id: self.storeId }, function(data, err) {
+                if (err) {
+                    summary.innerHTML = '<p class="error">スタッフ画面の取得に失敗しました</p>';
+                    todos.innerHTML = '';
+                    attendance.innerHTML = '';
+                    return;
+                }
+                self._staffHomeData = data;
+                self._renderStaffHomeSummary(summary, data);
+                self._renderStaffHomeTodos(todos, data);
+                self._renderStaffHomeAttendance(attendance, data);
+            });
+        },
+
+        _showStaffHomeSections: function() {
+            var ids = [
+                'staff-home-summary-section',
+                'staff-home-todos-section',
+                'staff-home-attendance-history-section'
+            ];
+            for (var i = 0; i < ids.length; i++) {
+                var el = document.getElementById(ids[i]);
+                if (el) el.style.display = '';
+            }
+        },
+
+        _openStaffShiftTab: function(tabId) {
+            var groupBtn = document.querySelector('.tab-nav__btn[data-group="shift"]');
+            if (groupBtn) groupBtn.click();
+            var subBtn = document.querySelector('.sub-tab-nav__btn[data-tab="' + tabId + '"]');
+            if (subBtn) subBtn.click();
+        },
+
+        _renderStaffHomeSummary: function(container, data) {
+            var self = this;
+            var a = data.today_assignment || data.next_assignment;
+            var isToday = data.today_assignment ? true : false;
+            var working = data.working;
+            var html = '<div class="staff-home-status">';
+            html += '<div class="staff-home-status__main"><div>';
+            if (a) {
+                html += '<p class="staff-home-status__title">' +
+                    (isToday ? '本日のシフト' : '次のシフト') + ' ' +
+                    esc(a.shift_date || '') + ' ' + esc(a.start_time || '') + '-' + esc(a.end_time || '') +
+                    '</p>';
+                html += '<div class="staff-home-status__meta">' +
+                    '<span class="staff-home-status__badge">' + esc(self._roleLabel(a.role_type)) + '</span>' +
+                    '<span class="staff-home-status__badge">休憩 ' + esc(String(a.break_minutes || 0)) + '分</span>' +
+                    '<span class="staff-home-status__badge staff-home-status__badge--' + (working ? 'work' : 'muted') + '">' +
+                    (working ? '勤務中' : '未出勤') + '</span>';
+                if (a.status === 'published') {
+                    html += '<span class="staff-home-status__badge staff-home-status__badge--warn">' +
+                        (a.confirmation_required ? '変更あり' : '未確認') + '</span>';
+                } else if (a.status === 'confirmed') {
+                    html += '<span class="staff-home-status__badge staff-home-status__badge--work">確認済</span>';
+                }
+                html += '</div>';
+                if (a.note) {
+                    html += '<p class="staff-home-status__note">' + esc(a.note) + '</p>';
+                }
+            } else {
+                html += '<p class="staff-home-status__title">本日のシフトはありません</p>' +
+                    '<p class="staff-home-status__note">募集シフトや希望提出が必要な場合は、下の未対応から確認してください。</p>';
+            }
+            html += '</div><div class="staff-home-status__actions">';
+            if (a && a.status === 'published') {
+                html += '<button type="button" class="btn btn-primary staff-home-confirm-shift" data-id="' + esc(a.id) + '">確認する</button>';
+            }
+            html += '<button type="button" class="btn btn-sm staff-home-open-myshift">マイシフト</button>';
+            html += '</div></div>';
+            html += '</div>';
+            container.innerHTML = html;
+
+            var confirmBtn = container.querySelector('.staff-home-confirm-shift');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', function() {
+                    apiPost('assignments.php?action=confirm&store_id=' + encodeURIComponent(self.storeId), {
+                        id: confirmBtn.getAttribute('data-id')
+                    }, function(result, err) {
+                        if (err) { notify('確認に失敗しました: ' + (err.message || ''), 'error'); return; }
+                        self.loadStaffHome();
+                    });
+                });
+            }
+            var openBtn = container.querySelector('.staff-home-open-myshift');
+            if (openBtn) {
+                openBtn.addEventListener('click', function() { self._openStaffShiftTab('shift-my'); });
+            }
+        },
+
+        _renderStaffHomeTodos: function(container, data) {
+            var self = this;
+            var m = data.metrics || {};
+            var items = [];
+            if ((m.pending_confirmation_count || 0) > 0) {
+                items.push({
+                    label: 'シフト確認',
+                    value: m.pending_confirmation_count + '件',
+                    desc: '変更または未確認のシフトがあります。',
+                    tab: 'shift-my',
+                    warn: true
+                });
+            }
+            if ((m.pending_task_count || 0) > 0) {
+                items.push({
+                    label: '担当作業',
+                    value: m.pending_task_count + '件',
+                    desc: '今日以降の未完了作業があります。',
+                    tab: 'shift-my',
+                    warn: true
+                });
+            }
+            if ((m.open_shift_count || 0) > 0) {
+                items.push({
+                    label: '募集シフト',
+                    value: m.open_shift_count + '件',
+                    desc: '応募できる募集シフトがあります。',
+                    tab: 'shift-my',
+                    warn: false
+                });
+            }
+            if ((m.pending_request_count || 0) > 0) {
+                items.push({
+                    label: '申請中',
+                    value: m.pending_request_count + '件',
+                    desc: '交代・欠勤申請が店長確認待ちです。',
+                    tab: 'shift-my',
+                    warn: false
+                });
+            }
+            if ((m.pending_correction_count || 0) > 0) {
+                items.push({
+                    label: '打刻修正',
+                    value: m.pending_correction_count + '件',
+                    desc: '店長確認待ちの打刻修正申請があります。',
+                    correction: true,
+                    warn: false
+                });
+            }
+            if (items.length === 0) {
+                container.innerHTML = '<div class="staff-home-empty">未対応はありません。</div>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                html += '<div class="staff-home-todo' + (item.warn ? ' staff-home-todo--warn' : '') + '">' +
+                    '<div class="staff-home-todo__label">' + esc(item.label) + '</div>' +
+                    '<div class="staff-home-todo__value">' + esc(item.value) + '</div>' +
+                    '<p class="staff-home-todo__desc">' + esc(item.desc) + '</p>' +
+                    '<button type="button" class="btn btn-sm staff-home-todo__action ' +
+                    (item.correction ? 'staff-home-open-correction' : 'staff-home-open-tab') + '" data-tab="' + esc(item.tab || '') + '">確認</button>' +
+                    '</div>';
+            }
+            container.innerHTML = html;
+            var tabBtns = container.querySelectorAll('.staff-home-open-tab');
+            for (var t = 0; t < tabBtns.length; t++) {
+                (function(btn) {
+                    btn.addEventListener('click', function() {
+                        self._openStaffShiftTab(btn.getAttribute('data-tab') || 'shift-my');
+                    });
+                })(tabBtns[t]);
+            }
+            var correctionBtns = container.querySelectorAll('.staff-home-open-correction');
+            for (var c = 0; c < correctionBtns.length; c++) {
+                correctionBtns[c].addEventListener('click', function() {
+                    var att = document.getElementById('staff-home-attendance-history-section');
+                    if (att) att.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            }
+        },
+
+        _renderStaffHomeAttendance: function(container, data) {
+            var self = this;
+            var attendance = data.attendance || [];
+            var corrections = data.attendance_corrections || [];
+            var html = '<div class="staff-home-attendance__actions">' +
+                '<button type="button" class="btn btn-primary" id="staff-home-correction-request">打刻修正を申請</button>' +
+                '<button type="button" class="btn btn-sm staff-home-open-myshift">マイシフトを開く</button>' +
+                '</div>';
+
+            html += '<div class="staff-home-attendance__list">';
+            if (attendance.length === 0) {
+                html += '<div class="staff-home-empty">今日の打刻履歴はありません。</div>';
+            } else {
+                for (var i = 0; i < Math.min(attendance.length, 3); i++) {
+                    var a = attendance[i];
+                    html += '<div class="staff-home-attendance__row">' +
+                        '<div><div class="staff-home-attendance__time">' +
+                        esc(self._shortDateTime(a.clock_in)) + ' - ' + esc(a.clock_out ? self._shortDateTime(a.clock_out) : '勤務中') +
+                        '</div><div class="staff-home-attendance__sub">休憩 ' + esc(String(a.break_minutes || 0)) + '分 / ' + esc(self._attendanceStatusLabel(a.status)) + '</div></div>' +
+                        '<button type="button" class="btn btn-sm staff-home-correction-from-log" data-id="' + esc(a.id) + '">この打刻を修正</button>' +
+                        '</div>';
+                }
+            }
+            html += '</div>';
+
+            if (corrections.length > 0) {
+                html += '<h4>打刻修正申請</h4><table class="shift-table"><thead><tr><th>日付</th><th>状態</th><th>申請内容</th></tr></thead><tbody>';
+                for (var r = 0; r < Math.min(corrections.length, 5); r++) {
+                    var cr = corrections[r];
+                    html += '<tr><td>' + esc(cr.target_date || '') + '</td>' +
+                        '<td>' + esc(self._correctionStatusLabel(cr.status)) + '</td>' +
+                        '<td>' + esc(self._correctionSummary(cr)) + '</td></tr>';
+                }
+                html += '</tbody></table>';
+            }
+
+            container.innerHTML = html;
+            var reqBtn = document.getElementById('staff-home-correction-request');
+            if (reqBtn) {
+                reqBtn.addEventListener('click', function() { self._showAttendanceCorrectionRequestDialog(null); });
+            }
+            var logBtns = container.querySelectorAll('.staff-home-correction-from-log');
+            for (var b = 0; b < logBtns.length; b++) {
+                (function(btn) {
+                    btn.addEventListener('click', function() {
+                        var rec = null;
+                        for (var x = 0; x < attendance.length; x++) {
+                            if (attendance[x].id === btn.getAttribute('data-id')) {
+                                rec = attendance[x];
+                                break;
+                            }
+                        }
+                        self._showAttendanceCorrectionRequestDialog(rec);
+                    });
+                })(logBtns[b]);
+            }
+            var openBtns = container.querySelectorAll('.staff-home-open-myshift');
+            for (var o = 0; o < openBtns.length; o++) {
+                openBtns[o].addEventListener('click', function() { self._openStaffShiftTab('shift-my'); });
+            }
+        },
+
+        // ──────────────────────────────
         // テンプレート管理
         // ──────────────────────────────
         loadTemplates: function() {
@@ -939,15 +1191,25 @@
                     container.innerHTML = '<p class="error">勤怠データの取得に失敗しました</p>';
                     return;
                 }
-                self._renderAttendance(container, data.attendance, start, end);
+                apiGet('attendance-corrections.php', { store_id: self.storeId, status: 'pending' }, function(reqData) {
+                    self._renderAttendance(
+                        container,
+                        data.attendance,
+                        start,
+                        end,
+                        (reqData && reqData.requests) ? reqData.requests : []
+                    );
+                });
             });
         },
 
-        _renderAttendance: function(container, records, start, end) {
+        _renderAttendance: function(container, records, start, end, correctionRequests) {
             var self = this;
             var html = '<div class="shift-section-header">' +
                        '<h3>勤怠一覧 ' + start + ' 〜 ' + end + '</h3>' +
                        '</div>';
+
+            html += self._renderAttendanceCorrectionRequests(correctionRequests || []);
 
             if (records.length === 0) {
                 html += '<p class="empty-msg">この期間の勤怠データはありません。</p>';
@@ -985,6 +1247,46 @@
                     });
                 })(editBtns[j]);
             }
+
+            var reviewBtns = container.querySelectorAll('.btn-review-attendance-correction');
+            for (var rb = 0; rb < reviewBtns.length; rb++) {
+                (function(btn) {
+                    btn.addEventListener('click', function() {
+                        var req = null;
+                        for (var q = 0; q < correctionRequests.length; q++) {
+                            if (correctionRequests[q].id === btn.getAttribute('data-id')) {
+                                req = correctionRequests[q];
+                                break;
+                            }
+                        }
+                        if (req) self._showAttendanceCorrectionReviewDialog(req);
+                    });
+                })(reviewBtns[rb]);
+            }
+        },
+
+        _renderAttendanceCorrectionRequests: function(requests) {
+            var self = this;
+            if (!requests || requests.length === 0) {
+                return '';
+            }
+            var html = '<section class="attendance-correction-list">' +
+                '<h4 class="attendance-correction-list__title">打刻修正申請</h4>' +
+                '<table class="shift-table"><thead><tr>' +
+                '<th>スタッフ</th><th>日付</th><th>申請内容</th><th>理由</th><th>操作</th>' +
+                '</tr></thead><tbody>';
+            for (var i = 0; i < requests.length; i++) {
+                var r = requests[i];
+                html += '<tr>' +
+                    '<td>' + esc(r.display_name || r.username || '') + '</td>' +
+                    '<td>' + esc(r.target_date || '') + '</td>' +
+                    '<td>' + esc(self._correctionSummary(r)) + '</td>' +
+                    '<td>' + esc(r.reason || '') + '</td>' +
+                    '<td><button class="btn btn-sm btn-review-attendance-correction" data-id="' + esc(r.id) + '">確認</button></td>' +
+                    '</tr>';
+            }
+            html += '</tbody></table></section>';
+            return html;
         },
 
         _showAttendanceEditDialog: function(record) {
@@ -1027,6 +1329,103 @@
                     document.body.removeChild(overlay);
                     self.loadAttendance();
                 });
+            });
+        },
+
+        _showAttendanceCorrectionRequestDialog: function(record) {
+            var self = this;
+            var today = self._formatDate(new Date());
+            var targetDate = record && record.clock_in ? record.clock_in.substring(0, 10) : today;
+            var clockIn = record && record.clock_in ? self._datetimeLocalValue(record.clock_in) : (targetDate + 'T09:00');
+            var clockOut = record && record.clock_out ? self._datetimeLocalValue(record.clock_out) : '';
+            var breakMinutes = record && record.break_minutes !== null && record.break_minutes !== undefined ? record.break_minutes : '';
+
+            var overlay = document.createElement('div');
+            overlay.className = 'shift-dialog-overlay';
+            overlay.innerHTML = '<div class="shift-dialog">' +
+                '<h3>打刻修正申請</h3>' +
+                '<label>対象日<input type="date" id="acr-target-date" value="' + esc(targetDate) + '"></label>' +
+                '<label>出勤時刻<input type="datetime-local" id="acr-clock-in" value="' + esc(clockIn) + '"></label>' +
+                '<label>退勤時刻<input type="datetime-local" id="acr-clock-out" value="' + esc(clockOut) + '"></label>' +
+                '<label>休憩(分)<input type="number" id="acr-break" min="0" max="480" value="' + esc(String(breakMinutes)) + '"></label>' +
+                '<label>理由<textarea id="acr-reason" rows="3" placeholder="例: 出勤打刻を忘れた / 退勤時刻を押し間違えた"></textarea></label>' +
+                '<div class="shift-dialog-actions">' +
+                '<button class="btn btn-primary" id="acr-send">申請する</button>' +
+                '<button class="btn" id="acr-cancel">キャンセル</button>' +
+                '</div></div>';
+            document.body.appendChild(overlay);
+
+            document.getElementById('acr-cancel').addEventListener('click', function() {
+                document.body.removeChild(overlay);
+            });
+            document.getElementById('acr-send').addEventListener('click', function() {
+                var reason = document.getElementById('acr-reason').value;
+                if (!reason.trim()) {
+                    alert('申請理由を入力してください');
+                    return;
+                }
+                var outValue = document.getElementById('acr-clock-out').value;
+                var breakValue = document.getElementById('acr-break').value;
+                var body = {
+                    attendance_log_id: record ? record.id : '',
+                    target_date: document.getElementById('acr-target-date').value,
+                    request_type: record ? 'other' : 'clock_in',
+                    requested_clock_in: document.getElementById('acr-clock-in').value.replace('T', ' '),
+                    requested_clock_out: outValue ? outValue.replace('T', ' ') : null,
+                    requested_break_minutes: breakValue !== '' ? parseInt(breakValue, 10) : null,
+                    reason: reason
+                };
+                apiPost('attendance-corrections.php?store_id=' + encodeURIComponent(self.storeId), body, function(data, err) {
+                    if (err) {
+                        alert('申請に失敗しました: ' + (err.message || ''));
+                        return;
+                    }
+                    document.body.removeChild(overlay);
+                    notify('打刻修正申請を送信しました', 'success');
+                    self.loadStaffHome();
+                });
+            });
+        },
+
+        _showAttendanceCorrectionReviewDialog: function(request) {
+            var self = this;
+            var overlay = document.createElement('div');
+            overlay.className = 'shift-dialog-overlay';
+            overlay.innerHTML = '<div class="shift-dialog">' +
+                '<h3>打刻修正申請: ' + esc(request.display_name || request.username || '') + '</h3>' +
+                '<p class="staff-home-status__note">' + esc(self._correctionSummary(request)) + '</p>' +
+                '<p class="staff-home-status__note">理由: ' + esc(request.reason || '') + '</p>' +
+                '<label>店長メモ<input type="text" id="acr-response-note" placeholder="承認/却下理由（任意）"></label>' +
+                '<div class="shift-dialog-actions">' +
+                '<button class="btn btn-primary" id="acr-approve">承認して勤怠へ反映</button>' +
+                '<button class="btn btn-danger" id="acr-reject">却下</button>' +
+                '<button class="btn" id="acr-review-cancel">閉じる</button>' +
+                '</div></div>';
+            document.body.appendChild(overlay);
+
+            function send(action) {
+                apiPatch('attendance-corrections.php?id=' + encodeURIComponent(request.id) + '&store_id=' + encodeURIComponent(self.storeId), {
+                    action: action,
+                    response_note: document.getElementById('acr-response-note').value
+                }, function(data, err) {
+                    if (err) {
+                        alert('処理に失敗しました: ' + (err.message || ''));
+                        return;
+                    }
+                    document.body.removeChild(overlay);
+                    self.loadAttendance();
+                });
+            }
+
+            document.getElementById('acr-review-cancel').addEventListener('click', function() {
+                document.body.removeChild(overlay);
+            });
+            document.getElementById('acr-approve').addEventListener('click', function() {
+                if (!confirm('この申請を承認し、勤怠へ反映しますか？')) return;
+                send('approve');
+            });
+            document.getElementById('acr-reject').addEventListener('click', function() {
+                send('reject');
             });
         },
 
@@ -1542,6 +1941,41 @@
         },
 
         // ─── ヘルパー ───
+        _shortDateTime: function(value) {
+            if (!value) return '';
+            return String(value).substring(5, 16);
+        },
+
+        _datetimeLocalValue: function(value) {
+            if (!value) return '';
+            return String(value).replace(' ', 'T').substring(0, 16);
+        },
+
+        _attendanceStatusLabel: function(status) {
+            return { working: '勤務中', completed: '完了', absent: '欠勤', late: '遅刻' }[status] || status || '';
+        },
+
+        _correctionStatusLabel: function(status) {
+            return { pending: '店長確認待ち', approved: '承認済', rejected: '却下', cancelled: '取消' }[status] || status || '';
+        },
+
+        _correctionSummary: function(req) {
+            var parts = [];
+            if (req.requested_clock_in) {
+                parts.push('出勤 ' + this._shortDateTime(req.requested_clock_in));
+            }
+            if (req.requested_clock_out) {
+                parts.push('退勤 ' + this._shortDateTime(req.requested_clock_out));
+            }
+            if (req.requested_break_minutes !== null && typeof req.requested_break_minutes !== 'undefined') {
+                parts.push('休憩 ' + req.requested_break_minutes + '分');
+            }
+            if (parts.length === 0) {
+                parts.push('内容確認');
+            }
+            return parts.join(' / ');
+        },
+
         _formatDate: function(dt) {
             var y = dt.getFullYear();
             var m = ('0' + (dt.getMonth() + 1)).slice(-2);
