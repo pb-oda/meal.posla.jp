@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3f51b5">
   <title>管理ダッシュボード</title>
-  <link rel="stylesheet" href="css/admin.css?v=20260430-shift-announce-mobile">
+  <link rel="stylesheet" href="css/admin.css?v=20260430-admin-ops">
   <link rel="stylesheet" href="css/reservation-board.css?v=20260430-reservation-empty-state">
   <style>
     /* L-3 Phase 3: ヘルプスタッフ表示 */
@@ -57,6 +57,7 @@
 
       <!-- タブナビゲーション（グループ親タブ、縦並び）—— data-* 互換保持 -->
       <nav class="tab-nav" id="tab-nav">
+        <button class="tab-nav__btn tab-nav__btn--group" data-group="ops" data-role-min="manager" data-requires-store>運営管理</button>
         <button class="tab-nav__btn tab-nav__btn--group" data-group="menu" data-role-min="manager" data-requires-store>メニュー管理</button>
         <button class="tab-nav__btn tab-nav__btn--group" data-group="plan" data-role-min="manager" data-requires-store>プラン・コース</button>
         <button class="tab-nav__btn tab-nav__btn--group" data-group="table" data-role-min="manager" data-requires-store>テーブル・フロア</button>
@@ -116,6 +117,13 @@
   <!-- サブタブバー -->
   <div class="sub-tab-wrap">
     <nav class="sub-tab-nav" id="sub-tab-nav">
+      <!-- 運営管理 -->
+      <button class="sub-tab-nav__btn" data-tab="ops-cockpit" data-group="ops" data-role-min="manager">運営コックピット</button>
+      <button class="sub-tab-nav__btn" data-tab="ops-search" data-group="ops" data-role-min="manager">全体検索</button>
+      <button class="sub-tab-nav__btn" data-tab="ops-sales-drilldown" data-group="ops" data-role-min="manager">売上ドリル</button>
+      <button class="sub-tab-nav__btn" data-tab="ops-setup" data-group="ops" data-role-min="manager">初期設定</button>
+      <button class="sub-tab-nav__btn" data-tab="ops-terminals" data-group="ops" data-role-min="manager">端末稼働</button>
+      <button class="sub-tab-nav__btn" data-tab="ops-cart" data-group="ops" data-role-min="manager">カート離脱</button>
       <!-- メニュー管理 -->
       <button class="sub-tab-nav__btn" data-tab="hq-categories" data-group="menu" data-role-min="manager">カテゴリ管理</button>
       <button class="sub-tab-nav__btn" data-tab="option-groups" data-group="menu" data-role-min="manager" data-role-max="manager">オプション管理</button>
@@ -169,6 +177,38 @@
   <!-- メインコンテンツ -->
   <div class="admin-content">
 
+    <!-- 運営管理 -->
+    <div class="tab-panel" id="panel-ops-cockpit">
+      <div class="panel-body panel-body--flush">
+        <div id="ops-cockpit-container"></div>
+      </div>
+    </div>
+    <div class="tab-panel" id="panel-ops-search">
+      <div class="panel-body panel-body--flush">
+        <div id="ops-search-container"></div>
+      </div>
+    </div>
+    <div class="tab-panel" id="panel-ops-sales-drilldown">
+      <div class="panel-body panel-body--flush">
+        <div id="ops-sales-drilldown-container"></div>
+      </div>
+    </div>
+    <div class="tab-panel" id="panel-ops-setup">
+      <div class="panel-body panel-body--flush">
+        <div id="ops-setup-container"></div>
+      </div>
+    </div>
+    <div class="tab-panel" id="panel-ops-terminals">
+      <div class="panel-body panel-body--flush">
+        <div id="ops-terminals-container"></div>
+      </div>
+    </div>
+    <div class="tab-panel" id="panel-ops-cart">
+      <div class="panel-body panel-body--flush">
+        <div id="ops-cart-container"></div>
+      </div>
+    </div>
+
     <!-- カテゴリ管理(HQ) -->
     <div class="tab-panel" id="panel-hq-categories">
       <div class="panel-toolbar">
@@ -217,6 +257,21 @@
           <button class="btn btn-primary" id="btn-add-store-menu">+ メニュー追加</button>
         </div>
       </div>
+      <details class="csv-guide">
+        <summary>CSVの書き方・取込ルール</summary>
+        <div class="csv-guide__grid">
+          <div>
+            <h3>店舗メニューCSV</h3>
+            <p>既存の「CSVエクスポート」でテンプレートを出し、列名を変えずに編集してからインポートします。価格、非表示、品切れ、店舗別画像URLを一括更新できます。</p>
+            <code>template_id,name,category_name,base_price,price,is_hidden,is_sold_out,image_url</code>
+          </div>
+          <div>
+            <h3>限定メニューCSV</h3>
+            <p>店舗だけで扱う日替わり・季節商品は「限定メニュー」側のCSVを使います。カテゴリ名、商品名、価格、説明、画像URL、品切れを登録できます。</p>
+            <code>id,category_name,name,name_en,description,price,image_url,is_sold_out</code>
+          </div>
+        </div>
+      </details>
       <!-- N-1: 今日のおすすめ設定 -->
       <details class="recommend-section" style="margin:12px 0;border:1px solid var(--border-color,#ddd);border-radius:8px;padding:0">
         <summary style="padding:10px 16px;cursor:pointer;font-weight:600;font-size:0.95rem;background:var(--bg-secondary,#f5f5f5);border-radius:8px">今日のおすすめ設定</summary>
@@ -848,7 +903,7 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="../shared/js/utils.js?v=20260419-phaseB"></script>
   <script src="../shared/js/printer-service.js?v=20260418u2"></script>
-  <script src="js/admin-api.js?v=20260429-moneyguard1"></script>
+  <script src="js/admin-api.js?v=20260430-admin-ops"></script>
   <script src="js/store-selector.js"></script>
   <script src="js/category-editor.js"></script>
   <script src="js/menu-override-editor.js?v=20260408p130"></script>
@@ -867,18 +922,19 @@
   <script src="js/staff-report.js"></script>
   <script src="js/rating-report.js?v=20260420-r1b"></script>
   <script src="js/basket-analysis.js"></script>
+  <script src="js/admin-ops-dashboard.js?v=20260430-admin-ops"></script>
   <script src="js/emergency-payment-ledger.js?v=20260421-pwa4d-5b"></script>
   <script src="js/time-limit-plan-editor.js"></script>
   <script src="js/course-editor.js"></script>
   <script src="js/inventory-manager.js"></script>
-  <script src="js/settings-editor.js?v=20260429-close-reminder1"></script>
+  <script src="js/settings-editor.js?v=20260430-logo-upload"></script>
   <script src="js/option-group-editor.js"></script>
   <script src="js/kds-station-editor.js"></script>
   <script src="js/user-editor.js?v=20260419-cp1"></script>
   <script src="js/device-editor.js?v=20260418"></script>
   <script src="js/audit-log-viewer.js?v=20260422-batch-a2"></script>
   <script src="js/error-stats-viewer.js?v=20260422-batch-a2"></script>
-  <script src="../shared/js/posla-supportdesk-fab.js?v=20260427-incident1"></script>
+  <script src="../shared/js/posla-supportdesk-fab.js?v=20260430-fab-position"></script>
   <script src="js/receipt-settings.js?v=20260405c"></script>
   <script src="js/takeout-manager.js"></script>
   <script src="js/ai-assistant.js?v=20260422-batch-a2b"></script>
@@ -1121,9 +1177,8 @@
         if (_planFeatures.hq_menu_broadcast === true) {
           var btnAddOvr = document.getElementById('btn-add-store-menu');
           if (btnAddOvr) btnAddOvr.style.display = 'none';
-          // P1-30: enterprise では本部マスタの一括書込/翻訳キャッシュ波及操作も非表示
-          var btnOvrCsvImport = document.getElementById('btn-override-csv-import');
-          if (btnOvrCsvImport) btnOvrCsvImport.style.display = 'none';
+          // P1-30: enterprise では本部マスタの翻訳キャッシュ波及操作を非表示
+          // 店舗メニューCSVは store_menu_overrides の価格/非表示/品切れ上書きなので表示する。
           var btnTranslateMenu = document.getElementById('btn-translate-menu');
           if (btnTranslateMenu) btnTranslateMenu.style.display = 'none';
           // P1-31: 強制再翻訳ボタンも同じく非表示
@@ -1195,8 +1250,8 @@
             selectStoreViaOverlay(selectedId);
             changeLinkEl.style.display = '';
             updateStoreRequiredTabs();
-            // managerはメニュー管理グループを初期表示
-            if (_role !== 'staff') openGroup('menu');
+            // managerは運営管理グループを初期表示
+            if (_role !== 'staff') openGroup('ops');
           });
         } else {
           changeLinkEl.style.display = '';
@@ -1284,6 +1339,16 @@
         RatingReport.init(document.getElementById('rating-report-container'));
       }
       BasketAnalysis.init(document.getElementById('basket-analysis-container'));
+      if (typeof AdminOpsDashboard !== 'undefined') {
+        AdminOpsDashboard.init({
+          cockpit: document.getElementById('ops-cockpit-container'),
+          search: document.getElementById('ops-search-container'),
+          salesDrilldown: document.getElementById('ops-sales-drilldown-container'),
+          setup: document.getElementById('ops-setup-container'),
+          terminals: document.getElementById('ops-terminals-container'),
+          cart: document.getElementById('ops-cart-container')
+        });
+      }
       TimeLimitPlanEditor.init(
         document.getElementById('time-plan-list'),
         document.getElementById('time-plan-count')
@@ -1459,8 +1524,8 @@
           }
         }
       } else if (!_waitingForOverlay) {
-        // CB1c: 前回開いていたタブを localStorage から復元 (なければメニュー管理)
-        _restoreLastTab() || openGroup('menu');
+        // CB1c: 前回開いていたタブを localStorage から復元 (なければ運営管理)
+        _restoreLastTab() || openGroup('ops');
       }
     }).catch(function () {
       window.location.href = 'index.html';
@@ -1650,6 +1715,24 @@
 
       // データ読み込み
       switch (tabId) {
+        case 'ops-cockpit':
+          if (typeof AdminOpsDashboard !== 'undefined') AdminOpsDashboard.load('cockpit');
+          break;
+        case 'ops-search':
+          if (typeof AdminOpsDashboard !== 'undefined') AdminOpsDashboard.load('search');
+          break;
+        case 'ops-sales-drilldown':
+          if (typeof AdminOpsDashboard !== 'undefined') AdminOpsDashboard.load('sales');
+          break;
+        case 'ops-setup':
+          if (typeof AdminOpsDashboard !== 'undefined') AdminOpsDashboard.load('setup');
+          break;
+        case 'ops-terminals':
+          if (typeof AdminOpsDashboard !== 'undefined') AdminOpsDashboard.load('terminals');
+          break;
+        case 'ops-cart':
+          if (typeof AdminOpsDashboard !== 'undefined') AdminOpsDashboard.load('cart');
+          break;
         case 'hq-categories': CategoryEditor.load(); break;
         case 'option-groups': OptionGroupEditor.load(); break;
         case 'store-menu': MenuOverrideEditor.load(); DailyRecommendationEditor.load(); MenuAlternativeEditor.load(); MenuQualityCheck.load(); break;
@@ -2202,9 +2285,9 @@
   <script src="../shared/js/pwa-update-manager.js?v=20260420-pwa1"></script>
   <script>PWAUpdateManager.init({ scope: 'admin', cachePrefix: 'posla-admin-' });</script>
   <!-- Phase 2a: Web Push 購読マネージャ + バッジ管理 -->
-  <div id="posla-push-settings" style="position:fixed;bottom:50px;right:8px;z-index:2147482998;display:none;"></div>
+  <div id="posla-push-settings" style="position:fixed;bottom:58px;right:250px;z-index:2147482998;display:none;"></div>
   <button type="button" id="posla-push-settings-toggle" title="この端末の通知設定" aria-label="通知設定"
-    style="position:fixed;bottom:8px;right:160px;z-index:2147482999;background:rgba(0,0,0,0.55);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:14px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans',sans-serif;opacity:0.7;">🔔 通知設定</button>
+    style="position:fixed;bottom:18px;right:250px;z-index:2147482999;background:rgba(0,0,0,0.55);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:14px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans',sans-serif;opacity:0.7;white-space:nowrap;">🔔 通知設定</button>
   <script src="../shared/js/push-subscription-manager.js?v=20260420-pwa2b"></script>
   <script src="../shared/js/badge-manager.js?v=20260420-pwa2a"></script>
   <script>

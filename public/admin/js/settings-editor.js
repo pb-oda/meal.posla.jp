@@ -168,7 +168,14 @@ var SettingsEditor = (function () {
       + '</div></div>'
       + '<div class="form-group"><label class="form-label">表示名</label><input class="form-input" id="set-brand-display-name" value="' + Utils.escapeHtml(s.brand_display_name || '') + '" placeholder="ヘッダーに表示する店舗名"></div>'
       + '</div>'
-      + '<div class="form-group"><label class="form-label">ロゴ画像URL</label><input class="form-input" id="set-brand-logo-url" value="' + Utils.escapeHtml(s.brand_logo_url || '') + '" placeholder="https://example.com/logo.png"></div>'
+      + '<div class="form-group"><label class="form-label">ロゴ画像</label>'
+      + '<div class="settings-logo-upload">'
+      + '<input class="form-input" id="set-brand-logo-url" value="' + Utils.escapeHtml(s.brand_logo_url || '') + '" placeholder="アップロードまたは https://example.com/logo.png">'
+      + '<input type="file" id="set-brand-logo-file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none">'
+      + '<button type="button" class="btn btn-sm btn-outline" id="btn-brand-logo-upload">画像アップロード</button>'
+      + '<button type="button" class="btn btn-sm btn-outline" id="btn-brand-logo-clear">削除</button>'
+      + '</div>'
+      + '<div style="font-size:0.75rem;color:#888;margin-top:0.25rem">PNG/JPEG/WebP/GIF、5MB以下。アップロード後に「設定を保存」で反映されます。</div></div>'
       + '<div id="brand-preview" style="margin-top:0.5rem;display:none;"><img id="brand-logo-preview" style="max-height:40px;border:1px solid #eee;border-radius:4px;" alt="ロゴプレビュー"></div>'
 
       + '<div style="margin-top:2rem"><button class="btn btn-primary" id="btn-save-settings">設定を保存</button></div>'
@@ -396,11 +403,14 @@ var SettingsEditor = (function () {
     var _logoInput = document.getElementById('set-brand-logo-url');
     var _logoPrev = document.getElementById('brand-preview');
     var _logoImg = document.getElementById('brand-logo-preview');
+    var _logoFile = document.getElementById('set-brand-logo-file');
+    var _logoUploadBtn = document.getElementById('btn-brand-logo-upload');
+    var _logoClearBtn = document.getElementById('btn-brand-logo-clear');
     if (_logoInput && _logoPrev && _logoImg) {
       function _updateLogoPreview() {
         var url = _logoInput.value.trim();
         if (url) {
-          _logoImg.src = url;
+          _logoImg.src = url.indexOf('http') === 0 || url.indexOf('/') === 0 ? url : '../../' + url;
           _logoImg.onerror = function () { _logoPrev.style.display = 'none'; };
           _logoPrev.style.display = '';
         } else {
@@ -409,6 +419,35 @@ var SettingsEditor = (function () {
       }
       _logoInput.addEventListener('change', _updateLogoPreview);
       _updateLogoPreview();
+      if (_logoUploadBtn && _logoFile) {
+        _logoUploadBtn.addEventListener('click', function () {
+          _logoFile.click();
+        });
+        _logoFile.addEventListener('change', function () {
+          var file = _logoFile.files && _logoFile.files[0];
+          if (!file) return;
+          _logoUploadBtn.disabled = true;
+          _logoUploadBtn.textContent = 'アップロード中';
+          AdminApi.uploadStoreImage(file).then(function (res) {
+            if (!res || !res.url) throw new Error('アップロードURLが取得できませんでした');
+            _logoInput.value = res.url;
+            _updateLogoPreview();
+            showToast('ロゴ画像をアップロードしました。設定保存で反映されます', 'success');
+          }).catch(function (err) {
+            showToast('ロゴアップロード失敗: ' + err.message, 'error');
+          }).finally(function () {
+            _logoUploadBtn.disabled = false;
+            _logoUploadBtn.textContent = '画像アップロード';
+            _logoFile.value = '';
+          });
+        });
+      }
+      if (_logoClearBtn) {
+        _logoClearBtn.addEventListener('click', function () {
+          _logoInput.value = '';
+          _updateLogoPreview();
+        });
+      }
     }
 
     document.getElementById('btn-save-settings').addEventListener('click', function () {

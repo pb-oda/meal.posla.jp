@@ -225,8 +225,8 @@ var PWAUpdateManager = (function () {
     btn.textContent = '⟳ キャッシュリセット';
     btn.style.cssText = [
       'position:fixed',
-      'bottom:8px',
-      'right:8px',
+      'bottom:18px',
+      'right:96px',
       'z-index:2147482999',           // 更新バナーより一段下
       'background:rgba(0,0,0,0.55)',
       'color:#fff',
@@ -237,6 +237,7 @@ var PWAUpdateManager = (function () {
       'line-height:1.2',
       'cursor:pointer',
       'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans",sans-serif',
+      'white-space:nowrap',
       'opacity:0.7'
     ].join(';');
     btn.addEventListener('click', function () {

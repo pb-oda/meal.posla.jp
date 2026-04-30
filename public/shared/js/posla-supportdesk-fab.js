@@ -52,8 +52,8 @@
       + 'transition:transform 0.15s ease,background 0.15s;}'
       + '#posla-supportdesk-fab:hover{transform:scale(1.06);background:#ff8a1f;}'
       + '#posla-supportdesk-fab:active{transform:scale(0.95);}'
-      + '#posla-supportdesk-panel{position:fixed;right:20px;bottom:90px;width:420px;max-width:calc(100vw - 24px);'
-      + 'height:640px;max-height:calc(100vh - 110px);background:#fff;border-radius:12px;'
+      + '#posla-supportdesk-panel{position:fixed;right:20px;bottom:96px;width:420px;max-width:calc(100vw - 24px);'
+      + 'height:640px;max-height:calc(100vh - 124px);background:#fff;border-radius:12px;'
       + 'box-shadow:0 8px 32px rgba(0,0,0,0.25);display:none;flex-direction:column;z-index:9999;'
       + 'font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;overflow:hidden;}'
       + '#posla-supportdesk-panel.open{display:flex;}'
@@ -103,7 +103,7 @@
       + '.posla-sd__footer{padding:0.55rem 1rem;background:#fff8e1;color:#555;font-size:0.78rem;border-top:1px solid #ffe082;flex-shrink:0;line-height:1.4;}'
       + '.posla-sd__footer a{color:' + BRAND_ORANGE + ';text-decoration:none;}'
       + '.posla-sd__footer a:hover{text-decoration:underline;}'
-      + '@media (max-width:480px){#posla-supportdesk-panel{width:calc(100vw - 24px);height:calc(100vh - 110px);right:12px;bottom:80px;}}';
+      + '@media (max-width:480px){#posla-supportdesk-fab{right:14px;bottom:16px;width:56px;height:56px;}#posla-supportdesk-panel{width:calc(100vw - 24px);height:calc(100vh - 104px);right:12px;bottom:84px;}}';
     var s = document.createElement('style');
     s.id = 'posla-supportdesk-style';
     s.textContent = css;

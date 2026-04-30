@@ -248,7 +248,7 @@ var AdminApi = (function () {
         if (!res.ok || !json.ok) {
           return rejectApiError(json, '画像アップロードに失敗しました');
         }
-        return json;
+        return json.data || json;
       });
     });
   }
@@ -323,6 +323,13 @@ var AdminApi = (function () {
   function updateSettings(data) {
     data.store_id = _currentStoreId;
     return request('PATCH', '/store/settings.php', data);
+  }
+
+  // --- 管理画面オペレーション集約 ---
+  function getAdminOps(action, params) {
+    var p = params || {};
+    p.action = action;
+    return storeGet('/store/admin-ops.php', p);
   }
 
   // --- 売上レポート ---
@@ -857,6 +864,7 @@ var AdminApi = (function () {
     deleteTable: deleteTable,
     getSettings: getSettings,
     updateSettings: updateSettings,
+    getAdminOps: getAdminOps,
     getSalesReport: getSalesReport,
     getRegisterReport: getRegisterReport,
     resolveRegisterPreCloseLog: resolveRegisterPreCloseLog,
