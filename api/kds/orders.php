@@ -43,6 +43,7 @@ $hasMemo        = isset($orderCols['memo']);
 // 予約時刻はKDSの優先度判定に使う。予約系テーブルが未適用の環境では無視する。
 $hasTableSessions = false;
 $hasReservations = false;
+$hasReservationCustomers = false;
 try {
     $pdo->query('SELECT reservation_id FROM table_sessions LIMIT 0');
     $hasTableSessions = true;
@@ -50,6 +51,10 @@ try {
 try {
     $pdo->query('SELECT reserved_at FROM reservations LIMIT 0');
     $hasReservations = true;
+} catch (PDOException $e) {}
+try {
+    $pdo->query('SELECT preferences FROM reservation_customers LIMIT 0');
+    $hasReservationCustomers = true;
 } catch (PDOException $e) {}
 
 // ステーションフィルタリング用: 許可カテゴリIDを取得
@@ -153,8 +158,8 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $orders = $stmt->fetchAll();
 
-// KDS優先度用: 注文が紐づく現在の卓セッションから予約時刻を引く。
-$reservationTimeMap = [];
+// KDS優先度/注意表示用: 注文が紐づく現在の卓セッションから予約文脈を引く。
+$reservationContextMap = [];
 if ($hasTableSessions && $hasReservations && !empty($orders)) {
     $tableIds = [];
     foreach ($orders as $orderRow) {
@@ -167,10 +172,27 @@ if ($hasTableSessions && $hasReservations && !empty($orders)) {
             $tableIdList = array_keys($tableIds);
             $phTables = implode(',', array_fill(0, count($tableIdList), '?'));
             $resParams = array_merge([$storeId], $tableIdList);
+            $customerSelect = $hasReservationCustomers
+                ? ', rc.preferences AS customer_preferences,
+                     rc.allergies AS customer_allergies,
+                     rc.internal_memo AS customer_internal_memo,
+                     rc.tags AS customer_tags,
+                     rc.visit_count AS customer_visit_count,
+                     rc.no_show_count AS customer_no_show_count,
+                     rc.cancel_count AS customer_cancel_count,
+                     rc.last_visit_at AS customer_last_visit_at,
+                     rc.is_vip AS customer_is_vip'
+                : '';
+            $customerJoin = $hasReservationCustomers
+                ? ' LEFT JOIN reservation_customers rc ON rc.id = r.customer_id AND rc.store_id = r.store_id AND rc.tenant_id = r.tenant_id'
+                : '';
             $resStmt = $pdo->prepare(
-                'SELECT ts.table_id, r.reserved_at, ts.started_at
+                'SELECT ts.table_id, r.id AS reservation_id, r.reserved_at, r.customer_name,
+                        r.customer_phone, r.party_size, r.memo, r.tags, r.course_name,
+                        ts.started_at' . $customerSelect . '
                  FROM table_sessions ts
                  JOIN reservations r ON r.id = ts.reservation_id AND r.store_id = ts.store_id
+                 ' . $customerJoin . '
                  WHERE ts.store_id = ?
                    AND ts.table_id IN (' . $phTables . ')
                    AND ts.status IN ("seated","eating","bill_requested")
@@ -178,13 +200,31 @@ if ($hasTableSessions && $hasReservations && !empty($orders)) {
             );
             $resStmt->execute($resParams);
             foreach ($resStmt->fetchAll() as $resRow) {
-                if (!isset($reservationTimeMap[$resRow['table_id']])) {
-                    $reservationTimeMap[$resRow['table_id']] = $resRow['reserved_at'];
+                if (!isset($reservationContextMap[$resRow['table_id']])) {
+                    $reservationContextMap[$resRow['table_id']] = [
+                        'reservation_id' => $resRow['reservation_id'],
+                        'reserved_at' => $resRow['reserved_at'],
+                        'customer_name' => $resRow['customer_name'],
+                        'customer_phone' => $resRow['customer_phone'],
+                        'party_size' => isset($resRow['party_size']) ? (int)$resRow['party_size'] : null,
+                        'memo' => $resRow['memo'],
+                        'tags' => $resRow['tags'],
+                        'course_name' => $resRow['course_name'],
+                        'preferences' => $hasReservationCustomers ? ($resRow['customer_preferences'] ?? null) : null,
+                        'allergies' => $hasReservationCustomers ? ($resRow['customer_allergies'] ?? null) : null,
+                        'internal_memo' => $hasReservationCustomers ? ($resRow['customer_internal_memo'] ?? null) : null,
+                        'customer_tags' => $hasReservationCustomers ? ($resRow['customer_tags'] ?? null) : null,
+                        'visit_count' => $hasReservationCustomers && isset($resRow['customer_visit_count']) ? (int)$resRow['customer_visit_count'] : null,
+                        'no_show_count' => $hasReservationCustomers && isset($resRow['customer_no_show_count']) ? (int)$resRow['customer_no_show_count'] : null,
+                        'cancel_count' => $hasReservationCustomers && isset($resRow['customer_cancel_count']) ? (int)$resRow['customer_cancel_count'] : null,
+                        'last_visit_at' => $hasReservationCustomers ? ($resRow['customer_last_visit_at'] ?? null) : null,
+                        'is_vip' => $hasReservationCustomers && isset($resRow['customer_is_vip']) ? (int)$resRow['customer_is_vip'] : null,
+                    ];
                 }
             }
         } catch (PDOException $e) {
             error_log('[KDS][api/kds/orders.php] fetch_reservation_time: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
-            $reservationTimeMap = [];
+            $reservationContextMap = [];
         }
     }
 }
@@ -269,9 +309,11 @@ foreach ($orders as &$o) {
     if (!$hasMemo) {
         $o['memo'] = null;
     }
-    $o['reservation_reserved_at'] = !empty($o['table_id']) && isset($reservationTimeMap[$o['table_id']])
-        ? $reservationTimeMap[$o['table_id']]
+    $reservationContext = !empty($o['table_id']) && isset($reservationContextMap[$o['table_id']])
+        ? $reservationContextMap[$o['table_id']]
         : null;
+    $o['reservation_reserved_at'] = $reservationContext ? $reservationContext['reserved_at'] : null;
+    $o['reservation_context'] = $reservationContext;
 
     foreach ($o['items'] as &$item) {
         $lookupItemId = $item['id'] ?? ($item['menu_item_id'] ?? null);

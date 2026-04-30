@@ -506,6 +506,9 @@ var PosRegister = (function () {
 
       if (hasSession) {
         html += '<div class="pos-tbl__info">' + (t.session.guestCount || 0) + '名 ' + (t.session.elapsedMin || 0) + '分</div>';
+        if (t.session.reservationContext && t.session.reservationContext.customerName) {
+          html += '<div class="pos-tbl__reservation">' + Utils.escapeHtml(t.session.reservationContext.customerName) + '</div>';
+        }
       }
 
       if (hasSession && t.session.planName) {
@@ -562,7 +565,10 @@ var PosRegister = (function () {
         info = _sessionInfo.guestCount + '名';
       }
       if (info) {
-        els.sessionInfo.textContent = info;
+        els.sessionInfo.innerHTML = Utils.escapeHtml(info) + renderReservationContextHtml(_sessionInfo.reservationContext);
+        els.sessionInfo.style.display = 'block';
+      } else if (_sessionInfo.reservationContext) {
+        els.sessionInfo.innerHTML = renderReservationContextHtml(_sessionInfo.reservationContext);
         els.sessionInfo.style.display = 'block';
       } else {
         els.sessionInfo.style.display = 'none';
@@ -603,6 +609,26 @@ var PosRegister = (function () {
     });
 
     els.orderList.innerHTML = html;
+  }
+
+  function renderReservationContextHtml(ctx) {
+    if (!ctx) return '';
+    var head = [];
+    if (ctx.customerName) head.push(ctx.customerName);
+    if (ctx.partySize) head.push(ctx.partySize + '名');
+    if (ctx.reservedAt) head.push(String(ctx.reservedAt).substring(11, 16));
+    var details = [];
+    if (ctx.courseName) details.push(ctx.courseName);
+    if (ctx.memo) details.push('メモ: ' + ctx.memo);
+    if (ctx.preferences) details.push('好み: ' + ctx.preferences);
+    if (ctx.allergies) details.push('アレルギー: ' + ctx.allergies);
+    if (ctx.internalMemo) details.push('注意: ' + ctx.internalMemo);
+    if (ctx.visitCount) details.push('来店' + ctx.visitCount + '回');
+    if (!head.length && !details.length) return '';
+    return '<div class="pos-session-reservation">'
+      + '<strong>予約</strong> ' + Utils.escapeHtml(head.join(' / '))
+      + (details.length ? '<span>' + Utils.escapeHtml(details.join(' / ')) + '</span>' : '')
+      + '</div>';
   }
 
   function renderTaxArea() {

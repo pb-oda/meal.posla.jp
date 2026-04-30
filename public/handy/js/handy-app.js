@@ -2037,6 +2037,25 @@ var HandyApp = (function () {
       if (t.session && t.session.memo) {
         html += '<div class="ts-card__memo">' + Utils.escapeHtml(t.session.memo) + '</div>';
       }
+      if (t.session && t.session.reservationContext) {
+        var sc = t.session.reservationContext;
+        var scBits = [];
+        if (sc.customerName) scBits.push(sc.customerName);
+        if (sc.partySize) scBits.push(sc.partySize + '名');
+        if (sc.reservedAt) scBits.push(String(sc.reservedAt).substring(11, 16));
+        var scDetails = [];
+        if (sc.memo) scDetails.push('メモ: ' + sc.memo);
+        if (sc.preferences) scDetails.push('好み: ' + sc.preferences);
+        if (sc.allergies) scDetails.push('アレルギー: ' + sc.allergies);
+        if (sc.internalMemo) scDetails.push('注意: ' + sc.internalMemo);
+        if (sc.visitCount) scDetails.push('来店' + sc.visitCount + '回');
+        if (scBits.length || scDetails.length) {
+          html += '<div class="ts-card__reservation">';
+          html += '<strong>予約</strong> ' + Utils.escapeHtml(scBits.join(' / '));
+          if (scDetails.length) html += '<div>' + Utils.escapeHtml(scDetails.join(' / ')) + '</div>';
+          html += '</div>';
+        }
+      }
 
       // L-9: 当日の予約バッジ表示 (テーブルに紐付く未着席の予約)
       var rsvForTable = _todayReservationsByTable[t.id] || [];
@@ -2247,6 +2266,17 @@ var HandyApp = (function () {
     }
     var memo = '';
     if (t && t.session && t.session.memo) memo += ' ' + t.session.memo;
+    if (t && t.session && t.session.reservationContext) {
+      var sc = t.session.reservationContext;
+      if (sc.memo) memo += ' ' + sc.memo;
+      if (sc.internalMemo) memo += ' ' + sc.internalMemo;
+      if (sc.preferences) memo += ' ' + sc.preferences;
+      if (sc.customerTags) memo += ' ' + sc.customerTags;
+      if (sc.tags) memo += ' ' + sc.tags;
+      if (sc.allergies) add('アレルギー: ' + sc.allergies, 'danger');
+      if (parseInt(sc.isVip, 10) === 1) add('VIP', 'vip');
+      if (sc.visitCount && parseInt(sc.visitCount, 10) >= 5) add('再来店 ' + sc.visitCount + '回', 'info');
+    }
     if (rsv) {
       if (rsv.memo) memo += ' ' + rsv.memo;
       if (rsv.customer_internal_memo) memo += ' ' + rsv.customer_internal_memo;
@@ -3470,6 +3500,10 @@ var HandyApp = (function () {
       else if (r.status === 'completed') { statusBadge = '完了'; statusColor = '#5e35b1'; }
       var tagsHtml = '';
       if (r.tags && r.tags.indexOf('VIP') !== -1) tagsHtml += ' <span style="background:#ffd600;color:#000;padding:2px 6px;border-radius:4px;font-size:0.7rem;">★VIP</span>';
+      if (parseInt(r.customer_is_vip, 10) === 1) tagsHtml += ' <span style="background:#ffd600;color:#000;padding:2px 6px;border-radius:4px;font-size:0.7rem;">★常連</span>';
+      if (r.customer_allergies) tagsHtml += ' <span style="background:#ffebee;color:#c62828;padding:2px 6px;border-radius:4px;font-size:0.7rem;font-weight:700;">ALG</span>';
+      if (r.ops_risk && (r.ops_risk.level === 'warning' || r.ops_risk.level === 'danger')) tagsHtml += ' <span style="background:#ffebee;color:#c62828;padding:2px 6px;border-radius:4px;font-size:0.7rem;font-weight:700;">' + Utils.escapeHtml(r.ops_risk.label || '注意') + '</span>';
+      if (r.reminder_status && r.reminder_status.level === 'due') tagsHtml += ' <span style="background:#fff3e0;color:#e65100;padding:2px 6px;border-radius:4px;font-size:0.7rem;font-weight:700;">通知未</span>';
       if (r.source === 'walk_in') tagsHtml += ' <span style="background:#fff3e0;color:#e65100;padding:2px 6px;border-radius:4px;font-size:0.7rem;">walk-in</span>';
       if (r.source === 'web') tagsHtml += ' <span style="background:#e3f2fd;color:#1565c0;padding:2px 6px;border-radius:4px;font-size:0.7rem;">web</span>';
       if (r.source === 'ai_chat') tagsHtml += ' <span style="background:#f3e5f5;color:#6a1b9a;padding:2px 6px;border-radius:4px;font-size:0.7rem;">AI</span>';
@@ -3485,6 +3519,15 @@ var HandyApp = (function () {
       if (r.customer_phone) html += '<div style="font-size:0.9rem;margin-bottom:4px;color:#424242;">📞 <a href="tel:' + Utils.escapeHtml(r.customer_phone) + '" style="color:#1565c0;text-decoration:none;font-weight:600;">' + Utils.escapeHtml(r.customer_phone) + '</a></div>';
       if (r.course_name) html += '<div style="font-size:0.9rem;color:#424242;margin-bottom:4px;">🍽 ' + Utils.escapeHtml(r.course_name) + '</div>';
       if (r.memo) html += '<div style="font-size:0.9rem;background:#fff8e1;padding:6px 8px;border-radius:4px;margin:4px 0;color:#424242;">📝 ' + Utils.escapeHtml(r.memo) + '</div>';
+      if (r.customer_allergies) html += '<div style="font-size:0.9rem;background:#ffebee;border-left:4px solid #c62828;padding:6px 8px;border-radius:4px;margin:4px 0;color:#c62828;font-weight:700;">アレルギー: ' + Utils.escapeHtml(r.customer_allergies) + '</div>';
+      if (r.customer_preferences || r.customer_internal_memo || r.customer_last_visit_at) {
+        var ctxBits = [];
+        if (r.customer_last_visit_at) ctxBits.push('前回 ' + String(r.customer_last_visit_at).substring(0, 10));
+        if (r.customer_visit_count !== null && r.customer_visit_count !== undefined) ctxBits.push('来店' + r.customer_visit_count + '回');
+        if (r.customer_preferences) ctxBits.push('好み: ' + r.customer_preferences);
+        if (r.customer_internal_memo) ctxBits.push('注意: ' + r.customer_internal_memo);
+        html += '<div style="font-size:0.85rem;background:#e3f2fd;border-left:4px solid #1976d2;padding:6px 8px;border-radius:4px;margin:4px 0;color:#0d47a1;">' + Utils.escapeHtml(ctxBits.join(' / ')) + '</div>';
+      }
 
       // アクションボタン (ステータス別)
       if (r.status === 'confirmed' || r.status === 'pending') {

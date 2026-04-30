@@ -123,8 +123,7 @@
   // ---------- Gantt ----------
   function loadGantt() {
     var body = document.getElementById('rb-tab-body');
-    // RSV-P1-2: waitlist パネルは sticky head の直下、ガント wrap の上に配置
-    body.innerHTML = '<div class="rb-stickyhead">' + renderTopBar() + '<div id="rb-kpi-area"></div><div id="rb-attention-area"></div><div id="rb-waitlist-area"></div></div><div class="rb-gantt-wrap"><div id="rb-gantt-area"><div class="rb-loading">読み込み中…</div></div></div>';
+    body.innerHTML = '<div class="rb-stickyhead">' + renderTopBar() + '<div id="rb-kpi-area"></div><div id="rb-attention-area"></div></div><div id="rb-dayops-area"></div><div class="rb-gantt-wrap"><div id="rb-gantt-area"><div class="rb-loading">読み込み中…</div></div></div>';
     bindTopBar();
     apiGet('/reservations.php?store_id=' + encodeURIComponent(_storeId) + '&date=' + _state.date, function (err, data) {
       if (err) {
@@ -191,7 +190,7 @@
   /* KPI + attention の計算 (既存データから導出) */
   function computeAttention(reservations) {
     // RSV-P1-1: customer_attention に VIP / blacklist / allergy / memo 持ち予約を集約
-    var att = { unassigned: [], pending_overdue: [], customer_attention: [] };
+    var att = { unassigned: [], pending_overdue: [], customer_attention: [], arrival_risk: [], reminder_due: [] };
     if (!reservations) return att;
     var now = Date.now();
     for (var i = 0; i < reservations.length; i++) {
@@ -206,6 +205,12 @@
         var rsvTs = new Date(r.reserved_at).getTime();
         // 予約時刻まで 1 時間以内 or 過去なのに pending のまま
         if (rsvTs - now < 3600 * 1000) att.pending_overdue.push(r);
+      }
+      if (r.ops_risk && (r.ops_risk.level === 'warning' || r.ops_risk.level === 'danger')) {
+        att.arrival_risk.push(r);
+      }
+      if (r.reminder_status && r.reminder_status.level === 'due') {
+        att.reminder_due.push(r);
       }
       // RSV-P1-1: 今日の注目客 (VIP / blacklist / allergy / memo のいずれか)
       if (_hasCustomerAttention(r)) {
@@ -253,7 +258,7 @@
     var guests = sum.guests || 0;
     var confirmedRate = total > 0 ? Math.round((confirmed / total) * 100) : 0;
 
-    var attentionCount = attention.unassigned.length + attention.pending_overdue.length;
+    var attentionCount = attention.unassigned.length + attention.pending_overdue.length + attention.arrival_risk.length + attention.reminder_due.length;
     var criticalCls = attentionCount > 0 ? ' rb-kpi__card--attention' : '';
     if (attentionCount >= 3) criticalCls += ' rb-kpi__card--critical';
 
@@ -282,7 +287,7 @@
     if (attentionCount > 0) html += '<span class="rb-kpi__dot"></span>';
     html += '要注意</div>';
     html += '<div class="rb-kpi__value">' + attentionCount + '<span class="rb-kpi__value-unit">件</span></div>';
-    html += '<div class="rb-kpi__sub">未割当 ' + attention.unassigned.length + ' / pending超過 ' + attention.pending_overdue.length + '</div>';
+    html += '<div class="rb-kpi__sub">未割当 ' + attention.unassigned.length + ' / 遅刻 ' + attention.arrival_risk.length + ' / 通知 ' + attention.reminder_due.length + '</div>';
     html += '</div>';
 
     html += '<div class="rb-kpi__card">';
@@ -352,10 +357,103 @@
     return html;
   }
 
+  function _riskBadgeHtml(r) {
+    if (!r || !r.ops_risk || !r.ops_risk.level || r.ops_risk.level === 'normal') return '';
+    var level = r.ops_risk.level;
+    var label = r.ops_risk.label || '注意';
+    return '<span class="rb-risk rb-risk--' + escapeHtml(level) + '">' + escapeHtml(label) + '</span>';
+  }
+
+  function _reminderBadgeHtml(r) {
+    if (!r || !r.reminder_status) return '';
+    var st = r.reminder_status;
+    return '<span class="rb-reminder rb-reminder--' + escapeHtml(st.level || 'normal') + '">' + escapeHtml(st.label || '') + '</span>';
+  }
+
+  function _lastVisitLabel(r) {
+    if (!r || !r.customer_last_visit_at) return '';
+    return String(r.customer_last_visit_at).substring(0, 10);
+  }
+
+  function _customerContextLineHtml(r) {
+    var bits = [];
+    if (r.customer_visit_count !== null && r.customer_visit_count !== undefined) bits.push('来店' + r.customer_visit_count + '回');
+    if (_lastVisitLabel(r)) bits.push('前回' + _lastVisitLabel(r));
+    if (r.customer_preferences) bits.push('好みあり');
+    if (r.customer_allergies) bits.push('アレルギー');
+    if (r.customer_internal_memo) bits.push('注意点');
+    if (!bits.length) return '';
+    return '<div class="rb-dayops-card__context">' + escapeHtml(bits.join(' / ')) + '</div>';
+  }
+
+  function _dayopsSort(a, b) {
+    var ta = a.reserved_at ? new Date(String(a.reserved_at).replace(' ', 'T')).getTime() : 0;
+    var tb = b.reserved_at ? new Date(String(b.reserved_at).replace(' ', 'T')).getTime() : 0;
+    if (ta !== tb) return ta - tb;
+    return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+  }
+
+  function renderDayOpsBoard(reservations) {
+    var lanes = [
+      { key: 'booked', label: '予約', items: [] },
+      { key: 'walkin', label: '飛び込み', items: [] },
+      { key: 'wait', label: '待ち', items: [] },
+      { key: 'seated', label: '着席中', items: [] }
+    ];
+    var byKey = { booked: lanes[0], walkin: lanes[1], wait: lanes[2], seated: lanes[3] };
+    for (var i = 0; i < reservations.length; i++) {
+      var r = reservations[i];
+      if (r.status === 'cancelled' || r.status === 'no_show' || r.status === 'completed') continue;
+      if (r.status === 'waitlisted') byKey.wait.items.push(r);
+      if (r.status === 'seated') byKey.seated.items.push(r);
+      if (r.source === 'walk_in' && r.status !== 'waitlisted') byKey.walkin.items.push(r);
+      if (r.source !== 'walk_in' && (r.status === 'confirmed' || r.status === 'pending')) byKey.booked.items.push(r);
+    }
+    for (var s = 0; s < lanes.length; s++) lanes[s].items.sort(_dayopsSort);
+
+    var html = '<div class="rb-dayops" role="region" aria-label="当日受付ボード">';
+    html += '<div class="rb-dayops__head"><div><strong>当日受付ボード</strong><span>予約・飛び込み・待ち・着席中を同じ画面で確認</span></div>';
+    html += '<div class="rb-dayops__meta">遅刻/no-show・リマインド・常連情報つき</div></div>';
+    html += '<div class="rb-dayops__grid">';
+    for (var j = 0; j < lanes.length; j++) {
+      html += _renderDayOpsLane(lanes[j]);
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function _renderDayOpsLane(lane) {
+    var html = '<section class="rb-dayops-lane rb-dayops-lane--' + escapeHtml(lane.key) + '">';
+    html += '<div class="rb-dayops-lane__head"><span>' + escapeHtml(lane.label) + '</span><strong>' + lane.items.length + '</strong></div>';
+    if (!lane.items.length) {
+      html += '<div class="rb-dayops-lane__empty">なし</div>';
+    } else {
+      for (var i = 0; i < lane.items.length && i < 8; i++) {
+        html += _renderDayOpsCard(lane.items[i]);
+      }
+      if (lane.items.length > 8) html += '<div class="rb-dayops-lane__more">+' + (lane.items.length - 8) + '件</div>';
+    }
+    html += '</section>';
+    return html;
+  }
+
+  function _renderDayOpsCard(r) {
+    var chips = _riskBadgeHtml(r) + _reminderBadgeHtml(r) + _customerBadgesHtml(r);
+    var meta = fmtTime(r.reserved_at) + ' / ' + r.party_size + '名 / ' + statusJa(r.status);
+    if (r.source === 'walk_in') meta += ' / walk-in';
+    var memo = r.memo ? '<div class="rb-dayops-card__memo">メモ: ' + escapeHtml(r.memo) + '</div>' : '';
+    return '<button type="button" class="rb-dayops-card" data-rsv-id="' + escapeHtml(r.id) + '">'
+      + '<span class="rb-dayops-card__top"><strong>' + escapeHtml(r.customer_name) + '</strong><span>' + chips + '</span></span>'
+      + '<span class="rb-dayops-card__meta">' + escapeHtml(meta) + '</span>'
+      + _customerContextLineHtml(r)
+      + memo
+      + '</button>';
+  }
+
   function renderAttentionPanel(attention) {
     // RSV-P1-1: 注目客 (VIP/BL/allergy/memo) も attention panel に並べる
     var custAtt = (attention && attention.customer_attention) || [];
-    var total = attention.unassigned.length + attention.pending_overdue.length + custAtt.length;
+    var total = attention.unassigned.length + attention.pending_overdue.length + attention.arrival_risk.length + attention.reminder_due.length + custAtt.length;
     if (total === 0) return '';
 
     var html = '<div class="rb-attention" role="alert">';
@@ -371,6 +469,18 @@
     for (var j = 0; j < attention.pending_overdue.length; j++) {
       var p = attention.pending_overdue[j];
       html += '<li><button type="button" class="rb-attention__item" data-rsv-id="' + escapeHtml(p.id) + '">⏰ 決済待ち: ' + escapeHtml(p.customer_name) + ' / ' + fmtTime(p.reserved_at) + '</button></li>';
+    }
+    for (var ar = 0; ar < attention.arrival_risk.length; ar++) {
+      var rr = attention.arrival_risk[ar];
+      html += '<li><button type="button" class="rb-attention__item rb-attention__item--risk" data-rsv-id="' + escapeHtml(rr.id) + '">'
+        + '遅刻/no-show: ' + escapeHtml(rr.customer_name) + ' / ' + fmtTime(rr.reserved_at)
+        + '</button></li>';
+    }
+    for (var rd = 0; rd < attention.reminder_due.length; rd++) {
+      var rm = attention.reminder_due[rd];
+      html += '<li><button type="button" class="rb-attention__item" data-rsv-id="' + escapeHtml(rm.id) + '">'
+        + 'リマインド: ' + escapeHtml(rm.customer_name) + ' / ' + escapeHtml((rm.reminder_status && rm.reminder_status.label) || '')
+        + '</button></li>';
     }
     // RSV-P1-1: 今日の注目客を attention panel に追加 (朝礼 / プリシフト用)
     for (var k = 0; k < custAtt.length; k++) {
@@ -405,13 +515,12 @@
       attBtns[ai].addEventListener('click', function (e) { openDetailModal(e.currentTarget.getAttribute('data-rsv-id')); });
     }
 
-    // RSV-P1-2: waitlist パネル (ガントから独立)
-    var waitlistArea = document.getElementById('rb-waitlist-area');
-    if (waitlistArea) {
-      waitlistArea.innerHTML = renderWaitlistPanel(d.reservations || []);
-      var wBtns = waitlistArea.querySelectorAll('[data-rsv-id]');
-      for (var wi = 0; wi < wBtns.length; wi++) {
-        wBtns[wi].addEventListener('click', function (e) { openDetailModal(e.currentTarget.getAttribute('data-rsv-id')); });
+    var dayopsArea = document.getElementById('rb-dayops-area');
+    if (dayopsArea) {
+      dayopsArea.innerHTML = renderDayOpsBoard(d.reservations || []);
+      var dayBtns = dayopsArea.querySelectorAll('[data-rsv-id]');
+      for (var di = 0; di < dayBtns.length; di++) {
+        dayBtns[di].addEventListener('click', function (e) { openDetailModal(e.currentTarget.getAttribute('data-rsv-id')); });
       }
     }
 
@@ -552,6 +661,7 @@
       if (r.memo) html += '<div class="rb-modal__row"><span>メモ</span><span>' + escapeHtml(r.memo) + '</span></div>';
       if (r.tags) html += '<div class="rb-modal__row"><span>タグ</span><span>' + escapeHtml(r.tags) + '</span></div>';
       if (r.deposit_required) html += '<div class="rb-modal__row"><span>予約金</span><span>¥' + r.deposit_amount.toLocaleString() + ' / ' + escapeHtml(r.deposit_status) + '</span></div>';
+      html += _renderOpsStatus(r);
 
       // RSV-P1-1: 顧客要約セクション (reservation_customers と紐付く場合のみ)
       html += _renderCustomerSummary(r);
@@ -562,6 +672,7 @@
         html += '<button class="rb-btn-edit" data-action="edit" type="button">✏️ 変更</button>';
         html += '<button class="rb-btn-noshow" data-action="noshow" type="button">❌ no-show</button>';
         html += '<button class="rb-btn-cancel" data-action="cancel" type="button">キャンセル</button>';
+        if (r.customer_email && r.reminder_status && r.reminder_status.next_due) html += '<button class="rb-btn-resend" data-action="send_reminder" type="button">リマインド送信</button>';
         if (r.customer_email) html += '<button class="rb-btn-resend" data-action="resend" type="button">📧 再送</button>';
       }
       // RSV-P1-2: 受付待ちから着席 / 変更 / キャンセル
@@ -616,9 +727,12 @@
     var prefs       = r.customer_preferences && String(r.customer_preferences).trim() !== '' ? String(r.customer_preferences).trim() : '';
     var custTagsStr = r.customer_tags && String(r.customer_tags).trim() !== '' ? String(r.customer_tags).trim() : '';
     var visitCount  = (r.customer_visit_count !== null && r.customer_visit_count !== undefined) ? parseInt(r.customer_visit_count, 10) : null;
+    var noShowCount = (r.customer_no_show_count !== null && r.customer_no_show_count !== undefined) ? parseInt(r.customer_no_show_count, 10) : null;
+    var cancelCount = (r.customer_cancel_count !== null && r.customer_cancel_count !== undefined) ? parseInt(r.customer_cancel_count, 10) : null;
+    var lastVisit   = r.customer_last_visit_at ? String(r.customer_last_visit_at).substring(0, 10) : '';
 
     // 何も無ければセクション自体を出さない (customer_id あっても空プロフィールの場合)
-    if (!isVip && !isBlack && !allergies && !memoText && !prefs && !custTagsStr && !visitCount) return '';
+    if (!isVip && !isBlack && !allergies && !memoText && !prefs && !custTagsStr && !visitCount && !noShowCount && !cancelCount && !lastVisit) return '';
 
     var html = '<div class="rb-customer-summary" style="margin:12px 0;padding:10px 12px;border:1px solid #dde6ef;border-radius:8px;background:#f7fafd;">';
     html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">';
@@ -636,6 +750,9 @@
     var headBits = [];
     if (isVip) headBits.push('<span style="display:inline-block;padding:1px 8px;border-radius:10px;background:#ffb300;color:#fff;font-size:0.72rem;font-weight:700">⭐ VIP</span>');
     if (visitCount !== null && !isNaN(visitCount)) headBits.push('<span style="font-size:0.8rem;color:#455a64">来店 ' + visitCount + ' 回</span>');
+    if (lastVisit) headBits.push('<span style="font-size:0.8rem;color:#455a64">前回 ' + escapeHtml(lastVisit) + '</span>');
+    if (noShowCount !== null && !isNaN(noShowCount) && noShowCount > 0) headBits.push('<span style="font-size:0.8rem;color:#c62828;font-weight:700">no-show ' + noShowCount + '</span>');
+    if (cancelCount !== null && !isNaN(cancelCount) && cancelCount > 0) headBits.push('<span style="font-size:0.8rem;color:#6d4c00">キャンセル ' + cancelCount + '</span>');
     if (headBits.length > 0) {
       html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">' + headBits.join('') + '</div>';
     }
@@ -683,6 +800,24 @@
       _state._escBound = false;
       _state._escHandler = null;
     }
+  }
+
+  function _renderOpsStatus(r) {
+    if (!r) return '';
+    var html = '';
+    if (r.ops_risk && r.ops_risk.level && r.ops_risk.level !== 'normal') {
+      var reasons = (r.ops_risk.reasons || []).join(' / ');
+      html += '<div class="rb-ops-status rb-ops-status--' + escapeHtml(r.ops_risk.level) + '">';
+      html += '<strong>' + escapeHtml(r.ops_risk.label || '注意') + '</strong>';
+      if (reasons) html += '<span>' + escapeHtml(reasons) + '</span>';
+      html += '</div>';
+    }
+    if (r.reminder_status) {
+      html += '<div class="rb-ops-status rb-ops-status--reminder">';
+      html += '<strong>来店前リマインド</strong><span>' + escapeHtml(r.reminder_status.label || '-') + '</span>';
+      html += '</div>';
+    }
+    return html;
   }
 
   function showSeatQrModal(r, data) {
@@ -782,16 +917,17 @@
       var nowIso = ymd(nowD) + 'T' + pad2(nowD.getHours()) + ':' + pad2(nowD.getMinutes()) + ':00';
       apiSend('PATCH', '/reservations.php', {
         id: r.id, store_id: _storeId,
-        status: 'seated',
+        status: 'confirmed',
         assigned_table_ids: tids,
         duration_min: dur,
         reserved_at: nowIso
       }, function (err, data) {
         if (err) { alert(err.message); saveBtn.disabled = false; saveBtn.textContent = '着席する'; return; }
-        // reservation-seat.php は confirmed からの着席を想定しているため、ここでは使わず
-        // 既に PATCH で status='seated' 済。その後 board を再描画
-        closeModal();
-        loadGantt();
+        apiSend('POST', '/reservation-seat.php', { reservation_id: r.id, store_id: _storeId, table_ids: tids }, function (seatErr, seatData) {
+          if (seatErr) { alert(seatErr.message); saveBtn.disabled = false; saveBtn.textContent = '着席する'; return; }
+          showSeatQrModal(r, seatData);
+          loadGantt();
+        });
       });
     });
     _installEscClose();
@@ -832,6 +968,13 @@
       apiSend('POST', '/reservation-notify.php', { reservation_id: r.id, store_id: _storeId, type: 'confirm' }, function (err) {
         if (err) { alert(err.message); return; }
         alert('確認メールを再送しました');
+      });
+    } else if (action === 'send_reminder') {
+      var reminderType = (r.reminder_status && r.reminder_status.next_due) ? r.reminder_status.next_due : 'reminder_2h';
+      apiSend('POST', '/reservation-notify.php', { reservation_id: r.id, store_id: _storeId, type: reminderType }, function (err) {
+        if (err) { alert(err.message); return; }
+        alert('リマインドを送信しました');
+        closeModal(); loadGantt();
       });
     }
   }

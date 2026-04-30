@@ -474,6 +474,12 @@ var KdsRenderer = (function () {
     ];
     var texts = [];
     if (order && order.memo) texts.push(order.memo);
+    if (order && order.reservation_context) {
+      if (order.reservation_context.memo) texts.push(order.reservation_context.memo);
+      if (order.reservation_context.preferences) texts.push(order.reservation_context.preferences);
+      if (order.reservation_context.internal_memo) texts.push(order.reservation_context.internal_memo);
+      if (order.reservation_context.allergies) texts.push(order.reservation_context.allergies);
+    }
     (order && (order._allItems || order.items) || []).forEach(function (item) {
       if (item.allergen_selections) {
         try {
@@ -510,15 +516,39 @@ var KdsRenderer = (function () {
   }
 
   function _noticeHtml(order) {
+    var reservationHtml = _reservationContextHtml(order);
     var memoHtml = order && order.memo ? '<div class="kds-order-memo">' + Utils.escapeHtml(order.memo) + '</div>' : '';
     var notice = _collectNotice(order);
     var allergenHtml = notice.allergenText
       ? '<div class="kds-order-allergen">\u26A0\uFE0F \u30A2\u30EC\u30EB\u30AE\u30FC: ' + Utils.escapeHtml(notice.allergenText) + '</div>'
       : '';
+    if (order && order.reservation_context && order.reservation_context.allergies) {
+      allergenHtml += '<div class="kds-order-allergen">\u26A0\uFE0F \u4E88\u7D04\u30A2\u30EC\u30EB\u30AE\u30FC: ' + Utils.escapeHtml(order.reservation_context.allergies) + '</div>';
+    }
     var cautionHtml = notice.cautionText
       ? '<div class="kds-order-caution">\u26A0\uFE0F \u6307\u5B9A: ' + Utils.escapeHtml(notice.cautionText) + '</div>'
       : '';
-    return memoHtml + allergenHtml + cautionHtml;
+    return reservationHtml + memoHtml + allergenHtml + cautionHtml;
+  }
+
+  function _reservationContextHtml(order) {
+    var ctx = order && order.reservation_context ? order.reservation_context : null;
+    if (!ctx) return '';
+    var head = [];
+    if (ctx.customer_name) head.push(ctx.customer_name);
+    if (ctx.party_size) head.push(ctx.party_size + '\u540D');
+    if (ctx.reserved_at) head.push(_formatClock(new Date(String(ctx.reserved_at).replace(' ', 'T'))));
+    var details = [];
+    if (ctx.course_name) details.push(ctx.course_name);
+    if (ctx.memo) details.push('\u30E1\u30E2: ' + ctx.memo);
+    if (ctx.preferences) details.push('\u597D\u307F: ' + ctx.preferences);
+    if (ctx.internal_memo) details.push('\u6CE8\u610F: ' + ctx.internal_memo);
+    if (ctx.visit_count) details.push('\u6765\u5E97' + ctx.visit_count + '\u56DE');
+    if (!head.length && !details.length) return '';
+    return '<div class="kds-order-reservation">'
+      + '<strong>\u4E88\u7D04</strong> ' + Utils.escapeHtml(head.join(' / '))
+      + (details.length ? '<div>' + Utils.escapeHtml(details.join(' / ')) + '</div>' : '')
+      + '</div>';
   }
 
   function _urgencyHtml(urgency) {

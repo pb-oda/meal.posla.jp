@@ -585,6 +585,27 @@
     return Math.floor((now - opened) / 60000);
   }
 
+  function _renderReservationContext(ctx, mode) {
+    if (!ctx) return '';
+    var head = [];
+    if (ctx.customerName) head.push(ctx.customerName);
+    if (ctx.partySize) head.push(ctx.partySize + '名');
+    if (ctx.reservedAt) head.push(String(ctx.reservedAt).substring(11, 16));
+    var details = [];
+    if (ctx.courseName) details.push(ctx.courseName);
+    if (ctx.memo) details.push('メモ: ' + ctx.memo);
+    if (ctx.preferences) details.push('好み: ' + ctx.preferences);
+    if (ctx.allergies) details.push('アレルギー: ' + ctx.allergies);
+    if (ctx.internalMemo) details.push('注意: ' + ctx.internalMemo);
+    if (ctx.visitCount) details.push('来店' + ctx.visitCount + '回');
+    if (!head.length && !details.length) return '';
+    var cls = mode === 'register' ? 'ca-reservation-context ca-reservation-context--register' : 'ca-reservation-context';
+    return '<div class="' + cls + '">'
+      + '<strong>予約</strong> ' + Utils.escapeHtml(head.join(' / '))
+      + (details.length ? '<span>' + Utils.escapeHtml(details.join(' / ')) + '</span>' : '')
+      + '</div>';
+  }
+
   // ── テーブル一覧描画（左カラム） ──
   function _renderTableList() {
     var body = document.getElementById('ca-table-body');
@@ -665,6 +686,9 @@
 
       if (hasPlan) {
         html += '<div class="ca-table-card__plan">' + Utils.escapeHtml(session.planName) + ' ' + (session.guestCount || 1) + '名</div>';
+      }
+      if (session && session.reservationContext) {
+        html += _renderReservationContext(session.reservationContext, 'card');
       }
 
       html += '<div class="ca-table-card__info">';
@@ -985,6 +1009,10 @@
     html += '<button class="ca-select-btn" id="ca-btn-deselect-all">全解除</button>';
     html += '</div>';
     html += '</div>';
+
+    if (session && session.reservationContext) {
+      html += _renderReservationContext(session.reservationContext, 'register');
+    }
 
     // ── コンテンツ ──
     html += '<div class="ca-register__content">';

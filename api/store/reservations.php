@@ -53,7 +53,11 @@ function _l9_load_reservation($pdo, $resId, $storeId) {
                 rc.preferences      AS c_preferences,
                 rc.internal_memo    AS c_internal_memo,
                 rc.tags             AS c_tags,
-                rc.visit_count      AS c_visit_count
+                rc.visit_count      AS c_visit_count,
+                rc.no_show_count    AS c_no_show_count,
+                rc.cancel_count     AS c_cancel_count,
+                rc.total_spend      AS c_total_spend,
+                rc.last_visit_at    AS c_last_visit_at
          FROM reservations r
          LEFT JOIN reservation_customers rc
                 ON rc.id = r.customer_id
@@ -103,6 +107,105 @@ function _l9_upsert_customer($pdo, $tenantId, $storeId, $name, $phone, $email) {
     )->execute([$cid, $tenantId, $storeId, $name, $phone, $email]);
     return $cid;
 }
+function _l9_reservation_ops_risk($r) {
+    $levelRank = ['normal' => 0, 'notice' => 1, 'warning' => 2, 'danger' => 3];
+    $risk = [
+        'level' => 'normal',
+        'label' => '通常',
+        'reasons' => [],
+        'minutes_late' => 0,
+    ];
+    $setLevel = function ($level, $label) use (&$risk, $levelRank) {
+        if (($levelRank[$level] ?? 0) >= ($levelRank[$risk['level']] ?? 0)) {
+            $risk['level'] = $level;
+            $risk['label'] = $label;
+        }
+    };
+    $addReason = function ($reason) use (&$risk) {
+        if ($reason !== '' && !in_array($reason, $risk['reasons'], true)) {
+            $risk['reasons'][] = $reason;
+        }
+    };
+
+    $status = isset($r['status']) ? (string)$r['status'] : '';
+    if (in_array($status, ['cancelled', 'no_show', 'completed', 'seated', 'waitlisted'], true)) {
+        return $risk;
+    }
+
+    $reservedTs = !empty($r['reserved_at']) ? strtotime($r['reserved_at']) : false;
+    if ($reservedTs) {
+        $lateMin = (int)floor((time() - $reservedTs) / 60);
+        if ($lateMin >= 15) {
+            $risk['minutes_late'] = $lateMin;
+            $setLevel('danger', 'no-show候補');
+            $addReason('予約時刻から15分以上経過');
+        } elseif ($lateMin >= 5) {
+            $risk['minutes_late'] = $lateMin;
+            $setLevel('warning', '遅刻確認');
+            $addReason('予約時刻から5分以上経過');
+        }
+    }
+
+    $noShowCount = array_key_exists('c_no_show_count', $r) ? (int)$r['c_no_show_count'] : 0;
+    $cancelCount = array_key_exists('c_cancel_count', $r) ? (int)$r['c_cancel_count'] : 0;
+    if ($noShowCount >= 2) {
+        $setLevel('danger', 'no-show注意');
+        $addReason('過去no-show ' . $noShowCount . '回');
+    } elseif ($noShowCount >= 1) {
+        $setLevel('warning', 'no-show注意');
+        $addReason('過去no-showあり');
+    }
+    if ($cancelCount >= 3) {
+        $setLevel('warning', 'キャンセル多め');
+        $addReason('過去キャンセル ' . $cancelCount . '回');
+    }
+    if (array_key_exists('c_is_blacklisted', $r) && (int)$r['c_is_blacklisted'] === 1) {
+        $setLevel('danger', '来店注意');
+        $addReason('ブラックリスト指定');
+    }
+
+    return $risk;
+}
+function _l9_reservation_reminder_status($r) {
+    $hasEmail = !empty($r['customer_email']);
+    $reservedTs = !empty($r['reserved_at']) ? strtotime($r['reserved_at']) : false;
+    $minutesUntil = $reservedTs ? (int)floor(($reservedTs - time()) / 60) : null;
+    $reservationStatus = isset($r['status']) ? (string)$r['status'] : '';
+    $status = [
+        'has_email' => $hasEmail ? 1 : 0,
+        'level' => $hasEmail ? 'normal' : 'disabled',
+        'label' => $hasEmail ? '未送信' : 'メールなし',
+        'next_due' => null,
+        'minutes_until' => $minutesUntil,
+    ];
+    if (!in_array($reservationStatus, ['confirmed', 'pending'], true)) {
+        $status['level'] = 'disabled';
+        $status['label'] = '対象外';
+        return $status;
+    }
+    if (!$hasEmail) return $status;
+
+    if (!empty($r['reminder_2h_sent_at'])) {
+        $status['level'] = 'sent';
+        $status['label'] = '2h済';
+        return $status;
+    }
+    if (!empty($r['reminder_24h_sent_at'])) {
+        $status['level'] = 'sent';
+        $status['label'] = '24h済';
+    }
+
+    if ($minutesUntil !== null && $minutesUntil >= 0 && $minutesUntil <= 135 && empty($r['reminder_2h_sent_at'])) {
+        $status['level'] = 'due';
+        $status['label'] = '2h前未送信';
+        $status['next_due'] = 'reminder_2h';
+    } elseif ($minutesUntil !== null && $minutesUntil >= 0 && $minutesUntil <= 1500 && empty($r['reminder_24h_sent_at'])) {
+        $status['level'] = 'due';
+        $status['label'] = '24h前未送信';
+        $status['next_due'] = 'reminder_24h';
+    }
+    return $status;
+}
 function _l9_serialize_reservation($r) {
     // RSV-P1-1: 顧客要約フィールドを additive に追加 (LEFT JOIN の結果、customer_id 未設定なら全て null)
     return [
@@ -135,6 +238,8 @@ function _l9_serialize_reservation($r) {
         'confirmed_at' => $r['confirmed_at'],
         'seated_at' => $r['seated_at'],
         'cancelled_at' => $r['cancelled_at'],
+        'reminder_24h_sent_at' => $r['reminder_24h_sent_at'],
+        'reminder_2h_sent_at' => $r['reminder_2h_sent_at'],
         // RSV-P1-1: 顧客要約 (reservation_customers から LEFT JOIN、未 JOIN 時は全て null)
         'customer_is_vip'           => array_key_exists('c_is_vip', $r) && $r['c_is_vip'] !== null ? (int)$r['c_is_vip'] : null,
         'customer_is_blacklisted'   => array_key_exists('c_is_blacklisted', $r) && $r['c_is_blacklisted'] !== null ? (int)$r['c_is_blacklisted'] : null,
@@ -144,6 +249,12 @@ function _l9_serialize_reservation($r) {
         'customer_internal_memo'    => array_key_exists('c_internal_memo', $r) ? $r['c_internal_memo'] : null,
         'customer_tags'             => array_key_exists('c_tags', $r) ? $r['c_tags'] : null,
         'customer_visit_count'      => array_key_exists('c_visit_count', $r) && $r['c_visit_count'] !== null ? (int)$r['c_visit_count'] : null,
+        'customer_no_show_count'    => array_key_exists('c_no_show_count', $r) && $r['c_no_show_count'] !== null ? (int)$r['c_no_show_count'] : null,
+        'customer_cancel_count'     => array_key_exists('c_cancel_count', $r) && $r['c_cancel_count'] !== null ? (int)$r['c_cancel_count'] : null,
+        'customer_total_spend'      => array_key_exists('c_total_spend', $r) && $r['c_total_spend'] !== null ? (int)$r['c_total_spend'] : null,
+        'customer_last_visit_at'    => array_key_exists('c_last_visit_at', $r) ? $r['c_last_visit_at'] : null,
+        'ops_risk'                  => _l9_reservation_ops_risk($r),
+        'reminder_status'           => _l9_reservation_reminder_status($r),
     ];
 }
 
@@ -206,7 +317,11 @@ if ($method === 'GET') {
                 rc.preferences      AS c_preferences,
                 rc.internal_memo    AS c_internal_memo,
                 rc.tags             AS c_tags,
-                rc.visit_count      AS c_visit_count
+                rc.visit_count      AS c_visit_count,
+                rc.no_show_count    AS c_no_show_count,
+                rc.cancel_count     AS c_cancel_count,
+                rc.total_spend      AS c_total_spend,
+                rc.last_visit_at    AS c_last_visit_at
          FROM reservations r
          LEFT JOIN reservation_customers rc
                 ON rc.id = r.customer_id
@@ -234,6 +349,7 @@ if ($method === 'GET') {
         'cancelled_today' => 0, 'walk_in' => 0, 'waitlisted' => 0, 'guests' => 0,
         // RSV-P1-1: 今日の注目客 (attention = VIP or blacklist or allergies or internal_memo)
         'attention_total' => 0, 'vip' => 0, 'blacklist' => 0, 'allergy' => 0, 'memo' => 0,
+        'arrival_risk' => 0, 'late_risk' => 0, 'reminder_due' => 0,
     ];
     foreach ($list as $r) {
         if ($r['status'] === 'confirmed' || $r['status'] === 'pending') $summary['confirmed']++;
@@ -253,6 +369,13 @@ if ($method === 'GET') {
             if ($hasAllergy) $summary['allergy']++;
             if ($hasMemo) $summary['memo']++;
             if ($isVip || $isBlack || $hasAllergy || $hasMemo) $summary['attention_total']++;
+        }
+        if (isset($r['ops_risk']) && in_array($r['ops_risk']['level'], ['warning', 'danger'], true)) {
+            $summary['arrival_risk']++;
+            if (!empty($r['ops_risk']['minutes_late'])) $summary['late_risk']++;
+        }
+        if (isset($r['reminder_status']) && $r['reminder_status']['level'] === 'due') {
+            $summary['reminder_due']++;
         }
     }
 

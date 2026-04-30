@@ -34,14 +34,47 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $storeId = require_store_param();
 
+    $hasReservationContext = false;
+    try {
+        $pdo->query('SELECT reservation_id FROM table_sessions LIMIT 0');
+        $pdo->query('SELECT id, customer_id FROM reservations LIMIT 0');
+        $pdo->query('SELECT id, preferences FROM reservation_customers LIMIT 0');
+        $hasReservationContext = true;
+    } catch (PDOException $e) {}
+
+    $reservationSelect = '';
+    $reservationJoin = '';
+    if ($hasReservationContext) {
+        $reservationSelect = ',
+                r.customer_name AS reservation_customer_name,
+                r.customer_phone AS reservation_customer_phone,
+                r.party_size AS reservation_party_size,
+                r.reserved_at AS reservation_reserved_at,
+                r.memo AS reservation_memo,
+                r.tags AS reservation_tags,
+                r.course_name AS reservation_course_name,
+                rc.preferences AS reservation_customer_preferences,
+                rc.allergies AS reservation_customer_allergies,
+                rc.internal_memo AS reservation_customer_internal_memo,
+                rc.tags AS reservation_customer_tags,
+                rc.visit_count AS reservation_customer_visit_count,
+                rc.no_show_count AS reservation_customer_no_show_count,
+                rc.cancel_count AS reservation_customer_cancel_count,
+                rc.last_visit_at AS reservation_customer_last_visit_at,
+                rc.is_vip AS reservation_customer_is_vip';
+        $reservationJoin = '
+         LEFT JOIN reservations r ON r.id = ts.reservation_id AND r.store_id = ts.store_id
+         LEFT JOIN reservation_customers rc ON rc.id = r.customer_id AND rc.store_id = r.store_id AND rc.tenant_id = r.tenant_id';
+    }
+
     $stmt = $pdo->prepare(
         'SELECT ts.*, t.table_code,
                 tlp.name AS plan_name, tlp.price AS plan_price,
-                ct.name AS course_name, ct.price AS course_price
+                ct.name AS course_name, ct.price AS course_price' . $reservationSelect . '
          FROM table_sessions ts
          JOIN tables t ON t.id = ts.table_id
          LEFT JOIN time_limit_plans tlp ON tlp.id = ts.plan_id
-         LEFT JOIN course_templates ct ON ct.id = ts.course_id
+         LEFT JOIN course_templates ct ON ct.id = ts.course_id' . $reservationJoin . '
          WHERE ts.store_id = ? AND ts.status NOT IN ("paid", "closed")
          ORDER BY ts.started_at'
     );
@@ -52,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $result = [];
     foreach ($sessions as $s) {
         $elapsed = $now - strtotime($s['started_at']);
-        $result[] = [
+        $row = [
             'id'                 => $s['id'],
             'tableId'            => $s['table_id'],
             'tableCode'          => $s['table_code'],
@@ -73,6 +106,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'currentPhaseNumber' => $s['current_phase_number'] !== null ? (int)$s['current_phase_number'] : null,
             'sessionPin'         => $s['session_pin'] ?? null,
         ];
+        if ($hasReservationContext && !empty($s['reservation_id'])) {
+            $row['reservationContext'] = [
+                'reservationId' => $s['reservation_id'],
+                'customerName' => $s['reservation_customer_name'] ?? null,
+                'customerPhone' => $s['reservation_customer_phone'] ?? null,
+                'partySize' => isset($s['reservation_party_size']) ? (int)$s['reservation_party_size'] : null,
+                'reservedAt' => $s['reservation_reserved_at'] ?? null,
+                'memo' => $s['reservation_memo'] ?? null,
+                'tags' => $s['reservation_tags'] ?? null,
+                'courseName' => $s['reservation_course_name'] ?? null,
+                'preferences' => $s['reservation_customer_preferences'] ?? null,
+                'allergies' => $s['reservation_customer_allergies'] ?? null,
+                'internalMemo' => $s['reservation_customer_internal_memo'] ?? null,
+                'customerTags' => $s['reservation_customer_tags'] ?? null,
+                'visitCount' => isset($s['reservation_customer_visit_count']) ? (int)$s['reservation_customer_visit_count'] : null,
+                'noShowCount' => isset($s['reservation_customer_no_show_count']) ? (int)$s['reservation_customer_no_show_count'] : null,
+                'cancelCount' => isset($s['reservation_customer_cancel_count']) ? (int)$s['reservation_customer_cancel_count'] : null,
+                'lastVisitAt' => $s['reservation_customer_last_visit_at'] ?? null,
+                'isVip' => isset($s['reservation_customer_is_vip']) ? (int)$s['reservation_customer_is_vip'] : null,
+            ];
+        }
+        $result[] = $row;
     }
 
     json_response(['sessions' => $result]);

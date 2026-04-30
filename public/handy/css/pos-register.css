@@ -94,6 +94,17 @@
   margin-top: 0.125rem;
 }
 
+.pos-tbl__reservation {
+  max-width: 100%;
+  margin-top: 0.125rem;
+  font-size: 0.625rem;
+  color: #90caf9;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .pos-tbl__amount {
   font-size: 0.75rem;
   font-weight: 700;
@@ -356,6 +367,27 @@
   font-size: 0.75rem;
   color: #ff9800;
   flex-shrink: 0;
+}
+
+.pos-session-reservation {
+  margin-top: 0.25rem;
+  padding: 0.375rem 0.5rem;
+  background: rgba(33,150,243,0.14);
+  border-left: 3px solid #2196f3;
+  border-radius: 6px;
+  color: #bbdefb;
+  line-height: 1.35;
+}
+
+.pos-session-reservation strong {
+  color: #90caf9;
+}
+
+.pos-session-reservation span {
+  display: block;
+  margin-top: 0.125rem;
+  color: #e3f2fd;
+  font-weight: 600;
 }
 
 /* テンキーパッド */

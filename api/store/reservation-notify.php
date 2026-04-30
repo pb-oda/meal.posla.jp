@@ -33,6 +33,11 @@ if (empty($r['customer_email'])) json_error('NO_EMAIL', 'メールアドレス�
 $editUrl = app_url('/customer/reserve-detail.html') . '?id=' . urlencode($resId) . '&t=' . urlencode($r['edit_token'] ?: '');
 $result = send_reservation_notification($pdo, $r, $type, ['edit_url' => $editUrl]);
 if ($result['success']) {
+    if ($type === 'reminder_24h') {
+        $pdo->prepare('UPDATE reservations SET reminder_24h_sent_at = NOW() WHERE id = ? AND store_id = ?')->execute([$resId, $storeId]);
+    } elseif ($type === 'reminder_2h') {
+        $pdo->prepare('UPDATE reservations SET reminder_2h_sent_at = NOW() WHERE id = ? AND store_id = ?')->execute([$resId, $storeId]);
+    }
     json_response(['ok' => true, 'sent' => true]);
 }
 json_error('SEND_FAILED', $result['error'] ?: '送信失敗', 500);
