@@ -65,6 +65,18 @@ if ($existsStmt->fetch()) {
 
 $sessionId = bin2hex(random_bytes(18));
 $sessionToken = bin2hex(random_bytes(32));
+$hasWaitlistCallStatus = false;
+try {
+    $colStmt = $pdo->query(
+        "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'reservations'
+           AND COLUMN_NAME = 'waitlist_call_status'"
+    );
+    $hasWaitlistCallStatus = ((int)$colStmt->fetchColumn() > 0);
+} catch (Exception $e) {
+    $hasWaitlistCallStatus = false;
+}
 $pdo->beginTransaction();
 try {
     // table_sessions 起票 (既存スキーマに合わせて guest_count + status='seated')
@@ -78,9 +90,22 @@ try {
         ->execute([$sessionToken, $primaryTableId, $storeId]);
 
     // reservation 更新
-    $pdo->prepare(
-        "UPDATE reservations SET status = 'seated', seated_at = NOW(), table_session_id = ?, assigned_table_ids = ?, updated_at = NOW() WHERE id = ?"
-    )->execute([$sessionId, json_encode($tableIds, JSON_UNESCAPED_UNICODE), $resId]);
+    if ($hasWaitlistCallStatus) {
+        $pdo->prepare(
+            "UPDATE reservations
+             SET status = 'seated',
+                 seated_at = NOW(),
+                 table_session_id = ?,
+                 assigned_table_ids = ?,
+                 waitlist_call_status = 'seated',
+                 updated_at = NOW()
+             WHERE id = ? AND store_id = ?"
+        )->execute([$sessionId, json_encode($tableIds, JSON_UNESCAPED_UNICODE), $resId, $storeId]);
+    } else {
+        $pdo->prepare(
+            "UPDATE reservations SET status = 'seated', seated_at = NOW(), table_session_id = ?, assigned_table_ids = ?, updated_at = NOW() WHERE id = ? AND store_id = ?"
+        )->execute([$sessionId, json_encode($tableIds, JSON_UNESCAPED_UNICODE), $resId, $storeId]);
+    }
 
     // 顧客 visit_count
     if ($r['customer_phone']) {

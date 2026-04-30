@@ -505,7 +505,8 @@
 
 .rb-risk,
 .rb-reminder,
-.rb-arrival {
+.rb-arrival,
+.rb-waitcall {
   display: inline-flex;
   align-items: center;
   padding: 1px 6px;
@@ -527,6 +528,113 @@
 .rb-arrival--arriving { background: #dcfce7; color: #166534; }
 .rb-arrival--waiting_reply { background: #fef3c7; color: #92400e; }
 .rb-arrival--no_show_confirmed { background: var(--rb-alert-soft); color: var(--rb-alert); }
+.rb-waitcall--not_called { background: #f3f4f6; color: #4b5563; }
+.rb-waitcall--called { background: #dbeafe; color: #1d4ed8; }
+.rb-waitcall--recalled { background: #e0e7ff; color: #3730a3; }
+.rb-waitcall--absent { background: var(--rb-alert-soft); color: var(--rb-alert); }
+.rb-waitcall--seated { background: #dcfce7; color: #166534; }
+
+/* ------------------------------------------------------------
+ * 受付待ち客パネル
+ * ------------------------------------------------------------ */
+.rb-waitlist {
+  background: var(--rb-surface);
+  border-bottom: 1px solid var(--rb-border);
+  padding: 0 16px 14px;
+}
+
+.rb-waitlist__head {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rb-text);
+  margin: 0 0 8px;
+}
+
+.rb-waitlist__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+.rb-waitlist__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.rb-waitlist__item {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  background: var(--rb-surface-muted);
+  color: var(--rb-text);
+  padding: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 6px;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.rb-waitlist__item:hover {
+  border-color: var(--rb-accent);
+  background: var(--rb-surface);
+}
+
+.rb-waitlist__name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rb-waitlist__party,
+.rb-waitlist__src,
+.rb-waitlist__wait,
+.rb-waitlist__call {
+  color: var(--rb-text-sub);
+  white-space: nowrap;
+}
+
+.rb-waitlist__call {
+  grid-column: 1 / -1;
+  font-size: 11px;
+}
+
+.rb-waitlist__call--called,
+.rb-waitlist__call--recalled { color: #1d4ed8; font-weight: 700; }
+.rb-waitlist__call--absent { color: var(--rb-alert); font-weight: 700; }
+
+.rb-waitlist__actions {
+  display: inline-flex;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.rb-waitlist__actions button {
+  border: 1px solid var(--rb-border-strong);
+  border-radius: var(--rb-radius-sm);
+  background: var(--rb-surface);
+  color: var(--rb-text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 9px;
+  cursor: pointer;
+}
+
+.rb-waitlist__actions button:hover {
+  background: var(--rb-surface-hover);
+  border-color: var(--rb-accent);
+}
 
 /* ------------------------------------------------------------
  * Gantt 本体
@@ -1007,6 +1115,53 @@
 .rb-arrival-action--waiting_reply { color: #92400e; }
 .rb-arrival-action--none { color: #4b5563; }
 
+.rb-waitcall-actions {
+  margin: 12px 0 0;
+  padding: 10px;
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  background: var(--rb-surface-muted);
+}
+
+.rb-waitcall-actions__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rb-text-sub);
+  margin-bottom: 8px;
+}
+
+.rb-waitcall-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rb-waitcall-action {
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface);
+  color: var(--rb-text);
+  border-radius: var(--rb-radius-sm);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.rb-waitcall-action:hover {
+  background: var(--rb-surface-hover);
+}
+
+.rb-waitcall-action--active {
+  border-color: var(--rb-accent);
+  box-shadow: 0 0 0 2px rgba(30,64,175,0.14);
+}
+
+.rb-waitcall-action--called { color: #1d4ed8; }
+.rb-waitcall-action--recalled { color: #3730a3; }
+.rb-waitcall-action--absent { color: var(--rb-alert); }
+.rb-waitcall-action--not_called { color: #4b5563; }
+
 .rb-modal__form-group { margin-bottom: 14px; }
 .rb-modal__form-group label {
   display: block;
@@ -1094,6 +1249,11 @@
 .rb-ops-status--arrival-arriving { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
 .rb-ops-status--arrival-waiting_reply { background: #fffbeb; color: #92400e; border-color: #fde68a; }
 .rb-ops-status--arrival-no_show_confirmed { background: var(--rb-alert-soft); color: var(--rb-alert); border-color: #fecaca; }
+.rb-ops-status--waitcall { background: #f8fafc; color: #334155; border-color: #cbd5e1; }
+.rb-ops-status--waitcall-called { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.rb-ops-status--waitcall-recalled { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
+.rb-ops-status--waitcall-absent { background: var(--rb-alert-soft); color: var(--rb-alert); border-color: #fecaca; }
+.rb-ops-status--waitcall-seated { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
 
 /* ------------------------------------------------------------
  * Drawer (tablet / desktop 時の detail モーダル)
@@ -1366,6 +1526,18 @@
   }
   .rb-dayops__grid {
     grid-template-columns: 1fr;
+  }
+  .rb-waitlist {
+    padding: 0 12px 12px;
+  }
+  .rb-waitlist__row {
+    grid-template-columns: 1fr;
+  }
+  .rb-waitlist__actions {
+    justify-content: flex-end;
+  }
+  .rb-waitlist__actions button {
+    min-height: 34px;
   }
 
   .rb-gantt {

@@ -54,6 +54,9 @@
   function arrivalFollowupLabel(st) {
     return ({ none: '未対応', contacted: '連絡済み', arriving: '到着予定', waiting_reply: '折り返し待ち', no_show_confirmed: 'no-show確定' })[st] || '未対応';
   }
+  function waitlistCallLabel(st) {
+    return ({ not_called: '未呼出', called: '呼出済み', recalled: '再呼出済み', absent: '不在', seated: '着席' })[st] || '未呼出';
+  }
 
   function apiGet(path, cb) {
     var x = new XMLHttpRequest(); x.open('GET', API + path, true);
@@ -316,10 +319,12 @@
 
     // RSV-P1-2: 受付待ち客 KPI
     var waitlisted = sum.waitlisted || 0;
+    var waitCalled = sum.waitlist_called || 0;
+    var waitAbsent = sum.waitlist_absent || 0;
     html += '<div class="rb-kpi__card' + (waitlisted > 0 ? ' rb-kpi__card--attention' : '') + '">';
     html += '<div class="rb-kpi__label">受付待ち</div>';
     html += '<div class="rb-kpi__value">' + waitlisted + '<span class="rb-kpi__value-unit">組</span></div>';
-    html += '<div class="rb-kpi__sub">' + (waitlisted > 0 ? '下の一覧で処理' : '0 組') + '</div>';
+    html += '<div class="rb-kpi__sub">' + (waitlisted > 0 ? ('呼出済 ' + waitCalled + ' / 不在 ' + waitAbsent) : '0 組') + '</div>';
     html += '</div>';
 
     html += '</div>';
@@ -349,12 +354,15 @@
       var waitMin = Math.max(0, Math.round((now - createdTs) / 60000));
       var waitLabel = waitMin >= 60 ? (Math.floor(waitMin / 60) + '時間' + (waitMin % 60) + '分') : (waitMin + '分');
       // RSV-P1-1: waitlist 行にも顧客要約バッジを表示
-      html += '<li><button type="button" class="rb-waitlist__item" data-rsv-id="' + escapeHtml(w.id) + '">'
+      html += '<li class="rb-waitlist__row"><button type="button" class="rb-waitlist__item" data-rsv-id="' + escapeHtml(w.id) + '">'
         + '<span class="rb-waitlist__name">' + escapeHtml(w.customer_name) + _customerBadgesHtml(w) + '</span>'
         + '<span class="rb-waitlist__party">' + w.party_size + '名</span>'
         + '<span class="rb-waitlist__src">' + escapeHtml(sourceLabel(w.source)) + '</span>'
         + '<span class="rb-waitlist__wait">待ち ' + waitLabel + '</span>'
-        + '</button></li>';
+        + _waitlistCallInlineHtml(w)
+        + '</button>'
+        + _waitlistQuickActionsHtml(w)
+        + '</li>';
     }
     html += '</ul></div>';
     return html;
@@ -377,6 +385,37 @@
     var st = r && r.arrival_followup_status ? r.arrival_followup_status : 'none';
     if (st === 'none') return '';
     return '<span class="rb-arrival rb-arrival--' + escapeHtml(st) + '">' + escapeHtml(arrivalFollowupLabel(st)) + '</span>';
+  }
+
+  function _waitlistCallBadgeHtml(r) {
+    if (!r || r.status !== 'waitlisted') return '';
+    var st = r.waitlist_call_status || 'not_called';
+    return '<span class="rb-waitcall rb-waitcall--' + escapeHtml(st) + '">' + escapeHtml(waitlistCallLabel(st)) + '</span>';
+  }
+
+  function _waitlistCallInlineHtml(r) {
+    if (!r || r.status !== 'waitlisted') return '';
+    var st = r.waitlist_call_status || 'not_called';
+    var bits = [waitlistCallLabel(st)];
+    if (r.waitlist_call_count) bits.push(r.waitlist_call_count + '回');
+    if (r.waitlist_called_at) bits.push(String(r.waitlist_called_at).substring(11, 16));
+    return '<span class="rb-waitlist__call rb-waitlist__call--' + escapeHtml(st) + '">' + escapeHtml(bits.join(' / ')) + '</span>';
+  }
+
+  function _waitlistQuickActionsHtml(r) {
+    if (!r || r.status !== 'waitlisted') return '';
+    var st = r.waitlist_call_status || 'not_called';
+    var html = '<span class="rb-waitlist__actions">';
+    if (st === 'called' || st === 'recalled') {
+      html += '<button type="button" data-wait-call="recalled" data-wait-rsv-id="' + escapeHtml(r.id) + '">再呼出</button>';
+      html += '<button type="button" data-wait-call="absent" data-wait-rsv-id="' + escapeHtml(r.id) + '">不在</button>';
+    } else if (st === 'absent') {
+      html += '<button type="button" data-wait-call="recalled" data-wait-rsv-id="' + escapeHtml(r.id) + '">再呼出</button>';
+    } else {
+      html += '<button type="button" data-wait-call="called" data-wait-rsv-id="' + escapeHtml(r.id) + '">呼出</button>';
+    }
+    html += '</span>';
+    return html;
   }
 
   function _lastVisitLabel(r) {
@@ -447,7 +486,7 @@
   }
 
   function _renderDayOpsCard(r) {
-    var chips = _riskBadgeHtml(r) + _arrivalBadgeHtml(r) + _reminderBadgeHtml(r) + _customerBadgesHtml(r);
+    var chips = _riskBadgeHtml(r) + _arrivalBadgeHtml(r) + _waitlistCallBadgeHtml(r) + _reminderBadgeHtml(r) + _customerBadgesHtml(r);
     var meta = fmtTime(r.reserved_at) + ' / ' + r.party_size + '名 / ' + statusJa(r.status);
     if (r.source === 'walk_in') meta += ' / walk-in';
     var memo = r.memo ? '<div class="rb-dayops-card__memo">メモ: ' + escapeHtml(r.memo) + '</div>' : '';
@@ -526,10 +565,16 @@
 
     var dayopsArea = document.getElementById('rb-dayops-area');
     if (dayopsArea) {
-      dayopsArea.innerHTML = renderDayOpsBoard(d.reservations || []);
+      dayopsArea.innerHTML = renderDayOpsBoard(d.reservations || []) + renderWaitlistPanel(d.reservations || []);
       var dayBtns = dayopsArea.querySelectorAll('[data-rsv-id]');
       for (var di = 0; di < dayBtns.length; di++) {
         dayBtns[di].addEventListener('click', function (e) { openDetailModal(e.currentTarget.getAttribute('data-rsv-id')); });
+      }
+      var waitCallBtns = dayopsArea.querySelectorAll('[data-wait-call]');
+      for (var wi = 0; wi < waitCallBtns.length; wi++) {
+        waitCallBtns[wi].addEventListener('click', function (e) {
+          updateWaitlistCallById(e.currentTarget.getAttribute('data-wait-rsv-id'), e.currentTarget.getAttribute('data-wait-call'));
+        });
       }
     }
 
@@ -671,7 +716,9 @@
       if (r.tags) html += '<div class="rb-modal__row"><span>タグ</span><span>' + escapeHtml(r.tags) + '</span></div>';
       if (r.deposit_required) html += '<div class="rb-modal__row"><span>予約金</span><span>¥' + r.deposit_amount.toLocaleString() + ' / ' + escapeHtml(r.deposit_status) + '</span></div>';
       html += _renderOpsStatus(r);
+      html += _renderWaitlistCallStatus(r);
       html += _renderArrivalFollowupActions(r);
+      html += _renderWaitlistCallActions(r);
 
       // RSV-P1-1: 顧客要約セクション (reservation_customers と紐付く場合のみ)
       html += _renderCustomerSummary(r);
@@ -839,6 +886,38 @@
     return html;
   }
 
+  function _renderWaitlistCallStatus(r) {
+    if (!r || r.status !== 'waitlisted') return '';
+    var st = r.waitlist_call_status || 'not_called';
+    var text = waitlistCallLabel(st);
+    if (r.waitlist_call_count) text += ' / ' + r.waitlist_call_count + '回';
+    if (r.waitlist_called_at) text += ' / ' + String(r.waitlist_called_at).substring(11, 16);
+    var html = '<div class="rb-ops-status rb-ops-status--waitcall rb-ops-status--waitcall-' + escapeHtml(st) + '">';
+    html += '<strong>待ち客呼出</strong><span>' + escapeHtml(text) + '</span>';
+    html += '</div>';
+    return html;
+  }
+
+  function _waitlistActionButton(status, label, current) {
+    var cls = 'rb-waitcall-action rb-waitcall-action--' + status;
+    if (current === status) cls += ' rb-waitcall-action--active';
+    return '<button class="' + cls + '" data-action="waitcall_' + escapeHtml(status) + '" type="button">' + escapeHtml(label) + '</button>';
+  }
+
+  function _renderWaitlistCallActions(r) {
+    if (!r || r.status !== 'waitlisted') return '';
+    var current = r.waitlist_call_status || 'not_called';
+    var html = '<div class="rb-waitcall-actions">';
+    html += '<div class="rb-waitcall-actions__label">待ち客呼び出し</div>';
+    html += '<div class="rb-waitcall-actions__buttons">';
+    html += _waitlistActionButton('called', '呼出', current);
+    html += _waitlistActionButton('recalled', '再呼出', current);
+    html += _waitlistActionButton('absent', '不在', current);
+    if (current !== 'not_called') html += _waitlistActionButton('not_called', '未呼出に戻す', current);
+    html += '</div></div>';
+    return html;
+  }
+
   function _arrivalActionButton(status, label, current) {
     var cls = 'rb-arrival-action rb-arrival-action--' + status;
     if (current === status) cls += ' rb-arrival-action--active';
@@ -997,6 +1076,8 @@
       });
     } else if (action.indexOf('followup_') === 0) {
       updateArrivalFollowup(r, action.substring(9));
+    } else if (action.indexOf('waitcall_') === 0) {
+      updateWaitlistCall(r, action.substring(9));
     } else if (action === 'cancel') {
       if (!confirm('予約をキャンセルします。よろしいですか?')) return;
       apiSend('DELETE', '/reservations.php?id=' + encodeURIComponent(r.id) + '&store_id=' + encodeURIComponent(_storeId), null, function (err) {
@@ -1025,6 +1106,18 @@
       if (err) { alert(err.message); return; }
       loadGantt();
       openDetailModal(r.id);
+    });
+  }
+
+  function updateWaitlistCall(r, status) {
+    updateWaitlistCallById(r.id, status, function () { openDetailModal(r.id); });
+  }
+
+  function updateWaitlistCallById(reservationId, status, afterLoad) {
+    apiSend('PATCH', '/reservations.php', { id: reservationId, store_id: _storeId, waitlist_call_status: status }, function (err) {
+      if (err) { alert(err.message); return; }
+      loadGantt();
+      if (afterLoad) afterLoad();
     });
   }
 

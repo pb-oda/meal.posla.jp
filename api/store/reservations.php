@@ -120,6 +120,19 @@ function _l9_arrival_followup_label($status) {
     $labels = _l9_arrival_followup_labels();
     return array_key_exists($status, $labels) ? $labels[$status] : $labels['none'];
 }
+function _l9_waitlist_call_labels() {
+    return [
+        'not_called' => '未呼出',
+        'called' => '呼出済み',
+        'recalled' => '再呼出済み',
+        'absent' => '不在',
+        'seated' => '着席',
+    ];
+}
+function _l9_waitlist_call_label($status) {
+    $labels = _l9_waitlist_call_labels();
+    return array_key_exists($status, $labels) ? $labels[$status] : $labels['not_called'];
+}
 function _l9_reservation_ops_risk($r) {
     $levelRank = ['normal' => 0, 'notice' => 1, 'warning' => 2, 'danger' => 3];
     $risk = [
@@ -231,6 +244,7 @@ function _l9_reservation_reminder_status($r) {
 function _l9_serialize_reservation($r) {
     // RSV-P1-1: 顧客要約フィールドを additive に追加 (LEFT JOIN の結果、customer_id 未設定なら全て null)
     $arrivalFollowupStatus = array_key_exists('arrival_followup_status', $r) && $r['arrival_followup_status'] ? $r['arrival_followup_status'] : 'none';
+    $waitlistCallStatus = array_key_exists('waitlist_call_status', $r) && $r['waitlist_call_status'] ? $r['waitlist_call_status'] : 'not_called';
     return [
         'id' => $r['id'],
         'tenant_id' => $r['tenant_id'],
@@ -261,6 +275,11 @@ function _l9_serialize_reservation($r) {
         'arrival_followup_note' => array_key_exists('arrival_followup_note', $r) ? $r['arrival_followup_note'] : null,
         'arrival_followup_at' => array_key_exists('arrival_followup_at', $r) ? $r['arrival_followup_at'] : null,
         'arrival_followup_user_id' => array_key_exists('arrival_followup_user_id', $r) ? $r['arrival_followup_user_id'] : null,
+        'waitlist_call_status' => $waitlistCallStatus,
+        'waitlist_call_label' => _l9_waitlist_call_label($waitlistCallStatus),
+        'waitlist_call_count' => array_key_exists('waitlist_call_count', $r) && $r['waitlist_call_count'] !== null ? (int)$r['waitlist_call_count'] : 0,
+        'waitlist_called_at' => array_key_exists('waitlist_called_at', $r) ? $r['waitlist_called_at'] : null,
+        'waitlist_call_user_id' => array_key_exists('waitlist_call_user_id', $r) ? $r['waitlist_call_user_id'] : null,
         'created_at' => $r['created_at'],
         'updated_at' => $r['updated_at'],
         'confirmed_at' => $r['confirmed_at'],
@@ -378,6 +397,7 @@ if ($method === 'GET') {
         // RSV-P1-1: 今日の注目客 (attention = VIP or blacklist or allergies or internal_memo)
         'attention_total' => 0, 'vip' => 0, 'blacklist' => 0, 'allergy' => 0, 'memo' => 0,
         'arrival_risk' => 0, 'late_risk' => 0, 'reminder_due' => 0,
+        'waitlist_called' => 0, 'waitlist_absent' => 0,
     ];
     foreach ($list as $r) {
         if ($r['status'] === 'confirmed' || $r['status'] === 'pending') $summary['confirmed']++;
@@ -401,6 +421,15 @@ if ($method === 'GET') {
         if (isset($r['ops_risk']) && in_array($r['ops_risk']['level'], ['warning', 'danger'], true)) {
             $summary['arrival_risk']++;
             if (!empty($r['ops_risk']['minutes_late'])) $summary['late_risk']++;
+        }
+        if ($r['status'] === 'waitlisted') {
+            $waitCallStatus = isset($r['waitlist_call_status']) ? (string)$r['waitlist_call_status'] : 'not_called';
+            if (in_array($waitCallStatus, ['called', 'recalled'], true)) {
+                $summary['waitlist_called']++;
+            }
+            if ($waitCallStatus === 'absent') {
+                $summary['waitlist_absent']++;
+            }
         }
         if (isset($r['reminder_status']) && $r['reminder_status']['level'] === 'due') {
             $summary['reminder_due']++;
@@ -585,6 +614,30 @@ if ($method === 'PATCH') {
         $arrivalNote = trim((string)$body['arrival_followup_note']);
         $sets[] = 'arrival_followup_note = ?'; $params[] = $arrivalNote !== '' ? $arrivalNote : null;
     }
+    if (array_key_exists('waitlist_call_status', $body)) {
+        $waitCallStatus = trim((string)$body['waitlist_call_status']);
+        if ($waitCallStatus === '') $waitCallStatus = 'not_called';
+        $waitCallLabels = _l9_waitlist_call_labels();
+        if (!array_key_exists($waitCallStatus, $waitCallLabels)) {
+            json_error('INVALID_WAITLIST_CALL_STATUS', '待ち客呼び出しステータスが不正です', 400);
+        }
+        if ($r['status'] !== 'waitlisted' && $waitCallStatus !== 'seated') {
+            json_error('NOT_WAITLISTED', '受付待ちの予約だけ呼び出し状態を更新できます', 400);
+        }
+        $sets[] = 'waitlist_call_status = ?'; $params[] = $waitCallStatus;
+        if ($waitCallStatus === 'not_called') {
+            $sets[] = 'waitlist_call_count = 0';
+            $sets[] = 'waitlist_called_at = NULL';
+            $sets[] = 'waitlist_call_user_id = NULL';
+        } elseif ($waitCallStatus === 'called' || $waitCallStatus === 'recalled') {
+            $sets[] = 'waitlist_call_count = waitlist_call_count + 1';
+            $sets[] = 'waitlist_called_at = NOW()';
+            $sets[] = 'waitlist_call_user_id = ?'; $params[] = $user['user_id'];
+        } else {
+            $sets[] = 'waitlist_called_at = NOW()';
+            $sets[] = 'waitlist_call_user_id = ?'; $params[] = $user['user_id'];
+        }
+    }
     if (isset($body['assigned_table_ids']) && is_array($body['assigned_table_ids'])) {
         $tids = array_values($body['assigned_table_ids']);
         $checkPS = isset($body['party_size']) ? (int)$body['party_size'] : (int)$r['party_size'];
@@ -597,6 +650,15 @@ if ($method === 'PATCH') {
         if ($body['status'] === 'cancelled') { $sets[] = 'cancelled_at = NOW()'; }
         if ($body['status'] === 'completed') { /* completed_at もあれば追加 */ }
         if ($body['status'] === 'seated') { $sets[] = 'seated_at = COALESCE(seated_at, NOW())'; }
+        if ($body['status'] === 'waitlisted' && !array_key_exists('waitlist_call_status', $body)) {
+            $sets[] = "waitlist_call_status = 'not_called'";
+            $sets[] = 'waitlist_call_count = 0';
+            $sets[] = 'waitlist_called_at = NULL';
+            $sets[] = 'waitlist_call_user_id = NULL';
+        }
+        if ($body['status'] === 'seated' && $r['status'] === 'waitlisted' && !array_key_exists('waitlist_call_status', $body)) {
+            $sets[] = "waitlist_call_status = 'seated'";
+        }
     }
 
     if (empty($sets)) json_error('NO_FIELDS', '変更する項目がありません', 400);
