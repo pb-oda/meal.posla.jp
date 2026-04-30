@@ -28,7 +28,6 @@ $stmt = $pdo->prepare('SELECT * FROM reservations WHERE id = ? AND store_id = ?'
 $stmt->execute([$resId, $storeId]);
 $r = $stmt->fetch();
 if (!$r) json_error('RESERVATION_NOT_FOUND', '予約が見つかりません', 404);
-if (empty($r['customer_email'])) json_error('NO_EMAIL', 'メールアドレスが登録されていません', 400);
 
 $editUrl = app_url('/customer/reserve-detail.html') . '?id=' . urlencode($resId) . '&t=' . urlencode($r['edit_token'] ?: '');
 $result = send_reservation_notification($pdo, $r, $type, ['edit_url' => $editUrl]);
@@ -38,6 +37,6 @@ if ($result['success']) {
     } elseif ($type === 'reminder_2h') {
         $pdo->prepare('UPDATE reservations SET reminder_2h_sent_at = NOW() WHERE id = ? AND store_id = ?')->execute([$resId, $storeId]);
     }
-    json_response(['ok' => true, 'sent' => true]);
+    json_response(['ok' => true, 'sent' => true, 'channels' => $result['channels'] ?? []]);
 }
 json_error('SEND_FAILED', $result['error'] ?: '送信失敗', 500);

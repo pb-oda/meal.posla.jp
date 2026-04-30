@@ -25,9 +25,16 @@ require_once __DIR__ . '/../config/app.php'; // REL-HOTFIX-20260423-SERVER-READY
 require_once __DIR__ . '/../lib/db.php';
 $pdo = get_db();
 
-$result = ['holds_purged' => 0, 'auto_no_show' => 0];
+$result = ['holds_purged' => 0, 'waitlist_holds_expired' => 0, 'auto_no_show' => 0];
 
 try {
+    $wStmt = $pdo->prepare(
+        'UPDATE reservation_waitlist_candidates
+            SET hold_id = NULL, hold_expires_at = NULL, updated_at = NOW()
+          WHERE hold_expires_at IS NOT NULL AND hold_expires_at <= NOW() AND status = "notified"'
+    );
+    $wStmt->execute();
+    $result['waitlist_holds_expired'] = $wStmt->rowCount();
     $stmt = $pdo->prepare('DELETE FROM reservation_holds WHERE expires_at <= NOW()');
     $stmt->execute();
     $result['holds_purged'] = $stmt->rowCount();

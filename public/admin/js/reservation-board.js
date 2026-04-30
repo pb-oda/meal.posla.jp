@@ -196,7 +196,7 @@
   /* KPI + attention の計算 (既存データから導出) */
   function computeAttention(reservations) {
     // RSV-P1-1: customer_attention に VIP / blacklist / allergy / memo 持ち予約を集約
-    var att = { unassigned: [], pending_overdue: [], customer_attention: [], arrival_risk: [], reminder_due: [], risk_actions: [] };
+    var att = { unassigned: [], pending_overdue: [], customer_attention: [], arrival_risk: [], reminder_due: [], risk_actions: [], notification_attention: [] };
     if (!reservations) return att;
     var now = Date.now();
     for (var i = 0; i < reservations.length; i++) {
@@ -217,6 +217,9 @@
       }
       if (r.reminder_status && r.reminder_status.level === 'due') {
         att.reminder_due.push(r);
+      }
+      if (r.notification_attention) {
+        att.notification_attention.push(r);
       }
       if (r.risk_actions && r.risk_actions.length) {
         for (var ra = 0; ra < r.risk_actions.length; ra++) {
@@ -386,6 +389,7 @@
       var st = c.status || 'waiting';
       var meta = fmtTime(c.desired_at) + ' / ' + c.party_size + '名';
       if (c.notification_count) meta += ' / 通知' + c.notification_count + '回';
+      if (c.hold_expires_at) meta += ' / 確保 ' + String(c.hold_expires_at).substring(11, 16) + 'まで';
       html += '<li class="rb-cancelwait__item rb-cancelwait__item--' + escapeHtml(st) + '">';
       html += '<span class="rb-cancelwait__name">' + escapeHtml(c.customer_name) + '</span>';
       html += '<span class="rb-cancelwait__meta">' + escapeHtml(meta) + '</span>';
@@ -534,7 +538,7 @@
   function renderAttentionPanel(attention) {
     // RSV-P1-1: 注目客 (VIP/BL/allergy/memo) も attention panel に並べる
     var custAtt = (attention && attention.customer_attention) || [];
-    var total = attention.unassigned.length + attention.pending_overdue.length + attention.arrival_risk.length + attention.reminder_due.length + custAtt.length + (attention.risk_actions ? attention.risk_actions.length : 0);
+    var total = attention.unassigned.length + attention.pending_overdue.length + attention.arrival_risk.length + attention.reminder_due.length + custAtt.length + (attention.risk_actions ? attention.risk_actions.length : 0) + (attention.notification_attention ? attention.notification_attention.length : 0);
     if (total === 0) return '';
 
     var html = '<div class="rb-attention" role="alert">';
@@ -561,6 +565,14 @@
       var rm = attention.reminder_due[rd];
       html += '<li><button type="button" class="rb-attention__item" data-rsv-id="' + escapeHtml(rm.id) + '">'
         + 'リマインド: ' + escapeHtml(rm.customer_name) + ' / ' + escapeHtml((rm.reminder_status && rm.reminder_status.label) || '')
+        + '</button></li>';
+    }
+    var notifyAtt = attention.notification_attention || [];
+    for (var nf = 0; nf < notifyAtt.length; nf++) {
+      var nr = notifyAtt[nf];
+      var na = nr.notification_attention || {};
+      html += '<li><button type="button" class="rb-attention__item rb-attention__item--risk" data-rsv-id="' + escapeHtml(nr.id) + '">'
+        + '通知失敗: ' + escapeHtml(nr.customer_name) + ' / 再送' + escapeHtml(String(na.retry_count || 0)) + '回'
         + '</button></li>';
     }
     var riskActions = attention.risk_actions || [];
@@ -781,8 +793,8 @@
         html += '<button class="rb-btn-edit" data-action="edit" type="button">✏️ 変更</button>';
         html += '<button class="rb-btn-noshow" data-action="noshow" type="button">no-show確定</button>';
         html += '<button class="rb-btn-cancel" data-action="cancel" type="button">キャンセル</button>';
-        if (r.customer_email && r.reminder_status && r.reminder_status.next_due) html += '<button class="rb-btn-resend" data-action="send_reminder" type="button">リマインド送信</button>';
-        if (r.customer_email) html += '<button class="rb-btn-resend" data-action="resend" type="button">📧 再送</button>';
+        if (r.reminder_status && r.reminder_status.next_due && (r.customer_email || r.customer_phone || r.customer_id)) html += '<button class="rb-btn-resend" data-action="send_reminder" type="button">リマインド送信</button>';
+        if (r.customer_email || r.customer_phone || r.customer_id) html += '<button class="rb-btn-resend" data-action="resend" type="button">通知再送</button>';
       }
       // RSV-P1-2: 受付待ちから着席 / 変更 / キャンセル
       if (r.status === 'waitlisted') {
@@ -915,6 +927,8 @@
       html += '<li><span>' + escapeHtml(reminderTypeLabel(d.notification_type)) + ' / ' + escapeHtml(d.channel || '-') + '</span>';
       html += '<strong class="rb-delivery-status rb-delivery-status--' + escapeHtml(d.status || 'queued') + '">' + escapeHtml(deliveryStatusLabel(d.status)) + '</strong>';
       html += '<em>' + escapeHtml((d.sent_at || d.created_at || '').substring(0, 16)) + '</em>';
+      if (d.retry_count) html += '<small>再送 ' + escapeHtml(String(d.retry_count)) + '回 / 次回 ' + escapeHtml((d.next_retry_at || '-').substring(0, 16)) + '</small>';
+      if (parseInt(d.manager_attention || 0, 10) === 1 && !d.resolved_at) html += '<small>店長確認が必要です</small>';
       if (d.error_message) html += '<small>' + escapeHtml(d.error_message) + '</small>';
       html += '</li>';
     }
@@ -1659,6 +1673,13 @@
       html += group('slot_interval_min', 'スロット間隔 (分)', s.slot_interval_min, 'number');
       html += group('min_party_size', '最小人数', s.min_party_size, 'number');
       html += group('max_party_size', '最大人数', s.max_party_size, 'number');
+      html += '<hr><h4>Web予約枠ルール</h4>';
+      html += group('web_phone_only_min_party_size', '電話受付のみ開始人数 (0=無効)', s.web_phone_only_min_party_size || 0, 'number');
+      html += group('web_peak_start_time', 'ピーク開始 (任意)', s.web_peak_start_time ? String(s.web_peak_start_time).substring(0, 5) : '', 'time');
+      html += group('web_peak_end_time', 'ピーク終了 (任意)', s.web_peak_end_time ? String(s.web_peak_end_time).substring(0, 5) : '', 'time');
+      html += group('web_peak_max_groups', 'ピークWeb最大組数 (0=無制限)', s.web_peak_max_groups || 0, 'number');
+      html += group('web_peak_max_covers', 'ピークWeb最大人数 (0=無制限)', s.web_peak_max_covers || 0, 'number');
+      html += group('web_table_area_filter', 'Web予約に使うフロア/エリア (空欄=全席)', s.web_table_area_filter || '', 'text');
       html += group('open_time', '営業開始', s.open_time.substring(0, 5), 'time');
       html += group('close_time', '営業終了', s.close_time.substring(0, 5), 'time');
       html += group('last_order_offset_min', 'ラストオーダー (分前)', s.last_order_offset_min, 'number');
@@ -1672,9 +1693,17 @@
       html += '<div class="rb-modal__form-group"><label><input type="checkbox" name="deposit_enabled" ' + (parseInt(s.deposit_enabled, 10) ? 'checked' : '') + '> 予約金を徴収する (現在: ' + (data.deposit_available ? '✅利用可' : '❌Stripe未設定') + ')</label></div>';
       html += group('deposit_per_person', '一人あたり (円)', s.deposit_per_person, 'number');
       html += group('deposit_min_party_size', '徴収開始人数', s.deposit_min_party_size, 'number');
+      html += '<div class="rb-modal__form-group"><label><input type="checkbox" name="high_risk_deposit_enabled" ' + (parseInt(s.high_risk_deposit_enabled, 10) ? 'checked' : '') + '> 高リスク予約は予約金必須</label></div>';
+      html += group('high_risk_deposit_min_no_show_count', 'no-show履歴しきい値', s.high_risk_deposit_min_no_show_count || 2, 'number');
+      html += group('high_risk_deposit_large_party_size', '大人数しきい値', s.high_risk_deposit_large_party_size || 8, 'number');
       html += '<hr><h4>通知</h4>';
       html += '<div class="rb-modal__form-group"><label><input type="checkbox" name="reminder_24h_enabled" ' + (parseInt(s.reminder_24h_enabled, 10) ? 'checked' : '') + '> 24時間前リマインダー</label></div>';
       html += '<div class="rb-modal__form-group"><label><input type="checkbox" name="reminder_2h_enabled" ' + (parseInt(s.reminder_2h_enabled, 10) ? 'checked' : '') + '> 2時間前リマインダー</label></div>';
+      html += group('reminder_retry_minutes', '失敗時の再送間隔 (分)', s.reminder_retry_minutes || 15, 'number');
+      html += group('reminder_retry_max', '再送上限回数', s.reminder_retry_max || 3, 'number');
+      html += group('waitlist_lock_minutes', 'キャンセル待ち優先確保 (分)', s.waitlist_lock_minutes || 15, 'number');
+      html += '<div class="rb-modal__form-group"><label><input type="checkbox" name="sms_enabled" ' + (parseInt(s.sms_enabled, 10) ? 'checked' : '') + '> SMS Webhook通知を有効化</label></div>';
+      html += group('sms_webhook_url', 'SMS Webhook URL (https)', s.sms_webhook_url || '', 'url');
       html += '<div class="rb-modal__form-group"><label><input type="checkbox" name="ai_chat_enabled" ' + (parseInt(s.ai_chat_enabled, 10) ? 'checked' : '') + '> AIチャット予約 (Gemini)</label></div>';
       html += group('notification_email', '店舗側通知メール', s.notification_email || '', 'email');
       html += group('notes_to_customer', '客向け注意事項', s.notes_to_customer || '', 'textarea');

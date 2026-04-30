@@ -24,6 +24,7 @@ require_once __DIR__ . '/../lib/reservation-availability.php';
 require_once __DIR__ . '/../lib/reservation-deposit.php';
 require_once __DIR__ . '/../lib/reservation-history.php';
 require_once __DIR__ . '/../lib/reservation-waitlist.php';
+require_once __DIR__ . '/../lib/reservation-risk.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../lib/reservation-notifier.php';
 
@@ -76,6 +77,17 @@ if ($reservedTs < time() + (int)$settings['lead_time_hours'] * 3600) {
 $maxAdvanceTs = time() + (int)$settings['max_advance_days'] * 86400;
 if ($reservedTs > $maxAdvanceTs) json_error('TOO_FAR', '受付期間を超えています', 400);
 
+$source = isset($body['source']) && in_array($body['source'], ['web','ai_chat'], true) ? $body['source'] : 'web';
+$waitlistId = isset($body['waitlist_id']) ? trim((string)$body['waitlist_id']) : '';
+$waitlistFingerprint = null;
+if ($waitlistId !== '') {
+    $wStmt = $pdo->prepare('SELECT id FROM reservation_waitlist_candidates WHERE id = ? AND store_id = ? AND status IN ("waiting","notified") LIMIT 1');
+    $wStmt->execute([$waitlistId, $storeId]);
+    if ($wStmt->fetch()) {
+        $waitlistFingerprint = 'waitlist:' . $waitlistId;
+    }
+}
+
 // ブラックリスト確認
 if ($phone) {
     $blStmt = $pdo->prepare('SELECT is_blacklisted FROM reservation_customers WHERE store_id = ? AND customer_phone = ?');
@@ -90,11 +102,15 @@ if ($phone) {
 purge_expired_holds($pdo, $storeId);
 $date = date('Y-m-d', $reservedTs);
 $timeStr = date('H:i', $reservedTs);
-$slots = compute_slot_availability($pdo, $storeId, $date, $partySize);
+$slots = compute_slot_availability($pdo, $storeId, $date, $partySize, null, $waitlistFingerprint, $source);
 $matched = null;
 foreach ($slots as $s) { if ($s['time'] === $timeStr) { $matched = $s; break; } }
 if (!$matched || !$matched['available']) {
-    if ($matched && !empty($body['join_waitlist']) && (!isset($matched['reason']) || $matched['reason'] !== 'lead_time')) {
+    $reason = $matched && isset($matched['reason']) ? $matched['reason'] : 'full';
+    if ($reason === 'phone_only') {
+        json_error('PHONE_ONLY_SLOT', 'この人数はオンライン予約では受け付けていません。店舗へお電話ください', 409);
+    }
+    if ($matched && !empty($body['join_waitlist']) && !in_array($reason, ['lead_time','phone_only'], true)) {
         $waitlistId = reservation_waitlist_create($pdo, $store, [
             'desired_at' => $reservedAt,
             'party_size' => $partySize,
@@ -142,13 +158,26 @@ function _l9_get_client_ip() {
 }
 
 $customerId = _l9_cust_upsert_public($pdo, $store['tenant_id'], $storeId, $name, $phone, $email);
+$custRiskStmt = $pdo->prepare('SELECT no_show_count, cancel_count, is_blacklisted FROM reservation_customers WHERE id = ? AND store_id = ?');
+$custRiskStmt->execute([$customerId, $storeId]);
+$customerRisk = $custRiskStmt->fetch() ?: ['no_show_count' => 0, 'cancel_count' => 0, 'is_blacklisted' => 0];
+$nearBlacklist = reservation_customer_has_near_blacklist($pdo, $storeId, $phone, $email, $name, $customerId);
 
 // デポジット判定
 $depositRequired = 0;
 $depositAmount = 0;
 $depositStatus = 'not_required';
+$highRiskDeposit = ((int)($settings['high_risk_deposit_enabled'] ?? 0) === 1)
+    && (
+        (int)$customerRisk['no_show_count'] >= max(1, (int)($settings['high_risk_deposit_min_no_show_count'] ?? 2))
+        || (int)$partySize >= max(1, (int)($settings['high_risk_deposit_large_party_size'] ?? 8))
+        || $nearBlacklist
+    );
 if (reservation_deposit_is_available($pdo, $storeId, $store['tenant_id'], $settings)) {
     $amt = reservation_deposit_amount($settings, $partySize);
+    if ($amt <= 0 && $highRiskDeposit) {
+        $amt = (int)$settings['deposit_per_person'] * (int)$partySize;
+    }
     if ($amt > 0) {
         $depositRequired = 1;
         $depositAmount = $amt;
@@ -174,7 +203,6 @@ $editToken = bin2hex(random_bytes(24));
 $status = $depositRequired === 1 ? 'pending' : 'confirmed';
 $language = isset($body['language']) ? (string)$body['language'] : 'ja';
 $memo = isset($body['memo']) ? (string)$body['memo'] : null;
-$source = isset($body['source']) && in_array($body['source'], ['web','ai_chat'], true) ? $body['source'] : 'web';
 
 // ── S3 #7: 二重予約防止トランザクション ──
 // BEGIN → 同店舗の同時間帯予約を FOR UPDATE → 空き再計算 → INSERT を atomic に行う。
@@ -197,12 +225,16 @@ try {
     $lockStmt->fetchAll(); // ロック取得が目的
 
     // 空き再計算 (FOR UPDATE 後に実行することで TOCTOU を排除)
-    $slots2 = compute_slot_availability($pdo, $storeId, $date, $partySize);
+    $slots2 = compute_slot_availability($pdo, $storeId, $date, $partySize, null, $waitlistFingerprint, $source);
     $matched2 = null;
     foreach ($slots2 as $s2) { if ($s2['time'] === $timeStr) { $matched2 = $s2; break; } }
     if (!$matched2 || !$matched2['available']) {
         $pdo->rollBack();
-        if ($matched2 && !empty($body['join_waitlist']) && (!isset($matched2['reason']) || $matched2['reason'] !== 'lead_time')) {
+        $reason2 = $matched2 && isset($matched2['reason']) ? $matched2['reason'] : 'full';
+        if ($reason2 === 'phone_only') {
+            json_error('PHONE_ONLY_SLOT', 'この人数はオンライン予約では受け付けていません。店舗へお電話ください', 409);
+        }
+        if ($matched2 && !empty($body['join_waitlist']) && !in_array($reason2, ['lead_time','phone_only'], true)) {
             $waitlistId = reservation_waitlist_create($pdo, $store, [
                 'desired_at' => $reservedAt,
                 'party_size' => $partySize,
@@ -241,7 +273,7 @@ try {
     if (!empty($body['hold_id'])) {
         try { $pdo->prepare('DELETE FROM reservation_holds WHERE id = ? AND store_id = ?')->execute([$body['hold_id'], $storeId]); } catch (PDOException $e) {}
     }
-    reservation_waitlist_mark_booked($pdo, $storeId, $resId, $reservedAt, $partySize, $phone, $email);
+    reservation_waitlist_mark_booked($pdo, $storeId, $resId, $reservedAt, $partySize, $phone, $email, $waitlistId ?: null);
 
     $pdo->commit();
 } catch (PDOException $e) {
@@ -272,6 +304,7 @@ $response = [
     'status' => $status,
     'deposit_required' => $depositRequired,
     'deposit_amount' => $depositAmount,
+    'high_risk_deposit_required' => ($depositRequired === 1 && $highRiskDeposit) ? 1 : 0,
     'edit_url' => app_url('/customer/reserve-detail.html') . '?id=' . urlencode($resId) . '&t=' . urlencode($editToken),
 ];
 
@@ -286,18 +319,14 @@ if ($depositRequired === 1) {
         $response['deposit_checkout_url'] = $checkout['checkout_url'];
         $response['deposit_session_id'] = $checkout['session_id'];
         // デポジット用通知
-        if ($email) {
-            send_reservation_notification($pdo, $r, 'deposit_required', ['deposit_url' => $checkout['checkout_url']]);
-        }
+        send_reservation_notification($pdo, $r, 'deposit_required', ['deposit_url' => $checkout['checkout_url']]);
     } else {
         $pdo->prepare("UPDATE reservations SET status = 'cancelled', cancelled_at = NOW(), cancel_reason = 'deposit_checkout_failed' WHERE id = ?")->execute([$resId]);
         json_error('DEPOSIT_CHECKOUT_FAILED', '予約金決済の準備に失敗しました: ' . ($checkout['error'] ?: 'unknown'), 503);
     }
 } else {
-    // 確定メール
-    if ($email) {
-        send_reservation_notification($pdo, $r, 'confirm', ['edit_url' => $response['edit_url']]);
-    }
+    // 確定通知 (メール / LINE / SMS)
+    send_reservation_notification($pdo, $r, 'confirm', ['edit_url' => $response['edit_url']]);
 }
 
 json_response($response);

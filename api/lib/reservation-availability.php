@@ -27,6 +27,12 @@ if (!function_exists('get_reservation_settings')) {
             'slot_interval_min' => 30,
             'max_party_size' => 10,
             'min_party_size' => 1,
+            'web_phone_only_min_party_size' => 0,
+            'web_peak_start_time' => null,
+            'web_peak_end_time' => null,
+            'web_peak_max_groups' => 0,
+            'web_peak_max_covers' => 0,
+            'web_table_area_filter' => null,
             'open_time' => '11:00:00',
             'close_time' => '22:00:00',
             'last_order_offset_min' => 60,
@@ -40,10 +46,18 @@ if (!function_exists('get_reservation_settings')) {
             'deposit_enabled' => 0,
             'deposit_per_person' => 0,
             'deposit_min_party_size' => 4,
+            'high_risk_deposit_enabled' => 0,
+            'high_risk_deposit_min_no_show_count' => 2,
+            'high_risk_deposit_large_party_size' => 8,
             'reminder_24h_enabled' => 1,
             'reminder_2h_enabled' => 1,
+            'reminder_retry_minutes' => 15,
+            'reminder_retry_max' => 3,
+            'waitlist_lock_minutes' => 15,
             'ai_chat_enabled' => 1,
             'notification_email' => null,
+            'sms_enabled' => 0,
+            'sms_webhook_url' => null,
         );
         try {
             $stmt = $pdo->prepare('SELECT * FROM reservation_settings WHERE store_id = ?');
@@ -139,11 +153,20 @@ if (!function_exists('compute_slot_availability')) {
      *   ...
      * ]
      */
-    function compute_slot_availability($pdo, $storeId, $date, $partySize, $excludeReservationId = null, $excludeFingerprint = null) {
+    function compute_slot_availability($pdo, $storeId, $date, $partySize, $excludeReservationId = null, $excludeFingerprint = null, $source = 'web') {
         $settings = get_reservation_settings($pdo, $storeId);
         $tables = get_active_tables_for_reservation($pdo, $storeId);
+        $isWeb = ($source === 'web' || $source === 'ai_chat');
         if (empty($tables)) {
             return array();
+        }
+        if ($isWeb && !empty($settings['web_table_area_filter'])) {
+            $area = (string)$settings['web_table_area_filter'];
+            $filteredTables = array();
+            foreach ($tables as $tbl) {
+                if ((string)$tbl['area'] === $area) $filteredTables[] = $tbl;
+            }
+            $tables = $filteredTables;
         }
 
         // 営業時間
@@ -208,6 +231,7 @@ if (!function_exists('compute_slot_availability')) {
                 'party_size' => (int)$h['party_size'],
             );
         }
+        $peakWindowStats = _reservation_peak_window_stats($reservations, $holds, $date, $settings);
 
         // 各スロット計算
         $slots = array();
@@ -224,6 +248,18 @@ if (!function_exists('compute_slot_availability')) {
                     'time' => date('H:i', $t),
                     'available' => false,
                     'reason' => 'lead_time',
+                    'remaining_capacity' => 0,
+                );
+                continue;
+            }
+
+            $ruleBlock = _reservation_slot_rule_block($settings, $partySize, date('H:i:s', $t), $isWeb, $peakWindowStats);
+            if ($ruleBlock) {
+                $slots[] = array(
+                    'time' => date('H:i', $t),
+                    'available' => false,
+                    'reason' => $ruleBlock['reason'],
+                    'rule_label' => $ruleBlock['label'],
                     'remaining_capacity' => 0,
                 );
                 continue;
@@ -257,17 +293,76 @@ if (!function_exists('compute_slot_availability')) {
             $freeCapacityTotal = max(0, $freeCapacityTotal - $occupiedSeatsHolds);
 
             // party_size 収容可能なテーブル組み合わせを探索
-            $assigned = _find_table_assignment($freeTables, $partySize);
+            // テーブル未割当のホールドは座席数で控除し、残席不足なら割当不可にする。
+            $assigned = $freeCapacityTotal >= (int)$partySize ? _find_table_assignment($freeTables, $partySize) : array();
             $available = !empty($assigned);
             $slots[] = array(
                 'time' => date('H:i', $t),
                 'available' => $available,
+                'reason' => $available ? null : 'full',
                 'remaining_capacity' => $freeCapacityTotal,
                 'suggested_tables' => $assigned,
             );
         }
 
         return $slots;
+    }
+}
+
+if (!function_exists('_reservation_time_between')) {
+    function _reservation_time_between($time, $start, $end) {
+        if (!$start || !$end) return false;
+        $time = substr((string)$time, 0, 8);
+        $start = substr((string)$start, 0, 8);
+        $end = substr((string)$end, 0, 8);
+        if ($start === $end) return false;
+        if ($start < $end) return ($time >= $start && $time < $end);
+        return ($time >= $start || $time < $end);
+    }
+}
+
+if (!function_exists('_reservation_peak_window_stats')) {
+    function _reservation_peak_window_stats($reservations, $holds, $date, $settings) {
+        $stats = array('groups' => 0, 'covers' => 0);
+        $start = isset($settings['web_peak_start_time']) ? $settings['web_peak_start_time'] : null;
+        $end = isset($settings['web_peak_end_time']) ? $settings['web_peak_end_time'] : null;
+        if (!$start || !$end) return $stats;
+        foreach ($reservations as $r) {
+            if (substr((string)$r['reserved_at'], 0, 10) !== $date) continue;
+            if (_reservation_time_between(substr((string)$r['reserved_at'], 11, 8), $start, $end)) {
+                $stats['groups']++;
+                $stats['covers'] += (int)$r['party_size'];
+            }
+        }
+        foreach ($holds as $h) {
+            if (substr((string)$h['reserved_at'], 0, 10) !== $date) continue;
+            if (_reservation_time_between(substr((string)$h['reserved_at'], 11, 8), $start, $end)) {
+                $stats['groups']++;
+                $stats['covers'] += (int)$h['party_size'];
+            }
+        }
+        return $stats;
+    }
+}
+
+if (!function_exists('_reservation_slot_rule_block')) {
+    function _reservation_slot_rule_block($settings, $partySize, $slotTime, $isWeb, $peakWindowStats) {
+        if (!$isWeb) return null;
+        $phoneOnlyMin = (int)($settings['web_phone_only_min_party_size'] ?? 0);
+        if ($phoneOnlyMin > 0 && (int)$partySize >= $phoneOnlyMin) {
+            return array('reason' => 'phone_only', 'label' => '大人数は電話受付のみ');
+        }
+        if (_reservation_time_between($slotTime, $settings['web_peak_start_time'] ?? null, $settings['web_peak_end_time'] ?? null)) {
+            $maxGroups = (int)($settings['web_peak_max_groups'] ?? 0);
+            if ($maxGroups > 0 && (int)$peakWindowStats['groups'] >= $maxGroups) {
+                return array('reason' => 'rule_peak_groups', 'label' => 'ピーク時間帯のWeb予約組数上限');
+            }
+            $maxCovers = (int)($settings['web_peak_max_covers'] ?? 0);
+            if ($maxCovers > 0 && ((int)$peakWindowStats['covers'] + (int)$partySize) > $maxCovers) {
+                return array('reason' => 'rule_peak_covers', 'label' => 'ピーク時間帯のWeb予約人数上限');
+            }
+        }
+        return null;
     }
 }
 

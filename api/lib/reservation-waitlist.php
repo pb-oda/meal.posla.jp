@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/reservation-availability.php';
 require_once __DIR__ . '/mail.php';
 
 if (!function_exists('reservation_waitlist_uuid')) {
@@ -43,7 +44,7 @@ if (!function_exists('reservation_waitlist_fetch_for_date')) {
         try {
             $stmt = $pdo->prepare(
                 'SELECT id, store_id, desired_at, party_size, customer_name, customer_phone, customer_email, memo, source, status,
-                        notification_count, notified_at, last_notification_error, booked_reservation_id, created_at, updated_at
+                        notification_count, notified_at, last_notification_error, booked_reservation_id, hold_id, hold_expires_at, created_at, updated_at
                  FROM reservation_waitlist_candidates
                  WHERE store_id = ? AND desired_at >= ? AND desired_at <= ?
                  ORDER BY FIELD(status, "waiting", "notified", "booked", "cancelled", "expired"), desired_at ASC, created_at ASC'
@@ -59,16 +60,18 @@ if (!function_exists('reservation_waitlist_fetch_for_date')) {
 }
 
 if (!function_exists('reservation_waitlist_mark_booked')) {
-    function reservation_waitlist_mark_booked($pdo, $storeId, $reservationId, $reservedAt, $partySize, $phone, $email) {
-        if (!$phone && !$email) return 0;
+    function reservation_waitlist_mark_booked($pdo, $storeId, $reservationId, $reservedAt, $partySize, $phone, $email, $candidateId = null) {
+        if (!$candidateId && !$phone && !$email) return 0;
         try {
             $contactSql = [];
             $params = [$storeId, (int)$partySize, $reservedAt, $reservedAt];
-            if ($phone) {
+            if ($candidateId) {
+                $contactSql[] = 'id = ?';
+                $params[] = $candidateId;
+            } elseif ($phone) {
                 $contactSql[] = 'customer_phone = ?';
                 $params[] = $phone;
-            }
-            if ($email) {
+            } elseif ($email) {
                 $contactSql[] = 'customer_email = ?';
                 $params[] = $email;
             }
@@ -93,6 +96,8 @@ if (!function_exists('reservation_waitlist_mark_booked')) {
                  WHERE id = ? AND store_id = ?'
             );
             $upd->execute([$reservationId, $row['id'], $storeId]);
+            $pdo->prepare('DELETE FROM reservation_holds WHERE client_fingerprint = ? AND store_id = ?')
+                ->execute(['waitlist:' . $row['id'], $storeId]);
             return $upd->rowCount();
         } catch (PDOException $e) {
             error_log('[reservation-waitlist] mark_booked_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
@@ -108,6 +113,9 @@ if (!function_exists('reservation_waitlist_notify_open_slot')) {
             $sStmt->execute([$storeId]);
             $store = $sStmt->fetch();
             if (!$store) return ['checked' => 0, 'notified' => 0, 'failed' => 0];
+            $settings = get_reservation_settings($pdo, $storeId);
+            $lockMinutes = max(5, min(120, (int)($settings['waitlist_lock_minutes'] ?? 15)));
+            $duration = max(15, (int)($settings['default_duration_min'] ?? 90));
 
             $stmt = $pdo->prepare(
                 'SELECT *
@@ -121,7 +129,7 @@ if (!function_exists('reservation_waitlist_notify_open_slot')) {
             );
             $stmt->execute([$storeId, (int)$partySize, $reservedAt, $reservedAt, $reservedAt]);
             $rows = $stmt->fetchAll();
-            $result = ['checked' => count($rows), 'notified' => 0, 'failed' => 0];
+            $result = ['checked' => count($rows), 'notified' => 0, 'failed' => 0, 'locked' => 0];
             foreach ($rows as $row) {
                 if (empty($row['customer_email']) || !filter_var($row['customer_email'], FILTER_VALIDATE_EMAIL)) {
                     $pdo->prepare('UPDATE reservation_waitlist_candidates SET last_notification_error = ?, updated_at = NOW() WHERE id = ? AND store_id = ?')
@@ -129,14 +137,22 @@ if (!function_exists('reservation_waitlist_notify_open_slot')) {
                     $result['failed']++;
                     continue;
                 }
-                $reserveUrl = app_url('/customer/reserve.html') . '?store_id=' . urlencode($storeId);
+                $holdId = reservation_waitlist_uuid();
+                $fingerprint = 'waitlist:' . $row['id'];
+                $expiresAt = date('Y-m-d H:i:s', time() + $lockMinutes * 60);
+                $pdo->prepare(
+                    'INSERT INTO reservation_holds (id, store_id, reserved_at, party_size, duration_min, expires_at, client_fingerprint, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, NOW())'
+                )->execute([$holdId, $storeId, $row['desired_at'], (int)$row['party_size'], $duration, $expiresAt, $fingerprint]);
+                $reserveUrl = app_url('/customer/reserve.html') . '?store_id=' . urlencode($storeId) . '&waitlist_id=' . urlencode($row['id']);
                 $subject = '【空席が出ました】' . $store['name'];
                 $body = $row['customer_name'] . " 様\n\nキャンセル待ち中の時間帯に空席が出ました。\n\n"
                     . "■店舗\n" . $store['name'] . "\n\n"
                     . "■ご希望日時\n" . date('Y年n月j日 H:i', strtotime($row['desired_at'])) . "\n\n"
                     . "■人数\n" . (int)$row['party_size'] . "名様\n\n"
                     . "下記ページから空き状況をご確認ください。\n" . $reserveUrl . "\n\n"
-                    . "※空席は先着順です。既に埋まっている場合があります。\n";
+                    . "■優先確保期限\n" . date('Y年n月j日 H:i', strtotime($expiresAt)) . "まで\n\n"
+                    . "※期限後は他のお客様にも開放されます。\n";
                 $send = posla_send_mail($row['customer_email'], $subject, $body, [
                     'from_name' => $store['name'],
                     'from_email' => APP_FROM_EMAIL,
@@ -144,11 +160,14 @@ if (!function_exists('reservation_waitlist_notify_open_slot')) {
                 if (!empty($send['success'])) {
                     $pdo->prepare(
                         'UPDATE reservation_waitlist_candidates
-                         SET status = "notified", notification_count = notification_count + 1, notified_at = NOW(), last_notification_error = NULL, updated_at = NOW()
+                         SET status = "notified", notification_count = notification_count + 1, notified_at = NOW(), last_notification_error = NULL, hold_id = ?, hold_expires_at = ?, updated_at = NOW()
                          WHERE id = ? AND store_id = ?'
-                    )->execute([$row['id'], $storeId]);
+                    )->execute([$holdId, $expiresAt, $row['id'], $storeId]);
                     $result['notified']++;
+                    $result['locked']++;
+                    break;
                 } else {
+                    $pdo->prepare('DELETE FROM reservation_holds WHERE id = ? AND store_id = ?')->execute([$holdId, $storeId]);
                     $pdo->prepare(
                         'UPDATE reservation_waitlist_candidates
                          SET notification_count = notification_count + 1, last_notification_error = ?, updated_at = NOW()

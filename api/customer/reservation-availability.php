@@ -64,6 +64,8 @@ if ($action === 'info') {
         'deposit_min_party_size' => (int)$settings['deposit_min_party_size'],
         'deposit_available' => $depositAvailable,
         'ai_chat_enabled' => (int)$settings['ai_chat_enabled'],
+        'waitlist_lock_minutes' => (int)$settings['waitlist_lock_minutes'],
+        'web_phone_only_min_party_size' => (int)$settings['web_phone_only_min_party_size'],
     ]);
 }
 
@@ -92,5 +94,14 @@ if ($date < $today) json_error('PAST_DATE', '過去日は予約できません',
 if ($date > $maxDate) json_error('TOO_FAR', '受付期間を超えています', 400);
 
 purge_expired_holds($pdo, $storeId);
-$slots = compute_slot_availability($pdo, $storeId, $date, $partySize);
+$waitlistId = isset($_GET['waitlist_id']) ? trim((string)$_GET['waitlist_id']) : '';
+$excludeFingerprint = null;
+if ($waitlistId !== '') {
+    $wStmt = $pdo->prepare('SELECT id FROM reservation_waitlist_candidates WHERE id = ? AND store_id = ? AND status IN ("waiting","notified") LIMIT 1');
+    $wStmt->execute([$waitlistId, $storeId]);
+    if ($wStmt->fetch()) {
+        $excludeFingerprint = 'waitlist:' . $waitlistId;
+    }
+}
+$slots = compute_slot_availability($pdo, $storeId, $date, $partySize, null, $excludeFingerprint, 'web');
 json_response(['date' => $date, 'party_size' => $partySize, 'slots' => $slots]);

@@ -18,6 +18,7 @@ require_once __DIR__ . '/../lib/reservation-notifier.php';
 require_once __DIR__ . '/../lib/reservation-deposit.php';
 require_once __DIR__ . '/../lib/reservation-history.php';
 require_once __DIR__ . '/../lib/reservation-waitlist.php';
+require_once __DIR__ . '/../lib/reservation-risk.php';
 require_once __DIR__ . '/../config/app.php';
 
 $method = require_method(['GET', 'POST', 'PATCH', 'DELETE']);
@@ -290,13 +291,16 @@ function _l9_reservation_ops_risk($r) {
 }
 function _l9_reservation_reminder_status($r) {
     $hasEmail = !empty($r['customer_email']);
+    $hasPhone = !empty($r['customer_phone']);
+    $contactable = $hasEmail || $hasPhone || !empty($r['customer_id']);
     $reservedTs = !empty($r['reserved_at']) ? strtotime($r['reserved_at']) : false;
     $minutesUntil = $reservedTs ? (int)floor(($reservedTs - time()) / 60) : null;
     $reservationStatus = isset($r['status']) ? (string)$r['status'] : '';
     $status = [
         'has_email' => $hasEmail ? 1 : 0,
-        'level' => $hasEmail ? 'normal' : 'disabled',
-        'label' => $hasEmail ? '未送信' : 'メールなし',
+        'has_phone' => $hasPhone ? 1 : 0,
+        'level' => $contactable ? 'normal' : 'disabled',
+        'label' => $contactable ? '未送信' : '連絡先なし',
         'next_due' => null,
         'minutes_until' => $minutesUntil,
     ];
@@ -305,7 +309,7 @@ function _l9_reservation_reminder_status($r) {
         $status['label'] = '対象外';
         return $status;
     }
-    if (!$hasEmail) return $status;
+    if (!$contactable) return $status;
 
     if (!empty($r['reminder_2h_sent_at'])) {
         $status['level'] = 'sent';
@@ -332,7 +336,7 @@ function _l9_reservation_reminder_delivery($pdo, $r) {
     if (!$pdo || empty($r['id']) || empty($r['store_id'])) return [];
     try {
         $stmt = $pdo->prepare(
-            "SELECT notification_type, channel, status, error_message, sent_at, created_at
+            "SELECT notification_type, channel, status, retry_count, next_retry_at, manager_attention, resolved_at, error_message, sent_at, created_at
              FROM reservation_notifications_log
              WHERE reservation_id = ? AND store_id = ?
                AND notification_type IN ('reminder_24h','reminder_2h')
@@ -344,6 +348,27 @@ function _l9_reservation_reminder_delivery($pdo, $r) {
     } catch (PDOException $e) {
         error_log('[L-9][reservations] reminder_delivery: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         return [];
+    }
+}
+function _l9_reservation_notification_attention($pdo, $r) {
+    if (!$pdo || empty($r['id']) || empty($r['store_id'])) return null;
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT notification_type, channel, retry_count, next_retry_at, error_message, created_at
+             FROM reservation_notifications_log
+             WHERE reservation_id = ? AND store_id = ?
+               AND notification_type IN ('reminder_24h','reminder_2h')
+               AND status = 'failed'
+               AND manager_attention = 1
+               AND resolved_at IS NULL
+             ORDER BY created_at DESC
+             LIMIT 1"
+        );
+        $stmt->execute([$r['id'], $r['store_id']]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    } catch (PDOException $e) {
+        return null;
     }
 }
 function _l9_reservation_risk_actions($r, $risk) {
@@ -432,6 +457,9 @@ function _l9_serialize_reservation($r, $pdo = null, $includeDetails = false) {
         'risk_actions'              => _l9_reservation_risk_actions($r, $opsRisk),
         'reminder_status'           => _l9_reservation_reminder_status($r),
     ];
+    if ($pdo) {
+        $data['notification_attention'] = _l9_reservation_notification_attention($pdo, $r);
+    }
     if ($includeDetails && $pdo) {
         $data['change_history'] = reservation_history_fetch($pdo, $r['id'], $r['store_id']);
         $data['reminder_delivery'] = _l9_reservation_reminder_delivery($pdo, $r);
@@ -457,7 +485,7 @@ if ($method === 'GET') {
         if ($partySize > (int)$settings['max_party_size']) json_error('INVALID_PARTY_SIZE', '人数が上限超過です', 400);
 
         purge_expired_holds($pdo, $storeId);
-        $slots = compute_slot_availability($pdo, $storeId, $date, $partySize);
+        $slots = compute_slot_availability($pdo, $storeId, $date, $partySize, null, null, 'staff');
         json_response([
             'date' => $date,
             'party_size' => $partySize,
@@ -514,7 +542,7 @@ if ($method === 'GET') {
     );
     $stmt->execute([$storeId, $fromDt, $toDt]);
     $list = [];
-    foreach ($stmt->fetchAll() as $r) $list[] = _l9_serialize_reservation($r);
+    foreach ($stmt->fetchAll() as $r) $list[] = _l9_serialize_reservation($r, $pdo);
 
     // テーブル一覧 (ガント縦軸)
     $tStmt = $pdo->prepare('SELECT id, table_code AS label, capacity, floor AS area FROM tables WHERE store_id = ? AND is_active = 1 ORDER BY floor, table_code');
@@ -649,11 +677,24 @@ if ($method === 'POST') {
 
     // デポジット判定 (店舗作成時はオプションで強制 OFF にできる)
     $skipDeposit = !empty($body['skip_deposit']);
+    $riskStmt = $pdo->prepare('SELECT no_show_count FROM reservation_customers WHERE id = ? AND store_id = ?');
+    $riskStmt->execute([$customerId, $storeId]);
+    $customerRisk = $riskStmt->fetch() ?: ['no_show_count' => 0];
+    $nearBlacklist = reservation_customer_has_near_blacklist($pdo, $storeId, $phone, $email, $name, $customerId);
+    $highRiskDeposit = ((int)($settings['high_risk_deposit_enabled'] ?? 0) === 1)
+        && (
+            (int)$customerRisk['no_show_count'] >= max(1, (int)($settings['high_risk_deposit_min_no_show_count'] ?? 2))
+            || (int)$partySize >= max(1, (int)($settings['high_risk_deposit_large_party_size'] ?? 8))
+            || $nearBlacklist
+        );
     $depositRequired = 0;
     $depositAmount = 0;
     $depositStatus = 'not_required';
     if (!$skipDeposit && reservation_deposit_is_available($pdo, $storeId, $store['tenant_id'], $settings)) {
         $amt = reservation_deposit_amount($settings, $partySize);
+        if ($amt <= 0 && $highRiskDeposit) {
+            $amt = (int)$settings['deposit_per_person'] * (int)$partySize;
+        }
         if ($amt > 0) {
             $depositRequired = 1;
             $depositAmount = $amt;
@@ -681,11 +722,9 @@ if ($method === 'POST') {
     $r = _l9_load_reservation($pdo, $resId, $storeId);
     reservation_history_record($pdo, $r, 'staff', $user['user_id'], $user['username'] ?? $user['displayName'] ?? '', 'created', 'status', null, $r['status']);
 
-    // 通知 (メールがあれば確認メール送信)
-    if ($r['customer_email']) {
-        $editUrl = app_url('/customer/reserve-detail.html') . '?id=' . urlencode($resId) . '&t=' . urlencode($editToken);
-        send_reservation_notification($pdo, $r, 'confirm', ['edit_url' => $editUrl]);
-    }
+    // 通知 (メール / LINE / SMS)
+    $editUrl = app_url('/customer/reserve-detail.html') . '?id=' . urlencode($resId) . '&t=' . urlencode($editToken);
+    send_reservation_notification($pdo, $r, 'confirm', ['edit_url' => $editUrl]);
 
     json_response(['reservation' => _l9_serialize_reservation($r)]);
 }

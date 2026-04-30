@@ -25,6 +25,7 @@
     language: 'ja',
     monthOffset: 0,            // カレンダー月送り
     waitlistMode: false,       // 満席枠のキャンセル待ち登録
+    waitlistId: null,
   };
   var _heatmapCache = {};
   var _slotsCache = {};
@@ -70,6 +71,7 @@
       'waitlist.registered_title': 'キャンセル待ちに登録しました',
       'waitlist.registered_body': '空席が出た場合、店舗からご連絡します',
       'waitlist.id': '受付番号',
+      'slot.phone_only': '電話受付のみ',
       'deposit.amount': '予約金',
       'deposit.notice': '予約確定には予約金のお支払いが必要です。次の画面で決済を行います。',
       'deposit.captured_on_no_show': 'no-show 時には予約金が没収されます',
@@ -82,6 +84,7 @@
       'error.disabled': 'この店舗ではオンライン予約を受け付けていません',
       'error.slot_unavailable': 'お選びの時間は満席です',
       'error.lead_time': '予約締切時刻を過ぎています',
+      'error.phone_only': 'この人数は店舗へお電話ください',
     },
     en: {
       'step.date': 'Date', 'step.party': 'Guests', 'step.time': 'Time', 'step.info': 'Info', 'step.confirm': 'Confirm',
@@ -121,6 +124,7 @@
       'waitlist.registered_title': 'Waitlist request received',
       'waitlist.registered_body': 'The restaurant will contact you if a seat opens.',
       'waitlist.id': 'Request ID',
+      'slot.phone_only': 'Call only',
       'deposit.amount': 'Deposit',
       'deposit.notice': 'A deposit payment is required to confirm this reservation.',
       'deposit.captured_on_no_show': 'Deposit will be captured if you do not show up',
@@ -133,6 +137,7 @@
       'error.disabled': 'Online reservations are not available at this store',
       'error.slot_unavailable': 'Selected time is full',
       'error.lead_time': 'Lead time exceeded',
+      'error.phone_only': 'Please call the restaurant for this party size',
     },
     'zh-Hans': {
       'step.date': '日期', 'step.party': '人数', 'step.time': '时间', 'step.info': '信息', 'step.confirm': '确认',
@@ -172,6 +177,7 @@
       'waitlist.registered_title': '已登记候补',
       'waitlist.registered_body': '有空位时店铺会联系您。',
       'waitlist.id': '受理编号',
+      'slot.phone_only': '电话受理',
       'deposit.amount': '订金',
       'deposit.notice': '需支付订金以确认预订',
       'deposit.captured_on_no_show': '若未到店,订金将被扣除',
@@ -184,6 +190,7 @@
       'error.disabled': '此店铺暂未开放线上预订',
       'error.slot_unavailable': '所选时间已满',
       'error.lead_time': '预订截止时间已过',
+      'error.phone_only': '该人数请致电店铺',
     },
     ko: {
       'step.date': '날짜', 'step.party': '인원', 'step.time': '시간', 'step.info': '정보', 'step.confirm': '확인',
@@ -223,6 +230,7 @@
       'waitlist.registered_title': '대기 등록이 완료되었습니다',
       'waitlist.registered_body': '자리가 나면 매장에서 연락드립니다.',
       'waitlist.id': '접수 번호',
+      'slot.phone_only': '전화 접수',
       'deposit.amount': '예약금',
       'deposit.notice': '예약 확정에는 예약금 결제가 필요합니다',
       'deposit.captured_on_no_show': 'no-show 시 예약금이 결제됩니다',
@@ -235,6 +243,7 @@
       'error.disabled': '이 매장은 온라인 예약을 받지 않습니다',
       'error.slot_unavailable': '선택한 시간은 만석입니다',
       'error.lead_time': '예약 마감 시간이 지났습니다',
+      'error.phone_only': '이 인원은 매장으로 전화해 주세요',
     },
   };
 
@@ -345,6 +354,7 @@
   function init() {
     var qs = new URLSearchParams(location.search);
     _storeId = qs.get('store_id');
+    _state.waitlistId = qs.get('waitlist_id');
     if (!_storeId) {
       document.getElementById('reserve-app').innerHTML = '<div class="rs-error">店舗IDが指定されていません (store_id)</div>';
       return;
@@ -577,7 +587,8 @@
       drawSlots(_slotsCache[cacheKey]);
       return;
     }
-    apiGet('/reservation-availability.php?store_id=' + encodeURIComponent(_storeId) + '&date=' + _state.date + '&party_size=' + _state.partySize, function (err, data) {
+    var waitQ = _state.waitlistId ? '&waitlist_id=' + encodeURIComponent(_state.waitlistId) : '';
+    apiGet('/reservation-availability.php?store_id=' + encodeURIComponent(_storeId) + '&date=' + _state.date + '&party_size=' + _state.partySize + waitQ, function (err, data) {
       if (err) {
         document.getElementById('rs-slot-wrap').innerHTML = '<div class="rs-error">' + escapeHtml(formatDisplayError(err, t('error.generic'))) + '</div>';
         return;
@@ -597,7 +608,7 @@
     for (var i = 0; i < slots.length; i++) {
       var s = slots[i];
       var cls = 'rs-slot';
-      var waitlistable = (!s.available && s.reason !== 'lead_time');
+      var waitlistable = (!s.available && s.reason !== 'lead_time' && s.reason !== 'phone_only');
       if (!s.available) cls += ' rs-slot--unavailable rs-slot--full';
       if (waitlistable) cls += ' rs-slot--waitlist';
       var slotSelected = (_state.time === s.time);
@@ -611,6 +622,8 @@
         html += '<span class="rs-slot__bag">' + t('remaining_seats', { n: s.remaining_capacity }) + '</span>';
       } else if (waitlistable) {
         html += '<span class="rs-slot__bag">' + t('btn.join_waitlist') + '</span>';
+      } else if (s.reason === 'phone_only') {
+        html += '<span class="rs-slot__bag">' + t('slot.phone_only') + '</span>';
       } else if (!s.available) {
         html += '<span class="rs-slot__bag">×</span>';
       }
@@ -719,13 +732,15 @@
         memo: _state.memo,
         language: _state.language,
         source: 'web',
-        join_waitlist: _state.waitlistMode ? 1 : 0
+        join_waitlist: _state.waitlistMode ? 1 : 0,
+        waitlist_id: _state.waitlistId || ''
       }, function (err, data) {
         if (err) {
           btn.disabled = false; btn.textContent = t(_state.waitlistMode ? 'btn.join_waitlist' : (depositRequired ? 'btn.proceed_payment' : 'btn.confirm'));
           var msg = formatDisplayError(err, t('error.generic'));
           if (err.code === 'SLOT_UNAVAILABLE') msg = formatDisplayError(err, t('error.slot_unavailable'));
           if (err.code === 'LEAD_TIME_VIOLATION') msg = formatDisplayError(err, t('error.lead_time'));
+          if (err.code === 'PHONE_ONLY_SLOT') msg = formatDisplayError(err, t('error.phone_only'));
           // 必須項目欠如系: 情報入力ステップに戻して入力させる
           if (err.code === 'PHONE_REQUIRED' || err.code === 'EMAIL_REQUIRED' || err.code === 'INVALID_PHONE' || err.code === 'INVALID_EMAIL' || err.code === 'INVALID_NAME') {
             _state.step = 4;
@@ -794,6 +809,7 @@
       _state.memo = '';
       _state.courseId = null;
       _state.waitlistMode = false;
+      _state.waitlistId = null;
       _heatmapCache = {};
       _slotsCache = {};
       render();
@@ -939,6 +955,7 @@
           var msg2 = err2.message || t('error.generic');
           if (err2.code === 'SLOT_UNAVAILABLE') msg2 = t('error.slot_unavailable');
           if (err2.code === 'LEAD_TIME_VIOLATION') msg2 = t('error.lead_time');
+          if (err2.code === 'PHONE_ONLY_SLOT') msg2 = t('error.phone_only');
           // 失敗時は手動フォームでリカバリー
           var recoverHtml = '<div class="rs-ai-confidence-low">' + escapeHtml(msg2) + '</div>';
           // SLOT_UNAVAILABLE の場合、別時間帯候補を提案

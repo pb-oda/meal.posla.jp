@@ -42,25 +42,28 @@ if (!function_exists('_l9_log_notification')) {
     /**
      * @param string $channel 'email' | 'sms' | 'line' (L-17 Phase 2B-1: channel 引数化)
      */
-    function _l9_log_notification($pdo, $reservationId, $storeId, $type, $recipient, $subject, $body, $status, $error = null, $channel = 'email') {
+    function _l9_log_notification($pdo, $reservationId, $storeId, $type, $recipient, $subject, $body, $status, $error = null, $channel = 'email', $retryMinutes = 15, $retryCount = 0, $managerAttention = 0) {
         // enum 値のみ許可。未知値は 'email' にフォールバック
         if (!in_array($channel, array('email', 'sms', 'line'), true)) {
             $channel = 'email';
         }
         try {
             $logId = bin2hex(random_bytes(18));
+            $retryMinutes = max(1, min(1440, (int)$retryMinutes));
             $pdo->prepare(
                 "INSERT INTO reservation_notifications_log
-                 (id, reservation_id, store_id, notification_type, channel, recipient, subject, body_excerpt, status, error_message, sent_at, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+                 (id, reservation_id, store_id, notification_type, channel, recipient, subject, body_excerpt, status, retry_count, next_retry_at, manager_attention, error_message, sent_at, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " . ($status === 'failed' ? 'DATE_ADD(NOW(), INTERVAL ' . $retryMinutes . ' MINUTE)' : 'NULL') . ", ?, ?, ?, NOW())"
             )->execute(array(
                 $logId, $reservationId, $storeId, $type, $channel, $recipient,
                 mb_substr((string)$subject, 0, 250), mb_substr((string)$body, 0, 1000),
-                $status, $error,
+                $status, max(0, (int)$retryCount), $managerAttention ? 1 : 0, $error,
                 $status === 'sent' ? date('Y-m-d H:i:s') : null,
             ));
+            return $logId;
         } catch (PDOException $e) {
             error_log('[L-9][notifier] log_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+            return null;
         }
     }
 }
@@ -288,7 +291,8 @@ if (!function_exists('_l9_send_reservation_line')) {
             $text,
             $r['success'] ? 'sent' : 'failed',
             $r['success'] ? null : (isset($r['error']) ? (string)$r['error'] : 'LINE_SEND_FAILED'),
-            'line'
+            'line',
+            15
         );
 
         return array(
@@ -296,6 +300,64 @@ if (!function_exists('_l9_send_reservation_line')) {
             'success'   => (bool)$r['success'],
             'error'     => $r['success'] ? null : (isset($r['error']) ? $r['error'] : 'LINE_SEND_FAILED'),
         );
+    }
+}
+
+if (!function_exists('_l9_send_reservation_sms')) {
+    /**
+     * 店舗設定の sms_webhook_url に JSON POST する汎用 SMS 連携。
+     * Twilio 等の実プロバイダはこの Webhook 側で吸収する。
+     */
+    function _l9_send_reservation_sms($pdo, $reservation, $type, $store, $tpl, $settings) {
+        if ((int)($settings['sms_enabled'] ?? 0) !== 1) {
+            return array('attempted' => false, 'success' => false, 'error' => 'SMS_NOT_ENABLED');
+        }
+        if (empty($settings['sms_webhook_url'])) {
+            return array('attempted' => false, 'success' => false, 'error' => 'NO_SMS_WEBHOOK');
+        }
+        if (empty($reservation['customer_phone'])) {
+            return array('attempted' => false, 'success' => false, 'error' => 'NO_PHONE');
+        }
+        $url = (string)$settings['sms_webhook_url'];
+        if (!preg_match('/^https:\/\//', $url)) {
+            return array('attempted' => false, 'success' => false, 'error' => 'SMS_WEBHOOK_REQUIRES_HTTPS');
+        }
+        $message = $tpl['subject'] . "\n" . mb_substr($tpl['body'], 0, 420);
+        $payload = array(
+            'type' => $type,
+            'store_id' => $reservation['store_id'],
+            'reservation_id' => $reservation['id'],
+            'phone' => $reservation['customer_phone'],
+            'message' => $message,
+        );
+        $ch = curl_init($url);
+        curl_setopt_array($ch, array(
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => array('Content-Type: application/json'),
+            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
+            CURLOPT_TIMEOUT => 10,
+        ));
+        $raw = curl_exec($ch);
+        $err = curl_error($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+        $success = (!$err && $code >= 200 && $code < 300);
+        $error = $success ? null : ($err ?: ('HTTP_' . $code . ':' . mb_substr((string)$raw, 0, 160)));
+        $logId = _l9_log_notification(
+            $pdo,
+            $reservation['id'],
+            $reservation['store_id'],
+            $type,
+            'sms:' . $reservation['customer_phone'],
+            $tpl['subject'],
+            $message,
+            $success ? 'sent' : 'failed',
+            $error,
+            'sms',
+            (int)($settings['reminder_retry_minutes'] ?? 15)
+        );
+        return array('attempted' => true, 'success' => $success, 'error' => $error, 'log_id' => $logId);
     }
 }
 
@@ -319,56 +381,57 @@ if (!function_exists('send_reservation_notification')) {
         $tpl = build_reservation_template($type, $reservation, $store, $lang, $extra);
         if (!$tpl) return array('success' => false, 'error' => 'UNKNOWN_TEMPLATE');
 
-        // L-17 Phase 2B-1: confirm 時は email より先に LINE 並行送信を試みる
-        // (reservation-create.php / deposit-webhook / store/reservations.php から
-        //  1 回だけ呼ばれ retry loop が無いため、先送りによる重複送信リスク無し)
-        if ($type === 'confirm') {
-            try {
-                _l9_send_reservation_line($pdo, $reservation, $type, $store, $tpl);
-            } catch (Exception $e) {
-                error_log('[L-17 line_send] ' . $type . ': ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
-            }
+        $channels = array();
+        $lineResult = array('attempted' => false, 'success' => false, 'error' => null);
+        $smsResult = array('attempted' => false, 'success' => false, 'error' => null);
+        try {
+            $lineResult = _l9_send_reservation_line($pdo, $reservation, $type, $store, $tpl);
+        } catch (Exception $e) {
+            error_log('[L-17 line_send] ' . $type . ': ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
         }
+        if (!empty($lineResult['attempted'])) $channels['line'] = $lineResult;
 
         // メール送信 (従来挙動)
+        $emailResult = array('success' => false, 'error' => 'NO_EMAIL', 'log_id' => null);
         if (empty($reservation['customer_email'])) {
-            return array('success' => false, 'error' => 'NO_EMAIL');
+            $channels['email'] = $emailResult;
+        } else {
+            $fromName = $store['name'];
+            $fromEmail = APP_FROM_EMAIL;
+            $replyTo = !empty($settings['notification_email']) ? $settings['notification_email'] : null;
+
+            $r = _l9_mail_send($reservation['customer_email'], $tpl['subject'], $tpl['body'], $fromName, $fromEmail, $replyTo);
+            $emailLogId = _l9_log_notification(
+                $pdo,
+                $reservation['id'],
+                $reservation['store_id'],
+                $type,
+                $reservation['customer_email'],
+                $tpl['subject'],
+                $tpl['body'],
+                $r['success'] ? 'sent' : 'failed',
+                $r['success'] ? null : $r['error'],
+                'email',
+                (int)($settings['reminder_retry_minutes'] ?? 15)
+            );
+            $emailResult = array('success' => !empty($r['success']), 'error' => $r['success'] ? null : $r['error'], 'log_id' => $emailLogId);
+            $channels['email'] = $emailResult;
         }
 
-        $fromName = $store['name'];
-        $fromEmail = APP_FROM_EMAIL;
-        $replyTo = !empty($settings['notification_email']) ? $settings['notification_email'] : null;
+        try {
+            $smsResult = _l9_send_reservation_sms($pdo, $reservation, $type, $store, $tpl, $settings);
+        } catch (Exception $e) {
+            $smsResult = array('attempted' => true, 'success' => false, 'error' => $e->getMessage());
+        }
+        if (!empty($smsResult['attempted'])) $channels['sms'] = $smsResult;
 
-        $r = _l9_mail_send($reservation['customer_email'], $tpl['subject'], $tpl['body'], $fromName, $fromEmail, $replyTo);
-        _l9_log_notification(
-            $pdo,
-            $reservation['id'],
-            $reservation['store_id'],
-            $type,
-            $reservation['customer_email'],
-            $tpl['subject'],
-            $tpl['body'],
-            $r['success'] ? 'sent' : 'failed',
-            $r['success'] ? null : $r['error'],
-            'email'
+        $success = !empty($emailResult['success']) || !empty($lineResult['success']) || !empty($smsResult['success']);
+        $err = $success ? null : (!empty($emailResult['error']) ? $emailResult['error'] : (!empty($lineResult['error']) ? $lineResult['error'] : (!empty($smsResult['error']) ? $smsResult['error'] : 'SEND_FAILED')));
+        return array(
+            'success' => $success,
+            'error' => $err,
+            'email_log_id' => $emailResult['log_id'],
+            'channels' => $channels,
         );
-
-        // L-17 Phase 2C (hotfix) / 2D: reminder_24h / reminder_2h は email 成功後に
-        // のみ LINE を送る。cron (reservation-reminders.php) は email 成功
-        // ($r['success']) だけ reminder_24h_sent_at / reminder_2h_sent_at を更新する
-        // ため、email 失敗時は cron が時間窓内で再実行される。LINE を email 前に
-        // 送っていると「LINE 成功 + email 失敗」の場合、次回 cron で LINE が重複
-        // push されるリスクがある。email 成功を待ってから LINE を送ることで、
-        // sent_at 更新と整合し重複が発生しない。
-        // email 永続失敗時は LINE も送られないが、トレードオフとして許容。
-        if (($type === 'reminder_24h' || $type === 'reminder_2h') && $r['success']) {
-            try {
-                _l9_send_reservation_line($pdo, $reservation, $type, $store, $tpl);
-            } catch (Exception $e) {
-                error_log('[L-17 line_send] ' . $type . ': ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
-            }
-        }
-
-        return $r;
     }
 }

@@ -47,6 +47,12 @@ if ($method === 'PATCH') {
         'slot_interval_min' => 'intpos',
         'max_party_size' => 'intpos',
         'min_party_size' => 'intpos',
+        'web_phone_only_min_party_size' => 'intnonneg',
+        'web_peak_start_time' => 'time_nullable',
+        'web_peak_end_time' => 'time_nullable',
+        'web_peak_max_groups' => 'intnonneg',
+        'web_peak_max_covers' => 'intnonneg',
+        'web_table_area_filter' => 'string',
         'open_time' => 'time',
         'close_time' => 'time',
         'last_order_offset_min' => 'intnonneg',
@@ -60,10 +66,18 @@ if ($method === 'PATCH') {
         'deposit_enabled' => 'int01',
         'deposit_per_person' => 'intnonneg',
         'deposit_min_party_size' => 'intpos',
+        'high_risk_deposit_enabled' => 'int01',
+        'high_risk_deposit_min_no_show_count' => 'intpos',
+        'high_risk_deposit_large_party_size' => 'intpos',
         'reminder_24h_enabled' => 'int01',
         'reminder_2h_enabled' => 'int01',
+        'reminder_retry_minutes' => 'intpos',
+        'reminder_retry_max' => 'intpos',
+        'waitlist_lock_minutes' => 'intpos',
         'ai_chat_enabled' => 'int01',
         'notification_email' => 'string',
+        'sms_enabled' => 'int01',
+        'sms_webhook_url' => 'url_nullable',
     ];
 
     $sets = [];
@@ -78,7 +92,21 @@ if ($method === 'PATCH') {
             if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', (string)$v)) json_error('INVALID_TIME', $key . ' は HH:MM', 400);
             if (strlen($v) === 5) $v .= ':00';
         }
+        elseif ($type === 'time_nullable') {
+            if ($v === null || $v === '') $v = null;
+            else {
+                if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', (string)$v)) json_error('INVALID_TIME', $key . ' は HH:MM', 400);
+                if (strlen($v) === 5) $v .= ':00';
+            }
+        }
         elseif ($type === 'string') { $v = $v === null ? null : (string)$v; if ($key === 'notification_email' && $v !== null && $v !== '' && !filter_var($v, FILTER_VALIDATE_EMAIL)) json_error('INVALID_EMAIL', '通知メールが不正です', 400); }
+        elseif ($type === 'url_nullable') {
+            if ($v === null || $v === '') $v = null;
+            else {
+                $v = (string)$v;
+                if (!preg_match('/^https:\/\//', $v)) json_error('INVALID_URL', $key . ' は https:// のURLを指定してください', 400);
+            }
+        }
         $sets[] = $key;
         $params[] = $v;
     }
