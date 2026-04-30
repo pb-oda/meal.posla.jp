@@ -243,66 +243,66 @@ docker compose down
 <claude-mem-context>
 # Memory Context
 
-# [【擬似本番環境】meal.posla.jp] recent context, 2026-04-27 5:08pm GMT+9
+# [【擬似本番環境】meal.posla.jp] recent context, 2026-04-30 7:29pm GMT+9
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (12,959t read) | 813,091t work | 98% savings
+Stats: 50 obs (11,052t read) | 942,463t work | 99% savings
 
-### Apr 25, 2026
-1514 9:26p 🟣 POSLA cell architecture 完成 — P1-41 registry まで全タスク完了
-1517 " ⚖️ POSLA cell architecture 次フェーズ — deploy 時 backup と posla_cell_deployments 履歴記録の実装計画
-1522 9:28p 🟣 cell.sh — backup コマンド・deploy 前自動 backup・posla_cell_deployments 記録・rollback ヒント追加
-1560 9:55p 🔵 cell.sh env-load bug — POSLA_CELL_HTTP_PORT override is a no-op self-assignment
-1561 9:57p ✅ cell-smoketest 検証環境の完全撤去 — Docker volume・cells ディレクトリ・registry.tsv 削除
-1562 " 🔵 POSLA signup/auth フロー全量確認 — A5 申込 → Stripe Checkout → Webhook → activate の構造
-1567 9:58p ⚖️ POSLA cell.sh — 次スライス: cell別 tenant onboarding コマンド追加
-1569 " 🟣 cell.sh — onboard-tenant コマンド実装
-1571 9:59p 🔴 cell.sh — onboard-tenant の引数渡しを shift 2 + "$@" に修正
-1573 10:00p 🟣 cell-onboardtest — onboard-tenant コマンドのフル検証完了
-1574 " ✅ POSLA cell onboard-tenant — cells/README・11-cell-deployment・ADR ドキュメント更新
-1578 10:01p 🟣 docker/db/cell-init/ — cell DB 初期化スクリプトをローカル開発用 init から分離
-1580 10:02p 🔵 cell-onboardtest — PHP起動直後 DB 接続拒否エラー (cron health check)
-1582 " 🔴 docker/db/cell-init/01-schema.sh — 実行権限 (chmod +x) を付与
-1584 10:04p 🔵 cell-onboardtest DB に torimaru デモテナントが混入 — migration-p1-27 が原因
-1585 " 🔴 docker/db/cell-init/01-schema.sh — デモデータ migration を明示的にスキップ
-1587 10:06p 🟣 cell-onboardtest — cell-init デモデータ除外修正の再検証完了
-1590 10:08p 🟣 onboard-tenant → login API エンドツーエンド検証完了
-1596 " 🔵 api/config/database.php — DB認証情報は環境変数のみ。フォールバックは空文字列 (H-01 Phase 4)
-1597 10:10p 🟣 docker/php/Dockerfile.cell — アプリコードを image に焼き込む cell artifact Dockerfile を新設
-1606 10:20p 🟣 POSLA cell architecture — git commit 完了 (meal.posla.jp/cell-architecture)
-1607 " 🔵 POSLA リポジトリ — cell commit 後の残変更全体像把握
-1610 10:21p 🔵 リポジトリに *no_deploy/ ディレクトリが存在 — 未追跡ファイル524件の全体像判明
-1615 10:40p ✅ AGENTS.md — 末尾改行追加（未コミット変更として残存）
-1616 " 🔵 POSLA Feature Flag 現状構造確認 — α-1 単一プラン + アドオン方式
-1617 10:41p 🔵 POSLA管理画面 UI 構造確認 — テナント管理・作成フローの全量
-1619 " 🔵 Feature Flag 実装前調査 — 既存の設定・DB・認証パターンの全量把握
-1625 10:43p 🔵 cell DB インフラテーブル確認 — schema_migrations / posla_cell_registry / posla_cell_deployments
-1626 10:44p ⚖️ Feature Flag 設計方針決定 — check_plan_feature() と分離した運用フラグ専用実装
-1631 10:48p 🟣 POSLA Feature Flag control plane 実装完了 — P1-42
-1632 10:49p 🔴 Feature Flag API — bool 入力バリデーションと migration の ON DUPLICATE KEY 修正
-1635 10:50p 🔵 Feature Flag 実装の構文チェック全パス — Docker 環境稼働確認
-### Apr 26, 2026
-1637 7:20p 🔵 POSLA 決済・QR コード機能の全体スコープ確認
-1639 7:21p 🔵 POSLA 決済 API・UI アーキテクチャ全量確認 — process-payment.php 詳細
-1640 " 🔵 POSLA 緊急会計 (emergency_payments) — external_method_type カラムと migration 構造確認
-1641 " 🔵 POSLA 決済関連ファイル全体マップ確認
-1643 7:25p 🔵 POSLA 低手数料決済オプション調査 — ユーザーが決済手数料の安い選択肢を検討
-1644 7:39p 🔵 POSLA セルフレジ決済構造の全量確認 — Stripe 専用実装・代替決済なし
-1646 7:41p 🔵 POSLA get-bill.php — payment_available 判定ロジックの詳細確認
-1648 7:44p 🔵 POSLA セルフレジ決済フロー完全構造 — checkout-session/confirm 2段階処理とP0#5整合性チェック
-1650 7:45p 🔵 checkout-confirm.php — Stripe Connect session retrieve の context 不一致バグ修正済み（2026-04-21）
-1652 7:50p ⚖️ POSLA 決済戦略 — 飲食市場の手数料破壊による大規模獲得構想
-1654 7:55p 🔵 POSLA 擬似本番環境 — git status 全量確認（決済戦略調査開始時点）
-1655 7:57p ✅ docs/stripe-posla-restaurant-proposal.md — POSLA x Stripe 飲食店決済共同提案書を新規作成
-1657 8:00p ✅ stripe-posla-restaurant-proposal.md — 飲食店キャッシュレス決済TAM試算を追記
-1659 8:03p ✅ stripe-posla-restaurant-proposal.md — POSLA Pay 構想と段階的GTM戦略を追加（大規模改訂）
-1661 8:11p ⚖️ POSLA経済圏構想 — 飲食店仕入れキャッシュレス化まで視野に入れたエコシステム拡張戦略
-1663 " 🔵 posla-economic-zone-roadmap.pptx — POSLA経済圏ロードマップPPTX存在確認
-1664 8:12p 🔵 posla-economic-zone-roadmap.pptx 全スライド内容確認 — 20スライド構成のPOSLA飲食店経済圏ロードマップ
-1666 " ✅ stripe-posla-restaurant-proposal.md — POSLA経済圏ビジョン（Section 8）とB2B決済拡張を追加
+### Apr 29, 2026
+1897 12:43p 🟣 POSLA handy-app.js — renderOperationWorkItem 追加・ops タスクリストに1タップボタン埋め込み
+1898 12:45p 🟣 POSLA 1ボタン運用UI — 全変更適用完了・構文チェック通過
+1914 12:52p 🟣 P1-56 1ボタン運用UI — HTTP疎通確認完了・全エンドポイント 200 OK
+1915 " ✅ P1-56 git add — 実装・ドキュメント・VitePressビルド成果物をステージング
+1917 12:53p 🔵 POSLA ロール体系の実装確認 — device(0) &lt; staff(1) &lt; manager(2) &lt; owner(3) の厳格な階層
+1919 12:55p 🔵 POSLA アカウント体系ドキュメント整合性調査 — staff vs device ロールの記述差異を確認
+1920 12:56p 🔵 POSLA ドキュメント整合性調査 — ハンディヘッダー「ユーザー名/ログアウト」説明が個人スタッフ想定のまま
+1923 1:14p 🔵 POSLA KDS アーキテクチャ全体確認 — expeditor モード・音声・Wake Lock
+1924 1:15p 🔵 KDS voice-commander.js — ファストパス優先処理とGemini委譲の完全アーキテクチャ確認
+1925 " 🔵 KDS API — orders.php ポーリングでコースフェーズ自動発火、update-status/item-status で product_ready 通知生成
+1926 " 🔵 kds-renderer.js expeditor モード — 混在ステータス時は一括ボタン抑止で誤ロールバック防止
+1933 1:17p 🔵 call-alerts.php — product_ready 応答時に order_item を自動 served 連動更新
+1934 " 🔵 POSLA 予約→テーブルセッション結合アーキテクチャ — reservation_id / table_session_id 双方向 FK
+1935 " 🔵 AiKitchen ダッシュボード — 独立 API 取得・60秒自動更新・pending/preparing 品目のみ分析
+1938 1:25p ⚖️ POSLA P1-57 KDS改善 — 実装計画確定（P0優先順で段階的実装）
+1970 2:07p 🔵 POSLA KDS voice-commander.js — 全アーキテクチャ詳細確認（P1-59後の現状）
+1971 2:09p 🟣 POSLA KDS voice-commander.js — 音声認識ヘルスカウンター・エラーウィンドウ監視システム追加
+1974 " 🟣 POSLA KDS voice-commander.js — スマートウォッチドッグ _checkRecognitionHealth() 実装
+1975 2:11p 🟣 POSLA KDS P1-60 — voice-commander.js 音声認識自己修復ウォッチドッグ完全実装・コミット・push完了
+1978 2:12p 🔵 POSLA KDS — P1-60実装後のコードベース全体構成確認
+1979 2:15p 🔵 POSLA KDS — kds-renderer.js・orders.php アーキテクチャ全量確認（次フェーズ計画前）
+1984 2:16p ✅ POSLA docs/voice-commands.md — KDS音声コマンド仕様書を全面刷新
+1986 2:17p ✅ POSLA docs/SYSTEM_SPECIFICATION.md — VoiceCommander仕様欄をP1-60実装後の現状に更新
+1988 " 🔵 POSLA sold-out.html 音声コマンド — 旧3分リフレッシュパターンが残存（P1-60未適用）
+2007 2:36p 🟣 POSLA KDS P1-63 — prepレベル事前アラート実装（kds-renderer.js + kds.css）
+2008 2:39p 🟣 POSLA KDS index.html — ステーション別状況帯UI と通知音実装
+2009 " ✅ POSLA KDS docs/voice-commands.md — prepレベル・ステーション状況帯・通知音の仕様追記
+2011 " ✅ POSLA KDS SYSTEM_SPECIFICATION.md — prepレベル・ステーション状況帯・通知音の仕様反映
+2013 " 🟣 POSLA KDS P1-63 — ステーション通知音 AudioContext 実装（index.html）
+2015 2:40p 🔵 POSLA KDS P1-63 — サーバー動作確認完了（HTTP 200・JS配信確認）
+2017 " 🟣 POSLA KDS P1-63 — commit前 git diff --stat: 370挿入 / 91削除
+2018 2:41p 🟣 POSLA KDS P1-63 — git commit 完了 `feat: add KDS station focus alerts`
+2020 " 🟣 POSLA KDS P1-63 — git push 完了（ca34a3d → GitHub）
+### Apr 30, 2026
+2040 12:10p 🔵 POSLA シフト管理ブランチ — 大量の未コミット変更を確認
+2041 " 🔵 POSLA api/store/shift/today-status.php — 当日シフト状況API全容確認
+2042 " 🔵 POSLA api/store/shift/assignments.php — シフトアサインメントCRUD全容確認
+2043 " 🔵 POSLA api/store/shift/swap-requests.php — 交代・欠勤申請API確認
+2044 " 🟣 POSLA api/store/shift/field-ops.php — 新規シフト現場オペレーションAPI実装
+2045 " 🟣 POSLA public/js/shift-manager.js — スタッフ向けマイシフトフロントエンド実装確認
+2046 " 🟣 POSLA public/admin/js/shift-help.js — 店長向けシフト当日ヘルプダッシュボード実装確認
+2047 " 🟣 POSLA シフト管理DBスキーマ — P1-57〜P1-60 SQLマイグレーション4本の全容確認
+2048 " 🔵 POSLA dashboard.html — ShiftHelp・ShiftManager両モジュールのマウントポイント確認
+2049 " 🔴 POSLA dashboard.html — ShiftHelp.init() の閉じ括弧が欠落しているバグを発見
+2050 12:17p 🔵 POSLA dashboard.html — シフトセクションのタブ構造確認（バグなし）
+2051 " 🔵 POSLA 他店舗ヘルプ — 現実装は同店舗内スタッフのみ対象、他店舗マッチングは未実装
+2052 " 🔵 POSLA シフト管理スモークテスト — 全機能動作確認と未実装項目の特定
+2053 " ✅ POSLA シフト管理 P1-57〜P1-60 — git commit完了（135ファイル, +2938/-640行）
+2054 " ✅ POSLA シフト管理 P1-57〜P1-60 — git push完了（GitHub: 3f34bfa→4ee8b90）
+2055 12:20p 🔵 POSLA 擬似本番環境スモークテスト — 全項目PASS（0 failures）
+2056 " 🟣 POSLA シフト管理機能 — 大規模実装（P1-57〜P1-60相当）
 
-Access 813k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 942k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
