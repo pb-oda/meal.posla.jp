@@ -166,26 +166,60 @@ foreach ($tasks as $task) {
 
 $stmtRequests = $pdo->prepare(
     "SELECT sr.id, sr.shift_assignment_id, sr.request_type, sr.status, sr.reason,
-            sr.response_note, sr.created_at,
-            sa.shift_date, sa.start_time, sa.end_time, sa.role_type
+            sr.response_note, sr.created_at, sr.requester_user_id, sr.candidate_user_id,
+            sr.replacement_user_id, sr.candidate_acceptance_status, sr.candidate_responded_at,
+            sr.candidate_response_note,
+            sa.shift_date, sa.start_time, sa.end_time, sa.role_type,
+            cand.display_name AS candidate_name, cand.username AS candidate_username,
+            repl.display_name AS replacement_name, repl.username AS replacement_username
      FROM shift_swap_requests sr
      JOIN shift_assignments sa ON sa.id = sr.shift_assignment_id
+     LEFT JOIN users cand ON cand.id = sr.candidate_user_id
+     LEFT JOIN users repl ON repl.id = sr.replacement_user_id
      WHERE sr.tenant_id = ? AND sr.store_id = ?
-       AND sr.requester_user_id = ?
+       AND (sr.requester_user_id = ? OR sr.candidate_user_id = ? OR sr.replacement_user_id = ? OR sa.user_id = ?)
      ORDER BY FIELD(sr.status, 'pending','approved','rejected','cancelled'), sr.created_at DESC
      LIMIT 10"
 );
-$stmtRequests->execute([$tenantId, $storeId, $userId]);
+$stmtRequests->execute([$tenantId, $storeId, $userId, $userId, $userId, $userId]);
 $requests = $stmtRequests->fetchAll();
 $pendingRequestCount = 0;
+$candidateAcceptCount = 0;
 foreach ($requests as &$req) {
     $req['start_time'] = sh_time5($req['start_time']);
     $req['end_time'] = sh_time5($req['end_time']);
+    if ($req['requester_user_id'] === $userId) {
+        $req['my_relation'] = 'requester';
+    } elseif ($req['candidate_user_id'] === $userId) {
+        $req['my_relation'] = 'candidate';
+    } elseif ($req['replacement_user_id'] === $userId) {
+        $req['my_relation'] = 'replacement';
+    } else {
+        $req['my_relation'] = 'assigned';
+    }
     if ($req['status'] === 'pending') {
         $pendingRequestCount++;
     }
+    if ($req['my_relation'] === 'candidate' && $req['status'] === 'pending' && $req['candidate_acceptance_status'] === 'pending') {
+        $candidateAcceptCount++;
+    }
 }
 unset($req);
+
+$stmtUnread = $pdo->prepare(
+    "SELECT n.id, n.request_id, n.notification_type, n.title, n.body, n.created_at,
+            sr.request_type, sr.status,
+            sa.shift_date, sa.start_time, sa.end_time
+     FROM shift_request_notifications n
+     JOIN shift_swap_requests sr ON sr.id = n.request_id
+     JOIN shift_assignments sa ON sa.id = sr.shift_assignment_id
+     WHERE n.tenant_id = ? AND n.store_id = ? AND n.user_id = ? AND n.is_read = 0
+     ORDER BY n.created_at DESC
+     LIMIT 10"
+);
+$stmtUnread->execute([$tenantId, $storeId, $userId]);
+$unreadNotifications = $stmtUnread->fetchAll();
+$unreadNotificationCount = count($unreadNotifications);
 
 $stmtOpen = $pdo->prepare(
     'SELECT os.id, os.shift_date, os.start_time, os.end_time, os.break_minutes,
@@ -249,6 +283,7 @@ json_response([
     'working' => $working ?: null,
     'tasks' => $tasks,
     'requests' => $requests,
+    'unread_request_notifications' => $unreadNotifications,
     'open_shifts' => $openShifts,
     'attendance_corrections' => $corrections,
     'availability' => [
@@ -260,6 +295,8 @@ json_response([
         'pending_confirmation_count' => count($pendingConfirmations),
         'pending_task_count' => $pendingTaskCount,
         'pending_request_count' => $pendingRequestCount,
+        'candidate_accept_count' => $candidateAcceptCount,
+        'unread_request_notification_count' => $unreadNotificationCount,
         'open_shift_count' => count($openShifts),
         'pending_correction_count' => $pendingCorrectionCount,
     ],

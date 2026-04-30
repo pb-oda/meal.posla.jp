@@ -50,6 +50,138 @@ function ssr_load_assignment($pdo, $tenantId, $storeId, $assignmentId)
     return $stmt->fetch();
 }
 
+function ssr_excerpt($text)
+{
+    $text = trim((string)$text);
+    if (function_exists('mb_substr')) {
+        return mb_substr($text, 0, 180);
+    }
+    return substr($text, 0, 180);
+}
+
+function ssr_manager_participants($pdo, $tenantId, $storeId)
+{
+    $stmt = $pdo->prepare(
+        "SELECT u.id
+         FROM users u
+         JOIN user_stores us ON us.user_id = u.id AND us.store_id = ?
+         WHERE u.tenant_id = ? AND u.is_active = 1 AND u.role IN ('manager','owner')"
+    );
+    $stmt->execute([$storeId, $tenantId]);
+    return array_column($stmt->fetchAll(), 'id');
+}
+
+function ssr_staff_participants($request)
+{
+    $ids = [];
+    foreach (['requester_user_id', 'candidate_user_id', 'replacement_user_id', 'current_user_id'] as $key) {
+        if (!empty($request[$key])) {
+            $ids[$request[$key]] = true;
+        }
+    }
+    return array_keys($ids);
+}
+
+function ssr_notify_users($pdo, $tenantId, $storeId, $requestId, $userIds, $senderId, $type, $title, $body)
+{
+    $stmt = $pdo->prepare(
+        'INSERT INTO shift_request_notifications
+            (id, tenant_id, store_id, request_id, user_id, notification_type, title, body)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    );
+    $seen = [];
+    foreach ($userIds as $userId) {
+        if (!$userId || $userId === $senderId || isset($seen[$userId])) {
+            continue;
+        }
+        $seen[$userId] = true;
+        $stmt->execute([generate_uuid(), $tenantId, $storeId, $requestId, $userId, $type, $title, $body]);
+    }
+}
+
+function ssr_add_message($pdo, $tenantId, $storeId, $requestId, $senderId, $messageType, $messageBody)
+{
+    $messageBody = trim((string)$messageBody);
+    if ($messageBody === '') {
+        return null;
+    }
+    $messageId = generate_uuid();
+    $stmt = $pdo->prepare(
+        'INSERT INTO shift_request_messages
+            (id, tenant_id, store_id, request_id, sender_user_id, message_type, message_body)
+         VALUES (?, ?, ?, ?, ?, ?, ?)'
+    );
+    $stmt->execute([$messageId, $tenantId, $storeId, $requestId, $senderId, $messageType, $messageBody]);
+    return $messageId;
+}
+
+function ssr_attach_request_meta($pdo, $tenantId, $storeId, $user, $rows)
+{
+    if (!$rows) {
+        return $rows;
+    }
+    $ids = [];
+    foreach ($rows as $row) {
+        $ids[] = $row['id'];
+    }
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+
+    $unreadMap = [];
+    $stmtUnread = $pdo->prepare(
+        "SELECT request_id, COUNT(*) AS unread_count
+         FROM shift_request_notifications
+         WHERE tenant_id = ? AND store_id = ? AND user_id = ? AND is_read = 0
+           AND request_id IN ({$ph})
+         GROUP BY request_id"
+    );
+    $stmtUnread->execute(array_merge([$tenantId, $storeId, $user['user_id']], $ids));
+    foreach ($stmtUnread->fetchAll() as $u) {
+        $unreadMap[$u['request_id']] = (int)$u['unread_count'];
+    }
+
+    $latestMap = [];
+    $stmtLatest = $pdo->prepare(
+        "SELECT m.request_id, m.message_body, m.created_at, u.display_name, u.username
+         FROM shift_request_messages m
+         JOIN users u ON u.id = m.sender_user_id
+         JOIN (
+           SELECT request_id, MAX(created_at) AS max_created_at
+           FROM shift_request_messages
+           WHERE tenant_id = ? AND store_id = ? AND request_id IN ({$ph})
+           GROUP BY request_id
+         ) lm ON lm.request_id = m.request_id AND lm.max_created_at = m.created_at
+         WHERE m.tenant_id = ? AND m.store_id = ?"
+    );
+    $stmtLatest->execute(array_merge([$tenantId, $storeId], $ids, [$tenantId, $storeId]));
+    foreach ($stmtLatest->fetchAll() as $m) {
+        $latestMap[$m['request_id']] = $m;
+    }
+
+    foreach ($rows as &$row) {
+        $row['unread_count'] = isset($unreadMap[$row['id']]) ? $unreadMap[$row['id']] : 0;
+        $row['latest_message'] = isset($latestMap[$row['id']]) ? $latestMap[$row['id']]['message_body'] : null;
+        $row['latest_message_at'] = isset($latestMap[$row['id']]) ? $latestMap[$row['id']]['created_at'] : null;
+        $row['latest_message_sender'] = isset($latestMap[$row['id']])
+            ? (($latestMap[$row['id']]['display_name'] ?: $latestMap[$row['id']]['username']) ?: '')
+            : null;
+        if ($user['role'] === 'staff') {
+            if ($row['requester_user_id'] === $user['user_id']) {
+                $row['my_relation'] = 'requester';
+            } elseif ($row['candidate_user_id'] === $user['user_id']) {
+                $row['my_relation'] = 'candidate';
+            } elseif ($row['replacement_user_id'] === $user['user_id']) {
+                $row['my_relation'] = 'replacement';
+            } else {
+                $row['my_relation'] = 'assigned';
+            }
+        } else {
+            $row['my_relation'] = 'manager';
+        }
+    }
+    unset($row);
+    return $rows;
+}
+
 function ssr_candidate_rows($pdo, $tenantId, $storeId, $assignment)
 {
     $stmtStaff = $pdo->prepare(
@@ -227,11 +359,11 @@ if ($method === 'GET') {
              LEFT JOIN users cand ON cand.id = sr.candidate_user_id
              LEFT JOIN users repl ON repl.id = sr.replacement_user_id
              WHERE sr.tenant_id = ? AND sr.store_id = ?
-               AND (sr.requester_user_id = ? OR sa.user_id = ?)
+               AND (sr.requester_user_id = ? OR sr.candidate_user_id = ? OR sr.replacement_user_id = ? OR sa.user_id = ?)
              ORDER BY sr.created_at DESC
              LIMIT 50"
         );
-        $stmt->execute([$tenantId, $storeId, $user['user_id'], $user['user_id']]);
+        $stmt->execute([$tenantId, $storeId, $user['user_id'], $user['user_id'], $user['user_id'], $user['user_id']]);
     } else {
         $stmt = $pdo->prepare(
             "SELECT sr.*, sa.shift_date, sa.start_time, sa.end_time, sa.role_type,
@@ -249,7 +381,7 @@ if ($method === 'GET') {
         );
         $stmt->execute([$tenantId, $storeId]);
     }
-    json_response(['requests' => $stmt->fetchAll()]);
+    json_response(['requests' => ssr_attach_request_meta($pdo, $tenantId, $storeId, $user, $stmt->fetchAll())]);
 }
 
 if ($method === 'POST') {
@@ -302,16 +434,26 @@ if ($method === 'POST') {
     }
 
     $id = generate_uuid();
+    $candidateAcceptanceStatus = $candidateUserId !== null ? 'pending' : 'not_required';
     $stmt = $pdo->prepare(
         'INSERT INTO shift_swap_requests
             (id, tenant_id, store_id, shift_assignment_id, request_type,
-             requester_user_id, candidate_user_id, status, reason)
-         VALUES (?, ?, ?, ?, ?, ?, ?, \'pending\', ?)'
+             requester_user_id, candidate_user_id, candidate_acceptance_status, status, reason)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, \'pending\', ?)'
     );
     $stmt->execute([
         $id, $tenantId, $storeId, $assignmentId, $requestType,
-        $assignment['user_id'], $candidateUserId, $reason,
+        $assignment['user_id'], $candidateUserId, $candidateAcceptanceStatus, $reason,
     ]);
+
+    ssr_add_message($pdo, $tenantId, $storeId, $id, $user['user_id'], 'reason', $reason);
+    $managerIds = ssr_manager_participants($pdo, $tenantId, $storeId);
+    $typeLabel = $requestType === 'absence' ? '欠勤連絡' : '交代依頼';
+    ssr_notify_users($pdo, $tenantId, $storeId, $id, $managerIds, $user['user_id'], 'status', $typeLabel . 'があります', ssr_excerpt($reason ?: '新しい申請があります'));
+    if ($candidateUserId !== null) {
+        ssr_notify_users($pdo, $tenantId, $storeId, $id, [$candidateUserId], $user['user_id'], 'candidate', '交代候補の承諾待ち', '引き受け可否を回答してください');
+        ssr_add_message($pdo, $tenantId, $storeId, $id, $user['user_id'], 'system', '交代候補スタッフの承諾待ちです。');
+    }
 
     write_audit_log(
         $pdo, $user, $storeId,
@@ -324,8 +466,6 @@ if ($method === 'POST') {
 }
 
 if ($method === 'PATCH') {
-    require_role('manager');
-
     $id = $_GET['id'] ?? '';
     if ($id === '') {
         json_error('MISSING_ID', 'id パラメータが必要です', 400);
@@ -350,9 +490,72 @@ if ($method === 'PATCH') {
     $patchAction = $body['action'] ?? '';
     $responseNote = isset($body['response_note']) ? trim($body['response_note']) : null;
 
+    if (in_array($patchAction, ['accept-candidate', 'decline-candidate'], true)) {
+        if ($user['role'] !== 'staff' || $request['candidate_user_id'] !== $user['user_id']) {
+            json_error('FORBIDDEN', '候補スタッフ本人のみ回答できます', 403);
+        }
+        if ($request['status'] !== 'pending') {
+            json_error('ALREADY_HANDLED', 'この申請は対応済みです', 400);
+        }
+        if ($request['candidate_acceptance_status'] !== 'pending') {
+            json_error('ALREADY_RESPONDED', 'この候補依頼は回答済みです', 400);
+        }
+        $newStatus = $patchAction === 'accept-candidate' ? 'accepted' : 'declined';
+        $stmtCandidate = $pdo->prepare(
+            'UPDATE shift_swap_requests
+             SET candidate_acceptance_status = ?, candidate_responded_at = NOW(), candidate_response_note = ?
+             WHERE id = ? AND tenant_id = ? AND store_id = ?'
+        );
+        $stmtCandidate->execute([$newStatus, $responseNote, $id, $tenantId, $storeId]);
+
+        $messageText = $newStatus === 'accepted'
+            ? '交代候補スタッフが「引き受ける」と回答しました。'
+            : '交代候補スタッフが辞退しました。';
+        if ($responseNote !== null && $responseNote !== '') {
+            $messageText .= "\n" . $responseNote;
+        }
+        ssr_add_message($pdo, $tenantId, $storeId, $id, $user['user_id'], 'system', $messageText);
+        $notifyTo = array_merge([$request['requester_user_id']], ssr_manager_participants($pdo, $tenantId, $storeId));
+        ssr_notify_users(
+            $pdo,
+            $tenantId,
+            $storeId,
+            $id,
+            $notifyTo,
+            $user['user_id'],
+            'candidate',
+            $newStatus === 'accepted' ? '交代候補が承諾しました' : '交代候補が辞退しました',
+            $responseNote
+        );
+
+        write_audit_log(
+            $pdo,
+            $user,
+            $storeId,
+            $newStatus === 'accepted' ? 'shift_swap_candidate_accept' : 'shift_swap_candidate_decline',
+            'shift_swap_request',
+            $id,
+            $request,
+            ['response_note' => $responseNote]
+        );
+
+        json_response(['candidate_acceptance_status' => $newStatus]);
+    }
+
+    require_role('manager');
+
     if ($patchAction === 'approve') {
-        $replacementUserId = isset($body['replacement_user_id']) && $body['replacement_user_id'] !== ''
-            ? $body['replacement_user_id'] : $request['candidate_user_id'];
+        if (array_key_exists('replacement_user_id', $body)) {
+            $replacementUserId = $body['replacement_user_id'] !== '' ? $body['replacement_user_id'] : null;
+        } else {
+            $replacementUserId = $request['candidate_user_id'];
+        }
+        if ($replacementUserId !== null && (
+            $request['candidate_user_id'] !== $replacementUserId ||
+            $request['candidate_acceptance_status'] !== 'accepted'
+        )) {
+            json_error('CANDIDATE_CONSENT_REQUIRED', '交代スタッフ本人の承諾後に承認してください', 400);
+        }
 
         $pdo->beginTransaction();
         try {
@@ -417,6 +620,17 @@ if ($method === 'PATCH') {
             $request,
             ['replacement_user_id' => $replacementUserId, 'response_note' => $responseNote]
         );
+        $approvedText = '申請が承認されました。';
+        if ($replacementUserId !== null) {
+            $approvedText = '交代申請が承認され、シフト担当者が変更されました。';
+        } elseif ($request['request_type'] === 'absence') {
+            $approvedText = '欠勤申請が承認されました。';
+        }
+        if ($responseNote !== null && $responseNote !== '') {
+            $approvedText .= "\n" . $responseNote;
+        }
+        ssr_add_message($pdo, $tenantId, $storeId, $id, $user['user_id'], 'system', $approvedText);
+        ssr_notify_users($pdo, $tenantId, $storeId, $id, ssr_staff_participants($request), $user['user_id'], 'status', '申請が承認されました', $responseNote);
 
         json_response([
             'approved' => true,
@@ -440,6 +654,12 @@ if ($method === 'PATCH') {
         );
         $stmtUpdate->execute([$responseNote, $user['user_id'], $id, $tenantId, $storeId]);
         write_audit_log($pdo, $user, $storeId, 'shift_swap_request_reject', 'shift_swap_request', $id, $request, ['response_note' => $responseNote]);
+        $rejectText = '申請が却下されました。';
+        if ($responseNote !== null && $responseNote !== '') {
+            $rejectText .= "\n" . $responseNote;
+        }
+        ssr_add_message($pdo, $tenantId, $storeId, $id, $user['user_id'], 'system', $rejectText);
+        ssr_notify_users($pdo, $tenantId, $storeId, $id, ssr_staff_participants($request), $user['user_id'], 'status', '申請が却下されました', $responseNote);
         json_response(['rejected' => true]);
     }
 
@@ -451,6 +671,12 @@ if ($method === 'PATCH') {
         );
         $stmtUpdate->execute([$responseNote, $user['user_id'], $id, $tenantId, $storeId]);
         write_audit_log($pdo, $user, $storeId, 'shift_swap_request_cancel', 'shift_swap_request', $id, $request, ['response_note' => $responseNote]);
+        $cancelText = '申請がキャンセルされました。';
+        if ($responseNote !== null && $responseNote !== '') {
+            $cancelText .= "\n" . $responseNote;
+        }
+        ssr_add_message($pdo, $tenantId, $storeId, $id, $user['user_id'], 'system', $cancelText);
+        ssr_notify_users($pdo, $tenantId, $storeId, $id, ssr_staff_participants($request), $user['user_id'], 'status', '申請がキャンセルされました', $responseNote);
         json_response(['cancelled' => true]);
     }
 

@@ -190,10 +190,18 @@ var ShiftHelp = (function() {
                 var act = this.getAttribute('data-swap-action');
                 var reqId = this.getAttribute('data-request-id');
                 var assignmentId = this.getAttribute('data-assignment-id');
-                if (act === 'approve') _approveSwapRequest(reqId, assignmentId);
+                if (act === 'approve') _approveSwapRequest(
+                    reqId,
+                    assignmentId,
+                    this.getAttribute('data-request-type'),
+                    this.getAttribute('data-candidate-id'),
+                    this.getAttribute('data-candidate-status'),
+                    this.getAttribute('data-candidate-name')
+                );
                 else if (act === 'reject') _patchSwapRequest(reqId, 'reject');
                 else if (act === 'cancel') _patchSwapRequest(reqId, 'cancel');
                 else if (act === 'fill') _showAbsenceFillDialog(assignmentId);
+                else if (act === 'thread') _showShiftRequestThread(reqId);
             });
         }
 
@@ -394,17 +402,22 @@ var ShiftHelp = (function() {
             var row = rows[r];
             var type = row.request_type === 'absence' ? '欠勤' : '交代';
             var status = { pending: '未対応', approved: '承認済', rejected: '却下', cancelled: 'キャンセル' }[row.status] || row.status;
-            var candidate = row.replacement_name || row.candidate_name || '-';
+            var candidate = esc(row.replacement_name || row.candidate_name || '-');
+            if (row.candidate_user_id) {
+                candidate += '<br><small>' + esc(_candidateAcceptanceLabel(row.candidate_acceptance_status)) + '</small>';
+            }
             var actions = '';
+            var unread = parseInt(row.unread_count || 0, 10);
+            actions += '<button class="btn btn-sm" data-swap-action="thread" data-request-id="' + esc(row.id) + '">やり取り' + (unread > 0 ? ' (' + unread + ')' : '') + '</button> ';
             if (row.status === 'pending') {
-                actions = '<button class="btn btn-sm btn-primary" data-swap-action="approve" data-request-id="' + esc(row.id) + '" data-assignment-id="' + esc(row.shift_assignment_id) + '">承認</button> ' +
+                actions += '<button class="btn btn-sm btn-primary" data-swap-action="approve" data-request-id="' + esc(row.id) + '" data-assignment-id="' + esc(row.shift_assignment_id) + '" data-request-type="' + esc(row.request_type) + '" data-candidate-id="' + esc(row.candidate_user_id || '') + '" data-candidate-status="' + esc(row.candidate_acceptance_status || '') + '" data-candidate-name="' + esc(row.candidate_name || row.candidate_username || '') + '">承認</button> ' +
                     '<button class="btn btn-sm help-cancel-btn" data-swap-action="reject" data-request-id="' + esc(row.id) + '">却下</button>';
             } else if (row.request_type === 'absence' && row.status === 'approved' && !row.replacement_user_id) {
-                actions = '<button class="btn btn-sm btn-primary" data-swap-action="fill" data-request-id="' + esc(row.id) + '" data-assignment-id="' + esc(row.shift_assignment_id) + '">穴埋め</button>';
+                actions += '<button class="btn btn-sm btn-primary" data-swap-action="fill" data-request-id="' + esc(row.id) + '" data-assignment-id="' + esc(row.shift_assignment_id) + '">穴埋め</button>';
             }
             html += '<tr><td>' + esc(row.shift_date || '') + '<br>' + esc((row.start_time || '').substring(0, 5)) + '-' + esc((row.end_time || '').substring(0, 5)) + '</td>' +
                 '<td>' + esc(row.requester_name || row.requester_username || '') + '</td>' +
-                '<td>' + type + '</td><td>' + esc(candidate) + '</td><td>' + status + '</td><td>' + actions + '</td></tr>';
+                '<td>' + type + '</td><td>' + candidate + '</td><td>' + status + '</td><td>' + actions + '</td></tr>';
             if (row.reason || row.response_note) {
                 html += '<tr class="help-note-row"><td colspan="6">' + esc(row.reason || row.response_note || '') + '</td></tr>';
             }
@@ -1016,6 +1029,13 @@ var ShiftHelp = (function() {
         return '未提出';
     }
 
+    function _candidateAcceptanceLabel(v) {
+        if (v === 'pending') return '本人承諾待ち';
+        if (v === 'accepted') return '本人承諾済';
+        if (v === 'declined') return '本人辞退';
+        return '承諾不要';
+    }
+
     function _renderCandidatePreview(box, candidates, excluded) {
         var html = '<div class="help-candidate-preview__title">候補スタッフ</div>';
         if (candidates.length === 0) {
@@ -1181,41 +1201,35 @@ var ShiftHelp = (function() {
         });
     }
 
-    function _approveSwapRequest(requestId, assignmentId) {
+    function _approveSwapRequest(requestId, assignmentId, requestType, candidateId, candidateStatus, candidateName) {
         var overlay = document.createElement('div');
         overlay.className = 'shift-dialog-overlay';
+        var canReplace = candidateId && candidateStatus === 'accepted';
+        var replacementHtml = '<p>本人承諾済みの候補だけ、承認と同時にシフト担当者へ差し替えできます。</p>';
+        if (canReplace) {
+            replacementHtml += '<label class="shift-swap-candidate"><input type="radio" name="swap-replacement" value="' + esc(candidateId) + '" checked> ' +
+                esc(candidateName || '承諾済み候補') + ' <small>本人承諾済</small></label>';
+            replacementHtml += '<label class="shift-swap-candidate"><input type="radio" name="swap-replacement" value=""> 交代なしで承認</label>';
+        } else if (requestType === 'absence') {
+            replacementHtml += '<label class="shift-swap-candidate"><input type="radio" name="swap-replacement" value="" checked> 交代なしで欠勤を承認</label>';
+            if (candidateId) {
+                replacementHtml += '<p class="help-empty-inline">候補状態: ' + esc(_candidateAcceptanceLabel(candidateStatus)) + '</p>';
+            }
+        } else {
+            replacementHtml += '<p class="help-error">交代承認には候補スタッフ本人の承諾が必要です。先に「やり取り」で確認するか、候補の回答を待ってください。</p>';
+        }
         overlay.innerHTML = '<div class="shift-dialog">' +
             '<h3>交代・欠勤申請の承認</h3>' +
-            '<div id="swap-approve-candidates">候補を確認中...</div>' +
+            '<div id="swap-approve-candidates">' + replacementHtml + '</div>' +
             '<label>対応メモ<input type="text" id="swap-approve-note" class="form-input" placeholder="任意"></label>' +
             '<div class="shift-dialog-actions">' +
-            '<button class="btn btn-primary" id="swap-approve-go">承認</button>' +
+            '<button class="btn btn-primary" id="swap-approve-go"' + (!canReplace && requestType === 'swap' ? ' disabled' : '') + '>承認</button>' +
             '<button class="btn" id="swap-approve-cancel">キャンセル</button>' +
             '</div></div>';
         document.body.appendChild(overlay);
 
         document.getElementById('swap-approve-cancel').addEventListener('click', function() {
             document.body.removeChild(overlay);
-        });
-
-        apiCall('GET', API_BASE + 'swap-requests.php?action=candidates&store_id=' + encodeURIComponent(_storeId) +
-            '&assignment_id=' + encodeURIComponent(assignmentId), null, function(data, err) {
-            var box = document.getElementById('swap-approve-candidates');
-            if (!box) return;
-            if (err) {
-                box.innerHTML = '<p class="help-error">候補を取得できませんでした</p>';
-                return;
-            }
-            var html = '<p>交代スタッフを選ぶと、承認と同時にシフト担当者を差し替えます。欠勤だけ承認する場合は「交代なし」を選びます。</p>' +
-                '<label class="shift-swap-candidate"><input type="radio" name="swap-replacement" value="" checked> 交代なし</label>';
-            var candidates = data.candidates || [];
-            for (var i = 0; i < Math.min(candidates.length, 10); i++) {
-                var c = candidates[i];
-                var av = c.availability === 'preferred' ? '希望' : (c.availability === 'available' ? '出勤可' : '未提出');
-                html += '<label class="shift-swap-candidate"><input type="radio" name="swap-replacement" value="' + esc(c.user_id) + '"> ' +
-                    esc(c.display_name) + ' <small>' + esc(av + (c.role_match ? '' : ' / 持ち場要確認')) + '</small></label>';
-            }
-            box.innerHTML = html;
         });
 
         document.getElementById('swap-approve-go').addEventListener('click', function() {
@@ -1319,6 +1333,72 @@ var ShiftHelp = (function() {
                 });
             });
         });
+    }
+
+    function _showShiftRequestThread(requestId) {
+        var overlay = document.createElement('div');
+        overlay.className = 'shift-dialog-overlay';
+        overlay.innerHTML = '<div class="shift-dialog shift-dialog--wide">' +
+            '<h3>申請メッセージ</h3>' +
+            '<div id="help-request-thread-body" class="shift-request-thread">読み込み中...</div>' +
+            '<label>メッセージ<textarea id="help-request-thread-message" rows="3" placeholder="スタッフへの確認事項を入力"></textarea></label>' +
+            '<div class="shift-dialog-actions">' +
+            '<button class="btn btn-primary" id="help-request-thread-send">送信</button>' +
+            '<button class="btn" id="help-request-thread-close">閉じる</button>' +
+            '</div></div>';
+        document.body.appendChild(overlay);
+
+        function renderMessages() {
+            apiCall('GET', API_BASE + 'request-messages.php?store_id=' + encodeURIComponent(_storeId) + '&request_id=' + encodeURIComponent(requestId), null, function(data, err) {
+                var body = document.getElementById('help-request-thread-body');
+                if (!body) return;
+                if (err) {
+                    body.innerHTML = '<p class="help-error">メッセージを取得できませんでした: ' + esc(err.message || '') + '</p>';
+                    return;
+                }
+                var messages = data.messages || [];
+                if (messages.length === 0) {
+                    body.innerHTML = '<p class="help-empty">まだメッセージはありません。</p>';
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < messages.length; i++) {
+                    var m = messages[i];
+                    var system = m.message_type === 'system';
+                    html += '<div class="shift-request-message' + (system ? ' shift-request-message--system' : '') + '">' +
+                        '<div class="shift-request-message__meta">' +
+                        esc(system ? 'システム' : ((m.display_name || m.username || '') + ' / ' + (m.created_at || ''))) +
+                        '</div><div class="shift-request-message__body">' + esc(m.message_body || '') + '</div></div>';
+                }
+                body.innerHTML = html;
+                body.scrollTop = body.scrollHeight;
+            });
+        }
+
+        document.getElementById('help-request-thread-close').addEventListener('click', function() {
+            document.body.removeChild(overlay);
+            loadRequests();
+        });
+        document.getElementById('help-request-thread-send').addEventListener('click', function() {
+            var input = document.getElementById('help-request-thread-message');
+            var message = input.value;
+            if (!message.trim()) {
+                notify('メッセージを入力してください', 'error');
+                return;
+            }
+            apiCall('POST', API_BASE + 'request-messages.php?store_id=' + encodeURIComponent(_storeId), {
+                request_id: requestId,
+                message: message
+            }, function(result, err) {
+                if (err) {
+                    notify('送信に失敗しました: ' + (err.message || ''), 'error');
+                    return;
+                }
+                input.value = '';
+                renderMessages();
+            });
+        });
+        renderMessages();
     }
 
     function _patchSwapRequest(requestId, action) {

@@ -379,6 +379,25 @@
                     warn: false
                 });
             }
+            if ((m.candidate_accept_count || 0) > 0) {
+                items.push({
+                    label: '交代候補',
+                    value: m.candidate_accept_count + '件',
+                    desc: '交代候補として引き受け可否の回答待ちです。',
+                    tab: 'shift-my',
+                    warn: true
+                });
+            }
+            if ((m.unread_request_notification_count || 0) > 0) {
+                var notices = data.unread_request_notifications || [];
+                items.push({
+                    label: '店長返信',
+                    value: m.unread_request_notification_count + '件',
+                    desc: notices.length > 0 ? (notices[0].title || '申請に返信があります。') : '申請に返信があります。',
+                    tab: 'shift-my',
+                    warn: true
+                });
+            }
             if ((m.pending_correction_count || 0) > 0) {
                 items.push({
                     label: '打刻修正',
@@ -966,15 +985,27 @@
 
             if (requests.length > 0) {
                 html += '<h4>交代・欠勤申請</h4><table class="shift-table"><thead><tr>' +
-                    '<th>日付</th><th>種別</th><th>状態</th><th>候補/交代</th><th>メモ</th>' +
+                    '<th>日付</th><th>種別</th><th>状態</th><th>候補/交代</th><th>メモ</th><th>操作</th>' +
                     '</tr></thead><tbody>';
                 for (var r = 0; r < Math.min(requests.length, 10); r++) {
                     var req = requests[r];
-                    var typeLabel = req.request_type === 'absence' ? '欠勤' : '交代';
+                    var typeLabel = req.my_relation === 'candidate' ? '交代候補' : (req.request_type === 'absence' ? '欠勤' : '交代');
                     var stLabel = { pending: '未対応', approved: '承認済', rejected: '却下', cancelled: 'キャンセル' }[req.status] || req.status;
+                    if (req.my_relation === 'candidate' && req.status === 'pending') {
+                        stLabel = self._candidateStatusLabel(req.candidate_acceptance_status);
+                    }
                     var person = req.replacement_name || req.candidate_name || '-';
+                    var memo = req.latest_message ?
+                        '最新: ' + (req.latest_message_sender || '') + ' / ' + req.latest_message :
+                        (req.reason || req.response_note || req.candidate_response_note || '');
+                    var unread = parseInt(req.unread_count || 0, 10);
+                    var actions = '<button class="btn btn-sm myshift-request-thread" data-id="' + esc(req.id) + '">やり取り' + (unread > 0 ? ' (' + unread + ')' : '') + '</button>';
+                    if (req.my_relation === 'candidate' && req.status === 'pending' && req.candidate_acceptance_status === 'pending') {
+                        actions += ' <button class="btn btn-sm btn-primary myshift-candidate-response" data-id="' + esc(req.id) + '" data-action="accept-candidate">引き受ける</button>' +
+                            ' <button class="btn btn-sm myshift-candidate-response" data-id="' + esc(req.id) + '" data-action="decline-candidate">辞退</button>';
+                    }
                     html += '<tr><td>' + esc(req.shift_date || '') + ' ' + esc((req.start_time || '').substring(0, 5)) + '-' + esc((req.end_time || '').substring(0, 5)) + '</td>' +
-                        '<td>' + typeLabel + '</td><td>' + stLabel + '</td><td>' + esc(person) + '</td><td>' + esc(req.reason || req.response_note || '') + '</td></tr>';
+                        '<td>' + typeLabel + '</td><td>' + stLabel + '</td><td>' + esc(person) + '</td><td>' + esc(memo) + '</td><td>' + actions + '</td></tr>';
                 }
                 html += '</tbody></table>';
             }
@@ -1063,6 +1094,24 @@
                         });
                     });
                 })(taskBtns[tb]);
+            }
+
+            var threadBtns = container.querySelectorAll('.myshift-request-thread');
+            for (var rb = 0; rb < threadBtns.length; rb++) {
+                (function(btn) {
+                    btn.addEventListener('click', function() {
+                        self._showShiftRequestThread(btn.getAttribute('data-id'));
+                    });
+                })(threadBtns[rb]);
+            }
+
+            var candidateBtns = container.querySelectorAll('.myshift-candidate-response');
+            for (var crb = 0; crb < candidateBtns.length; crb++) {
+                (function(btn) {
+                    btn.addEventListener('click', function() {
+                        self._sendCandidateResponse(btn.getAttribute('data-id'), btn.getAttribute('data-action'));
+                    });
+                })(candidateBtns[crb]);
             }
         },
 
@@ -1162,6 +1211,96 @@
                     self.loadMyShift();
                 });
             });
+        },
+
+        _sendCandidateResponse: function(requestId, action) {
+            var self = this;
+            var isAccept = action === 'accept-candidate';
+            var note = prompt(isAccept ? '店長・申請者へのメモ（任意）' : '辞退理由・補足（任意）', '');
+            if (note === null) return;
+            apiPatch('swap-requests.php?id=' + encodeURIComponent(requestId) + '&store_id=' + encodeURIComponent(self.storeId), {
+                action: action,
+                response_note: note
+            }, function(data, err) {
+                if (err) {
+                    alert('回答に失敗しました: ' + (err.message || ''));
+                    return;
+                }
+                notify(isAccept ? '交代候補を引き受けました' : '交代候補を辞退しました', 'success');
+                self.loadMyShift();
+                self.loadStaffHome();
+            });
+        },
+
+        _showShiftRequestThread: function(requestId) {
+            var self = this;
+            var overlay = document.createElement('div');
+            overlay.className = 'shift-dialog-overlay';
+            overlay.innerHTML = '<div class="shift-dialog shift-dialog--wide">' +
+                '<h3>申請メッセージ</h3>' +
+                '<div id="shift-request-thread-body" class="shift-request-thread">読み込み中...</div>' +
+                '<label>メッセージ<textarea id="shift-request-thread-message" rows="3" placeholder="店長・スタッフへの確認事項を入力"></textarea></label>' +
+                '<div class="shift-dialog-actions">' +
+                '<button class="btn btn-primary" id="shift-request-thread-send">送信</button>' +
+                '<button class="btn" id="shift-request-thread-close">閉じる</button>' +
+                '</div></div>';
+            document.body.appendChild(overlay);
+
+            function renderMessages() {
+                apiGet('request-messages.php', {
+                    store_id: self.storeId,
+                    request_id: requestId
+                }, function(data, err) {
+                    var body = document.getElementById('shift-request-thread-body');
+                    if (!body) return;
+                    if (err) {
+                        body.innerHTML = '<p class="error">メッセージを取得できませんでした: ' + esc(err.message || '') + '</p>';
+                        return;
+                    }
+                    var messages = data.messages || [];
+                    if (messages.length === 0) {
+                        body.innerHTML = '<p class="empty-msg">まだメッセージはありません。</p>';
+                        return;
+                    }
+                    var html = '';
+                    for (var i = 0; i < messages.length; i++) {
+                        var m = messages[i];
+                        var system = m.message_type === 'system';
+                        html += '<div class="shift-request-message' + (system ? ' shift-request-message--system' : '') + '">' +
+                            '<div class="shift-request-message__meta">' +
+                            esc(system ? 'システム' : ((m.display_name || m.username || '') + ' / ' + (m.created_at || ''))) +
+                            '</div><div class="shift-request-message__body">' + esc(m.message_body || '') + '</div></div>';
+                    }
+                    body.innerHTML = html;
+                    body.scrollTop = body.scrollHeight;
+                });
+            }
+
+            document.getElementById('shift-request-thread-close').addEventListener('click', function() {
+                document.body.removeChild(overlay);
+                self.loadMyShift();
+                self.loadStaffHome();
+            });
+            document.getElementById('shift-request-thread-send').addEventListener('click', function() {
+                var input = document.getElementById('shift-request-thread-message');
+                var message = input.value;
+                if (!message.trim()) {
+                    alert('メッセージを入力してください');
+                    return;
+                }
+                apiPost('request-messages.php?store_id=' + encodeURIComponent(self.storeId), {
+                    request_id: requestId,
+                    message: message
+                }, function(data, err) {
+                    if (err) {
+                        alert('送信に失敗しました: ' + (err.message || ''));
+                        return;
+                    }
+                    input.value = '';
+                    renderMessages();
+                });
+            });
+            renderMessages();
         },
 
         // ──────────────────────────────
@@ -1957,6 +2096,15 @@
 
         _correctionStatusLabel: function(status) {
             return { pending: '店長確認待ち', approved: '承認済', rejected: '却下', cancelled: '取消' }[status] || status || '';
+        },
+
+        _candidateStatusLabel: function(status) {
+            return {
+                not_required: '承諾不要',
+                pending: '承諾待ち',
+                accepted: '承諾済',
+                declined: '辞退'
+            }[status] || status || '';
         },
 
         _correctionSummary: function(req) {
