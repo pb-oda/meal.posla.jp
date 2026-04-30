@@ -374,7 +374,7 @@
                 items.push({
                     label: '申請中',
                     value: m.pending_request_count + '件',
-                    desc: '交代・欠勤申請が店長確認待ちです。',
+                    desc: '交代・欠勤申請が責任者確認待ちです。',
                     tab: 'shift-my',
                     warn: false
                 });
@@ -391,7 +391,7 @@
             if ((m.unread_request_notification_count || 0) > 0) {
                 var notices = data.unread_request_notifications || [];
                 items.push({
-                    label: '店長返信',
+                    label: '責任者返信',
                     value: m.unread_request_notification_count + '件',
                     desc: notices.length > 0 ? (notices[0].title || '申請に返信があります。') : '申請に返信があります。',
                     tab: 'shift-my',
@@ -402,7 +402,7 @@
                 items.push({
                     label: '打刻修正',
                     value: m.pending_correction_count + '件',
-                    desc: '店長確認待ちの打刻修正申請があります。',
+                    desc: '責任者確認待ちの打刻修正申請があります。',
                     correction: true,
                     warn: false
                 });
@@ -994,6 +994,11 @@
                     if (req.my_relation === 'candidate' && req.status === 'pending') {
                         stLabel = self._candidateStatusLabel(req.candidate_acceptance_status);
                     }
+                    var handledBy = req.responded_by_name || req.responded_by_username || '';
+                    var stHtml = esc(stLabel);
+                    if (req.status !== 'pending' && handledBy) {
+                        stHtml += '<br><small>対応: ' + esc(handledBy) + '</small>';
+                    }
                     var person = req.replacement_name || req.candidate_name || '-';
                     var memo = req.latest_message ?
                         '最新: ' + (req.latest_message_sender || '') + ' / ' + req.latest_message :
@@ -1005,7 +1010,7 @@
                             ' <button class="btn btn-sm myshift-candidate-response" data-id="' + esc(req.id) + '" data-action="decline-candidate">辞退</button>';
                     }
                     html += '<tr><td>' + esc(req.shift_date || '') + ' ' + esc((req.start_time || '').substring(0, 5)) + '-' + esc((req.end_time || '').substring(0, 5)) + '</td>' +
-                        '<td>' + typeLabel + '</td><td>' + stLabel + '</td><td>' + esc(person) + '</td><td>' + esc(memo) + '</td><td>' + actions + '</td></tr>';
+                        '<td>' + typeLabel + '</td><td>' + stHtml + '</td><td>' + esc(person) + '</td><td>' + esc(memo) + '</td><td>' + actions + '</td></tr>';
                 }
                 html += '</tbody></table>';
             }
@@ -1048,7 +1053,7 @@
             for (var ab = 0; ab < absenceBtns.length; ab++) {
                 (function(btn) {
                     btn.addEventListener('click', function() {
-                        var reason = prompt('欠勤理由・店長へのメモを入力してください（任意）', '');
+                        var reason = prompt('欠勤理由・責任者へのメモを入力してください（任意）', '');
                         if (reason === null) return;
                         apiPost('swap-requests.php?store_id=' + encodeURIComponent(self.storeId), {
                             shift_assignment_id: btn.getAttribute('data-id'),
@@ -1067,7 +1072,7 @@
             for (var os = 0; os < openBtns.length; os++) {
                 (function(btn) {
                     btn.addEventListener('click', function() {
-                        var note = prompt('店長へのメモ（任意）', '');
+                        var note = prompt('責任者へのメモ（任意）', '');
                         if (note === null) return;
                         apiPost('field-ops.php?action=apply-open-shift&store_id=' + encodeURIComponent(self.storeId), {
                             open_shift_id: btn.getAttribute('data-id'),
@@ -1163,7 +1168,7 @@
             overlay.innerHTML = '<div class="shift-dialog">' +
                 '<h3>交代依頼</h3>' +
                 '<div id="swap-candidates">候補を確認中...</div>' +
-                '<label>店長へのメモ<input type="text" id="swap-reason" class="form-input" placeholder="理由や補足（任意）"></label>' +
+                '<label>責任者へのメモ<input type="text" id="swap-reason" class="form-input" placeholder="理由や補足（任意）"></label>' +
                 '<div class="shift-dialog-actions">' +
                 '<button class="btn btn-primary" id="swap-send">送信</button>' +
                 '<button class="btn" id="swap-cancel">キャンセル</button>' +
@@ -1185,7 +1190,7 @@
                     box.innerHTML = '<p class="error">候補を取得できませんでした</p>';
                     return;
                 }
-                var html = '<p>交代できそうなスタッフを選ぶと、店長が承認しやすくなります。</p>' +
+                var html = '<p>交代できそうなスタッフを選ぶと、責任者が承認しやすくなります。</p>' +
                     '<label class="shift-swap-candidate"><input type="radio" name="swap-candidate" value="" checked> 候補を指定しない</label>';
                 var candidates = data.candidates || [];
                 for (var i = 0; i < Math.min(candidates.length, 8); i++) {
@@ -1216,7 +1221,7 @@
         _sendCandidateResponse: function(requestId, action) {
             var self = this;
             var isAccept = action === 'accept-candidate';
-            var note = prompt(isAccept ? '店長・申請者へのメモ（任意）' : '辞退理由・補足（任意）', '');
+            var note = prompt(isAccept ? '責任者・申請者へのメモ（任意）' : '辞退理由・補足（任意）', '');
             if (note === null) return;
             apiPatch('swap-requests.php?id=' + encodeURIComponent(requestId) + '&store_id=' + encodeURIComponent(self.storeId), {
                 action: action,
@@ -1239,7 +1244,7 @@
             overlay.innerHTML = '<div class="shift-dialog shift-dialog--wide">' +
                 '<h3>申請メッセージ</h3>' +
                 '<div id="shift-request-thread-body" class="shift-request-thread">読み込み中...</div>' +
-                '<label>メッセージ<textarea id="shift-request-thread-message" rows="3" placeholder="店長・スタッフへの確認事項を入力"></textarea></label>' +
+                '<label>メッセージ<textarea id="shift-request-thread-message" rows="3" placeholder="責任者・スタッフへの確認事項を入力"></textarea></label>' +
                 '<div class="shift-dialog-actions">' +
                 '<button class="btn btn-primary" id="shift-request-thread-send">送信</button>' +
                 '<button class="btn" id="shift-request-thread-close">閉じる</button>' +
@@ -2095,7 +2100,7 @@
         },
 
         _correctionStatusLabel: function(status) {
-            return { pending: '店長確認待ち', approved: '承認済', rejected: '却下', cancelled: '取消' }[status] || status || '';
+            return { pending: '責任者確認待ち', approved: '承認済', rejected: '却下', cancelled: '取消' }[status] || status || '';
         },
 
         _candidateStatusLabel: function(status) {

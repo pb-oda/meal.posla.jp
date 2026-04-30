@@ -352,12 +352,14 @@ if ($method === 'GET') {
             "SELECT sr.*, sa.shift_date, sa.start_time, sa.end_time, sa.role_type,
                     req.display_name AS requester_name, req.username AS requester_username,
                     cand.display_name AS candidate_name, cand.username AS candidate_username,
-                    repl.display_name AS replacement_name, repl.username AS replacement_username
+                    repl.display_name AS replacement_name, repl.username AS replacement_username,
+                    resp.display_name AS responded_by_name, resp.username AS responded_by_username
              FROM shift_swap_requests sr
              JOIN shift_assignments sa ON sa.id = sr.shift_assignment_id
              JOIN users req ON req.id = sr.requester_user_id
              LEFT JOIN users cand ON cand.id = sr.candidate_user_id
              LEFT JOIN users repl ON repl.id = sr.replacement_user_id
+             LEFT JOIN users resp ON resp.id = sr.responded_by
              WHERE sr.tenant_id = ? AND sr.store_id = ?
                AND (sr.requester_user_id = ? OR sr.candidate_user_id = ? OR sr.replacement_user_id = ? OR sa.user_id = ?)
              ORDER BY sr.created_at DESC
@@ -369,12 +371,14 @@ if ($method === 'GET') {
             "SELECT sr.*, sa.shift_date, sa.start_time, sa.end_time, sa.role_type,
                     req.display_name AS requester_name, req.username AS requester_username,
                     cand.display_name AS candidate_name, cand.username AS candidate_username,
-                    repl.display_name AS replacement_name, repl.username AS replacement_username
+                    repl.display_name AS replacement_name, repl.username AS replacement_username,
+                    resp.display_name AS responded_by_name, resp.username AS responded_by_username
              FROM shift_swap_requests sr
              JOIN shift_assignments sa ON sa.id = sr.shift_assignment_id
              JOIN users req ON req.id = sr.requester_user_id
              LEFT JOIN users cand ON cand.id = sr.candidate_user_id
              LEFT JOIN users repl ON repl.id = sr.replacement_user_id
+             LEFT JOIN users resp ON resp.id = sr.responded_by
              WHERE sr.tenant_id = ? AND sr.store_id = ?
              ORDER BY FIELD(sr.status, 'pending','approved','rejected','cancelled'), sr.created_at DESC
              LIMIT 100"
@@ -591,6 +595,20 @@ if ($method === 'PATCH') {
                 $append = '交代承認: ' . $request['requester_user_id'] . ' → ' . $replacementUserId;
                 $note = $note === '' ? $append : ($note . "\n" . $append);
 
+            }
+
+            $stmtUpdate = $pdo->prepare(
+                'UPDATE shift_swap_requests
+                 SET status = \'approved\', replacement_user_id = ?, response_note = ?, responded_by = ?
+                 WHERE id = ? AND tenant_id = ? AND store_id = ? AND status = \'pending\''
+            );
+            $stmtUpdate->execute([$replacementUserId, $responseNote, $user['user_id'], $id, $tenantId, $storeId]);
+            if ($stmtUpdate->rowCount() !== 1) {
+                $pdo->rollBack();
+                json_error('ALREADY_HANDLED', 'この申請はすでに他の責任者が対応済みです', 409);
+            }
+
+            if ($replacementUserId !== null) {
                 $stmtUpdateShift = $pdo->prepare(
                     'UPDATE shift_assignments
                      SET user_id = ?, note = ?, status = \'published\'
@@ -598,13 +616,6 @@ if ($method === 'PATCH') {
                 );
                 $stmtUpdateShift->execute([$replacementUserId, $note, $request['shift_assignment_id'], $tenantId, $storeId]);
             }
-
-            $stmtUpdate = $pdo->prepare(
-                'UPDATE shift_swap_requests
-                 SET status = \'approved\', replacement_user_id = ?, response_note = ?, responded_by = ?
-                 WHERE id = ? AND tenant_id = ? AND store_id = ?'
-            );
-            $stmtUpdate->execute([$replacementUserId, $responseNote, $user['user_id'], $id, $tenantId, $storeId]);
             $pdo->commit();
         } catch (Exception $e) {
             if ($pdo->inTransaction()) {
@@ -650,9 +661,12 @@ if ($method === 'PATCH') {
         $stmtUpdate = $pdo->prepare(
             'UPDATE shift_swap_requests
              SET status = \'rejected\', response_note = ?, responded_by = ?
-             WHERE id = ? AND tenant_id = ? AND store_id = ?'
+             WHERE id = ? AND tenant_id = ? AND store_id = ? AND status = \'pending\''
         );
         $stmtUpdate->execute([$responseNote, $user['user_id'], $id, $tenantId, $storeId]);
+        if ($stmtUpdate->rowCount() !== 1) {
+            json_error('ALREADY_HANDLED', 'この申請はすでに他の責任者が対応済みです', 409);
+        }
         write_audit_log($pdo, $user, $storeId, 'shift_swap_request_reject', 'shift_swap_request', $id, $request, ['response_note' => $responseNote]);
         $rejectText = '申請が却下されました。';
         if ($responseNote !== null && $responseNote !== '') {
@@ -667,9 +681,12 @@ if ($method === 'PATCH') {
         $stmtUpdate = $pdo->prepare(
             'UPDATE shift_swap_requests
              SET status = \'cancelled\', response_note = ?, responded_by = ?
-             WHERE id = ? AND tenant_id = ? AND store_id = ?'
+             WHERE id = ? AND tenant_id = ? AND store_id = ? AND status = \'pending\''
         );
         $stmtUpdate->execute([$responseNote, $user['user_id'], $id, $tenantId, $storeId]);
+        if ($stmtUpdate->rowCount() !== 1) {
+            json_error('ALREADY_HANDLED', 'この申請はすでに他の責任者が対応済みです', 409);
+        }
         write_audit_log($pdo, $user, $storeId, 'shift_swap_request_cancel', 'shift_swap_request', $id, $request, ['response_note' => $responseNote]);
         $cancelText = '申請がキャンセルされました。';
         if ($responseNote !== null && $responseNote !== '') {

@@ -184,7 +184,7 @@ if ($method === 'POST') {
     if (!srm_is_manager($user)) {
         $recipients = array_merge($recipients, srm_manager_participants($pdo, $tenantId, $storeId));
     }
-    $title = srm_is_manager($user) ? '店長から返信あり' : 'スタッフから返信あり';
+    $title = srm_is_manager($user) ? '責任者から返信あり' : 'スタッフから返信あり';
     srm_notify_users($pdo, $tenantId, $storeId, $requestId, $recipients, $user['user_id'], 'message', $title, srm_excerpt($message));
 
     write_audit_log($pdo, $user, $storeId, 'shift_request_message_create', 'shift_swap_request', $requestId, null, [

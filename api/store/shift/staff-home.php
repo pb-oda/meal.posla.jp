@@ -171,11 +171,13 @@ $stmtRequests = $pdo->prepare(
             sr.candidate_response_note,
             sa.shift_date, sa.start_time, sa.end_time, sa.role_type,
             cand.display_name AS candidate_name, cand.username AS candidate_username,
-            repl.display_name AS replacement_name, repl.username AS replacement_username
+            repl.display_name AS replacement_name, repl.username AS replacement_username,
+            resp.display_name AS responded_by_name, resp.username AS responded_by_username
      FROM shift_swap_requests sr
      JOIN shift_assignments sa ON sa.id = sr.shift_assignment_id
      LEFT JOIN users cand ON cand.id = sr.candidate_user_id
      LEFT JOIN users repl ON repl.id = sr.replacement_user_id
+     LEFT JOIN users resp ON resp.id = sr.responded_by
      WHERE sr.tenant_id = ? AND sr.store_id = ?
        AND (sr.requester_user_id = ? OR sr.candidate_user_id = ? OR sr.replacement_user_id = ? OR sa.user_id = ?)
      ORDER BY FIELD(sr.status, 'pending','approved','rejected','cancelled'), sr.created_at DESC

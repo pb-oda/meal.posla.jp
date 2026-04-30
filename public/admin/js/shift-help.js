@@ -296,7 +296,7 @@ var ShiftHelp = (function() {
         }
 
         var html = '<section class="shift-manager-check">' +
-            '<div class="shift-manager-check__head"><h4>今日の店長チェック</h4><span>' + esc((fieldOps && fieldOps.date) || (todayData && todayData.date) || todayString()) + '</span></div>';
+            '<div class="shift-manager-check__head"><h4>今日の責任者チェック</h4><span>' + esc((fieldOps && fieldOps.date) || (todayData && todayData.date) || todayString()) + '</span></div>';
         if (items.length === 0) {
             html += '<div class="shift-manager-check__ok">今すぐ見る項目はありません</div></section>';
             return html;
@@ -402,6 +402,11 @@ var ShiftHelp = (function() {
             var row = rows[r];
             var type = row.request_type === 'absence' ? '欠勤' : '交代';
             var status = { pending: '未対応', approved: '承認済', rejected: '却下', cancelled: 'キャンセル' }[row.status] || row.status;
+            var handledBy = row.responded_by_name || row.responded_by_username || '';
+            var statusHtml = esc(status);
+            if (row.status !== 'pending' && handledBy) {
+                statusHtml += '<br><small>対応: ' + esc(handledBy) + '</small>';
+            }
             var candidate = esc(row.replacement_name || row.candidate_name || '-');
             if (row.candidate_user_id) {
                 candidate += '<br><small>' + esc(_candidateAcceptanceLabel(row.candidate_acceptance_status)) + '</small>';
@@ -417,7 +422,7 @@ var ShiftHelp = (function() {
             }
             html += '<tr><td>' + esc(row.shift_date || '') + '<br>' + esc((row.start_time || '').substring(0, 5)) + '-' + esc((row.end_time || '').substring(0, 5)) + '</td>' +
                 '<td>' + esc(row.requester_name || row.requester_username || '') + '</td>' +
-                '<td>' + type + '</td><td>' + candidate + '</td><td>' + status + '</td><td>' + actions + '</td></tr>';
+                '<td>' + type + '</td><td>' + candidate + '</td><td>' + statusHtml + '</td><td>' + actions + '</td></tr>';
             if (row.reason || row.response_note) {
                 html += '<tr class="help-note-row"><td colspan="6">' + esc(row.reason || row.response_note || '') + '</td></tr>';
             }
