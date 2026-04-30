@@ -477,6 +477,46 @@ var ShiftHelp = (function() {
         return '';
     }
 
+    function _fieldChangeValueLabel(field, value) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return 'なし';
+        }
+        if (field === 'role_type') {
+            return roleLabel(value);
+        }
+        if (field === 'break_minutes') {
+            return String(value) + '分';
+        }
+        return String(value);
+    }
+
+    function _renderFieldChangeDetail(row) {
+        var details = row.confirmation_reset_detail || [];
+        var html = '';
+        if (details && details.length) {
+            html += '<div class="shift-change-detail">';
+            for (var i = 0; i < details.length; i++) {
+                html += '<span class="shift-change-detail__item"><strong>' + esc(details[i].label || '変更') + '</strong> ' +
+                    esc(_fieldChangeValueLabel(details[i].field, details[i].before_value)) +
+                    ' → ' +
+                    esc(_fieldChangeValueLabel(details[i].field, details[i].after_value)) +
+                    '</span>';
+            }
+            html += '</div>';
+            return html;
+        }
+        return '<span class="shift-change-detail__fallback">' + esc(row.confirmation_reset_reason || 'シフト変更') + '</span>';
+    }
+
+    function _deadlineStaffSummary(gap) {
+        var rows = gap && gap.missing_staff ? gap.missing_staff : [];
+        var names = [];
+        for (var i = 0; i < Math.min(rows.length, 4); i++) {
+            names.push(rows[i].display_name || '');
+        }
+        return names.join('、') + (gap.missing_count > rows.length ? ' 他' + (gap.missing_count - rows.length) + '人' : '');
+    }
+
     function _roleOptions(selected) {
         var html = '<option value="">指定なし</option>';
         for (var i = 0; i < _positions.length; i++) {
@@ -617,24 +657,31 @@ var ShiftHelp = (function() {
 
     function _buildDeadlineLogPanel(data) {
         var gaps = data.deadline_gaps || [];
-        var logs = data.change_logs || [];
-        var html = '<div class="shift-field-card shift-field-card--wide"><div class="shift-field-card__head"><h5>未提出・変更差分</h5><span>7日分</span></div>';
+        var changed = _changedShiftRows(data);
+        var html = '<div class="shift-field-card shift-field-card--wide"><div class="shift-field-card__head"><h5>希望未提出・変更未確認</h5><span>希望7日分 / 変更今日</span></div>';
         if (gaps.length === 0) {
             html += '<p class="help-empty">直近の希望未提出はありません。</p>';
         } else {
             html += '<div class="shift-deadline-list">';
             for (var i = 0; i < Math.min(gaps.length, 4); i++) {
-                html += '<span>' + esc(gaps[i].target_date) + ' 未提出 ' + gaps[i].missing_count + '人</span>';
+                html += '<span><strong>' + esc(gaps[i].target_date) + ' 未提出 ' + gaps[i].missing_count + '人</strong><small>' + esc(_deadlineStaffSummary(gaps[i])) + '</small></span>';
             }
             html += '</div>';
         }
-        if (logs.length > 0) {
-            html += '<div class="shift-change-log">';
-            for (var l = 0; l < Math.min(logs.length, 6); l++) {
-                html += '<div><strong>' + esc(logs[l].action) + '</strong><span>' + esc(logs[l].username || '') + ' ' + esc(logs[l].created_at || '') + '</span></div>';
+        html += '<div class="shift-change-log">';
+        if (changed.length === 0) {
+            html += '<p class="help-empty">今日の変更未確認はありません。</p>';
+        } else {
+            for (var l = 0; l < Math.min(changed.length, 6); l++) {
+                html += '<div class="shift-change-log__row">' +
+                    '<div class="shift-change-log__head"><strong>' + esc(changed[l].display_name || '') + '</strong><span>' +
+                    esc((changed[l].start_time || '').substring(0, 5)) + '-' + esc((changed[l].end_time || '').substring(0, 5)) +
+                    '</span></div>' +
+                    _renderFieldChangeDetail(changed[l]) +
+                    '</div>';
             }
-            html += '</div>';
         }
+        html += '</div>';
         html += '</div>';
         return html;
     }

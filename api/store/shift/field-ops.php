@@ -545,17 +545,9 @@ function sfo_dashboard($pdo, $tenantId, $storeId, $date)
         }
     }
 
-    $stmtLogs = $pdo->prepare(
-        'SELECT action, entity_type, entity_id, username, role, new_value, reason, created_at
-         FROM audit_log
-         WHERE tenant_id = ? AND store_id = ?
-           AND action LIKE ?
-           AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-         ORDER BY created_at DESC
-         LIMIT 20'
-    );
-    $stmtLogs->execute([$tenantId, $storeId, 'shift_%']);
-    $changeLogs = $stmtLogs->fetchAll();
+    // UIの「変更未確認」は shift_assignments.confirmation_reset_* から表示する。
+    // 監査ログ全般を混ぜると交代申請・スキル更新まで「変更差分」に見えてしまう。
+    $changeLogs = [];
 
     $suggestions = [];
     foreach ($openShifts as $os) {

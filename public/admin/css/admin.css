@@ -6874,6 +6874,16 @@ body.sidebar-open .admin-sidebar-backdrop {
   gap: 0.45rem;
 }
 
+.shift-deadline-list span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.shift-deadline-list small {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
 .shift-change-log {
   border-top: 1px solid var(--border);
   display: grid;
@@ -6882,14 +6892,23 @@ body.sidebar-open .admin-sidebar-backdrop {
   padding-top: 0.65rem;
 }
 
-.shift-change-log div {
+.shift-change-log__row {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.5rem 0.55rem;
+}
+
+.shift-change-log__head {
   align-items: center;
   display: flex;
   gap: 0.75rem;
   justify-content: space-between;
 }
 
-.shift-change-log span {
+.shift-change-log__head span {
   color: var(--text-secondary);
   font-size: 0.78rem;
 }
