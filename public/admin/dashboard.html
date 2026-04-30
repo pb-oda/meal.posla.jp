@@ -886,7 +886,7 @@
   <script src="../js/shift-calendar.js?v=20260430-shift-announce-mobile"></script>
   <script src="js/shift-help.js?v=20260430-shift-field-diff"></script>
   <script src="../js/attendance-clock.js?v=20260430-staff-home-ops"></script>
-  <script src="js/reservation-board.js?v=20260430-reservation-empty-state"></script>
+  <script src="js/reservation-board.js?v=20260430-reservation-fast-tab"></script>
   <script>
   // L-9 予約管理 — タブ表示時に ReservationBoard を初期化
   (function () {
@@ -899,22 +899,34 @@
         return localStorage.getItem('mt_current_store_id');
       } catch (e) { return null; }
     }
+    var initQueued = false;
+    function runInit() {
+      var panel = document.getElementById('panel-reservation-board');
+      if (!panel || panel.style.display === 'none') return;
+      var storeId = getCurrentStoreId();
+      var container = document.getElementById('reservation-board-container');
+      if (!storeId) {
+        if (container) container.innerHTML = '<div style="padding:32px;text-align:center;color:#888;">店舗を選択してください</div>';
+        return;
+      }
+      if (!window.ReservationBoard) {
+        if (container) container.innerHTML = '<div style="padding:32px;text-align:center;color:#c62828;">ReservationBoard モジュール読み込み失敗</div>';
+        return;
+      }
+      if (typeof window.ReservationBoard.show === 'function') {
+        window.ReservationBoard.show('reservation-board-container', storeId);
+        return;
+      }
+      window.ReservationBoard.init('reservation-board-container', storeId);
+    }
     function tryInit() {
-      setTimeout(function () {
-        var panel = document.getElementById('panel-reservation-board');
-        if (!panel || panel.style.display === 'none') return;
-        var storeId = getCurrentStoreId();
-        var container = document.getElementById('reservation-board-container');
-        if (!storeId) {
-          if (container) container.innerHTML = '<div style="padding:32px;text-align:center;color:#888;">店舗を選択してください</div>';
-          return;
-        }
-        if (!window.ReservationBoard) {
-          if (container) container.innerHTML = '<div style="padding:32px;text-align:center;color:#c62828;">ReservationBoard モジュール読み込み失敗</div>';
-          return;
-        }
-        window.ReservationBoard.init('reservation-board-container', storeId);
-      }, 80);
+      if (initQueued) return;
+      initQueued = true;
+      var schedule = window.requestAnimationFrame || function (cb) { setTimeout(cb, 0); };
+      schedule(function () {
+        initQueued = false;
+        runInit();
+      });
     }
     document.addEventListener('click', function (e) {
       var target = e.target;
@@ -930,34 +942,47 @@
         target = target.parentNode;
       }
     });
-    // 店舗切替時に再描画
-    setTimeout(function () {
+    // 店舗切替時に再描画。StoreSelector の準備完了を固定秒数で待たず短くリトライする。
+    function bindStoreSelectorChange(retry) {
       if (window.StoreSelector && typeof window.StoreSelector.onChange === 'function') {
         window.StoreSelector.onChange(function () {
           var panel = document.getElementById('panel-reservation-board');
           if (panel && panel.style.display !== 'none') tryInit();
         });
+        return;
       }
-    }, 1500);
+      if (retry > 0) setTimeout(function () { bindStoreSelectorChange(retry - 1); }, 100);
+    }
+    bindStoreSelectorChange(20);
 
     // 修正 (2026-04-20): リロード後に _restoreLastTab() が予約管理タブを復元した場合、
     // click イベント未発火のため tryInit() が走らず、パネルが空白のまま残るバグの対策。
-    // StoreSelector.init() と _restoreLastTab() の完了を待ってから、
+    // StoreSelector.init() と _restoreLastTab() の完了を短いリトライで待ってから、
     // 予約管理パネルが表示状態 (display !== 'none') なら自動的に tryInit() を呼ぶ。
     // 特にキャッシュリセット直後は posla_last_tab=reservation-board が残っており再現しやすい。
-    setTimeout(function () {
+    function initRestoredReservationTab(retry) {
       var panel = document.getElementById('panel-reservation-board');
-      if (!panel) return;
+      if (!panel) {
+        if (retry > 0) setTimeout(function () { initRestoredReservationTab(retry - 1); }, 100);
+        return;
+      }
       // display:none チェック (タブ非アクティブ時は触らない)
-      if (panel.style.display === 'none') return;
+      if (panel.style.display === 'none') {
+        if (retry > 0) setTimeout(function () { initRestoredReservationTab(retry - 1); }, 100);
+        return;
+      }
       // offsetParent === null は祖先要素が display:none 等で実際に非表示
-      if (panel.offsetParent === null) return;
+      if (panel.offsetParent === null) {
+        if (retry > 0) setTimeout(function () { initRestoredReservationTab(retry - 1); }, 100);
+        return;
+      }
       // コンテナが空 (まだ初期化されていない) ときだけ呼ぶ
       var container = document.getElementById('reservation-board-container');
       if (container && container.childNodes.length === 0) {
         tryInit();
       }
-    }, 1500);
+    }
+    initRestoredReservationTab(20);
   })();
   </script>
   <script>

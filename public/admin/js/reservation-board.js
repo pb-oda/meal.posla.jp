@@ -1,5 +1,5 @@
 /* L-9 予約管理 — 店舗側ガント台帳 IIFE (ES5)
-   公開: window.ReservationBoard = { init(containerId, storeId) }
+   公開: window.ReservationBoard = { init(containerId, storeId), show(containerId, storeId) }
    Batch-UI-2 (2026-04-22) — 業務画面としての完成度向上:
      - 3 層 sticky header (topbar / KPI / attention)
      - 密度切替 (compact / normal / loose)
@@ -14,7 +14,11 @@
 
   var API = '/api/store';
   var _container = null;
+  var _containerId = null;
   var _storeId = null;
+  var _initialized = false;
+  var _lastLoadedAt = 0;
+  var _loadingGanttKey = '';
   var _state = {
     date: null,
     data: null,         // { reservations, tables, settings, summary, range }
@@ -79,9 +83,18 @@
   }
 
   function init(containerId, storeId) {
+    var sameContext = _initialized && _containerId === containerId && _storeId === storeId;
     _container = document.getElementById(containerId);
-    _storeId = storeId;
+    _containerId = containerId;
     if (!_container) return;
+    if (sameContext) {
+      refreshCurrentViewIfStale();
+      return;
+    }
+    _storeId = storeId;
+    _initialized = true;
+    _lastLoadedAt = 0;
+    _loadingGanttKey = '';
     // 密度を localStorage から復元
     try {
       var savedDensity = localStorage.getItem('posla_rb_density');
@@ -89,8 +102,26 @@
     } catch (e) { /* noop */ }
     var today = new Date();
     _state.date = ymd(today);
+    _state.activeTab = 'gantt';
     renderShell();
     loadGantt();
+  }
+
+  function show(containerId, storeId) {
+    if (!_initialized || _containerId !== containerId || _storeId !== storeId) {
+      init(containerId, storeId);
+      return;
+    }
+    _container = document.getElementById(containerId);
+    if (!_container) return;
+    refreshCurrentViewIfStale();
+  }
+
+  function refreshCurrentViewIfStale() {
+    var now = new Date().getTime();
+    if (_state.activeTab === 'gantt' && (!_state.data || !_lastLoadedAt || now - _lastLoadedAt > 60000)) {
+      loadGantt();
+    }
   }
 
   function renderShell() {
@@ -129,14 +160,24 @@
   // ---------- Gantt ----------
   function loadGantt() {
     var body = document.getElementById('rb-tab-body');
+    var loadKey = _storeId + '|' + _state.date;
+    var alreadyLoading = _loadingGanttKey === loadKey;
+    if (!body) return;
     body.innerHTML = '<div class="rb-stickyhead">' + renderTopBar() + '<div id="rb-kpi-area"></div><div id="rb-attention-area"></div></div><div id="rb-dayops-area"></div><div class="rb-gantt-wrap"><div id="rb-gantt-area"><div class="rb-loading">読み込み中…</div></div></div>';
     bindTopBar();
+    if (alreadyLoading) return;
+    _loadingGanttKey = loadKey;
     apiGet('/reservations.php?store_id=' + encodeURIComponent(_storeId) + '&date=' + _state.date, function (err, data) {
+      if (_loadingGanttKey === loadKey) _loadingGanttKey = '';
+      if (_state.activeTab !== 'gantt' || loadKey !== (_storeId + '|' + _state.date)) return;
+      var ganttArea = document.getElementById('rb-gantt-area');
+      if (!ganttArea) return;
       if (err) {
-        document.getElementById('rb-gantt-area').innerHTML = '<div class="rb-empty">' + escapeHtml(err.message || '取得失敗') + '</div>';
+        ganttArea.innerHTML = '<div class="rb-empty">' + escapeHtml(err.message || '取得失敗') + '</div>';
         return;
       }
       _state.data = data;
+      _lastLoadedAt = new Date().getTime();
       drawGantt();
     });
   }
@@ -1801,5 +1842,5 @@
   }
 
   // expose
-  window.ReservationBoard = { init: init };
+  window.ReservationBoard = { init: init, show: show };
 })();
