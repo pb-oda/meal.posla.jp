@@ -260,8 +260,8 @@ DBで特に注意すること:
 | メニュー | dashboard各メニューJS | `api/owner/menu-templates.php`, `api/store/menu-overrides.php`, `api/store/local-items.php` | メニュー系テーブル | 本部マスタと店舗上書きを混同しない |
 | テーブル | dashboard、customer | `api/store/tables.php`, `api/store/table-open.php`, `api/customer/table-session.php` | `tables`, `table_sessions` | QRとテーブルの貼り間違いが事故になる |
 | 注文 | customer、handy | `api/customer/orders.php`, `api/store/handy-order.php` | `orders`, `order_items` | サーバー側価格再計算を守る |
-| KDS | `public/kds/index.html` | `api/kds/orders.php`, `api/kds/update-item-status.php` | `orders`, `order_items`, `kds_stations` | 3秒ポーリング。WebSocket前提ではない。ステーション状況帯、端末状態帯、開店前チェック、着手時間設定、AIなしファストパス音声操作を備える |
-| 会計 | `public/kds/cashier.html` | `api/store/process-payment.php`, `api/store/refund-payment.php` | `payments`, `cash_log`, `receipts` | PIN必須操作と二重決済防止 |
+| KDS | `public/kds/index.html` | `api/kds/orders.php`, `api/kds/update-item-status.php` | `orders`, `order_items`, `kds_stations` | 3秒ポーリング。WebSocket前提ではない。ステーション状況帯、端末状態帯、開店前チェック、着手時間設定、AIなしファストパス音声操作、予約文脈/アレルギー表示を備える |
+| 会計 | `public/kds/cashier.html` | `api/store/process-payment.php`, `api/store/refund-payment.php` | `payments`, `cash_log`, `receipts` | PIN必須操作と二重決済防止。予約文脈表示、テイクアウト返金時の運用ステータス反映あり |
 | テイクアウト | `public/customer/takeout.html` | `api/customer/takeout-orders.php`, `api/store/takeout-management.php` | `orders`, `payments`, `store_settings` | オンライン決済と受取枠を確認 |
 | コース | dashboard | `api/store/time-limit-plans.php`, `api/store/course-templates.php` | `time_limit_plans`, `course_templates`, `course_phases` | ラストオーダーと会計反映 |
 | 在庫 | dashboard | `api/owner/ingredients.php`, `api/owner/recipes.php`, `api/lib/inventory-sync.php` | `ingredients`, `recipes` | 自動品切れ同期は販売画面へ影響 |
