@@ -13,6 +13,8 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/reservation-deposit.php';
 require_once __DIR__ . '/../lib/reservation-notifier.php';
+require_once __DIR__ . '/../lib/reservation-history.php';
+require_once __DIR__ . '/../lib/reservation-waitlist.php';
 
 require_method(['POST']);
 $user = require_role('staff');
@@ -70,10 +72,27 @@ if ($r['customer_phone']) {
         ->execute([$storeId, $r['customer_phone']]);
 }
 
+$rAfterStmt = $pdo->prepare('SELECT * FROM reservations WHERE id = ? AND store_id = ?');
+$rAfterStmt->execute([$resId, $storeId]);
+$rAfter = $rAfterStmt->fetch();
+if ($rAfter) {
+    reservation_history_record_fields(
+        $pdo,
+        $r,
+        $rAfter,
+        ['status','arrival_followup_status','arrival_followup_at','arrival_followup_user_id'],
+        'staff',
+        $user['user_id'],
+        $user['username'] ?? $user['displayName'] ?? '',
+        'no_show'
+    );
+}
+$waitlistNotify = reservation_waitlist_notify_open_slot($pdo, $storeId, $r['reserved_at'], (int)$r['party_size'], 'reservation_no_show');
+
 if ($r['customer_email']) {
     $r2 = $pdo->prepare('SELECT * FROM reservations WHERE id = ?');
     $r2->execute([$resId]);
     send_reservation_notification($pdo, $r2->fetch(), 'no_show');
 }
 
-json_response(['ok' => true, 'captured_amount' => $capturedAmount, 'capture_error' => $captureError]);
+json_response(['ok' => true, 'captured_amount' => $capturedAmount, 'capture_error' => $captureError, 'waitlist_notify' => $waitlistNotify]);

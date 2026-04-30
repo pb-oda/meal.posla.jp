@@ -11,6 +11,7 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
 require_once __DIR__ . '/../lib/reservation-availability.php';
+require_once __DIR__ . '/../lib/reservation-history.php';
 
 require_method(['POST']);
 check_rate_limit('reserve-update:' . ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'), 10, 60);
@@ -74,6 +75,16 @@ $pdo->prepare('UPDATE reservations SET ' . implode(', ', $sets) . ' WHERE id = ?
 $stmt2 = $pdo->prepare('SELECT * FROM reservations WHERE id = ?');
 $stmt2->execute([$id]);
 $r2 = $stmt2->fetch();
+reservation_history_record_fields(
+    $pdo,
+    $r,
+    $r2,
+    ['party_size','reserved_at','memo','assigned_table_ids'],
+    'customer',
+    null,
+    $r['customer_name'],
+    'customer_updated'
+);
 json_response(['reservation' => [
     'id' => $r2['id'], 'status' => $r2['status'], 'reserved_at' => $r2['reserved_at'], 'party_size' => (int)$r2['party_size'], 'memo' => $r2['memo'],
 ]]);

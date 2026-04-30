@@ -22,6 +22,8 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/rate-limiter.php';
 require_once __DIR__ . '/../lib/reservation-availability.php';
 require_once __DIR__ . '/../lib/reservation-deposit.php';
+require_once __DIR__ . '/../lib/reservation-history.php';
+require_once __DIR__ . '/../lib/reservation-waitlist.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../lib/reservation-notifier.php';
 
@@ -92,6 +94,23 @@ $slots = compute_slot_availability($pdo, $storeId, $date, $partySize);
 $matched = null;
 foreach ($slots as $s) { if ($s['time'] === $timeStr) { $matched = $s; break; } }
 if (!$matched || !$matched['available']) {
+    if ($matched && !empty($body['join_waitlist']) && (!isset($matched['reason']) || $matched['reason'] !== 'lead_time')) {
+        $waitlistId = reservation_waitlist_create($pdo, $store, [
+            'desired_at' => $reservedAt,
+            'party_size' => $partySize,
+            'customer_name' => $name,
+            'customer_phone' => $phone,
+            'customer_email' => $email,
+            'memo' => isset($body['memo']) ? (string)$body['memo'] : null,
+            'language' => isset($body['language']) ? (string)$body['language'] : 'ja',
+            'source' => isset($body['source']) && $body['source'] === 'ai_chat' ? 'ai_chat' : 'web',
+        ]);
+        json_response([
+            'waitlist_id' => $waitlistId,
+            'status' => 'waitlist_registered',
+            'message' => 'キャンセル待ちに登録しました。空席が出た場合にご連絡します。',
+        ]);
+    }
     json_error('SLOT_UNAVAILABLE', 'お選びの時間は満席です。別の時間をお試しください', 409);
 }
 $tableIds = isset($matched['suggested_tables']) ? $matched['suggested_tables'] : [];
@@ -183,6 +202,23 @@ try {
     foreach ($slots2 as $s2) { if ($s2['time'] === $timeStr) { $matched2 = $s2; break; } }
     if (!$matched2 || !$matched2['available']) {
         $pdo->rollBack();
+        if ($matched2 && !empty($body['join_waitlist']) && (!isset($matched2['reason']) || $matched2['reason'] !== 'lead_time')) {
+            $waitlistId = reservation_waitlist_create($pdo, $store, [
+                'desired_at' => $reservedAt,
+                'party_size' => $partySize,
+                'customer_name' => $name,
+                'customer_phone' => $phone,
+                'customer_email' => $email,
+                'memo' => isset($body['memo']) ? (string)$body['memo'] : null,
+                'language' => isset($body['language']) ? (string)$body['language'] : 'ja',
+                'source' => $source,
+            ]);
+            json_response([
+                'waitlist_id' => $waitlistId,
+                'status' => 'waitlist_registered',
+                'message' => 'キャンセル待ちに登録しました。空席が出た場合にご連絡します。',
+            ]);
+        }
         json_error('SLOT_FULL', 'お選びの時間は満席になりました。別の時間をお試しください', 409);
     }
     // 再算出された割当を採用 (古い $tableIds を上書き)
@@ -205,6 +241,7 @@ try {
     if (!empty($body['hold_id'])) {
         try { $pdo->prepare('DELETE FROM reservation_holds WHERE id = ? AND store_id = ?')->execute([$body['hold_id'], $storeId]); } catch (PDOException $e) {}
     }
+    reservation_waitlist_mark_booked($pdo, $storeId, $resId, $reservedAt, $partySize, $phone, $email);
 
     $pdo->commit();
 } catch (PDOException $e) {
@@ -225,6 +262,9 @@ try {
 $rStmt = $pdo->prepare('SELECT * FROM reservations WHERE id = ?');
 $rStmt->execute([$resId]);
 $r = $rStmt->fetch();
+if ($r) {
+    reservation_history_record($pdo, $r, 'customer', null, $name, 'created', 'status', null, $r['status']);
+}
 
 $response = [
     'reservation_id' => $resId,

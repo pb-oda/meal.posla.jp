@@ -16,6 +16,7 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/reservation-deposit.php';
+require_once __DIR__ . '/../lib/reservation-history.php';
 require_once __DIR__ . '/../config/app.php';
 
 require_method(['POST']);
@@ -38,6 +39,7 @@ if (in_array($r['status'], ['cancelled', 'no_show', 'completed'], true)) {
 if ($r['status'] === 'seated' && $r['table_session_id']) {
     json_response(['reservation_id' => $resId, 'table_session_id' => $r['table_session_id'], 'note' => 'already_seated']);
 }
+$oldReservation = $r;
 
 // テーブル割当
 $tableIds = [];
@@ -130,6 +132,22 @@ if ($r['deposit_payment_intent_id']) {
     if ($rel['success']) {
         $pdo->prepare("UPDATE reservations SET deposit_status = 'released' WHERE id = ?")->execute([$resId]);
     }
+}
+
+$r2Stmt = $pdo->prepare('SELECT * FROM reservations WHERE id = ? AND store_id = ?');
+$r2Stmt->execute([$resId, $storeId]);
+$r2 = $r2Stmt->fetch();
+if ($r2) {
+    reservation_history_record_fields(
+        $pdo,
+        $oldReservation,
+        $r2,
+        ['status','seated_at','table_session_id','assigned_table_ids','waitlist_call_status'],
+        'staff',
+        $user['user_id'],
+        $user['username'] ?? $user['displayName'] ?? '',
+        'seated'
+    );
 }
 
 $qrUrl = app_url('/customer/menu.html') . '?store_id=' . urlencode($storeId) . '&table_id=' . urlencode($primaryTableId);

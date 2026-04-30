@@ -636,6 +636,44 @@
   border-color: var(--rb-accent);
 }
 
+.rb-cancelwait {
+  background: var(--rb-surface);
+  border-bottom: 1px solid var(--rb-border);
+  padding: 0 16px 14px;
+}
+
+.rb-cancelwait__head {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rb-text);
+  margin: 0 0 8px;
+}
+
+.rb-cancelwait__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.rb-cancelwait__item {
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  background: var(--rb-surface-muted);
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.rb-cancelwait__name { font-weight: 700; color: var(--rb-text); }
+.rb-cancelwait__meta { color: var(--rb-text-sub); }
+.rb-cancelwait__status { color: #1d4ed8; font-weight: 700; }
+.rb-cancelwait__error { color: var(--rb-alert); overflow-wrap: anywhere; }
+.rb-cancelwait__item--notified { background: #eff6ff; border-color: #bfdbfe; }
+
 /* ------------------------------------------------------------
  * Gantt 本体
  * ------------------------------------------------------------ */
@@ -1161,6 +1199,71 @@
 .rb-waitcall-action--recalled { color: #3730a3; }
 .rb-waitcall-action--absent { color: var(--rb-alert); }
 .rb-waitcall-action--not_called { color: #4b5563; }
+
+.rb-risk-actions,
+.rb-change-history {
+  margin: 12px 0 0;
+  padding: 10px;
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  background: var(--rb-surface-muted);
+}
+
+.rb-risk-actions__title,
+.rb-change-history__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rb-text-sub);
+  margin-bottom: 8px;
+}
+
+.rb-risk-action {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border-radius: var(--rb-radius-sm);
+  border: 1px solid var(--rb-border);
+  background: var(--rb-surface);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.rb-risk-action strong { font-size: 12px; }
+.rb-risk-action span { color: var(--rb-text-sub); }
+.rb-risk-action--warning { border-color: #fcd34d; background: #fffbeb; color: #92400e; }
+.rb-risk-action--danger { border-color: #fecaca; background: var(--rb-alert-soft); color: var(--rb-alert); }
+.rb-risk-action--notice { border-color: #bae6fd; background: #f0f9ff; color: #075985; }
+
+.rb-change-history ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.rb-change-history li {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  background: var(--rb-surface);
+  font-size: 12px;
+}
+
+.rb-change-history li span { color: var(--rb-text-sub); font-weight: 700; }
+.rb-change-history li strong { color: var(--rb-text); font-weight: 600; overflow-wrap: anywhere; }
+.rb-change-history li em,
+.rb-change-history li small {
+  color: var(--rb-text-mute);
+  font-style: normal;
+  overflow-wrap: anywhere;
+}
+
+.rb-delivery-status--sent { color: #166534; }
+.rb-delivery-status--failed { color: var(--rb-alert); }
+.rb-delivery-status--queued { color: #92400e; }
 
 .rb-modal__form-group { margin-bottom: 14px; }
 .rb-modal__form-group label {

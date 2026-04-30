@@ -13,6 +13,8 @@ require_once __DIR__ . '/../lib/rate-limiter.php';
 require_once __DIR__ . '/../lib/reservation-availability.php';
 require_once __DIR__ . '/../lib/reservation-deposit.php';
 require_once __DIR__ . '/../lib/reservation-notifier.php';
+require_once __DIR__ . '/../lib/reservation-history.php';
+require_once __DIR__ . '/../lib/reservation-waitlist.php';
 
 require_method(['POST']);
 check_rate_limit('reserve-cancel:' . ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'), 5, 60);
@@ -37,6 +39,14 @@ $pastDeadline = time() > $deadlineTs;
 
 $reason = isset($body['reason']) ? mb_substr((string)$body['reason'], 0, 200) : 'customer_cancel';
 $pdo->prepare("UPDATE reservations SET status = 'cancelled', cancelled_at = NOW(), cancel_reason = ?, updated_at = NOW() WHERE id = ?")->execute([$reason, $id]);
+$rAfterStmt = $pdo->prepare('SELECT * FROM reservations WHERE id = ? AND store_id = ?');
+$rAfterStmt->execute([$id, $r['store_id']]);
+$rAfter = $rAfterStmt->fetch();
+if ($rAfter) {
+    reservation_history_record($pdo, $rAfter, 'customer', null, $r['customer_name'], 'customer_cancelled', 'status', $r['status'], 'cancelled');
+    reservation_history_record($pdo, $rAfter, 'customer', null, $r['customer_name'], 'customer_cancelled', 'cancel_reason', $r['cancel_reason'], $reason);
+}
+$waitlistNotify = reservation_waitlist_notify_open_slot($pdo, $r['store_id'], $r['reserved_at'], (int)$r['party_size'], 'customer_cancelled');
 
 $depositOutcome = null;
 if ((int)$r['deposit_required'] === 1 && $r['deposit_payment_intent_id'] && $r['deposit_status'] === 'authorized') {
@@ -69,4 +79,4 @@ if ($r['customer_email']) {
     send_reservation_notification($pdo, $r2->fetch(), 'cancel');
 }
 
-json_response(['ok' => true, 'past_deadline' => $pastDeadline, 'deposit_outcome' => $depositOutcome]);
+json_response(['ok' => true, 'past_deadline' => $pastDeadline, 'deposit_outcome' => $depositOutcome, 'waitlist_notify' => $waitlistNotify]);

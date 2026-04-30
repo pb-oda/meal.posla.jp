@@ -16,6 +16,8 @@ require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/reservation-availability.php';
 require_once __DIR__ . '/../lib/reservation-notifier.php';
 require_once __DIR__ . '/../lib/reservation-deposit.php';
+require_once __DIR__ . '/../lib/reservation-history.php';
+require_once __DIR__ . '/../lib/reservation-waitlist.php';
 require_once __DIR__ . '/../config/app.php';
 
 $method = require_method(['GET', 'POST', 'PATCH', 'DELETE']);
@@ -81,6 +83,91 @@ function _l9_assert_table_ids_capacity($pdo, $storeId, $tableIds, $partySize) {
     $cap = 0;
     foreach ($rows as $r) $cap += (int)$r['capacity'];
     if ($cap < $partySize) json_error('TABLE_CAPACITY_SHORT', '指定テーブルの収容人数が不足です', 400);
+}
+function _l9_decode_table_ids($value) {
+    if (!$value) return [];
+    if (is_array($value)) return $value;
+    $arr = json_decode($value, true);
+    return is_array($arr) ? $arr : [];
+}
+function _l9_intervals_overlap($aStart, $aEnd, $bStart, $bEnd) {
+    return $aStart < $bEnd && $aEnd > $bStart;
+}
+function _l9_assert_reservation_conflict_free($pdo, $storeId, $reservedAt, $durationMin, $partySize, $tableIds, $excludeReservationId = null) {
+    $tableIds = is_array($tableIds) ? array_map('strval', array_values($tableIds)) : [];
+    $settings = get_reservation_settings($pdo, $storeId);
+    $bufferBefore = (int)($settings['buffer_before_min'] ?? 0);
+    $bufferAfter = (int)($settings['buffer_after_min'] ?? 0);
+    $baseStartTs = strtotime($reservedAt);
+    if (!$baseStartTs) json_error('INVALID_DATETIME', '日時を解釈できません', 400);
+    $startTs = $baseStartTs - ($bufferBefore * 60);
+    $endTs = $baseStartTs + max(15, (int)$durationMin) * 60 + ($bufferAfter * 60);
+    $rangeFrom = date('Y-m-d H:i:s', $startTs - 3600);
+    $rangeTo = date('Y-m-d H:i:s', $endTs + 3600);
+
+    $sql = "SELECT id, customer_name, party_size, reserved_at, duration_min, assigned_table_ids, status
+            FROM reservations
+            WHERE store_id = ?
+              AND status NOT IN ('cancelled','no_show','completed','waitlisted')
+              AND reserved_at < ?
+              AND DATE_ADD(reserved_at, INTERVAL duration_min MINUTE) > ?";
+    $params = [$storeId, $rangeTo, $rangeFrom];
+    if ($excludeReservationId) {
+        $sql .= ' AND id <> ?';
+        $params[] = $excludeReservationId;
+    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    $occupiedTableIds = [];
+    $unassignedParty = 0;
+    foreach ($stmt->fetchAll() as $row) {
+        $rowBaseStart = strtotime($row['reserved_at']);
+        $rowStart = $rowBaseStart - ($bufferBefore * 60);
+        $rowEnd = $rowBaseStart + max(15, (int)$row['duration_min']) * 60 + ($bufferAfter * 60);
+        if (!_l9_intervals_overlap($startTs, $endTs, $rowStart, $rowEnd)) continue;
+        $rowTableIds = array_map('strval', _l9_decode_table_ids($row['assigned_table_ids']));
+        if ($tableIds && $rowTableIds) {
+            foreach ($tableIds as $tid) {
+                if (in_array($tid, $rowTableIds, true)) {
+                    json_error('RESERVATION_CONFLICT', '同じ時間帯に同じテーブルの予約があります: ' . $row['customer_name'], 409);
+                }
+            }
+        }
+        if ($rowTableIds) {
+            foreach ($rowTableIds as $tid) $occupiedTableIds[$tid] = true;
+        } else {
+            $unassignedParty += (int)$row['party_size'];
+        }
+    }
+
+    $sessionSql = "SELECT table_id, guest_count, started_at, expires_at
+                   FROM table_sessions
+                   WHERE store_id = ? AND status NOT IN ('paid','closed')";
+    $sessionStmt = $pdo->prepare($sessionSql);
+    $sessionStmt->execute([$storeId]);
+    foreach ($sessionStmt->fetchAll() as $sess) {
+        $sessionUntil = !empty($sess['expires_at']) ? strtotime($sess['expires_at']) : (time() + max(15, (int)$durationMin) * 60);
+        if ($sessionUntil && $startTs >= $sessionUntil) continue;
+        $sessionTableId = (string)$sess['table_id'];
+        if ($tableIds && in_array($sessionTableId, $tableIds, true)) {
+            json_error('TABLE_OCCUPIED', '指定テーブルは着席中です', 409);
+        }
+        $occupiedTableIds[$sessionTableId] = true;
+    }
+
+    if ($tableIds) return;
+
+    $tStmt = $pdo->prepare('SELECT id, capacity FROM tables WHERE store_id = ? AND is_active = 1');
+    $tStmt->execute([$storeId]);
+    $freeCapacity = 0;
+    foreach ($tStmt->fetchAll() as $tbl) {
+        if (!isset($occupiedTableIds[(string)$tbl['id']])) $freeCapacity += (int)$tbl['capacity'];
+    }
+    $freeCapacity -= $unassignedParty;
+    if ($freeCapacity < (int)$partySize) {
+        json_error('SLOT_UNAVAILABLE', 'この時間帯は空席が不足しています', 409);
+    }
 }
 function _l9_upsert_customer($pdo, $tenantId, $storeId, $name, $phone, $email) {
     if (empty($phone)) {
@@ -241,11 +328,52 @@ function _l9_reservation_reminder_status($r) {
     }
     return $status;
 }
-function _l9_serialize_reservation($r) {
+function _l9_reservation_reminder_delivery($pdo, $r) {
+    if (!$pdo || empty($r['id']) || empty($r['store_id'])) return [];
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT notification_type, channel, status, error_message, sent_at, created_at
+             FROM reservation_notifications_log
+             WHERE reservation_id = ? AND store_id = ?
+               AND notification_type IN ('reminder_24h','reminder_2h')
+             ORDER BY created_at DESC
+             LIMIT 8"
+        );
+        $stmt->execute([$r['id'], $r['store_id']]);
+        return $stmt->fetchAll() ?: [];
+    } catch (PDOException $e) {
+        error_log('[L-9][reservations] reminder_delivery: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
+        return [];
+    }
+}
+function _l9_reservation_risk_actions($r, $risk) {
+    $actions = [];
+    $status = isset($r['status']) ? (string)$r['status'] : '';
+    if (!in_array($status, ['confirmed', 'pending'], true)) return $actions;
+    if (array_key_exists('c_is_blacklisted', $r) && (int)$r['c_is_blacklisted'] === 1) {
+        $actions[] = ['key' => 'manager_confirm', 'level' => 'danger', 'label' => '店長確認必須', 'detail' => 'ブラックリスト指定があります'];
+    }
+    $noShowCount = array_key_exists('c_no_show_count', $r) ? (int)$r['c_no_show_count'] : 0;
+    if ($noShowCount >= 1) {
+        $actions[] = ['key' => 'phone_confirm', 'level' => $noShowCount >= 2 ? 'danger' : 'warning', 'label' => '電話確認推奨', 'detail' => '過去no-show履歴があります'];
+    }
+    if (!empty($risk['minutes_late']) && (int)$risk['minutes_late'] >= 5) {
+        $actions[] = ['key' => 'late_followup', 'level' => (int)$risk['minutes_late'] >= 15 ? 'danger' : 'warning', 'label' => '遅刻対応を記録', 'detail' => '連絡済み/到着予定/no-show確定を選択してください'];
+    }
+    if ((int)($r['party_size'] ?? 0) >= 8) {
+        $actions[] = ['key' => 'large_party_confirm', 'level' => 'warning', 'label' => '大人数確認', 'detail' => '人数・席・コースの事前確認を推奨'];
+    }
+    if ((int)($r['deposit_required'] ?? 0) !== 1 && ($noShowCount >= 2 || (int)($r['party_size'] ?? 0) >= 8)) {
+        $actions[] = ['key' => 'consider_deposit', 'level' => 'notice', 'label' => '予約金検討', 'detail' => '高リスクまたは大人数のため予約金運用を検討'];
+    }
+    return $actions;
+}
+function _l9_serialize_reservation($r, $pdo = null, $includeDetails = false) {
     // RSV-P1-1: 顧客要約フィールドを additive に追加 (LEFT JOIN の結果、customer_id 未設定なら全て null)
     $arrivalFollowupStatus = array_key_exists('arrival_followup_status', $r) && $r['arrival_followup_status'] ? $r['arrival_followup_status'] : 'none';
     $waitlistCallStatus = array_key_exists('waitlist_call_status', $r) && $r['waitlist_call_status'] ? $r['waitlist_call_status'] : 'not_called';
-    return [
+    $opsRisk = _l9_reservation_ops_risk($r);
+    $data = [
         'id' => $r['id'],
         'tenant_id' => $r['tenant_id'],
         'store_id' => $r['store_id'],
@@ -300,9 +428,15 @@ function _l9_serialize_reservation($r) {
         'customer_cancel_count'     => array_key_exists('c_cancel_count', $r) && $r['c_cancel_count'] !== null ? (int)$r['c_cancel_count'] : null,
         'customer_total_spend'      => array_key_exists('c_total_spend', $r) && $r['c_total_spend'] !== null ? (int)$r['c_total_spend'] : null,
         'customer_last_visit_at'    => array_key_exists('c_last_visit_at', $r) ? $r['c_last_visit_at'] : null,
-        'ops_risk'                  => _l9_reservation_ops_risk($r),
+        'ops_risk'                  => $opsRisk,
+        'risk_actions'              => _l9_reservation_risk_actions($r, $opsRisk),
         'reminder_status'           => _l9_reservation_reminder_status($r),
     ];
+    if ($includeDetails && $pdo) {
+        $data['change_history'] = reservation_history_fetch($pdo, $r['id'], $r['store_id']);
+        $data['reminder_delivery'] = _l9_reservation_reminder_delivery($pdo, $r);
+    }
+    return $data;
 }
 
 // ---------- GET ----------
@@ -342,7 +476,7 @@ if ($method === 'GET') {
     // 単一取得
     if (!empty($_GET['id'])) {
         $r = _l9_load_reservation($pdo, $_GET['id'], $storeId);
-        json_response(['reservation' => _l9_serialize_reservation($r)]);
+        json_response(['reservation' => _l9_serialize_reservation($r, $pdo, true)]);
     }
 
     $from = isset($_GET['from']) ? $_GET['from'] : (isset($_GET['date']) ? $_GET['date'] : date('Y-m-d'));
@@ -438,6 +572,7 @@ if ($method === 'GET') {
 
     json_response([
         'reservations' => $list,
+        'waitlist_candidates' => reservation_waitlist_fetch_for_date($pdo, $storeId, $from),
         'tables' => $tables,
         'settings' => [
             'open_time' => substr($settings['open_time'], 0, 5),
@@ -495,6 +630,9 @@ if ($method === 'POST') {
     $language = isset($body['language']) ? (string)$body['language'] : 'ja';
     // RSV-P1-2: 'waitlisted' を追加 (受付待ち客用)
     $status = isset($body['status']) && in_array($body['status'], ['pending','confirmed','seated','no_show','cancelled','completed','waitlisted'], true) ? $body['status'] : 'confirmed';
+    if (!in_array($status, ['cancelled','no_show','completed','waitlisted'], true)) {
+        _l9_assert_reservation_conflict_free($pdo, $storeId, $reservedAt, $duration, $partySize, $tableIds);
+    }
 
     // 顧客台帳更新
     $customerId = _l9_upsert_customer($pdo, $store['tenant_id'], $storeId, $name, $phone, $email);
@@ -538,8 +676,10 @@ if ($method === 'POST') {
         (int)$settings['cancel_deadline_hours'], $editToken, $user['user_id'],
         $status === 'confirmed' ? date('Y-m-d H:i:s') : null,
     ]);
+    reservation_waitlist_mark_booked($pdo, $storeId, $resId, $reservedAt, $partySize, $phone, $email);
 
     $r = _l9_load_reservation($pdo, $resId, $storeId);
+    reservation_history_record($pdo, $r, 'staff', $user['user_id'], $user['username'] ?? $user['displayName'] ?? '', 'created', 'status', null, $r['status']);
 
     // 通知 (メールがあれば確認メール送信)
     if ($r['customer_email']) {
@@ -661,6 +801,15 @@ if ($method === 'PATCH') {
         }
     }
 
+    $nextStatus = isset($body['status']) && in_array($body['status'], ['pending','confirmed','seated','no_show','cancelled','completed','waitlisted'], true) ? $body['status'] : $r['status'];
+    if (!in_array($nextStatus, ['cancelled','no_show','completed','waitlisted'], true)) {
+        $nextReservedAt = isset($body['reserved_at']) ? _l9_validate_datetime($body['reserved_at']) : $r['reserved_at'];
+        $nextDuration = isset($body['duration_min']) ? max(15, (int)$body['duration_min']) : (int)$r['duration_min'];
+        $nextParty = isset($body['party_size']) ? (int)$body['party_size'] : (int)$r['party_size'];
+        $nextTableIds = (isset($body['assigned_table_ids']) && is_array($body['assigned_table_ids'])) ? array_values($body['assigned_table_ids']) : _l9_decode_table_ids($r['assigned_table_ids']);
+        _l9_assert_reservation_conflict_free($pdo, $storeId, $nextReservedAt, $nextDuration, $nextParty, $nextTableIds, $resId);
+    }
+
     if (empty($sets)) json_error('NO_FIELDS', '変更する項目がありません', 400);
 
     $sets[] = 'updated_at = NOW()';
@@ -670,6 +819,16 @@ if ($method === 'PATCH') {
     $pdo->prepare($sql)->execute($params);
 
     $r2 = _l9_load_reservation($pdo, $resId, $storeId);
+    reservation_history_record_fields(
+        $pdo,
+        $r,
+        $r2,
+        ['customer_name','customer_phone','customer_email','party_size','reserved_at','duration_min','memo','tags','course_id','course_name','assigned_table_ids','status','arrival_followup_status','waitlist_call_status'],
+        'staff',
+        $user['user_id'],
+        $user['username'] ?? $user['displayName'] ?? '',
+        'updated'
+    );
     json_response(['reservation' => _l9_serialize_reservation($r2)]);
 }
 
@@ -687,6 +846,12 @@ if ($method === 'DELETE') {
     $reason = isset($_GET['reason']) ? trim($_GET['reason']) : null;
     $pdo->prepare("UPDATE reservations SET status = 'cancelled', cancelled_at = NOW(), cancel_reason = ?, updated_at = NOW() WHERE id = ? AND store_id = ?")
         ->execute([$reason, $resId, $storeId]);
+    $rCancelled = _l9_load_reservation($pdo, $resId, $storeId);
+    reservation_history_record($pdo, $rCancelled, 'staff', $user['user_id'], $user['username'] ?? $user['displayName'] ?? '', 'cancelled', 'status', $r['status'], 'cancelled');
+    if ($reason !== null) {
+        reservation_history_record($pdo, $rCancelled, 'staff', $user['user_id'], $user['username'] ?? $user['displayName'] ?? '', 'cancelled', 'cancel_reason', $r['cancel_reason'], $reason);
+    }
+    $waitlistNotify = reservation_waitlist_notify_open_slot($pdo, $storeId, $r['reserved_at'], (int)$r['party_size'], 'reservation_cancelled');
 
     // デポジット release
     if ($r['deposit_payment_intent_id']) {
@@ -707,5 +872,5 @@ if ($method === 'DELETE') {
         $pdo->prepare('UPDATE reservation_customers SET cancel_count = cancel_count + 1 WHERE store_id = ? AND customer_phone = ?')
             ->execute([$storeId, $r['customer_phone']]);
     }
-    json_response(['ok' => true]);
+    json_response(['ok' => true, 'waitlist_notify' => $waitlistNotify]);
 }

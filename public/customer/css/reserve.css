@@ -528,6 +528,35 @@ html, body {
 .rs-slot--selected .rs-slot__bag { color: #fff; }
 .rs-slot--full { color: var(--rs-muted); }
 
+.rs-slot--waitlist {
+  opacity: 1;
+  cursor: pointer;
+  border-color: var(--rs-warn);
+  background: var(--rs-warn-light);
+  color: var(--rs-text);
+}
+
+.rs-slot--waitlist:hover:not(.rs-slot--selected) {
+  border-color: var(--rs-warn);
+  background: #ffe0b2;
+}
+
+.rs-slot--waitlist .rs-slot__bag {
+  color: var(--rs-warn);
+  font-weight: 700;
+}
+
+.rs-waitlist-banner {
+  margin: var(--rs-space-3) 0;
+  padding: var(--rs-space-3);
+  border: 1px solid #ffcc80;
+  border-radius: var(--rs-radius-sm);
+  background: var(--rs-warn-light);
+  color: #8a4b00;
+  font-size: var(--rs-fs-sm);
+  font-weight: 600;
+}
+
 /* ------------------------------------------------------------
  * Form (情報入力ステップ)
  * ------------------------------------------------------------ */
@@ -703,6 +732,10 @@ html, body {
   font-size: 4rem;
   margin-bottom: var(--rs-space-4);
   line-height: 1;
+}
+
+.rs-completion__icon--waitlist {
+  color: var(--rs-warn);
 }
 
 .rs-completion__title {

@@ -24,6 +24,7 @@
     courseId: null,
     language: 'ja',
     monthOffset: 0,            // カレンダー月送り
+    waitlistMode: false,       // 満席枠のキャンセル待ち登録
   };
   var _heatmapCache = {};
   var _slotsCache = {};
@@ -41,7 +42,7 @@
       'sec.confirm.title': 'ご予約内容の確認',
       'label.name': 'お名前', 'label.phone': '電話番号', 'label.email': 'メールアドレス',
       'label.course': 'コース', 'label.memo': 'ご要望・アレルギー',
-      'btn.next': '次へ', 'btn.back': '戻る', 'btn.confirm': '予約を確定する', 'btn.proceed_payment': '予約金を支払う',
+      'btn.next': '次へ', 'btn.back': '戻る', 'btn.confirm': '予約を確定する', 'btn.proceed_payment': '予約金を支払う', 'btn.join_waitlist': 'キャンセル待ちに登録',
       'placeholder.name': '田中 太郎', 'placeholder.phone': '090-1234-5678', 'placeholder.email': 'taro@example.com',
       'placeholder.memo': 'アレルギー、ベビーカー、お祝い等',
       'no.slots': 'この日は空きがありません。別の日をお試しください',
@@ -63,6 +64,12 @@
       'optional': '(任意)',
       'required': '*',
       'confirm.notice': '内容に誤りがないかご確認ください',
+      'waitlist.notice': 'この時間は満席です。空席が出た場合の通知候補として登録します',
+      'waitlist.confirm_title': 'キャンセル待ち内容の確認',
+      'waitlist.confirm_notice': '空席が出た場合に店舗から連絡します。予約はまだ確定していません',
+      'waitlist.registered_title': 'キャンセル待ちに登録しました',
+      'waitlist.registered_body': '空席が出た場合、店舗からご連絡します',
+      'waitlist.id': '受付番号',
       'deposit.amount': '予約金',
       'deposit.notice': '予約確定には予約金のお支払いが必要です。次の画面で決済を行います。',
       'deposit.captured_on_no_show': 'no-show 時には予約金が没収されます',
@@ -86,7 +93,7 @@
       'sec.confirm.title': 'Review your reservation',
       'label.name': 'Name', 'label.phone': 'Phone', 'label.email': 'Email',
       'label.course': 'Course', 'label.memo': 'Notes / Allergies',
-      'btn.next': 'Next', 'btn.back': 'Back', 'btn.confirm': 'Confirm reservation', 'btn.proceed_payment': 'Pay deposit',
+      'btn.next': 'Next', 'btn.back': 'Back', 'btn.confirm': 'Confirm reservation', 'btn.proceed_payment': 'Pay deposit', 'btn.join_waitlist': 'Join waitlist',
       'placeholder.name': 'John Smith', 'placeholder.phone': '+81 90 1234 5678', 'placeholder.email': 'john@example.com',
       'placeholder.memo': 'Allergies, stroller, special occasion etc.',
       'no.slots': 'No availability on this day. Please try another date.',
@@ -108,6 +115,12 @@
       'optional': '(optional)',
       'required': '*',
       'confirm.notice': 'Please review your reservation details',
+      'waitlist.notice': 'This time is full. Join the waitlist to be contacted if a seat opens.',
+      'waitlist.confirm_title': 'Review waitlist request',
+      'waitlist.confirm_notice': 'The restaurant will contact you if a seat opens. This is not a confirmed reservation yet.',
+      'waitlist.registered_title': 'Waitlist request received',
+      'waitlist.registered_body': 'The restaurant will contact you if a seat opens.',
+      'waitlist.id': 'Request ID',
       'deposit.amount': 'Deposit',
       'deposit.notice': 'A deposit payment is required to confirm this reservation.',
       'deposit.captured_on_no_show': 'Deposit will be captured if you do not show up',
@@ -131,7 +144,7 @@
       'sec.confirm.title': '请确认预订内容',
       'label.name': '姓名', 'label.phone': '电话', 'label.email': '邮箱',
       'label.course': '套餐', 'label.memo': '备注/过敏',
-      'btn.next': '下一步', 'btn.back': '返回', 'btn.confirm': '确认预订', 'btn.proceed_payment': '支付订金',
+      'btn.next': '下一步', 'btn.back': '返回', 'btn.confirm': '确认预订', 'btn.proceed_payment': '支付订金', 'btn.join_waitlist': '登记候补',
       'placeholder.name': '张三', 'placeholder.phone': '+81 90 1234 5678', 'placeholder.email': 'example@example.com',
       'placeholder.memo': '过敏/婴儿车/纪念日等',
       'no.slots': '此日无空位,请尝试其他日期',
@@ -153,6 +166,12 @@
       'optional': '(可选)',
       'required': '*',
       'confirm.notice': '请确认内容无误',
+      'waitlist.notice': '该时间已满。可登记候补,有空位时店铺会联系您。',
+      'waitlist.confirm_title': '请确认候补内容',
+      'waitlist.confirm_notice': '有空位时店铺会联系您。此时预订尚未确定。',
+      'waitlist.registered_title': '已登记候补',
+      'waitlist.registered_body': '有空位时店铺会联系您。',
+      'waitlist.id': '受理编号',
       'deposit.amount': '订金',
       'deposit.notice': '需支付订金以确认预订',
       'deposit.captured_on_no_show': '若未到店,订金将被扣除',
@@ -176,7 +195,7 @@
       'sec.confirm.title': '예약 내용을 확인하세요',
       'label.name': '이름', 'label.phone': '전화번호', 'label.email': '이메일',
       'label.course': '코스', 'label.memo': '요청사항/알레르기',
-      'btn.next': '다음', 'btn.back': '뒤로', 'btn.confirm': '예약 확정', 'btn.proceed_payment': '예약금 결제',
+      'btn.next': '다음', 'btn.back': '뒤로', 'btn.confirm': '예약 확정', 'btn.proceed_payment': '예약금 결제', 'btn.join_waitlist': '대기 등록',
       'placeholder.name': '김철수', 'placeholder.phone': '+82 10 1234 5678', 'placeholder.email': 'kim@example.com',
       'placeholder.memo': '알레르기, 유모차, 기념일 등',
       'no.slots': '이 날은 공석이 없습니다. 다른 날을 시도해 주세요',
@@ -198,6 +217,12 @@
       'optional': '(선택)',
       'required': '*',
       'confirm.notice': '내용에 오류가 없는지 확인하세요',
+      'waitlist.notice': '이 시간은 만석입니다. 자리가 나면 연락드릴 수 있도록 대기 등록합니다.',
+      'waitlist.confirm_title': '대기 등록 내용 확인',
+      'waitlist.confirm_notice': '자리가 나면 매장에서 연락드립니다. 아직 예약 확정은 아닙니다.',
+      'waitlist.registered_title': '대기 등록이 완료되었습니다',
+      'waitlist.registered_body': '자리가 나면 매장에서 연락드립니다.',
+      'waitlist.id': '접수 번호',
       'deposit.amount': '예약금',
       'deposit.notice': '예약 확정에는 예약금 결제가 필요합니다',
       'deposit.captured_on_no_show': 'no-show 시 예약금이 결제됩니다',
@@ -463,6 +488,8 @@
         var el = e.currentTarget;
         if (el.getAttribute('data-disabled') === '1') return;
         _state.date = el.getAttribute('data-date');
+        _state.time = null;
+        _state.waitlistMode = false;
         _state.step = 2;
         render();
       });
@@ -513,6 +540,8 @@
     for (var i = 0; i < btns.length; i++) {
       btns[i].addEventListener('click', function (e) {
         _state.partySize = parseInt(e.currentTarget.getAttribute('data-party'), 10);
+        _state.time = null;
+        _state.waitlistMode = false;
         // ヒートマップ再取得 (人数依存)
         _heatmapCache = {};
         render();
@@ -531,6 +560,9 @@
     var html = '<section class="rs-section">';
     html += '<h2 class="rs-section__title">' + escapeHtml(t('sec.time.title')) + '</h2>';
     html += '<p class="rs-section__sub">' + escapeHtml(_state.date + ' / ' + _state.partySize + (_state.language === 'en' ? ' guests' : '名')) + '</p>';
+    if (_state.waitlistMode && _state.time) {
+      html += '<div class="rs-waitlist-banner">' + escapeHtml(t('waitlist.notice')) + '</div>';
+    }
     html += '<div id="rs-slot-wrap"><div class="rs-loading"><div class="rs-spinner"></div></div></div>';
     html += '<div class="rs-nav">';
     html += '<button class="rs-btn rs-btn--secondary" id="rs-back">' + t('btn.back') + '</button>';
@@ -565,16 +597,20 @@
     for (var i = 0; i < slots.length; i++) {
       var s = slots[i];
       var cls = 'rs-slot';
+      var waitlistable = (!s.available && s.reason !== 'lead_time');
       if (!s.available) cls += ' rs-slot--unavailable rs-slot--full';
+      if (waitlistable) cls += ' rs-slot--waitlist';
       var slotSelected = (_state.time === s.time);
       if (slotSelected) cls += ' rs-slot--selected';
-      var slotAttrs = 'type="button" class="' + cls + '" data-time="' + s.time + '" data-disabled="' + (s.available ? '0' : '1') + '"';
-      if (!s.available) slotAttrs += ' disabled aria-disabled="true"';
+      var slotAttrs = 'type="button" class="' + cls + '" data-time="' + s.time + '" data-disabled="' + ((s.available || waitlistable) ? '0' : '1') + '" data-waitlist="' + (waitlistable ? '1' : '0') + '"';
+      if (!s.available && !waitlistable) slotAttrs += ' disabled aria-disabled="true"';
       if (slotSelected) slotAttrs += ' aria-pressed="true"';
       html += '<button ' + slotAttrs + '>';
       html += '<span class="rs-slot__time">' + s.time + '</span>';
       if (s.available && s.remaining_capacity) {
         html += '<span class="rs-slot__bag">' + t('remaining_seats', { n: s.remaining_capacity }) + '</span>';
+      } else if (waitlistable) {
+        html += '<span class="rs-slot__bag">' + t('btn.join_waitlist') + '</span>';
       } else if (!s.available) {
         html += '<span class="rs-slot__bag">×</span>';
       }
@@ -589,6 +625,7 @@
         var el = e.currentTarget;
         if (el.getAttribute('data-disabled') === '1') return;
         _state.time = el.getAttribute('data-time');
+        _state.waitlistMode = (el.getAttribute('data-waitlist') === '1');
         render();
       });
     }
@@ -639,12 +676,12 @@
       render();
       return;
     }
-    var depositRequired = _info && _info.deposit_available && _info.deposit_enabled && _state.partySize >= _info.deposit_min_party_size;
+    var depositRequired = !_state.waitlistMode && _info && _info.deposit_available && _info.deposit_enabled && _state.partySize >= _info.deposit_min_party_size;
     var depositAmount = depositRequired ? (_info.deposit_per_person * _state.partySize) : 0;
 
     var html = '<section class="rs-section">';
-    html += '<h2 class="rs-section__title">' + escapeHtml(t('sec.confirm.title')) + '</h2>';
-    html += '<p class="rs-section__sub">' + escapeHtml(t('confirm.notice')) + '</p>';
+    html += '<h2 class="rs-section__title">' + escapeHtml(t(_state.waitlistMode ? 'waitlist.confirm_title' : 'sec.confirm.title')) + '</h2>';
+    html += '<p class="rs-section__sub">' + escapeHtml(t(_state.waitlistMode ? 'waitlist.confirm_notice' : 'confirm.notice')) + '</p>';
     html += '<div class="rs-confirm-row"><span>' + t('step.date') + '</span><span>' + escapeHtml(_state.date) + '</span></div>';
     html += '<div class="rs-confirm-row"><span>' + t('step.time') + '</span><span>' + escapeHtml(_state.time) + '</span></div>';
     html += '<div class="rs-confirm-row"><span>' + t('step.party') + '</span><span>' + _state.partySize + '</span></div>';
@@ -652,6 +689,9 @@
     if (_state.phone) html += '<div class="rs-confirm-row"><span>' + t('label.phone') + '</span><span>' + escapeHtml(_state.phone) + '</span></div>';
     if (_state.email) html += '<div class="rs-confirm-row"><span>' + t('label.email') + '</span><span>' + escapeHtml(_state.email) + '</span></div>';
     if (_state.memo) html += '<div class="rs-confirm-row"><span>' + t('label.memo') + '</span><span>' + escapeHtml(_state.memo) + '</span></div>';
+    if (_state.waitlistMode) {
+      html += '<div class="rs-waitlist-banner">' + escapeHtml(t('waitlist.notice')) + '</div>';
+    }
 
     if (depositRequired) {
       html += '<div class="rs-deposit-banner"><strong>' + t('deposit.amount') + ': ¥' + depositAmount.toLocaleString() + '</strong><br>' + t('deposit.notice') + '</div>';
@@ -662,7 +702,7 @@
 
     html += '<div class="rs-nav">';
     html += '<button class="rs-btn rs-btn--secondary" id="rs-back">' + t('btn.back') + '</button>';
-    html += '<button class="rs-btn rs-btn--primary" id="rs-submit">' + t(depositRequired ? 'btn.proceed_payment' : 'btn.confirm') + '</button>';
+    html += '<button class="rs-btn rs-btn--primary" id="rs-submit">' + t(_state.waitlistMode ? 'btn.join_waitlist' : (depositRequired ? 'btn.proceed_payment' : 'btn.confirm')) + '</button>';
     html += '</div></section>';
     app.innerHTML = html;
 
@@ -679,9 +719,10 @@
         memo: _state.memo,
         language: _state.language,
         source: 'web',
+        join_waitlist: _state.waitlistMode ? 1 : 0
       }, function (err, data) {
         if (err) {
-          btn.disabled = false; btn.textContent = t(depositRequired ? 'btn.proceed_payment' : 'btn.confirm');
+          btn.disabled = false; btn.textContent = t(_state.waitlistMode ? 'btn.join_waitlist' : (depositRequired ? 'btn.proceed_payment' : 'btn.confirm'));
           var msg = formatDisplayError(err, t('error.generic'));
           if (err.code === 'SLOT_UNAVAILABLE') msg = formatDisplayError(err, t('error.slot_unavailable'));
           if (err.code === 'LEAD_TIME_VIOLATION') msg = formatDisplayError(err, t('error.lead_time'));
@@ -707,6 +748,21 @@
 
   // ---------- Step 6: Completion ----------
   function renderCompletion(app) {
+    if (_completed && _completed.waitlist_id) {
+      var wh = '<section class="rs-section rs-completion">';
+      wh += '<div class="rs-completion__icon rs-completion__icon--waitlist">!</div>';
+      wh += '<div class="rs-completion__title">' + escapeHtml(t('waitlist.registered_title')) + '</div>';
+      wh += '<div class="rs-section__sub">' + escapeHtml(t('waitlist.registered_body')) + '</div>';
+      wh += '<div class="rs-completion__id">' + t('waitlist.id') + ': ' + escapeHtml(_completed.waitlist_id) + '</div>';
+      wh += '<div class="rs-completion__actions">';
+      wh += '<button class="rs-btn rs-btn--primary" id="rs-complete-new">' + escapeHtml(t('completion.new')) + '</button>';
+      wh += '<button class="rs-btn rs-btn--secondary" id="rs-complete-close">' + escapeHtml(t('completion.close')) + '</button>';
+      wh += '</div>';
+      wh += '</section>';
+      app.innerHTML = wh;
+      bindCompletionActions();
+      return;
+    }
     var html = '<section class="rs-section rs-completion">';
     html += '<div class="rs-completion__icon">✓</div>';
     html += '<div class="rs-completion__title">' + escapeHtml(t('completion.title')) + '</div>';
@@ -724,6 +780,10 @@
     html += '</section>';
     app.innerHTML = html;
 
+    bindCompletionActions();
+  }
+
+  function bindCompletionActions() {
     document.getElementById('rs-complete-new').addEventListener('click', function () {
       // 状態をリセットして最初の画面へ
       _completed = null;
@@ -733,6 +793,7 @@
       _state.time = null;
       _state.memo = '';
       _state.courseId = null;
+      _state.waitlistMode = false;
       _heatmapCache = {};
       _slotsCache = {};
       render();

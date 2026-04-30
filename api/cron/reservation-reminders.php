@@ -4,8 +4,8 @@
  *
  * 推奨実行頻度: 5〜10 分ごと
  *
- * - 24h前リマインダー: 24h±5分以内に reserved_at を持ち、reminder_24h_sent_at が NULL の confirmed/seated を対象
- * - 2h前リマインダー: 2h±5分以内、reminder_2h_sent_at が NULL
+ * - 24h前リマインダー: 23〜25h後に reserved_at を持ち、reminder_24h_sent_at が NULL の confirmed/pending を対象
+ * - 2h前リマインダー: 90〜150分後、reminder_2h_sent_at が NULL
  * - メールアドレス必須
  * - 各店舗の reservation_settings.reminder_*_enabled を尊重
  *
@@ -31,7 +31,7 @@ require_once __DIR__ . '/../config/app.php';
 
 $pdo = get_db();
 
-$processed = ['reminder_24h' => 0, 'reminder_2h' => 0, 'failed' => 0, 'skipped_disabled' => 0];
+$processed = ['reminder_24h' => 0, 'reminder_2h' => 0, 'failed' => 0, 'skipped_disabled' => 0, 'failed_ids' => []];
 
 // 24h
 $stmt = $pdo->prepare(
@@ -55,6 +55,7 @@ foreach ($stmt->fetchAll() as $r) {
         $processed['reminder_24h']++;
     } else {
         $processed['failed']++;
+        $processed['failed_ids'][] = $r['id'];
     }
 }
 
@@ -64,7 +65,7 @@ $stmt2 = $pdo->prepare(
      WHERE r.status IN ('confirmed','pending')
        AND r.customer_email IS NOT NULL AND r.customer_email <> ''
        AND r.reminder_2h_sent_at IS NULL
-       AND r.reserved_at BETWEEN DATE_ADD(NOW(), INTERVAL 105 MINUTE) AND DATE_ADD(NOW(), INTERVAL 135 MINUTE)"
+       AND r.reserved_at BETWEEN DATE_ADD(NOW(), INTERVAL 90 MINUTE) AND DATE_ADD(NOW(), INTERVAL 150 MINUTE)"
 );
 $stmt2->execute();
 foreach ($stmt2->fetchAll() as $r) {
@@ -80,6 +81,7 @@ foreach ($stmt2->fetchAll() as $r) {
         $processed['reminder_2h']++;
     } else {
         $processed['failed']++;
+        $processed['failed_ids'][] = $r['id'];
     }
 }
 

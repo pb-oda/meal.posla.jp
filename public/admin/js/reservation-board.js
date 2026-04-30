@@ -196,7 +196,7 @@
   /* KPI + attention の計算 (既存データから導出) */
   function computeAttention(reservations) {
     // RSV-P1-1: customer_attention に VIP / blacklist / allergy / memo 持ち予約を集約
-    var att = { unassigned: [], pending_overdue: [], customer_attention: [], arrival_risk: [], reminder_due: [] };
+    var att = { unassigned: [], pending_overdue: [], customer_attention: [], arrival_risk: [], reminder_due: [], risk_actions: [] };
     if (!reservations) return att;
     var now = Date.now();
     for (var i = 0; i < reservations.length; i++) {
@@ -217,6 +217,14 @@
       }
       if (r.reminder_status && r.reminder_status.level === 'due') {
         att.reminder_due.push(r);
+      }
+      if (r.risk_actions && r.risk_actions.length) {
+        for (var ra = 0; ra < r.risk_actions.length; ra++) {
+          if (r.risk_actions[ra].level === 'warning' || r.risk_actions[ra].level === 'danger') {
+            att.risk_actions.push(r);
+            break;
+          }
+        }
       }
       // RSV-P1-1: 今日の注目客 (VIP / blacklist / allergy / memo のいずれか)
       if (_hasCustomerAttention(r)) {
@@ -368,6 +376,31 @@
     return html;
   }
 
+  function renderCancelWaitlistPanel(candidates) {
+    if (!candidates || !candidates.length) return '';
+    var html = '<div class="rb-cancelwait" role="region" aria-label="キャンセル待ち">';
+    html += '<div class="rb-cancelwait__head">キャンセル待ち (' + candidates.length + ' 件)</div>';
+    html += '<ul class="rb-cancelwait__list">';
+    for (var i = 0; i < candidates.length; i++) {
+      var c = candidates[i];
+      var st = c.status || 'waiting';
+      var meta = fmtTime(c.desired_at) + ' / ' + c.party_size + '名';
+      if (c.notification_count) meta += ' / 通知' + c.notification_count + '回';
+      html += '<li class="rb-cancelwait__item rb-cancelwait__item--' + escapeHtml(st) + '">';
+      html += '<span class="rb-cancelwait__name">' + escapeHtml(c.customer_name) + '</span>';
+      html += '<span class="rb-cancelwait__meta">' + escapeHtml(meta) + '</span>';
+      html += '<span class="rb-cancelwait__status">' + escapeHtml(cancelWaitStatusLabel(st)) + '</span>';
+      if (c.last_notification_error) html += '<span class="rb-cancelwait__error">' + escapeHtml(c.last_notification_error) + '</span>';
+      html += '</li>';
+    }
+    html += '</ul></div>';
+    return html;
+  }
+
+  function cancelWaitStatusLabel(st) {
+    return ({ waiting: '待機中', notified: '通知済み', booked: '予約化済み', cancelled: '取消', expired: '期限切れ' })[st] || st;
+  }
+
   function _riskBadgeHtml(r) {
     if (!r || !r.ops_risk || !r.ops_risk.level || r.ops_risk.level === 'normal') return '';
     var level = r.ops_risk.level;
@@ -501,7 +534,7 @@
   function renderAttentionPanel(attention) {
     // RSV-P1-1: 注目客 (VIP/BL/allergy/memo) も attention panel に並べる
     var custAtt = (attention && attention.customer_attention) || [];
-    var total = attention.unassigned.length + attention.pending_overdue.length + attention.arrival_risk.length + attention.reminder_due.length + custAtt.length;
+    var total = attention.unassigned.length + attention.pending_overdue.length + attention.arrival_risk.length + attention.reminder_due.length + custAtt.length + (attention.risk_actions ? attention.risk_actions.length : 0);
     if (total === 0) return '';
 
     var html = '<div class="rb-attention" role="alert">';
@@ -528,6 +561,22 @@
       var rm = attention.reminder_due[rd];
       html += '<li><button type="button" class="rb-attention__item" data-rsv-id="' + escapeHtml(rm.id) + '">'
         + 'リマインド: ' + escapeHtml(rm.customer_name) + ' / ' + escapeHtml((rm.reminder_status && rm.reminder_status.label) || '')
+        + '</button></li>';
+    }
+    var riskActions = attention.risk_actions || [];
+    for (var rx = 0; rx < riskActions.length; rx++) {
+      var xr = riskActions[rx];
+      var actionLabel = '要確認';
+      if (xr.risk_actions && xr.risk_actions.length) {
+        for (var ax = 0; ax < xr.risk_actions.length; ax++) {
+          if (xr.risk_actions[ax].level === 'warning' || xr.risk_actions[ax].level === 'danger') {
+            actionLabel = xr.risk_actions[ax].label || actionLabel;
+            break;
+          }
+        }
+      }
+      html += '<li><button type="button" class="rb-attention__item rb-attention__item--risk" data-rsv-id="' + escapeHtml(xr.id) + '">'
+        + '高リスク: ' + escapeHtml(xr.customer_name) + ' / ' + escapeHtml(actionLabel)
         + '</button></li>';
     }
     // RSV-P1-1: 今日の注目客を attention panel に追加 (朝礼 / プリシフト用)
@@ -565,7 +614,7 @@
 
     var dayopsArea = document.getElementById('rb-dayops-area');
     if (dayopsArea) {
-      dayopsArea.innerHTML = renderDayOpsBoard(d.reservations || []) + renderWaitlistPanel(d.reservations || []);
+      dayopsArea.innerHTML = renderDayOpsBoard(d.reservations || []) + renderWaitlistPanel(d.reservations || []) + renderCancelWaitlistPanel(d.waitlist_candidates || []);
       var dayBtns = dayopsArea.querySelectorAll('[data-rsv-id]');
       for (var di = 0; di < dayBtns.length; di++) {
         dayBtns[di].addEventListener('click', function (e) { openDetailModal(e.currentTarget.getAttribute('data-rsv-id')); });
@@ -722,6 +771,9 @@
 
       // RSV-P1-1: 顧客要約セクション (reservation_customers と紐付く場合のみ)
       html += _renderCustomerSummary(r);
+      html += _renderRiskActions(r);
+      html += _renderReminderDelivery(r);
+      html += _renderChangeHistory(r);
 
       html += '<div class="rb-modal__actions">';
       if (r.status === 'confirmed' || r.status === 'pending') {
@@ -836,6 +888,93 @@
 
     html += '</div>';
     return html;
+  }
+
+  function _renderRiskActions(r) {
+    if (!r || !r.risk_actions || !r.risk_actions.length) return '';
+    var html = '<div class="rb-risk-actions">';
+    html += '<div class="rb-risk-actions__title">高リスク対応</div>';
+    for (var i = 0; i < r.risk_actions.length; i++) {
+      var a = r.risk_actions[i];
+      html += '<div class="rb-risk-action rb-risk-action--' + escapeHtml(a.level || 'notice') + '">';
+      html += '<strong>' + escapeHtml(a.label || '要確認') + '</strong>';
+      if (a.detail) html += '<span>' + escapeHtml(a.detail) + '</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function _renderReminderDelivery(r) {
+    if (!r || !r.reminder_delivery || !r.reminder_delivery.length) return '';
+    var html = '<div class="rb-change-history">';
+    html += '<div class="rb-change-history__title">リマインド送信履歴</div>';
+    html += '<ul>';
+    for (var i = 0; i < r.reminder_delivery.length; i++) {
+      var d = r.reminder_delivery[i];
+      html += '<li><span>' + escapeHtml(reminderTypeLabel(d.notification_type)) + ' / ' + escapeHtml(d.channel || '-') + '</span>';
+      html += '<strong class="rb-delivery-status rb-delivery-status--' + escapeHtml(d.status || 'queued') + '">' + escapeHtml(deliveryStatusLabel(d.status)) + '</strong>';
+      html += '<em>' + escapeHtml((d.sent_at || d.created_at || '').substring(0, 16)) + '</em>';
+      if (d.error_message) html += '<small>' + escapeHtml(d.error_message) + '</small>';
+      html += '</li>';
+    }
+    html += '</ul></div>';
+    return html;
+  }
+
+  function reminderTypeLabel(type) {
+    return ({ reminder_24h: '24時間前', reminder_2h: '2時間前' })[type] || type || '-';
+  }
+
+  function deliveryStatusLabel(status) {
+    return ({ queued: '送信待ち', sent: '送信済み', failed: '失敗' })[status] || status || '-';
+  }
+
+  function _renderChangeHistory(r) {
+    if (!r || !r.change_history || !r.change_history.length) return '';
+    var html = '<div class="rb-change-history">';
+    html += '<div class="rb-change-history__title">変更履歴</div>';
+    html += '<ul>';
+    for (var i = 0; i < r.change_history.length; i++) {
+      var h = r.change_history[i];
+      html += '<li>';
+      html += '<span>' + escapeHtml(fieldLabel(h.field_name)) + '</span>';
+      html += '<strong>' + escapeHtml(historyValue(h.old_value)) + ' → ' + escapeHtml(historyValue(h.new_value)) + '</strong>';
+      html += '<em>' + escapeHtml((h.changed_at || '').substring(0, 16)) + ' / ' + escapeHtml(h.actor_name || actorTypeLabel(h.actor_type)) + '</em>';
+      html += '</li>';
+    }
+    html += '</ul></div>';
+    return html;
+  }
+
+  function fieldLabel(field) {
+    return ({
+      customer_name: '名前',
+      customer_phone: '電話',
+      customer_email: 'メール',
+      party_size: '人数',
+      reserved_at: '予約日時',
+      duration_min: '滞在分',
+      assigned_table_ids: 'テーブル',
+      memo: 'メモ',
+      tags: 'タグ',
+      status: 'ステータス',
+      cancel_reason: 'キャンセル理由',
+      arrival_followup_status: '遅刻対応',
+      waitlist_call_status: '待ち客呼出',
+      table_session_id: 'テーブルセッション'
+    })[field] || field;
+  }
+
+  function historyValue(value) {
+    if (value === null || value === undefined || value === '') return '-';
+    var text = String(value);
+    if (text.length > 80) text = text.substring(0, 80) + '...';
+    return text;
+  }
+
+  function actorTypeLabel(type) {
+    return ({ staff: 'スタッフ', customer: 'お客様', system: 'システム' })[type] || '-';
   }
 
   function _installEscClose() {
