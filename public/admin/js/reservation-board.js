@@ -480,10 +480,10 @@
 
   function renderDayOpsBoard(reservations) {
     var lanes = [
-      { key: 'booked', label: '予約', items: [] },
-      { key: 'walkin', label: '飛び込み', items: [] },
-      { key: 'wait', label: '待ち', items: [] },
-      { key: 'seated', label: '着席中', items: [] }
+      { key: 'booked', label: '予約', icon: '予', empty: '本日の予約なし', items: [] },
+      { key: 'walkin', label: '飛び込み', icon: '飛', empty: '飛び込みなし', items: [] },
+      { key: 'wait', label: '待ち', icon: '待', empty: '待ち客なし', items: [] },
+      { key: 'seated', label: '着席中', icon: '席', empty: '着席中なし', items: [] }
     ];
     var byKey = { booked: lanes[0], walkin: lanes[1], wait: lanes[2], seated: lanes[3] };
     for (var i = 0; i < reservations.length; i++) {
@@ -509,9 +509,10 @@
 
   function _renderDayOpsLane(lane) {
     var html = '<section class="rb-dayops-lane rb-dayops-lane--' + escapeHtml(lane.key) + '">';
-    html += '<div class="rb-dayops-lane__head"><span>' + escapeHtml(lane.label) + '</span><strong>' + lane.items.length + '</strong></div>';
+    html += '<div class="rb-dayops-lane__head"><span class="rb-dayops-lane__title"><span class="rb-dayops-lane__icon">' +
+      escapeHtml(lane.icon || '') + '</span>' + escapeHtml(lane.label) + '</span><strong>' + lane.items.length + '組</strong></div>';
     if (!lane.items.length) {
-      html += '<div class="rb-dayops-lane__empty">なし</div>';
+      html += '<div class="rb-dayops-lane__empty">' + escapeHtml(lane.empty || '該当なし') + '</div>';
     } else {
       for (var i = 0; i < lane.items.length && i < 8; i++) {
         html += _renderDayOpsCard(lane.items[i]);
