@@ -4,8 +4,10 @@
  *
  * GET  ?action=settings&store_id=xxx   — テイクアウト設定取得
  * GET  ?action=slots&store_id=xxx&date=YYYY-MM-DD — 受取時間枠の空き状況
+ * GET  ?action=reorder_suggestions&store_id=xxx&phone=xxx — 前回注文候補
  * GET  ?action=status&order_id=xxx&phone=xxx       — 注文ステータス確認
  * POST                                             — テイクアウト注文作成
+ * POST {action:"arrival", store_id, order_id, phone, arrival_type?, arrival_note?} — 到着連絡
  */
 
 require_once __DIR__ . '/../lib/response.php';
@@ -147,6 +149,45 @@ function takeout_load_slot_usage(PDO $pdo, string $storeId, string $date): array
     return $usage;
 }
 
+function takeout_clean_phone($phone): string
+{
+    return preg_replace('/[^0-9]/', '', (string)$phone);
+}
+
+function takeout_normalize_reorder_items($items): array
+{
+    if (is_string($items)) {
+        $items = json_decode($items, true);
+    }
+    if (!is_array($items)) return [];
+
+    $normalized = [];
+    foreach ($items as $item) {
+        if (!is_array($item)) continue;
+        $id = (string)($item['id'] ?? ($item['menuItemId'] ?? ''));
+        $name = (string)($item['name'] ?? '');
+        if ($id === '' || $name === '') continue;
+        $qty = max(1, (int)($item['qty'] ?? 1));
+        $normalized[] = [
+            'id' => $id,
+            'name' => $name,
+            'nameEn' => (string)($item['nameEn'] ?? ''),
+            'price' => max(0, (int)($item['price'] ?? 0)),
+            'qty' => $qty,
+        ];
+    }
+    return $normalized;
+}
+
+function takeout_reorder_summary(array $items): string
+{
+    $parts = [];
+    foreach ($items as $item) {
+        $parts[] = $item['name'] . ' x' . (int)$item['qty'];
+    }
+    return implode(', ', $parts);
+}
+
 // ===== GET =====
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $action = $_GET['action'] ?? '';
@@ -206,6 +247,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'brand_logo_url' => $takeoutSettings['brand_logo_url'] ?? null,
             'brand_display_name' => $takeoutSettings['brand_display_name'] ?? null,
         ]);
+    }
+
+    // --- 前回注文候補 ---
+    if ($action === 'reorder_suggestions') {
+        check_rate_limit('takeout-reorder', 30, 3600);
+
+        $storeId = $_GET['store_id'] ?? null;
+        $phone = takeout_clean_phone($_GET['phone'] ?? '');
+        if (!$storeId) json_error('MISSING_STORE', 'store_idが必要です', 400);
+        if (!$phone) json_error('MISSING_PHONE', '電話番号が必要です', 400);
+        if (!preg_match('/^[0-9]{10,11}$/', $phone)) json_error('INVALID_PHONE', '電話番号は10〜11桁で入力してください', 400);
+
+        $stmt = $pdo->prepare('SELECT id FROM stores WHERE id = ? AND is_active = 1');
+        $stmt->execute([$storeId]);
+        if (!$stmt->fetch()) json_error('STORE_NOT_FOUND', '店舗が見つかりません', 404);
+
+        try {
+            $stmt = $pdo->prepare(
+                "SELECT id, pickup_at, total_amount, items, created_at
+                   FROM orders
+                  WHERE store_id = ? AND order_type = 'takeout'
+                    AND customer_phone = ?
+                    AND status IN ('ready','served','paid')
+                    AND (takeout_ops_status IS NULL OR takeout_ops_status NOT IN ('cancelled','refunded'))
+                  ORDER BY created_at DESC
+                  LIMIT 5"
+            );
+            $stmt->execute([$storeId, $phone]);
+        } catch (PDOException $e) {
+            $stmt = $pdo->prepare(
+                "SELECT id, pickup_at, total_amount, items, created_at
+                   FROM orders
+                  WHERE store_id = ? AND order_type = 'takeout'
+                    AND customer_phone = ?
+                    AND status IN ('ready','served','paid')
+                  ORDER BY created_at DESC
+                  LIMIT 5"
+            );
+            $stmt->execute([$storeId, $phone]);
+        }
+
+        $suggestions = [];
+        while ($row = $stmt->fetch()) {
+            $items = takeout_normalize_reorder_items($row['items']);
+            if (!$items) continue;
+            $suggestions[] = [
+                'order_id' => $row['id'],
+                'ordered_at' => $row['created_at'],
+                'pickup_at' => $row['pickup_at'],
+                'total_amount' => (int)$row['total_amount'],
+                'item_summary' => takeout_reorder_summary($items),
+                'items' => $items,
+            ];
+        }
+
+        json_response(['suggestions' => $suggestions]);
     }
 
     // --- 受取時間枠の空き状況 ---
@@ -275,7 +372,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // --- 注文ステータス確認 ---
     if ($action === 'status') {
         $orderId = $_GET['order_id'] ?? null;
-        $phone = $_GET['phone'] ?? null;
+        $phone = takeout_clean_phone($_GET['phone'] ?? '');
         if (!$orderId) json_error('MISSING_ORDER', 'order_idが必要です', 400);
         if (!$phone) json_error('MISSING_PHONE', '電話番号が必要です', 400);
 
@@ -285,6 +382,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             "SELECT o.id, o.store_id, o.status, o.customer_name, o.customer_phone,
                     o.pickup_at, o.total_amount, o.items, o.memo, o.created_at,
                     o.takeout_ops_status, o.takeout_ready_notification_status,
+                    o.takeout_arrived_at, o.takeout_arrival_type, o.takeout_arrival_note,
                     s.tenant_id
              FROM orders o
              JOIN stores s ON s.id = o.store_id
@@ -340,6 +438,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'created_at' => $order['created_at'],
             'takeout_ops_status' => $order['takeout_ops_status'] ?? 'normal',
             'ready_notification_status' => $order['takeout_ready_notification_status'] ?? 'not_requested',
+            'arrived_at' => $order['takeout_arrived_at'] ?? null,
+            'arrival_type' => $order['takeout_arrival_type'] ?? null,
+            'arrival_note' => $order['takeout_arrival_note'] ?? null,
             'line_enabled' => $lineEnabled,
             'takeout_ready_enabled' => $takeoutReadyEnabled,
         ]);
@@ -350,14 +451,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 // ===== POST: テイクアウト注文作成 =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    check_rate_limit('takeout-order', 10, 3600);
-
     $data = get_json_body();
+    $action = $data['action'] ?? '';
+
+    if ($action === 'arrival') {
+        check_rate_limit('takeout-arrival', 20, 600);
+
+        $orderId = $data['order_id'] ?? null;
+        $storeId = $data['store_id'] ?? null;
+        $phone = takeout_clean_phone($data['phone'] ?? '');
+        $arrivalType = $data['arrival_type'] ?? 'counter';
+        $arrivalNote = trim((string)($data['arrival_note'] ?? ''));
+        if ($arrivalNote !== '' && mb_strlen($arrivalNote) > 255) {
+            $arrivalNote = mb_substr($arrivalNote, 0, 255);
+        }
+
+        if (!$orderId) json_error('MISSING_ORDER', 'order_idが必要です', 400);
+        if (!$storeId) json_error('MISSING_STORE', 'store_idが必要です', 400);
+        if (!$phone) json_error('MISSING_PHONE', '電話番号が必要です', 400);
+        if (!preg_match('/^[0-9]{10,11}$/', $phone)) json_error('INVALID_PHONE', '電話番号は10〜11桁で入力してください', 400);
+        if (!in_array($arrivalType, ['counter', 'curbside'], true)) {
+            json_error('INVALID_ARRIVAL_TYPE', '到着種別が不正です', 400);
+        }
+
+        $stmt = $pdo->prepare(
+            "SELECT id, status, customer_phone, takeout_arrived_at
+               FROM orders
+              WHERE id = ? AND store_id = ? AND customer_phone = ? AND order_type = 'takeout'"
+        );
+        $stmt->execute([$orderId, $storeId, $phone]);
+        $order = $stmt->fetch();
+        if (!$order) json_error('NOT_FOUND', '注文が見つかりません', 404);
+        if (in_array($order['status'], ['cancelled', 'served', 'paid'], true)) {
+            json_error('ORDER_FINALIZED', 'この注文は到着連絡できない状態です', 409);
+        }
+
+        $stmt = $pdo->prepare(
+            "UPDATE orders
+                SET takeout_arrived_at = COALESCE(takeout_arrived_at, NOW()),
+                    takeout_arrival_type = ?,
+                    takeout_arrival_note = ?,
+                    updated_at = NOW()
+              WHERE id = ? AND store_id = ? AND customer_phone = ? AND order_type = 'takeout'"
+        );
+        $stmt->execute([$arrivalType, $arrivalNote ?: null, $orderId, $storeId, $phone]);
+
+        $stmt = $pdo->prepare(
+            "SELECT takeout_arrived_at, takeout_arrival_type, takeout_arrival_note
+               FROM orders
+              WHERE id = ? AND store_id = ? AND customer_phone = ? AND order_type = 'takeout'"
+        );
+        $stmt->execute([$orderId, $storeId, $phone]);
+        $updated = $stmt->fetch();
+
+        json_response([
+            'order_id' => $orderId,
+            'arrived_at' => $updated['takeout_arrived_at'] ?? null,
+            'arrival_type' => $updated['takeout_arrival_type'] ?? $arrivalType,
+            'arrival_note' => $updated['takeout_arrival_note'] ?? null,
+        ]);
+    }
+
+    check_rate_limit('takeout-order', 10, 3600);
 
     $storeId = $data['store_id'] ?? null;
     $items = $data['items'] ?? [];
     $customerName = trim($data['customer_name'] ?? '');
-    $customerPhone = trim($data['customer_phone'] ?? '');
+    $customerPhone = takeout_clean_phone($data['customer_phone'] ?? '');
     $pickupAt = $data['pickup_at'] ?? null;
     $memo = trim($data['memo'] ?? '');
     $paymentMethod = $data['payment_method'] ?? 'online';

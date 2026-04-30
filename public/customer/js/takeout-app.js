@@ -17,6 +17,9 @@
   var _pollTimer = null;
   var _selectedSlot = '';
   var _onlinePaymentAvailable = false;
+  var _savedName = '';
+  var _savedPhone = '';
+  var _reorderSuggestions = {};
 
   // ===== ユーティリティ =====
   function escapeHtml(str) {
@@ -37,6 +40,144 @@
       d = Math.floor(d / 16);
       return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
     });
+  }
+
+  function cleanPhone(phone) {
+    return String(phone || '').replace(/[^0-9]/g, '');
+  }
+
+  function storageKey(suffix) {
+    return 'posla_takeout_' + (_storeId || 'store') + '_' + suffix;
+  }
+
+  function loadSavedCustomer() {
+    try {
+      _savedName = localStorage.getItem(storageKey('name')) || '';
+      _savedPhone = cleanPhone(localStorage.getItem(storageKey('phone')) || '');
+    } catch (e) {
+      _savedName = '';
+      _savedPhone = '';
+    }
+  }
+
+  function saveCustomer(name, phone) {
+    _savedName = String(name || '').trim();
+    _savedPhone = cleanPhone(phone);
+    try {
+      localStorage.setItem(storageKey('name'), _savedName);
+      localStorage.setItem(storageKey('phone'), _savedPhone);
+    } catch (e) {}
+  }
+
+  function focusField(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    try { el.focus(); } catch (e) {}
+  }
+
+  function findMenuItem(itemId) {
+    for (var c = 0; c < _categories.length; c++) {
+      var items = _categories[c].items || [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].menuItemId === itemId) {
+          return items[i];
+        }
+      }
+    }
+    return null;
+  }
+
+  function addItemToCartWithQty(item, qty) {
+    if (!item || item.soldOut) return false;
+    for (var i = 0; i < _cart.length; i++) {
+      if (_cart[i].id === item.menuItemId) {
+        _cart[i].qty += qty;
+        return true;
+      }
+    }
+    _cart.push({
+      id: item.menuItemId,
+      name: item.name,
+      nameEn: item.nameEn || '',
+      price: item.price || 0,
+      qty: qty,
+    });
+    return true;
+  }
+
+  function loadReorderSuggestions(phone, targetId, compact) {
+    phone = cleanPhone(phone);
+    if (!/^[0-9]{10,11}$/.test(phone)) return;
+    var target = document.getElementById(targetId);
+    if (!target) return;
+    target.innerHTML = compact
+      ? '<div class="to-reorder-loading">前回注文を確認中...</div>'
+      : '<div class="to-reorder-loading">この電話番号の前回注文を確認中...</div>';
+    apiGet('/customer/takeout-orders.php?action=reorder_suggestions&store_id=' + encodeURIComponent(_storeId) + '&phone=' + encodeURIComponent(phone))
+      .then(function (data) {
+        renderReorderSuggestions(data.suggestions || [], targetId, compact);
+      })
+      .catch(function () {
+        target.innerHTML = '';
+      });
+  }
+
+  function renderReorderSuggestions(suggestions, targetId, compact) {
+    var target = document.getElementById(targetId);
+    if (!target) return;
+    if (!suggestions.length) {
+      target.innerHTML = compact ? '' : '<div class="to-reorder-empty">前回注文はありません</div>';
+      return;
+    }
+    var limit = compact ? Math.min(2, suggestions.length) : Math.min(3, suggestions.length);
+    var html = '<div class="to-reorder">';
+    html += '<div class="to-reorder__title">' + (compact ? '前回の注文' : '前回注文から選ぶ') + '</div>';
+    for (var i = 0; i < limit; i++) {
+      var s = suggestions[i];
+      var key = targetId + '-' + i;
+      _reorderSuggestions[key] = s;
+      var pickup = s.pickup_at ? String(s.pickup_at).substring(0, 16).replace(' ', ' ') : '';
+      html += '<div class="to-reorder-card">';
+      html += '<div class="to-reorder-card__body">';
+      html += '<div class="to-reorder-card__summary">' + escapeHtml(s.item_summary || '') + '</div>';
+      html += '<div class="to-reorder-card__meta">' + escapeHtml(pickup) + ' / ' + formatPrice(s.total_amount || 0) + '</div>';
+      html += '</div>';
+      html += '<button class="to-reorder-card__btn" data-reorder-key="' + escapeHtml(key) + '">再注文</button>';
+      html += '</div>';
+    }
+    html += '</div>';
+    target.innerHTML = html;
+    target.onclick = function (e) {
+      var btn = e.target.closest('[data-reorder-key]');
+      if (!btn) return;
+      applyReorder(btn.getAttribute('data-reorder-key'));
+    };
+  }
+
+  function applyReorder(key) {
+    var suggestion = _reorderSuggestions[key];
+    if (!suggestion || !suggestion.items) return;
+    var nextCart = [];
+    var skipped = 0;
+    var oldCart = _cart;
+    _cart = nextCart;
+    for (var i = 0; i < suggestion.items.length; i++) {
+      var item = findMenuItem(suggestion.items[i].id);
+      if (!addItemToCartWithQty(item, Math.max(1, parseInt(suggestion.items[i].qty, 10) || 1))) {
+        skipped += 1;
+      }
+    }
+    if (!_cart.length) {
+      _cart = oldCart;
+      showToast('現在注文できる商品がありません');
+      return;
+    }
+    var active = document.querySelector('.to-cat-tab--active');
+    var idx = active ? parseInt(active.dataset.catIdx, 10) : 0;
+    if (isNaN(idx)) idx = 0;
+    renderCategoryItems(idx);
+    renderCartBar();
+    showToast(skipped ? '一部の商品を除いてカートに入れました' : '前回注文をカートに入れました');
   }
 
   function apiGet(path) {
@@ -86,6 +227,7 @@
       showError('store_idが指定されていません。');
       return;
     }
+    loadSavedCustomer();
 
     showLoading();
 
@@ -226,6 +368,7 @@
     }
 
     var html = '<div class="to-cat-tabs" id="to-cat-tabs"></div>';
+    html += '<div id="to-reorder-home"></div>';
     html += '<div class="to-menu-items" id="to-menu-items"></div>';
     sec.innerHTML = html;
 
@@ -246,6 +389,9 @@
 
     renderCategoryItems(0);
     renderCartBar();
+    if (/^[0-9]{10,11}$/.test(_savedPhone)) {
+      loadReorderSuggestions(_savedPhone, 'to-reorder-home', true);
+    }
   }
 
   function renderCategoryItems(catIdx) {
@@ -440,9 +586,10 @@
     var html = '<h2 class="to-section__title">お客様情報</h2>';
     html += '<div class="to-form">';
     html += '<div class="to-form__group"><label class="to-form__label">お名前 <span class="to-required">*</span></label>';
-    html += '<input class="to-form__input" id="to-name" type="text" placeholder="例: 山田太郎" value="' + escapeHtml(_orderPhone ? '' : '') + '"></div>';
+    html += '<input class="to-form__input" id="to-name" type="text" placeholder="例: 山田太郎" autocomplete="name" enterkeyhint="next" value="' + escapeHtml(_savedName) + '"></div>';
     html += '<div class="to-form__group"><label class="to-form__label">電話番号 <span class="to-required">*</span></label>';
-    html += '<input class="to-form__input" id="to-phone" type="tel" placeholder="例: 09012345678" pattern="[0-9]{10,11}"></div>';
+    html += '<input class="to-form__input" id="to-phone" type="tel" inputmode="numeric" autocomplete="tel" enterkeyhint="next" placeholder="例: 09012345678" pattern="[0-9]{10,11}" value="' + escapeHtml(_savedPhone) + '">';
+    html += '<div id="to-reorder-suggestions"></div></div>';
     html += '<div class="to-form__group"><label class="to-form__label">メモ（アレルギー等）</label>';
     html += '<textarea class="to-form__input to-form__textarea" id="to-memo" placeholder="ご要望があればご記入ください"></textarea></div>';
     html += '<div class="to-form__group"><label class="to-form__label">受取時間 <span class="to-required">*</span></label>';
@@ -460,12 +607,25 @@
     document.getElementById('to-back-1').addEventListener('click', function () { goToSection(1); });
     document.getElementById('to-next-3').addEventListener('click', function () {
       var name = document.getElementById('to-name').value.trim();
-      var phone = document.getElementById('to-phone').value.trim();
-      if (!name) { showToast('お名前を入力してください'); return; }
-      if (!/^[0-9]{10,11}$/.test(phone)) { showToast('電話番号をハイフンなし10〜11桁で入力してください'); return; }
-      if (!_selectedSlot) { showToast('受取時間を選択してください'); return; }
+      var phone = cleanPhone(document.getElementById('to-phone').value);
+      document.getElementById('to-phone').value = phone;
+      if (!name) { showToast('お名前を入力してください'); focusField('to-name'); return; }
+      if (!/^[0-9]{10,11}$/.test(phone)) { showToast('電話番号をハイフンなし10〜11桁で入力してください'); focusField('to-phone'); return; }
+      if (!_selectedSlot) { showToast('受取時間を選択してください'); focusField('to-slots'); return; }
       goToSection(3);
     });
+
+    var phoneInput = document.getElementById('to-phone');
+    phoneInput.addEventListener('blur', function () {
+      var phone = cleanPhone(this.value);
+      this.value = phone;
+      if (/^[0-9]{10,11}$/.test(phone)) {
+        loadReorderSuggestions(phone, 'to-reorder-suggestions', false);
+      }
+    });
+    if (/^[0-9]{10,11}$/.test(_savedPhone)) {
+      loadReorderSuggestions(_savedPhone, 'to-reorder-suggestions', false);
+    }
 
     loadTimeSlots();
   }
@@ -546,7 +706,8 @@
   function renderConfirmation() {
     var sec = document.getElementById('to-section-4');
     var name = document.getElementById('to-name') ? document.getElementById('to-name').value.trim() : '';
-    var phone = document.getElementById('to-phone') ? document.getElementById('to-phone').value.trim() : '';
+    var phone = document.getElementById('to-phone') ? cleanPhone(document.getElementById('to-phone').value) : '';
+    if (document.getElementById('to-phone')) document.getElementById('to-phone').value = phone;
     var memo = document.getElementById('to-memo') ? document.getElementById('to-memo').value.trim() : '';
     var payEl = document.querySelector('input[name="to-payment"]:checked');
     var payMethod = payEl ? payEl.value : 'online';
@@ -612,7 +773,8 @@
       idempotency_key: generateUUID(),
     }).then(function (data) {
       _orderId = data.order_id;
-      _orderPhone = phone;
+      _orderPhone = cleanPhone(phone);
+      saveCustomer(name, _orderPhone);
 
       if (data.checkout_url) {
         window.location.href = data.checkout_url;
@@ -632,7 +794,7 @@
     var params = new URLSearchParams(location.search);
     _storeId = params.get('store_id');
     _orderId = params.get('order_id');
-    _orderPhone = params.get('phone') || '';
+    _orderPhone = cleanPhone(params.get('phone') || '');
     var status = params.get('payment_status');
 
     var app = document.getElementById('takeout-app');
@@ -687,6 +849,15 @@
     html += '<div class="to-complete__order-id">注文番号: ' + shortId + '</div>';
     html += '<div class="to-complete__pickup">受取時間: ' + escapeHtml(_selectedSlot || '---') + '</div>';
     html += '<div class="to-complete__status" id="to-status-display">ステータス: 受付済み</div>';
+    html += '<div class="to-arrival-panel" id="to-arrival-wrap">';
+    html += '<div class="to-arrival-panel__title">店舗に着いたらお知らせください</div>';
+    html += '<input class="to-form__input" id="to-arrival-note" maxlength="255" placeholder="車の色・受取場所メモ">';
+    html += '<div class="to-arrival-panel__buttons">';
+    html += '<button class="to-btn to-btn--secondary" id="to-arrived-counter">店頭に着きました</button>';
+    html += '<button class="to-btn to-btn--primary" id="to-arrived-curbside">車で待っています</button>';
+    html += '</div>';
+    html += '<div class="to-arrival-panel__status" id="to-arrival-status"></div>';
+    html += '</div>';
     html += '<button class="to-btn to-btn--secondary" id="to-check-status" style="margin-top:1rem;">ステータスを更新</button>';
 
     // L-17 Phase 3A: LINE で受取通知を受け取る導線 (opt-in)
@@ -704,6 +875,12 @@
 
     document.getElementById('to-check-status').addEventListener('click', function () {
       checkStatus();
+    });
+    document.getElementById('to-arrived-counter').addEventListener('click', function () {
+      reportArrival('counter');
+    });
+    document.getElementById('to-arrived-curbside').addEventListener('click', function () {
+      reportArrival('curbside');
     });
 
     var tokenBtn = document.getElementById('to-line-token-btn');
@@ -780,6 +957,68 @@
     });
   }
 
+  function setArrivalButtonsDisabled(disabled) {
+    var counter = document.getElementById('to-arrived-counter');
+    var curbside = document.getElementById('to-arrived-curbside');
+    if (counter) counter.disabled = disabled;
+    if (curbside) curbside.disabled = disabled;
+  }
+
+  function reportArrival(type) {
+    if (!_orderId || !_orderPhone) {
+      showToast('注文情報が取得できません');
+      return;
+    }
+    var noteEl = document.getElementById('to-arrival-note');
+    var statusEl = document.getElementById('to-arrival-status');
+    setArrivalButtonsDisabled(true);
+    if (statusEl) statusEl.textContent = '送信中...';
+
+    apiPost('/customer/takeout-orders.php', {
+      action: 'arrival',
+      store_id: _storeId,
+      order_id: _orderId,
+      phone: _orderPhone,
+      arrival_type: type,
+      arrival_note: noteEl ? noteEl.value : ''
+    }).then(function (data) {
+      updateArrivalUi(data);
+      showToast('到着を店舗に知らせました');
+      checkStatus();
+    }).catch(function (err) {
+      setArrivalButtonsDisabled(false);
+      if (statusEl) statusEl.textContent = '';
+      showToast(err.message || '到着連絡に失敗しました');
+    });
+  }
+
+  function updateArrivalUi(data) {
+    var wrap = document.getElementById('to-arrival-wrap');
+    if (!wrap) return;
+    var terminal = data && (data.status === 'served' || data.status === 'paid' || data.status === 'cancelled');
+    if (terminal) {
+      wrap.style.display = 'none';
+      return;
+    }
+    wrap.style.display = 'block';
+    var statusEl = document.getElementById('to-arrival-status');
+    var noteEl = document.getElementById('to-arrival-note');
+    if (data && data.arrived_at) {
+      var typeLabel = data.arrival_type === 'curbside' ? '車で待機' : '店頭到着';
+      var timeLabel = String(data.arrived_at).substring(11, 16);
+      if (statusEl) statusEl.textContent = '到着連絡済み: ' + typeLabel + ' ' + timeLabel;
+      if (noteEl) {
+        noteEl.value = data.arrival_note || noteEl.value || '';
+        noteEl.disabled = true;
+      }
+      setArrivalButtonsDisabled(true);
+      return;
+    }
+    if (statusEl) statusEl.textContent = '';
+    if (noteEl) noteEl.disabled = false;
+    setArrivalButtonsDisabled(false);
+  }
+
   function startStatusPolling() {
     if (_pollTimer) clearInterval(_pollTimer);
     _pollTimer = setInterval(function () {
@@ -839,6 +1078,7 @@
           var terminalForCta = (data.status === 'ready' || data.status === 'served' || data.status === 'paid');
           lineWrap.style.display = (takeoutReadyEnabled && !terminalForCta) ? 'block' : 'none';
         }
+        updateArrivalUi(data);
       })
       .catch(function () {});
   }

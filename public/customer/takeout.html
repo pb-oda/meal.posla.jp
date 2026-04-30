@@ -56,6 +56,16 @@
     .to-badge--pop { background: #FF9800; }
     .to-badge--rec { background: #4CAF50; }
 
+    /* 前回注文 */
+    .to-reorder { margin: 0.75rem 0 0.25rem; }
+    .to-reorder__title { font-size: 0.82rem; font-weight: 700; color: #455A64; margin-bottom: 0.4rem; }
+    .to-reorder-loading, .to-reorder-empty { font-size: 0.76rem; color: #777; padding: 0.45rem 0; }
+    .to-reorder-card { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 0.65rem; margin-bottom: 0.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+    .to-reorder-card__body { min-width: 0; flex: 1; }
+    .to-reorder-card__summary { font-size: 0.83rem; font-weight: 600; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .to-reorder-card__meta { font-size: 0.72rem; color: #777; margin-top: 0.2rem; }
+    .to-reorder-card__btn { flex-shrink: 0; border: none; background: #ECEFF1; color: #263238; border-radius: 6px; padding: 0.45rem 0.7rem; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+
     /* 数量ボタン */
     .to-qty-btn { width: 32px; height: 32px; border: 1px solid #ddd; border-radius: 50%; background: #fff; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .to-qty-btn--add { background: #2196F3; color: #fff; border-color: #2196F3; }
@@ -129,6 +139,13 @@
     .to-complete__status--ready { background: #E8F5E9; color: #2E7D32; font-weight: 700; animation: to-pulse 1.5s ease-in-out infinite; }
     @keyframes to-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
+    /* 到着連絡 */
+    .to-arrival-panel { margin-top: 1rem; padding: 1rem; background: #fff; border: 1px solid #d7e7e4; border-radius: 8px; text-align: left; }
+    .to-arrival-panel__title { font-size: 0.86rem; font-weight: 700; color: #00695C; margin-bottom: 0.6rem; }
+    .to-arrival-panel__buttons { display: grid; grid-template-columns: 1fr; gap: 0.5rem; margin-top: 0.6rem; }
+    .to-arrival-panel__buttons .to-btn { width: 100%; padding-left: 0.5rem; padding-right: 0.5rem; }
+    .to-arrival-panel__status { margin-top: 0.55rem; font-size: 0.78rem; color: #00695C; font-weight: 700; text-align: center; min-height: 1rem; }
+
     /* トースト */
     .to-toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(100px); background: #333; color: #fff; padding: 0.75rem 1.5rem; border-radius: 8px; font-size: 0.85rem; z-index: 300; opacity: 0; transition: all 0.3s ease; white-space: nowrap; }
     .to-toast--show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -143,6 +160,6 @@
     <div style="text-align:center;padding:3rem;color:#888;"><div class="to-spinner"></div>読み込み中...</div>
   </div>
   <script src="../shared/js/utils.js?v=20260426-error-display"></script>
-  <script src="js/takeout-app.js?v=20260426-error-display"></script>
+  <script src="js/takeout-app.js?v=20260430-customer-convenience"></script>
 </body>
 </html>

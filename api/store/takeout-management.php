@@ -175,7 +175,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                    o.prepared_at, o.ready_at, o.served_at,
                    o.takeout_pack_checklist, o.takeout_pack_checked_at, o.takeout_pack_checked_by_user_id,
                    o.takeout_ready_notified_at, o.takeout_ready_notification_status, o.takeout_ready_notification_error,
-                   o.takeout_ops_status, o.takeout_ops_note, o.takeout_ops_updated_at, o.takeout_ops_updated_by_user_id
+                   o.takeout_ops_status, o.takeout_ops_note, o.takeout_ops_updated_at, o.takeout_ops_updated_by_user_id,
+                   o.takeout_arrived_at, o.takeout_arrival_type, o.takeout_arrival_note
               FROM orders o
              WHERE o.store_id = ? AND o.order_type = 'takeout'
                AND DATE(COALESCE(o.pickup_at, o.created_at)) = ?";
@@ -201,6 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'packing_incomplete' => 0,
         'notify_failed' => 0,
         'refund_attention' => 0,
+        'arrived_waiting' => 0,
     ];
 
     foreach ($orders as $o) {
@@ -216,6 +218,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if (!$packComplete && !in_array($o['status'], ['cancelled', 'served', 'paid'], true)) $summary['packing_incomplete'] += 1;
         if ($o['takeout_ready_notification_status'] === 'failed') $summary['notify_failed'] += 1;
         if (in_array($o['takeout_ops_status'], ['refund_pending', 'refunded'], true)) $summary['refund_attention'] += 1;
+        $arrivalWaiting = !empty($o['takeout_arrived_at']) && !in_array($o['status'], ['cancelled', 'served', 'paid'], true);
+        if ($arrivalWaiting) $summary['arrived_waiting'] += 1;
 
         $result[] = [
             'order_id' => $o['order_id'],
@@ -241,6 +245,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'ops_status' => $o['takeout_ops_status'] ?? 'normal',
             'ops_note' => $o['takeout_ops_note'],
             'ops_updated_at' => $o['takeout_ops_updated_at'],
+            'arrived_at' => $o['takeout_arrived_at'],
+            'arrival_type' => $o['takeout_arrival_type'],
+            'arrival_note' => $o['takeout_arrival_note'],
+            'arrival_waiting' => $arrivalWaiting ? 1 : 0,
             'payment_id' => $payment['payment_id'],
             'refund_status' => $payment['refund_status'],
         ];

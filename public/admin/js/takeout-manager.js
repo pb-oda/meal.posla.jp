@@ -82,6 +82,7 @@ var TakeoutManager = (function () {
       ['本日', summary.total || 0, '#455A64'],
       ['遅れ注意', summary.sla_risk || 0, '#EF6C00'],
       ['遅延中', summary.sla_late || 0, '#C62828'],
+      ['到着済み', summary.arrived_waiting || 0, '#00796B'],
       ['梱包未完了', summary.packing_incomplete || 0, '#6A1B9A'],
       ['通知失敗', summary.notify_failed || 0, '#C62828'],
       ['返金対応', summary.refund_attention || 0, '#1565C0']
@@ -131,6 +132,7 @@ var TakeoutManager = (function () {
         + '<span style="font-weight:600;">&yen;' + (o.total_amount || 0).toLocaleString() + '</span>'
         + '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:flex-end;">' + actionBtns + '</div>'
         + '</div>'
+        + _renderArrival(o)
         + _renderPacking(o)
         + _renderOps(o)
         + _renderNotification(o);
@@ -204,6 +206,18 @@ var TakeoutManager = (function () {
       btns += '<button class="btn btn-sm" style="background:#FF9800;color:#fff;border:none;" data-to-order-id="' + Utils.escapeHtml(orderId) + '" data-to-action="served">受取完了</button>';
     }
     return btns;
+  }
+
+  function _renderArrival(o) {
+    if (!o.arrived_at) return '';
+    var typeLabel = o.arrival_type === 'curbside' ? '車で待機' : '店頭到着';
+    var timeLabel = String(o.arrived_at || '').substring(11, 16);
+    var note = o.arrival_note ? ' / ' + o.arrival_note : '';
+    var bg = o.arrival_waiting ? '#E0F2F1' : '#F5F5F5';
+    var color = o.arrival_waiting ? '#00695C' : '#666';
+    return '<div style="margin-top:0.65rem;padding:0.5rem 0.65rem;background:' + bg + ';border:1px solid #B2DFDB;border-radius:6px;color:' + color + ';font-size:0.8rem;font-weight:600;">'
+      + '到着連絡: ' + Utils.escapeHtml(typeLabel) + ' ' + Utils.escapeHtml(timeLabel) + Utils.escapeHtml(note)
+      + '</div>';
   }
 
   function _renderPacking(o) {
