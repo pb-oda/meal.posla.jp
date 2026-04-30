@@ -107,6 +107,19 @@ function _l9_upsert_customer($pdo, $tenantId, $storeId, $name, $phone, $email) {
     )->execute([$cid, $tenantId, $storeId, $name, $phone, $email]);
     return $cid;
 }
+function _l9_arrival_followup_labels() {
+    return [
+        'none' => '未対応',
+        'contacted' => '連絡済み',
+        'arriving' => '到着予定',
+        'waiting_reply' => '折り返し待ち',
+        'no_show_confirmed' => 'no-show確定',
+    ];
+}
+function _l9_arrival_followup_label($status) {
+    $labels = _l9_arrival_followup_labels();
+    return array_key_exists($status, $labels) ? $labels[$status] : $labels['none'];
+}
 function _l9_reservation_ops_risk($r) {
     $levelRank = ['normal' => 0, 'notice' => 1, 'warning' => 2, 'danger' => 3];
     $risk = [
@@ -131,9 +144,18 @@ function _l9_reservation_ops_risk($r) {
     if (in_array($status, ['cancelled', 'no_show', 'completed', 'seated', 'waitlisted'], true)) {
         return $risk;
     }
+    $followStatus = !empty($r['arrival_followup_status']) ? (string)$r['arrival_followup_status'] : 'none';
+    $followed = in_array($followStatus, ['contacted', 'arriving', 'waiting_reply'], true);
+    if ($followStatus === 'no_show_confirmed') {
+        $setLevel('danger', 'no-show確定');
+        $addReason('遅刻対応: no-show確定');
+    } elseif ($followed) {
+        $setLevel('notice', _l9_arrival_followup_label($followStatus));
+        $addReason('遅刻対応: ' . _l9_arrival_followup_label($followStatus));
+    }
 
     $reservedTs = !empty($r['reserved_at']) ? strtotime($r['reserved_at']) : false;
-    if ($reservedTs) {
+    if ($reservedTs && !$followed && $followStatus !== 'no_show_confirmed') {
         $lateMin = (int)floor((time() - $reservedTs) / 60);
         if ($lateMin >= 15) {
             $risk['minutes_late'] = $lateMin;
@@ -208,6 +230,7 @@ function _l9_reservation_reminder_status($r) {
 }
 function _l9_serialize_reservation($r) {
     // RSV-P1-1: 顧客要約フィールドを additive に追加 (LEFT JOIN の結果、customer_id 未設定なら全て null)
+    $arrivalFollowupStatus = array_key_exists('arrival_followup_status', $r) && $r['arrival_followup_status'] ? $r['arrival_followup_status'] : 'none';
     return [
         'id' => $r['id'],
         'tenant_id' => $r['tenant_id'],
@@ -233,6 +256,11 @@ function _l9_serialize_reservation($r) {
         'deposit_status' => $r['deposit_status'],
         'cancel_policy_hours' => $r['cancel_policy_hours'] !== null ? (int)$r['cancel_policy_hours'] : null,
         'cancel_reason' => $r['cancel_reason'],
+        'arrival_followup_status' => $arrivalFollowupStatus,
+        'arrival_followup_label' => _l9_arrival_followup_label($arrivalFollowupStatus),
+        'arrival_followup_note' => array_key_exists('arrival_followup_note', $r) ? $r['arrival_followup_note'] : null,
+        'arrival_followup_at' => array_key_exists('arrival_followup_at', $r) ? $r['arrival_followup_at'] : null,
+        'arrival_followup_user_id' => array_key_exists('arrival_followup_user_id', $r) ? $r['arrival_followup_user_id'] : null,
         'created_at' => $r['created_at'],
         'updated_at' => $r['updated_at'],
         'confirmed_at' => $r['confirmed_at'],
@@ -531,6 +559,32 @@ if ($method === 'PATCH') {
     if (isset($body['tags'])) { $sets[] = 'tags = ?'; $params[] = (string)$body['tags']; }
     if (isset($body['course_id'])) { $sets[] = 'course_id = ?'; $params[] = $body['course_id'] !== '' ? $body['course_id'] : null; }
     if (isset($body['course_name'])) { $sets[] = 'course_name = ?'; $params[] = $body['course_name'] !== '' ? $body['course_name'] : null; }
+    if (array_key_exists('arrival_followup_status', $body)) {
+        $arrivalStatus = trim((string)$body['arrival_followup_status']);
+        if ($arrivalStatus === '') $arrivalStatus = 'none';
+        $arrivalLabels = _l9_arrival_followup_labels();
+        if (!array_key_exists($arrivalStatus, $arrivalLabels)) {
+            json_error('INVALID_ARRIVAL_FOLLOWUP_STATUS', '遅刻対応ステータスが不正です', 400);
+        }
+        if ($arrivalStatus === 'no_show_confirmed') {
+            json_error('USE_NO_SHOW_ENDPOINT', 'no-show確定は no-show 処理を使ってください', 400);
+        }
+        $sets[] = 'arrival_followup_status = ?'; $params[] = $arrivalStatus;
+        if ($arrivalStatus === 'none') {
+            $sets[] = 'arrival_followup_at = NULL';
+            $sets[] = 'arrival_followup_user_id = NULL';
+            if (!array_key_exists('arrival_followup_note', $body)) {
+                $sets[] = 'arrival_followup_note = NULL';
+            }
+        } else {
+            $sets[] = 'arrival_followup_at = NOW()';
+            $sets[] = 'arrival_followup_user_id = ?'; $params[] = $user['user_id'];
+        }
+    }
+    if (array_key_exists('arrival_followup_note', $body)) {
+        $arrivalNote = trim((string)$body['arrival_followup_note']);
+        $sets[] = 'arrival_followup_note = ?'; $params[] = $arrivalNote !== '' ? $arrivalNote : null;
+    }
     if (isset($body['assigned_table_ids']) && is_array($body['assigned_table_ids'])) {
         $tids = array_values($body['assigned_table_ids']);
         $checkPS = isset($body['party_size']) ? (int)$body['party_size'] : (int)$r['party_size'];

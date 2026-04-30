@@ -49,7 +49,22 @@ if ((int)$r['deposit_required'] === 1 && $r['deposit_payment_intent_id'] && $r['
     }
 }
 
-$pdo->prepare("UPDATE reservations SET status = 'no_show', updated_at = NOW() WHERE id = ?")->execute([$resId]);
+try {
+    $pdo->prepare(
+        "UPDATE reservations
+         SET status = 'no_show',
+             arrival_followup_status = 'no_show_confirmed',
+             arrival_followup_at = NOW(),
+             arrival_followup_user_id = ?,
+             updated_at = NOW()
+         WHERE id = ? AND store_id = ?"
+    )->execute([$user['user_id'], $resId, $storeId]);
+} catch (PDOException $e) {
+    if (strpos($e->getMessage(), 'arrival_followup_status') === false) {
+        throw $e;
+    }
+    $pdo->prepare("UPDATE reservations SET status = 'no_show', updated_at = NOW() WHERE id = ? AND store_id = ?")->execute([$resId, $storeId]);
+}
 if ($r['customer_phone']) {
     $pdo->prepare('UPDATE reservation_customers SET no_show_count = no_show_count + 1 WHERE store_id = ? AND customer_phone = ?')
         ->execute([$storeId, $r['customer_phone']]);

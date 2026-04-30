@@ -504,7 +504,8 @@
 }
 
 .rb-risk,
-.rb-reminder {
+.rb-reminder,
+.rb-arrival {
   display: inline-flex;
   align-items: center;
   padding: 1px 6px;
@@ -522,6 +523,10 @@
 .rb-reminder--due { background: #fef3c7; color: #92400e; }
 .rb-reminder--disabled { background: #f3f4f6; color: #6b7280; }
 .rb-reminder--normal { background: #e0e7ff; color: #3730a3; }
+.rb-arrival--contacted { background: #dbeafe; color: #1d4ed8; }
+.rb-arrival--arriving { background: #dcfce7; color: #166534; }
+.rb-arrival--waiting_reply { background: #fef3c7; color: #92400e; }
+.rb-arrival--no_show_confirmed { background: var(--rb-alert-soft); color: var(--rb-alert); }
 
 /* ------------------------------------------------------------
  * Gantt 本体
@@ -955,6 +960,53 @@
 .rb-btn-resend { background: #d97706; color: #fff; }
 .rb-btn-resend:hover { background: #b45309; }
 
+.rb-arrival-actions {
+  margin: 12px 0 0;
+  padding: 10px;
+  border: 1px solid var(--rb-border);
+  border-radius: var(--rb-radius-sm);
+  background: var(--rb-surface-muted);
+}
+
+.rb-arrival-actions__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rb-text-sub);
+  margin-bottom: 8px;
+}
+
+.rb-arrival-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rb-arrival-action {
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface);
+  color: var(--rb-text);
+  border-radius: var(--rb-radius-sm);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.rb-arrival-action:hover {
+  background: var(--rb-surface-hover);
+}
+
+.rb-arrival-action--active {
+  border-color: var(--rb-accent);
+  box-shadow: 0 0 0 2px rgba(30,64,175,0.14);
+}
+
+.rb-arrival-action--contacted { color: #1d4ed8; }
+.rb-arrival-action--arriving { color: #166534; }
+.rb-arrival-action--waiting_reply { color: #92400e; }
+.rb-arrival-action--none { color: #4b5563; }
+
 .rb-modal__form-group { margin-bottom: 14px; }
 .rb-modal__form-group label {
   display: block;
@@ -1038,6 +1090,10 @@
 .rb-ops-status--warning { background: var(--rb-warn-soft); color: var(--rb-warn); border-color: #fcd34d; }
 .rb-ops-status--danger { background: var(--rb-alert-soft); color: var(--rb-alert); border-color: #fecaca; }
 .rb-ops-status--reminder { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
+.rb-ops-status--arrival { background: #f0f9ff; color: #075985; border-color: #bae6fd; }
+.rb-ops-status--arrival-arriving { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+.rb-ops-status--arrival-waiting_reply { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+.rb-ops-status--arrival-no_show_confirmed { background: var(--rb-alert-soft); color: var(--rb-alert); border-color: #fecaca; }
 
 /* ------------------------------------------------------------
  * Drawer (tablet / desktop 時の detail モーダル)

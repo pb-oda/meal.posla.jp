@@ -51,6 +51,9 @@
   function statusJa(st) {
     return ({ confirmed: '確定', pending: '決済待ち', seated: '着席中', no_show: 'no-show', cancelled: 'キャンセル', completed: '完了', waitlisted: '受付待ち' })[st] || st;
   }
+  function arrivalFollowupLabel(st) {
+    return ({ none: '未対応', contacted: '連絡済み', arriving: '到着予定', waiting_reply: '折り返し待ち', no_show_confirmed: 'no-show確定' })[st] || '未対応';
+  }
 
   function apiGet(path, cb) {
     var x = new XMLHttpRequest(); x.open('GET', API + path, true);
@@ -370,6 +373,12 @@
     return '<span class="rb-reminder rb-reminder--' + escapeHtml(st.level || 'normal') + '">' + escapeHtml(st.label || '') + '</span>';
   }
 
+  function _arrivalBadgeHtml(r) {
+    var st = r && r.arrival_followup_status ? r.arrival_followup_status : 'none';
+    if (st === 'none') return '';
+    return '<span class="rb-arrival rb-arrival--' + escapeHtml(st) + '">' + escapeHtml(arrivalFollowupLabel(st)) + '</span>';
+  }
+
   function _lastVisitLabel(r) {
     if (!r || !r.customer_last_visit_at) return '';
     return String(r.customer_last_visit_at).substring(0, 10);
@@ -438,7 +447,7 @@
   }
 
   function _renderDayOpsCard(r) {
-    var chips = _riskBadgeHtml(r) + _reminderBadgeHtml(r) + _customerBadgesHtml(r);
+    var chips = _riskBadgeHtml(r) + _arrivalBadgeHtml(r) + _reminderBadgeHtml(r) + _customerBadgesHtml(r);
     var meta = fmtTime(r.reserved_at) + ' / ' + r.party_size + '名 / ' + statusJa(r.status);
     if (r.source === 'walk_in') meta += ' / walk-in';
     var memo = r.memo ? '<div class="rb-dayops-card__memo">メモ: ' + escapeHtml(r.memo) + '</div>' : '';
@@ -662,6 +671,7 @@
       if (r.tags) html += '<div class="rb-modal__row"><span>タグ</span><span>' + escapeHtml(r.tags) + '</span></div>';
       if (r.deposit_required) html += '<div class="rb-modal__row"><span>予約金</span><span>¥' + r.deposit_amount.toLocaleString() + ' / ' + escapeHtml(r.deposit_status) + '</span></div>';
       html += _renderOpsStatus(r);
+      html += _renderArrivalFollowupActions(r);
 
       // RSV-P1-1: 顧客要約セクション (reservation_customers と紐付く場合のみ)
       html += _renderCustomerSummary(r);
@@ -670,7 +680,7 @@
       if (r.status === 'confirmed' || r.status === 'pending') {
         html += '<button class="rb-btn-seat" data-action="seat" type="button">🪑 着席</button>';
         html += '<button class="rb-btn-edit" data-action="edit" type="button">✏️ 変更</button>';
-        html += '<button class="rb-btn-noshow" data-action="noshow" type="button">❌ no-show</button>';
+        html += '<button class="rb-btn-noshow" data-action="noshow" type="button">no-show確定</button>';
         html += '<button class="rb-btn-cancel" data-action="cancel" type="button">キャンセル</button>';
         if (r.customer_email && r.reminder_status && r.reminder_status.next_due) html += '<button class="rb-btn-resend" data-action="send_reminder" type="button">リマインド送信</button>';
         if (r.customer_email) html += '<button class="rb-btn-resend" data-action="resend" type="button">📧 再送</button>';
@@ -805,6 +815,7 @@
   function _renderOpsStatus(r) {
     if (!r) return '';
     var html = '';
+    var followStatus = r.arrival_followup_status || 'none';
     if (r.ops_risk && r.ops_risk.level && r.ops_risk.level !== 'normal') {
       var reasons = (r.ops_risk.reasons || []).join(' / ');
       html += '<div class="rb-ops-status rb-ops-status--' + escapeHtml(r.ops_risk.level) + '">';
@@ -812,11 +823,39 @@
       if (reasons) html += '<span>' + escapeHtml(reasons) + '</span>';
       html += '</div>';
     }
+    if (followStatus !== 'none') {
+      var followText = arrivalFollowupLabel(followStatus);
+      if (r.arrival_followup_note) followText += ' / ' + r.arrival_followup_note;
+      if (r.arrival_followup_at) followText += ' / ' + String(r.arrival_followup_at).substring(11, 16);
+      html += '<div class="rb-ops-status rb-ops-status--arrival rb-ops-status--arrival-' + escapeHtml(followStatus) + '">';
+      html += '<strong>遅刻対応</strong><span>' + escapeHtml(followText) + '</span>';
+      html += '</div>';
+    }
     if (r.reminder_status) {
       html += '<div class="rb-ops-status rb-ops-status--reminder">';
       html += '<strong>来店前リマインド</strong><span>' + escapeHtml(r.reminder_status.label || '-') + '</span>';
       html += '</div>';
     }
+    return html;
+  }
+
+  function _arrivalActionButton(status, label, current) {
+    var cls = 'rb-arrival-action rb-arrival-action--' + status;
+    if (current === status) cls += ' rb-arrival-action--active';
+    return '<button class="' + cls + '" data-action="followup_' + escapeHtml(status) + '" type="button">' + escapeHtml(label) + '</button>';
+  }
+
+  function _renderArrivalFollowupActions(r) {
+    if (!r || (r.status !== 'confirmed' && r.status !== 'pending')) return '';
+    var current = r.arrival_followup_status || 'none';
+    var html = '<div class="rb-arrival-actions">';
+    html += '<div class="rb-arrival-actions__label">遅刻対応</div>';
+    html += '<div class="rb-arrival-actions__buttons">';
+    html += _arrivalActionButton('contacted', '連絡済み', current);
+    html += _arrivalActionButton('arriving', '到着予定', current);
+    html += _arrivalActionButton('waiting_reply', '折り返し待ち', current);
+    if (current !== 'none') html += _arrivalActionButton('none', '未対応に戻す', current);
+    html += '</div></div>';
     return html;
   }
 
@@ -956,6 +995,8 @@
         alert(msg);
         closeModal(); loadGantt();
       });
+    } else if (action.indexOf('followup_') === 0) {
+      updateArrivalFollowup(r, action.substring(9));
     } else if (action === 'cancel') {
       if (!confirm('予約をキャンセルします。よろしいですか?')) return;
       apiSend('DELETE', '/reservations.php?id=' + encodeURIComponent(r.id) + '&store_id=' + encodeURIComponent(_storeId), null, function (err) {
@@ -977,6 +1018,14 @@
         closeModal(); loadGantt();
       });
     }
+  }
+
+  function updateArrivalFollowup(r, status) {
+    apiSend('PATCH', '/reservations.php', { id: r.id, store_id: _storeId, arrival_followup_status: status }, function (err) {
+      if (err) { alert(err.message); return; }
+      loadGantt();
+      openDetailModal(r.id);
+    });
   }
 
   function openEditModal(r) {
