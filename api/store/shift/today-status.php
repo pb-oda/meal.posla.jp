@@ -135,6 +135,18 @@ foreach ($swapRows as $sr) {
     }
 }
 
+$stmtFollowups = $pdo->prepare(
+    'SELECT f.*, u.display_name AS handled_by_name, u.username AS handled_by_username
+     FROM shift_attendance_followups f
+     LEFT JOIN users u ON u.id = f.created_by
+     WHERE f.tenant_id = ? AND f.store_id = ? AND f.followup_date = ?'
+);
+$stmtFollowups->execute([$tenantId, $storeId, $date]);
+$followupsByAssignment = [];
+foreach ($stmtFollowups->fetchAll() as $fu) {
+    $followupsByAssignment[$fu['shift_assignment_id']] = $fu;
+}
+
 $noClockIn = [];
 $working = [];
 $completed = [];
@@ -170,6 +182,13 @@ foreach ($assignments as $asg) {
             'start_time' => substr($asg['start_time'], 0, 5),
             'end_time' => substr($asg['end_time'], 0, 5),
             'role_type' => $asg['role_type'],
+            'followup_status' => isset($followupsByAssignment[$asg['id']]) ? $followupsByAssignment[$asg['id']]['status'] : null,
+            'followup_note' => isset($followupsByAssignment[$asg['id']]) ? $followupsByAssignment[$asg['id']]['note'] : null,
+            'followup_by' => isset($followupsByAssignment[$asg['id']]) ? sts_display_name([
+                'display_name' => $followupsByAssignment[$asg['id']]['handled_by_name'],
+                'username' => $followupsByAssignment[$asg['id']]['handled_by_username'],
+            ]) : null,
+            'followup_at' => isset($followupsByAssignment[$asg['id']]) ? $followupsByAssignment[$asg['id']]['updated_at'] : null,
         ];
     }
 }

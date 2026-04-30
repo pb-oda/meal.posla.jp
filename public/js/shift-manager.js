@@ -88,6 +88,14 @@
         return div.innerHTML;
     }
 
+    function notify(message, type) {
+        if (typeof showToast === 'function') {
+            showToast(message, type || 'info');
+        } else {
+            alert(message);
+        }
+    }
+
     var DAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
 
     // ─── ShiftManager オブジェクト ───
@@ -150,6 +158,37 @@
             if (code === 'hall') return 'ホール';
             if (code === 'kitchen') return 'キッチン';
             return code;
+        },
+
+        _changeValueLabel: function(field, value) {
+            if (value === null || typeof value === 'undefined' || value === '') {
+                return 'なし';
+            }
+            if (field === 'role_type') {
+                return this._roleLabel(value);
+            }
+            if (field === 'break_minutes') {
+                return String(value) + '分';
+            }
+            return String(value);
+        },
+
+        _renderChangeDetail: function(assignment) {
+            var details = assignment.confirmation_reset_detail || [];
+            var html = '';
+            if (details && details.length) {
+                html += '<div class="shift-change-detail">';
+                for (var i = 0; i < details.length; i++) {
+                    html += '<span class="shift-change-detail__item"><strong>' + esc(details[i].label || '変更') + '</strong> ' +
+                        esc(this._changeValueLabel(details[i].field, details[i].before_value)) +
+                        ' → ' +
+                        esc(this._changeValueLabel(details[i].field, details[i].after_value)) +
+                        '</span>';
+                }
+                html += '</div>';
+                return html;
+            }
+            return '<span class="shift-change-detail__fallback">' + esc(assignment.confirmation_reset_reason || 'シフト変更') + '</span>';
         },
 
         // ── サブタブ切替 ──
@@ -596,12 +635,24 @@
                     return;
                 }
                 apiGet('swap-requests.php', { store_id: self.storeId }, function(reqData) {
-                    self._renderMyShift(container, data.assignments, (reqData && reqData.requests) ? reqData.requests : [], start, end);
+                    apiGet('field-ops.php', { store_id: self.storeId, action: 'open-shifts' }, function(openData) {
+                        apiGet('field-ops.php', { store_id: self.storeId, action: 'my-tasks' }, function(taskData) {
+                            self._renderMyShift(
+                                container,
+                                data.assignments,
+                                (reqData && reqData.requests) ? reqData.requests : [],
+                                start,
+                                end,
+                                (openData && openData.open_shifts) ? openData.open_shifts : [],
+                                (taskData && taskData.tasks) ? taskData.tasks : []
+                            );
+                        });
+                    });
                 });
             });
         },
 
-        _renderMyShift: function(container, assignments, requests, start, end) {
+        _renderMyShift: function(container, assignments, requests, start, end, openShifts, myTasks) {
             var self = this;
             var pendingByAssignment = {};
             for (var pr = 0; pr < requests.length; pr++) {
@@ -626,6 +677,10 @@
                     var a = assignments[i];
                     var statusLabel = { draft: '下書き', published: '確定', confirmed: '確認済' };
                     var statusClass = { draft: 'status-draft', published: 'status-published', confirmed: 'status-confirmed' };
+                    if (a.confirmation_required) {
+                        statusLabel.published = '変更あり';
+                        statusClass.published = 'shift-status-changed';
+                    }
                     var actionHtml = '';
                     if (a.status === 'published') {
                         actionHtml += '<button class="btn btn-sm myshift-confirm" data-id="' + esc(a.id) + '">確認</button> ';
@@ -647,9 +702,15 @@
                             '<td><span class="' + (statusClass[a.status] || '') + '">' + (statusLabel[a.status] || esc(a.status)) + '</span></td>' +
                             '<td>' + (actionHtml || '-') + '</td>' +
                             '</tr>';
+                    if (a.confirmation_required) {
+                        html += '<tr class="help-note-row"><td colspan="7">変更内容: ' + self._renderChangeDetail(a) + '<div class="shift-change-detail__help">内容を確認してから確認を押してください。</div></td></tr>';
+                    }
                 }
                 html += '</tbody></table>';
             }
+
+            html += self._renderMyOpenShifts(openShifts || []);
+            html += self._renderMyTasks(myTasks || []);
 
             if (requests.length > 0) {
                 html += '<h4>交代・欠勤申請</h4><table class="shift-table"><thead><tr>' +
@@ -718,6 +779,80 @@
                     });
                 })(absenceBtns[ab]);
             }
+
+            var openBtns = container.querySelectorAll('.myshift-open-apply');
+            for (var os = 0; os < openBtns.length; os++) {
+                (function(btn) {
+                    btn.addEventListener('click', function() {
+                        var note = prompt('店長へのメモ（任意）', '');
+                        if (note === null) return;
+                        apiPost('field-ops.php?action=apply-open-shift&store_id=' + encodeURIComponent(self.storeId), {
+                            open_shift_id: btn.getAttribute('data-id'),
+                            note: note
+                        }, function(data, err) {
+                            if (err) { notify('応募に失敗しました: ' + (err.message || ''), 'error'); return; }
+                            notify('募集シフトに応募しました', 'success');
+                            self.loadMyShift();
+                        });
+                    });
+                })(openBtns[os]);
+            }
+
+            var taskBtns = container.querySelectorAll('.myshift-task-status');
+            for (var tb = 0; tb < taskBtns.length; tb++) {
+                (function(btn) {
+                    btn.addEventListener('click', function() {
+                        apiPatch('field-ops.php?action=task-status&store_id=' + encodeURIComponent(self.storeId), {
+                            task_id: btn.getAttribute('data-id'),
+                            status: btn.getAttribute('data-status')
+                        }, function(data, err) {
+                            if (err) { notify('作業更新に失敗しました: ' + (err.message || ''), 'error'); return; }
+                            self.loadMyShift();
+                        });
+                    });
+                })(taskBtns[tb]);
+            }
+        },
+
+        _renderMyOpenShifts: function(openShifts) {
+            var self = this;
+            var html = '<h4>募集シフト</h4>';
+            if (!openShifts || openShifts.length === 0) {
+                return html + '<p class="empty-msg">応募できる募集シフトはありません。</p>';
+            }
+            html += '<table class="shift-table"><thead><tr><th>日付</th><th>時間</th><th>持ち場</th><th>条件</th><th>操作</th></tr></thead><tbody>';
+            for (var i = 0; i < Math.min(openShifts.length, 12); i++) {
+                var os = openShifts[i];
+                if (os.status !== 'open') continue;
+                var appStatus = os.my_application_status || '';
+                var action = appStatus === 'applied' ? '<span class="shift-request-pending">応募済</span>' :
+                    '<button class="btn btn-sm myshift-open-apply" data-id="' + esc(os.id) + '">応募</button>';
+                html += '<tr><td>' + esc(os.shift_date || '') + '</td>' +
+                    '<td>' + esc((os.start_time || '').substring(0, 5)) + '-' + esc((os.end_time || '').substring(0, 5)) + '</td>' +
+                    '<td>' + esc(self._roleLabel(os.role_type)) + '</td>' +
+                    '<td>' + esc(os.required_skill_code ? os.required_skill_code : '指定なし') + '</td>' +
+                    '<td>' + action + '</td></tr>';
+            }
+            html += '</tbody></table>';
+            return html;
+        },
+
+        _renderMyTasks: function(myTasks) {
+            var html = '<h4>担当作業</h4>';
+            if (!myTasks || myTasks.length === 0) {
+                return html + '<p class="empty-msg">担当作業はありません。</p>';
+            }
+            html += '<table class="shift-table"><thead><tr><th>日付</th><th>作業</th><th>状態</th><th>操作</th></tr></thead><tbody>';
+            for (var i = 0; i < Math.min(myTasks.length, 20); i++) {
+                var t = myTasks[i];
+                var done = t.status === 'done';
+                html += '<tr><td>' + esc(t.task_date || '') + '</td>' +
+                    '<td>' + esc(t.task_label || '') + (t.note ? '<br><small>' + esc(t.note) + '</small>' : '') + '</td>' +
+                    '<td>' + (done ? '完了' : '未完了') + '</td>' +
+                    '<td><button class="btn btn-sm myshift-task-status" data-id="' + esc(t.id) + '" data-status="' + (done ? 'pending' : 'done') + '">' + (done ? '戻す' : '完了') + '</button></td></tr>';
+            }
+            html += '</tbody></table>';
+            return html;
         },
 
         _showSwapRequestDialog: function(assignmentId) {

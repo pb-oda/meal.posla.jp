@@ -418,7 +418,18 @@ if ($method === 'PATCH') {
             ['replacement_user_id' => $replacementUserId, 'response_note' => $responseNote]
         );
 
-        json_response(['approved' => true, 'replacement_user_id' => $replacementUserId]);
+        json_response([
+            'approved' => true,
+            'replacement_user_id' => $replacementUserId,
+            'needs_fill' => $replacementUserId === null,
+            'assignment' => [
+                'id' => $request['shift_assignment_id'],
+                'shift_date' => $request['shift_date'],
+                'start_time' => $request['start_time'],
+                'end_time' => $request['end_time'],
+                'role_type' => $request['role_type'],
+            ],
+        ]);
     }
 
     if ($patchAction === 'reject') {

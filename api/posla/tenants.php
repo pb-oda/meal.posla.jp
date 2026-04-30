@@ -257,6 +257,13 @@ function posla_tenant_delete_data(PDO $pdo, string $tenantId): array
     // Records that reference users/help requests must be removed before users.
     posla_tenant_delete_query(
         $pdo,
+        'shift_open_shift_applications',
+        'DELETE FROM shift_open_shift_applications WHERE tenant_id = ?',
+        [$tenantId],
+        $deleted
+    );
+    posla_tenant_delete_query(
+        $pdo,
         'shift_help_assignments',
         'DELETE sha FROM shift_help_assignments sha INNER JOIN shift_help_requests shr ON shr.id = sha.help_request_id WHERE shr.tenant_id = ?',
         [$tenantId],
@@ -285,6 +292,12 @@ function posla_tenant_delete_data(PDO $pdo, string $tenantId): array
         'device_registration_tokens',
         'attendance_logs',
         'shift_availabilities',
+        'shift_task_assignments',
+        'shift_task_templates',
+        'shift_position_required_skills',
+        'shift_staff_skill_tags',
+        'shift_skill_tags',
+        'shift_open_shifts',
         'shift_swap_requests',
         'shift_assignments',
         'shift_help_requests',

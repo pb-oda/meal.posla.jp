@@ -35,6 +35,92 @@ function shift_assignment_role_allowed($pdo, $tenantId, $storeId, $role)
     return (bool)$stmt->fetch();
 }
 
+function shift_assignment_time5($time)
+{
+    return substr((string)$time, 0, 5);
+}
+
+function shift_assignment_normal_role($role)
+{
+    return ($role === null || $role === '') ? null : (string)$role;
+}
+
+function shift_assignment_note_value($value)
+{
+    $value = trim((string)$value);
+    return $value === '' ? 'なし' : $value;
+}
+
+function shift_assignment_change_details($old, $body)
+{
+    $changes = [];
+    if (isset($body['start_time']) && shift_assignment_time5($body['start_time']) !== shift_assignment_time5($old['start_time'])) {
+        $changes[] = [
+            'field' => 'start_time',
+            'label' => '開始',
+            'before_value' => shift_assignment_time5($old['start_time']),
+            'after_value' => shift_assignment_time5($body['start_time']),
+        ];
+    }
+    if (isset($body['end_time']) && shift_assignment_time5($body['end_time']) !== shift_assignment_time5($old['end_time'])) {
+        $changes[] = [
+            'field' => 'end_time',
+            'label' => '終了',
+            'before_value' => shift_assignment_time5($old['end_time']),
+            'after_value' => shift_assignment_time5($body['end_time']),
+        ];
+    }
+    if (isset($body['break_minutes']) && (int)$body['break_minutes'] !== (int)$old['break_minutes']) {
+        $changes[] = [
+            'field' => 'break_minutes',
+            'label' => '休憩',
+            'before_value' => (string)(int)$old['break_minutes'],
+            'after_value' => (string)(int)$body['break_minutes'],
+        ];
+    }
+    if (array_key_exists('role_type', $body) && shift_assignment_normal_role($body['role_type']) !== shift_assignment_normal_role($old['role_type'])) {
+        $changes[] = [
+            'field' => 'role_type',
+            'label' => '持ち場',
+            'before_value' => shift_assignment_normal_role($old['role_type']),
+            'after_value' => shift_assignment_normal_role($body['role_type']),
+        ];
+    }
+    if (array_key_exists('note', $body) && (string)$body['note'] !== (string)($old['note'] ?? '')) {
+        $changes[] = [
+            'field' => 'note',
+            'label' => 'メモ',
+            'before_value' => shift_assignment_note_value($old['note'] ?? ''),
+            'after_value' => shift_assignment_note_value($body['note']),
+        ];
+    }
+    return $changes;
+}
+
+function shift_assignment_change_summary($details)
+{
+    $labels = [];
+    foreach ($details as $detail) {
+        $labels[] = $detail['label'];
+    }
+    return implode('・', $labels);
+}
+
+function shift_assignment_json_encode($value)
+{
+    $flags = defined('JSON_UNESCAPED_UNICODE') ? JSON_UNESCAPED_UNICODE : 0;
+    return json_encode($value, $flags);
+}
+
+function shift_assignment_decode_detail($value)
+{
+    if ($value === null || $value === '') {
+        return [];
+    }
+    $decoded = json_decode($value, true);
+    return is_array($decoded) ? $decoded : [];
+}
+
 start_auth_session();
 handle_preflight();
 $method = require_method(['GET', 'POST', 'PATCH', 'DELETE']);
@@ -67,7 +153,9 @@ if ($method === 'GET') {
         $stmt = $pdo->prepare(
             'SELECT sa.id, sa.user_id, sa.shift_date, sa.start_time, sa.end_time,
                     sa.break_minutes, sa.role_type, sa.status, sa.note, sa.created_by,
-                    sa.help_request_id,
+                    sa.help_request_id, sa.confirmed_at, sa.confirmation_reset_at,
+                    sa.confirmation_reset_by, sa.confirmation_reset_reason,
+                    sa.confirmation_reset_detail,
                     u.display_name, u.username,
                     helper_store.name AS helper_store_name
              FROM shift_assignments sa
@@ -84,7 +172,9 @@ if ($method === 'GET') {
         $stmt = $pdo->prepare(
             'SELECT sa.id, sa.user_id, sa.shift_date, sa.start_time, sa.end_time,
                     sa.break_minutes, sa.role_type, sa.status, sa.note, sa.created_by,
-                    sa.help_request_id,
+                    sa.help_request_id, sa.confirmed_at, sa.confirmation_reset_at,
+                    sa.confirmation_reset_by, sa.confirmation_reset_reason,
+                    sa.confirmation_reset_detail,
                     u.display_name, u.username,
                     helper_store.name AS helper_store_name
              FROM shift_assignments sa
@@ -101,6 +191,11 @@ if ($method === 'GET') {
     $assignments = $stmt->fetchAll();
     foreach ($assignments as &$a) {
         $a['break_minutes'] = (int)$a['break_minutes'];
+        $a['confirmation_required'] = (
+            $a['status'] !== 'confirmed' &&
+            !empty($a['confirmation_reset_at'])
+        );
+        $a['confirmation_reset_detail'] = shift_assignment_decode_detail($a['confirmation_reset_detail'] ?? null);
     }
     unset($a);
 
@@ -208,7 +303,7 @@ if ($method === 'POST' && $action === 'confirm') {
 
     $stmt = $pdo->prepare(
         'UPDATE shift_assignments
-         SET status = \'confirmed\'
+         SET status = \'confirmed\', confirmed_at = NOW()
          WHERE id = ? AND tenant_id = ? AND store_id = ?'
     );
     $stmt->execute([$id, $tenantId, $storeId]);
@@ -217,7 +312,7 @@ if ($method === 'POST' && $action === 'confirm') {
         $pdo, $user, $storeId,
         'shift_assignment_confirm', 'shift_assignment', $id,
         $old,
-        ['status' => 'confirmed']
+        ['status' => 'confirmed', 'confirmed_at' => date('Y-m-d H:i:s')]
     );
 
     json_response(['confirmed' => true]);
@@ -474,6 +569,9 @@ if ($method === 'PATCH') {
     $body    = get_json_body();
     $updates = [];
     $params  = [];
+    $statusUpdate = null;
+    $changeDetails = shift_assignment_change_details($old, $body);
+    $changeSummary = shift_assignment_change_summary($changeDetails);
 
     if (isset($body['start_time'])) {
         if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $body['start_time'])) {
@@ -515,12 +613,7 @@ if ($method === 'PATCH') {
         if (!in_array($s, ['draft', 'published', 'confirmed'], true)) {
             json_error('INVALID_STATUS', 'status は draft / published / confirmed のいずれかです', 400);
         }
-        $updates[] = 'status = ?';
-        $params[]  = $s;
-    }
-
-    if (empty($updates)) {
-        json_error('NO_FIELDS', '更新するフィールドが指定されていません', 400);
+        $statusUpdate = $s;
     }
 
     // start/end 整合性チェック
@@ -528,6 +621,28 @@ if ($method === 'PATCH') {
     $newEnd   = $body['end_time'] ?? $old['end_time'];
     if ($newStart >= $newEnd) {
         json_error('INVALID_TIME_RANGE', '終了時刻は開始時刻より後にしてください', 400);
+    }
+
+    if ($old['status'] === 'confirmed' && $changeSummary !== '') {
+        $updates[] = 'status = ?';
+        $params[] = 'published';
+        $updates[] = 'confirmation_reset_at = NOW()';
+        $updates[] = 'confirmation_reset_by = ?';
+        $params[] = $user['user_id'];
+        $updates[] = 'confirmation_reset_reason = ?';
+        $params[] = $changeSummary . '変更';
+        $updates[] = 'confirmation_reset_detail = ?';
+        $params[] = shift_assignment_json_encode($changeDetails);
+    } elseif ($statusUpdate !== null) {
+        $updates[] = 'status = ?';
+        $params[]  = $statusUpdate;
+        if ($statusUpdate === 'confirmed') {
+            $updates[] = 'confirmed_at = NOW()';
+        }
+    }
+
+    if (empty($updates)) {
+        json_error('NO_FIELDS', '更新するフィールドが指定されていません', 400);
     }
 
     $params[] = $id;
@@ -548,13 +663,20 @@ if ($method === 'PATCH') {
     // 更新後のレコードを返す
     $stmt = $pdo->prepare(
         'SELECT id, user_id, shift_date, start_time, end_time,
-                break_minutes, role_type, status, note
+                break_minutes, role_type, status, note, confirmed_at,
+                confirmation_reset_at, confirmation_reset_reason,
+                confirmation_reset_detail
          FROM shift_assignments
          WHERE id = ? AND tenant_id = ?'
     );
     $stmt->execute([$id, $tenantId]);
     $row = $stmt->fetch();
     $row['break_minutes'] = (int)$row['break_minutes'];
+    $row['confirmation_required'] = (
+        $row['status'] !== 'confirmed' &&
+        !empty($row['confirmation_reset_at'])
+    );
+    $row['confirmation_reset_detail'] = shift_assignment_decode_detail($row['confirmation_reset_detail'] ?? null);
 
     json_response($row);
 }

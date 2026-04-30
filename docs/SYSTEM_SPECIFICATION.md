@@ -1,7 +1,7 @@
 # 松の屋MT（matsunoya-mt）システム完全仕様書
 
-> **バージョン:** 2.12.0
-> **最終更新:** 2026-04-30（L-3 Phase 4 シフト現場運用強化: 持ち場、交代/欠勤、当日不足、目標人件費率）
+> **バージョン:** 2.12.4
+> **最終更新:** 2026-04-30（P1-60 シフト未打刻対応: 連絡済み、遅刻連絡あり、欠勤処理、穴埋め導線）
 > **対象:** AI・開発者向け超詳細ドキュメント
 
 ---
@@ -94,7 +94,7 @@
 | **Stripe Connect決済代行（L-13）** | Stripe Connect Express+Destination Charges。自前Stripeを持たない店舗向けPOSLA決済。Connectオンボーディングフロー（本人確認+銀行口座登録）。対面（Terminal JS SDK+S700）/オンライン（Checkout Session）両対応。手数料率はposla_settings管理。POSLA管理画面でConnect状態表示 |
 | **クロス店舗レポート** | オーナーダッシュボード「クロス店舗レポート」タブ。複数店舗の売上・注文数・客単価を横並びで比較表示 |
 | **ABC分析** | オーナーダッシュボード「ABC分析」タブ。全メニューを売上貢献度でA（上位70%）/B（次20%）/C（残10%）に自動分類。メニュー入れ替え候補の可視化 |
-| **シフト管理・勤怠連携（L-3）** | Phase 1（MVP）: シフトテンプレート（早番/遅番等のパターン定義）・週次カレンダー（シフト割当＋公開＋テンプレート適用）・希望シフト提出（スタッフが希望日時を申請）・勤怠打刻（出勤/退勤ボタン＋GPS記録）・自動退勤（cron 5分間隔で打刻忘れ検出）・勤務サマリー（週次/月次集計）。Phase 2: AI最適シフト提案（Gemini API＋売上・希望・勤怠データ連動）・人件費シミュレーション（店舗デフォルト＋スタッフ個別時給＋深夜割増25%自動計算＋カレンダーリアルタイム表示）・労基法チェック（週40h超過・休憩不足・連続6日勤務・1日8h超・深夜勤務の6ルール自動警告）。Phase 2b: 公開前チェック（時間帯ごとの人数不足、テンプレート持ち場不足、休憩不足、希望未提出、リマインド文コピー、予約/売上予測ベースの必要人数、未確認シフト、予定人件費率、予定労務リスク、予定vs実績差分、他店舗ヘルプ候補を週次カレンダー上部に集約）。Phase 3: 店舗間ヘルプ要請（人手不足時に他店舗へスタッフ派遣を依頼→承認→shift_assignments自動作成。pending/approved/rejected/cancelledワークフロー）・統合シフトビュー（オーナーダッシュボードで全店舗のシフト充足率・人件費・ヘルプ要請を横断表示）。Phase 4: 現場運用強化（店舗別持ち場マスタ、マイシフト確認、同店舗の交代依頼/欠勤連絡、当日不足ダッシュボード、承認済み欠勤と未打刻の分離、今日呼べる候補、目標人件費率）。全契約者に標準提供 |
+| **シフト管理・勤怠連携（L-3）** | Phase 1（MVP）: シフトテンプレート（早番/遅番等のパターン定義）・週次カレンダー（シフト割当＋公開＋テンプレート適用）・希望シフト提出（スタッフが希望日時を申請）・勤怠打刻（出勤/退勤ボタン＋GPS記録）・自動退勤（cron 5分間隔で打刻忘れ検出）・勤務サマリー（週次/月次集計）。Phase 2: AI最適シフト提案（Gemini API＋売上・希望・勤怠データ連動）・人件費シミュレーション（店舗デフォルト＋スタッフ個別時給＋深夜割増25%自動計算＋カレンダーリアルタイム表示）・労基法チェック（週40h超過・休憩不足・連続6日勤務・1日8h超・深夜勤務の6ルール自動警告）。Phase 2b: 公開前チェック（時間帯ごとの人数不足、テンプレート持ち場不足、休憩不足、希望未提出、リマインド文コピー、予約/売上予測ベースの必要人数、未確認シフト、予定人件費率、予定労務リスク、予定vs実績差分、他店舗ヘルプ候補を週次カレンダー上部に集約）。Phase 3: 店舗間ヘルプ要請（人手不足時に他店舗へスタッフ派遣を依頼→承認→shift_assignments自動作成。pending/approved/rejected/cancelledワークフロー）・統合シフトビュー（オーナーダッシュボードで全店舗のシフト充足率・人件費・ヘルプ要請を横断表示）。Phase 4: 現場運用強化（店舗別持ち場マスタ、マイシフト確認、同店舗の交代依頼/欠勤連絡、当日不足ダッシュボード、承認済み欠勤と未打刻の分離、今日呼べる候補、目標人件費率）。P1-57: 人間中心オペレーション（空きシフト募集→スタッフ応募→店長承認でシフト自動作成、担当作業の1タップ完了、スキル/資格タグ、持ち場必要スキル、休憩不足、人件費着地、経験者なし、直近希望未提出、変更差分を当日・ヘルプに集約）。P1-58: 確認済みシフトの時刻/休憩/持ち場/メモ変更時に対象スタッフだけ `published` + `confirmation_required` へ戻し、マイシフトに「変更あり」を表示。欠勤を交代なしで承認した時は同店舗候補、空きシフト募集、他店舗ヘルプ要請の穴埋め導線を表示。P1-59: 変更前後を `confirmation_reset_detail` に保存して `10:00 → 10:30` のように表示し、当日・ヘルプ最上部に未打刻、未対応申請、欠勤穴埋め、時間帯不足、休憩不足、未完了作業、変更未確認を集約する「今日の店長チェック」を表示。P1-60: 開始済み未打刻を `連絡済み` / `遅刻連絡あり` / `欠勤にする` / `穴埋め` の1タップで処理し、欠勤処理時は承認済み欠勤を自動作成して穴埋め導線へつなぐ。全契約者に標準提供 |
 | **GPS出退勤・端末用途制御（L-3b）** | 店舗単位のGPS出退勤制御（shift_settings.gps_required/store_lat/store_lng/gps_radius_meters）。Haversine距離計算で打刻時に店舗圏内判定。旧スタッフ表示ツール制御（shift_settings.staff_visible_tools）は現在、device ロールの遷移先補助値として残す。スタッフ個人アカウントにハンディ/KDS/POSレジ導線は出さない。GPS設定画面に「📍 現在地から店舗位置を設定」ボタン（Geolocation API、全幅・primary表示で目立つUI） |
 | **デバイス単位ツール表示制御（L-3b2）** | user_stores.visible_tools（CSV: handy,kds,register、NULL=店舗設定に従う）で端末用途を個別設定。優先順位: デバイス個別設定 > 店舗デフォルト設定 > KDS。DeviceEditor / staff-management.php?kind=device で管理し、me.phpがstores配列にuserVisibleToolsを返却 |
 
@@ -360,7 +360,7 @@ matsunoya-mt/
 │   │       ├── ai-assistant.js       # AIアシスタント（SNS生成・売上分析・競合調査・需要予測/発注提案・モダン表示・テーブル変換）
 │   │       ├── daily-recommendation-editor.js # 今日のおすすめ管理（N-1）
 │   │       ├── receipt-settings.js    # 領収書設定UI（L-5）
-│   │       ├── shift-help.js        # L-3 Phase 3/4: 当日・ヘルプUI（今日の不足、交代/欠勤申請、店舗間ヘルプ要請）
+│   │       ├── shift-help.js        # L-3 Phase 3/4/P1-57: 当日・ヘルプUI（今日の不足、交代/欠勤申請、店舗間ヘルプ要請、空きシフト募集、担当作業、スキル/休憩/人件費）
 │   │       └── owner-app.js         # owner-dashboard制御（統合シフトビュー含む）
 │   ├── customer/
 │   │   ├── menu.html                  # セルフオーダーSPA（787行）
@@ -417,7 +417,7 @@ matsunoya-mt/
 │   │   ├── session-monitor.js         # セッションアイドルタイムアウト監視（25分警告→30分ログアウト）
 │   │   ├── offline-detector.js        # オフライン検知バナー + 注文キュー
 │   │   ├── theme-switcher.js          # ライト/ダークテーマ切替
-│   │   ├── shift-manager.js           # L-3: シフト管理モジュール（テンプレート/マイシフト/交代欠勤/持ち場/設定/勤怠一覧/サマリー）
+│   │   ├── shift-manager.js           # L-3: シフト管理モジュール（テンプレート/マイシフト/募集応募/担当作業/交代欠勤/持ち場/設定/勤怠一覧/サマリー）
 │   │   ├── shift-calendar.js          # L-3: シフトカレンダーUI（週次表示/公開前チェック/希望シフト/未確認/予定人件費率）
 │   │   └── attendance-clock.js        # L-3: 勤怠打刻UI（出勤/退勤ボタン常時両方表示、GPS対応、DOM自己挿入）
 │   └── shared/
@@ -480,6 +480,10 @@ matsunoya-mt/
 │   ├── migration-l3p2-labor-cost.sql    # L-3 Phase 2: shift_settings ALTER (default_hourly_rate) + user_stores ALTER (hourly_rate)
 │   ├── migration-l3p3-multi-store-shift.sql # L-3 Phase 3: shift_help_requests + shift_help_assignments + shift_assignments ALTER (help_request_id)
 │   ├── migration-p1-56-shift-field-ops.sql # L-3 Phase 4: shift_work_positions + shift_swap_requests + shift_settings.target_labor_cost_ratio
+│   ├── migration-p1-57-shift-human-ops.sql # P1-57: 空きシフト募集 + スキル/資格タグ + 担当作業
+│   ├── migration-p1-58-shift-confirmation-reset.sql # P1-58: 確認済みシフト変更時の再確認フラグ
+│   ├── migration-p1-59-shift-change-detail.sql # P1-59: 再確認用の変更前後詳細
+│   ├── migration-p1-60-shift-attendance-followups.sql # P1-60: 未打刻/遅刻の店長対応記録
 │   ├── migration-p1-6c-drop-tenants-ai-key.sql       # P1-6c: tenants DROP COLUMN ai_api_key
 │   ├── migration-p1-22-drop-tenants-google-places-key.sql # P1-22: tenants DROP COLUMN google_places_api_key
 │   ├── migration-p1-11-subscription-events-unique.sql     # P1-11: subscription_events.stripe_event_id UNIQUE
@@ -611,20 +615,24 @@ stores ──── receipts → payments (L-5)
 54. migration-l3p2-labor-cost.sql — shift_settings ALTER (default_hourly_rate) + user_stores ALTER (hourly_rate)
 55. migration-l3p3-multi-store-shift.sql — shift_help_requests + shift_help_assignments 新設、shift_assignments ALTER (help_request_id)、plan_features INSERT (shift_help_request)
 56. migration-p1-56-shift-field-ops.sql — shift_work_positions + shift_swap_requests 新設、shift_settings ALTER (target_labor_cost_ratio)
-57. migration-p1-6c-drop-tenants-ai-key.sql — tenants DROP COLUMN ai_api_key（P1-6c、posla_settings.gemini_api_key へ完全移行）
-58. migration-p1-22-drop-tenants-google-places-key.sql — tenants DROP COLUMN google_places_api_key（P1-22、posla_settings.google_places_api_key へ完全移行）
-59. migration-p1-11-subscription-events-unique.sql — subscription_events ALTER (stripe_event_id に UNIQUE INDEX 追加。P1-11、webhook 重複イベントの冪等性確保)
-60. migration-p1-6d-posla-admin-sessions.sql — posla_admin_sessions テーブル新設（P1-6d、POSLA管理者の他セッション無効化サポート）
-61. migration-p1-remove-square.sql — tenants.payment_gateway ENUM から 'square' 削除（P1-2、Square 決済ゲートウェイ廃止）
-62. migration-p1-27-torimaru-demo-tenant.sql — 鳥丸グループ enterprise デモテナント seed（5店舗: 渋谷/新宿/池袋/銀座/恵比寿）
-63. migration-p119-checkout-i18n.sql — ui_translations INSERT（P1-19、アレルギー7キー [Group A] + checkout_not_confirmed/btn_close [Group C] × 4言語 = 36行）
-64. migration-p119b-receipt-rollback.sql — ui_translations DELETE（P1-19b、receipt_* 13キー × 4言語 = 52行。領収書は日本語固定化、Blob URL 方式で文字化け回避）
-65. migration-p119c-fix-encoding.sql — ui_translations DELETE+INSERT（P1-19c、zh-Hans/ko の btn_close/allergen_*/checkout_not_confirmed 二重エンコード修正。SET NAMES utf8mb4 を先頭明示）
-66. migration-p119d-zh-hant-encoding-fix.sql — ui_translations zh-Hant の checkout 系キーを正しい繁体字で上書き（P1-19d、2026-04-29 現物確認）
-67. migration-p133-collation-fix.sql — daily_recommendations/call_alerts/satisfaction_ratings を utf8mb4_unicode_ci に CONVERT（B-2026-04-08-09、MySQL 8.0 デフォルト utf8mb4_0900_ai_ci からの混入修正）
-68. migration-self-menu-attributes.sql — menu_templates/store_local_items に `spice_level`, `is_vegetarian`, `is_kids_friendly`, `is_quick_serve`, `prep_time_min` を追加
-69. migration-self-menu-i18n.sql — セルフメニュー検索・絞り込み・代替提案・追加提案の ui_translations キーを5言語で追加
-70. migration-self-menu-guidance.sql — `menu_alternatives` 新設 + アレルギー確認/オプション明確化/送信前確認/併売提案の ui_translations キーを5言語で追加
+57. migration-p1-57-shift-human-ops.sql — shift_open_shifts + shift_open_shift_applications + shift_skill_tags + shift_staff_skill_tags + shift_position_required_skills + shift_task_templates + shift_task_assignments 新設
+58. migration-p1-58-shift-confirmation-reset.sql — shift_assignments ALTER (confirmed_at, confirmation_reset_at, confirmation_reset_by, confirmation_reset_reason)
+59. migration-p1-59-shift-change-detail.sql — shift_assignments ALTER (confirmation_reset_detail TEXT)
+60. migration-p1-60-shift-attendance-followups.sql — shift_attendance_followups 新設
+61. migration-p1-6c-drop-tenants-ai-key.sql — tenants DROP COLUMN ai_api_key（P1-6c、posla_settings.gemini_api_key へ完全移行）
+62. migration-p1-22-drop-tenants-google-places-key.sql — tenants DROP COLUMN google_places_api_key（P1-22、posla_settings.google_places_api_key へ完全移行）
+63. migration-p1-11-subscription-events-unique.sql — subscription_events ALTER (stripe_event_id に UNIQUE INDEX 追加。P1-11、webhook 重複イベントの冪等性確保)
+64. migration-p1-6d-posla-admin-sessions.sql — posla_admin_sessions テーブル新設（P1-6d、POSLA管理者の他セッション無効化サポート）
+65. migration-p1-remove-square.sql — tenants.payment_gateway ENUM から 'square' 削除（P1-2、Square 決済ゲートウェイ廃止）
+66. migration-p1-27-torimaru-demo-tenant.sql — 鳥丸グループ enterprise デモテナント seed（5店舗: 渋谷/新宿/池袋/銀座/恵比寿）
+67. migration-p119-checkout-i18n.sql — ui_translations INSERT（P1-19、アレルギー7キー [Group A] + checkout_not_confirmed/btn_close [Group C] × 4言語 = 36行）
+68. migration-p119b-receipt-rollback.sql — ui_translations DELETE（P1-19b、receipt_* 13キー × 4言語 = 52行。領収書は日本語固定化、Blob URL 方式で文字化け回避）
+69. migration-p119c-fix-encoding.sql — ui_translations DELETE+INSERT（P1-19c、zh-Hans/ko の btn_close/allergen_*/checkout_not_confirmed 二重エンコード修正。SET NAMES utf8mb4 を先頭明示）
+70. migration-p119d-zh-hant-encoding-fix.sql — ui_translations zh-Hant の checkout 系キーを正しい繁体字で上書き（P1-19d、2026-04-29 現物確認）
+71. migration-p133-collation-fix.sql — daily_recommendations/call_alerts/satisfaction_ratings を utf8mb4_unicode_ci に CONVERT（B-2026-04-08-09、MySQL 8.0 デフォルト utf8mb4_0900_ai_ci からの混入修正）
+72. migration-self-menu-attributes.sql — menu_templates/store_local_items に `spice_level`, `is_vegetarian`, `is_kids_friendly`, `is_quick_serve`, `prep_time_min` を追加
+73. migration-self-menu-i18n.sql — セルフメニュー検索・絞り込み・代替提案・追加提案の ui_translations キーを5言語で追加
+74. migration-self-menu-guidance.sql — `menu_alternatives` 新設 + アレルギー確認/オプション明確化/送信前確認/併売提案の ui_translations キーを5言語で追加
 ```
 
 > **恒久対策（2026-04-08 以降）:** 今後追加する全マイグレーション SQL は先頭に `SET NAMES utf8mb4;` を明示する（P1-19c 教訓）。MySQL クライアント接続のデフォルト charset が utf8mb4 でない環境で INSERT すると、zh-Hans/ko 等の多バイト文字列が二重エンコードされる事故を防止。
@@ -1538,13 +1546,18 @@ UPSERT方式（`api/store/shift/settings.php`）。未登録店舗は初回PATCH
 | `end_time` | TIME | NOT NULL | 終了時刻 |
 | `break_minutes` | INT | DEFAULT 0 | 休憩時間（分） |
 | `status` | ENUM | 'draft','published','confirmed' DEFAULT 'draft' | 状態 |
+| `confirmed_at` | DATETIME | NULL | P1-58: スタッフが最後に確認した時刻 |
+| `confirmation_reset_at` | DATETIME | NULL | P1-58: 確認済みシフトの内容変更で再確認が必要になった時刻 |
+| `confirmation_reset_by` | VARCHAR(36) | NULL | P1-58: 再確認を発生させた更新者 |
+| `confirmation_reset_reason` | VARCHAR(120) | NULL | P1-58: `開始変更` / `終了変更` / `休憩変更` / `持ち場変更` / `メモ変更` などの変更理由 |
+| `confirmation_reset_detail` | TEXT | NULL | P1-59: 再確認用の変更前後詳細JSON。例: `[{"field":"start_time","label":"開始","before_value":"10:00","after_value":"10:30"}]` |
 | `role_type` | VARCHAR(50) | NULL | 持ち場。`shift_work_positions.code` を使用。NULL=指定なし |
 | `note` | TEXT | NULL | メモ。交代承認時の追記にも使用 |
 | `created_by` | VARCHAR(36) | NOT NULL | 作成者ユーザーID |
 | `created_at` | DATETIME | | |
 | `updated_at` | DATETIME | ON UPDATE CURRENT_TIMESTAMP | |
 
-確定したシフト割当。テンプレート適用またはカレンダーから手動追加。
+確定したシフト割当。テンプレート適用またはカレンダーから手動追加。P1-58 以降、スタッフが一度 `confirmed` にしたシフトの開始/終了/休憩/持ち場/メモを manager が変更した場合、対象シフトだけ `published` に戻し、`confirmation_required=true` としてマイシフトに「変更あり」を出す。P1-59 では `confirmation_reset_detail` を返し、スタッフ画面で `10:00 → 10:30` のような変更前後比較を表示する。未確認スタッフ全員へ再確認を要求するのではなく、変更された本人のシフトだけを再確認対象にする。
 
 #### 4.3.45 `shift_availabilities` — 希望シフト ※ migration-l3
 
@@ -1660,7 +1673,74 @@ UPSERT方式（`api/store/shift/settings.php`）。未登録店舗は初回PATCH
 | `created_at` | DATETIME | | |
 | `updated_at` | DATETIME | ON UPDATE CURRENT_TIMESTAMP | |
 
-ワークフロー: staff/manager が pending 作成 → manager が approve/reject/cancel。approve 時に replacement_user_id がある場合は `shift_assignments.user_id` を差し替え、status は `published` に戻す。replacement_user_id が NULL の approve は「欠勤だけ承認」として扱い、当日不足 API で承認済み欠勤として返す。
+ワークフロー: staff/manager が pending 作成 → manager が approve/reject/cancel。approve 時に replacement_user_id がある場合は `shift_assignments.user_id` を差し替え、status は `published` に戻す。replacement_user_id が NULL の approve は「欠勤だけ承認」として扱い、当日不足 API で承認済み欠勤として返す。P1-58 以降、欠勤を交代なしで承認した PATCH 応答は `needs_fill=true` と対象シフト情報を返し、当日・ヘルプ画面で同店舗候補、空きシフト募集、他店舗ヘルプ要請にそのまま進める。
+
+#### 4.3.51 `shift_open_shifts` — 空きシフト募集 ※ migration-p1-57
+
+| カラム | 型 | 制約 | 説明 |
+|--------|-----|------|------|
+| `id` | VARCHAR(36) | PK | UUID |
+| `tenant_id` | VARCHAR(36) | NOT NULL, INDEX | テナント境界 |
+| `store_id` | VARCHAR(36) | NOT NULL, INDEX | 店舗境界 |
+| `shift_date` | DATE | NOT NULL | 募集日 |
+| `start_time` / `end_time` | TIME | NOT NULL | 募集時間 |
+| `break_minutes` | INT | DEFAULT 0 | 休憩分 |
+| `role_type` | VARCHAR(20) | NULL | 持ち場。`shift_work_positions.code` |
+| `required_skill_code` | VARCHAR(20) | NULL | 応募に必要なスキル |
+| `status` | ENUM('open','filled','cancelled') | DEFAULT 'open' | 募集状態 |
+| `note` | TEXT | NULL | 店長メモ |
+| `created_by` | VARCHAR(36) | NOT NULL | 作成者 |
+| `approved_by` | VARCHAR(36) | NULL | 承認者 |
+| `created_assignment_id` | VARCHAR(36) | NULL | 承認時に作成された `shift_assignments.id` |
+
+ワークフロー: manager が open 作成 → staff が応募 → manager が応募を承認 → `shift_assignments` を `published` で作成 → open_shift は `filled`。応募だけではシフトにならない。
+
+#### 4.3.52 `shift_open_shift_applications` — 空きシフト応募 ※ migration-p1-57
+
+| カラム | 型 | 制約 | 説明 |
+|--------|-----|------|------|
+| `id` | VARCHAR(36) | PK | UUID |
+| `tenant_id` / `store_id` | VARCHAR(36) | NOT NULL | 境界 |
+| `open_shift_id` | VARCHAR(36) | NOT NULL, UNIQUE構成要素 | 募集ID |
+| `user_id` | VARCHAR(36) | NOT NULL, UNIQUE構成要素 | 応募スタッフ |
+| `status` | ENUM('applied','approved','rejected','cancelled') | DEFAULT 'applied' | 応募状態 |
+| `note` | TEXT | NULL | 応募者メモ |
+| `response_note` | TEXT | NULL | 店長メモ |
+| `responded_by` | VARCHAR(36) | NULL | 承認/却下者 |
+
+`tenant_id + open_shift_id + user_id` で一意。承認時は対象応募を `approved`、同じ募集の他 `applied` を `rejected` にする。
+
+#### 4.3.53 `shift_skill_tags` / `shift_staff_skill_tags` / `shift_position_required_skills` — シフトスキル ※ migration-p1-57
+
+`shift_skill_tags` は店舗別のスキルマスタ。初期値は `cashier_close`（レジ締め可）、`trainer`（新人指導可）、`key_holder`（鍵管理可）。
+
+`shift_staff_skill_tags` はスタッフに付与されたスキル。`tenant_id + store_id + user_id + skill_code` で一意。
+
+`shift_position_required_skills` は持ち場ごとに必要なスキル人数を定義する。例: `role_type=hall`, `skill_code=cashier_close`, `required_count=1`。当日・ヘルプの現場シフト運用で、当日の予定シフトが必要数を満たしているか判定する。
+
+#### 4.3.54 `shift_task_templates` / `shift_task_assignments` — 担当作業 ※ migration-p1-57
+
+`shift_task_templates` は開店・営業中・閉店作業のテンプレート。初期値は `open_register`（レジ開け）、`open_prep`（開店前チェック）、`mid_shift_clean`（中間清掃）、`close_register`（レジ締め）、`close_clean`（閉店清掃）。
+
+`shift_task_assignments` は日付ごとの担当作業。主なカラムは `task_date`, `task_template_id`, `task_label`, `user_id`, `shift_assignment_id`, `status(pending/done)`, `completed_by`, `completed_at`。staff は自分の作業のみ完了/戻すが可能、manager は当日・ヘルプから全作業を操作できる。
+
+#### 4.3.55 `shift_attendance_followups` — 未打刻/遅刻対応記録 ※ migration-p1-60
+
+| カラム | 型 | 制約 | 説明 |
+|--------|-----|------|------|
+| `id` | VARCHAR(36) | PK | UUID |
+| `tenant_id` | VARCHAR(36) | NOT NULL, UNIQUE構成要素 | テナント境界 |
+| `store_id` | VARCHAR(36) | NOT NULL, UNIQUE構成要素 | 店舗境界 |
+| `shift_assignment_id` | VARCHAR(36) | NOT NULL, UNIQUE構成要素 | 対応対象のシフト |
+| `user_id` | VARCHAR(36) | NOT NULL | 対象スタッフ |
+| `followup_date` | DATE | NOT NULL, INDEX | 対応日 |
+| `status` | ENUM('contacted','late_notice','absent') | NOT NULL | 連絡済み / 遅刻連絡あり / 欠勤処理済み |
+| `note` | TEXT | NULL | 店長メモ |
+| `created_by` | VARCHAR(36) | NOT NULL | 対応した manager |
+| `created_at` | DATETIME | DEFAULT CURRENT_TIMESTAMP | |
+| `updated_at` | DATETIME | ON UPDATE CURRENT_TIMESTAMP | |
+
+`today-status.php` はこのテーブルを参照し、開始済み未打刻行に `followup_status` / `followup_by` / `followup_at` を返す。`field-ops.php?action=attendance-followup` で更新し、`status='absent'` の場合は `shift_swap_requests` に承認済み欠勤を作成または既存 pending 欠勤を approved に更新する。これにより、未打刻から欠勤穴埋めへ1タップで進める。
 
 ---
 
@@ -2375,13 +2455,14 @@ require_store_access(store_id):
 | `settings.php` | GET/PATCH | manager+ | シフト設定（UPSERT）。submission_deadline_day, default_break_minutes, overtime_threshold_minutes, early_clock_in_minutes, auto_clock_out_hours, GPS設定, staff_visible_tools, default_hourly_rate, target_labor_cost_ratio |
 | `positions.php` | GET/POST/PATCH | GET=staff+ / 更新=manager+ | 店舗別持ち場マスタ。GET=一覧（未登録時は hall/kitchen を補完）、POST=追加/再有効化、PATCH=表示名/並び順/有効状態更新 |
 | `templates.php` | CRUD | manager+ | シフトテンプレート（早番/遅番等のパターン定義）。曜日・時間帯・必要人数・推奨持ち場 |
-| `assignments.php` | CRUD | manager+ / `?action=confirm` はstaff+ | シフト割当。カレンダーからの手動追加・編集・削除。`?action=apply-template` でテンプレート一括適用。`POST ?action=confirm` でスタッフ本人が確定シフトを確認済みにする |
+| `assignments.php` | CRUD | manager+ / `?action=confirm` はstaff+ | シフト割当。カレンダーからの手動追加・編集・削除。`?action=apply-template` でテンプレート一括適用。`POST ?action=confirm` でスタッフ本人が確定シフトを確認済みにする。P1-58/59: 確認済みシフトの開始/終了/休憩/持ち場/メモ変更時は対象行だけ `published` に戻し、GET/PATCH 応答に `confirmation_required`、`confirmation_reset_reason`、`confirmation_reset_detail` を含める |
 | `availabilities.php` | CRUD | staff+ | 希望シフト提出。スタッフが日付・可否・希望時間帯を申請。manager+は全スタッフ分閲覧可 |
 | `attendance.php` | POST/PATCH/GET | staff+ | 勤怠打刻。POST=出勤、PATCH=退勤/休憩。GET=自分の勤怠状況。GPS座標記録（gps_required時）。Haversine距離で店舗圏内判定 |
 | `summary.php` | GET | manager+ | 勤務サマリー。`?period=weekly\|monthly&date=YYYY-MM-DD/YYYY-MM`。staff_summary（スタッフ別集計）+ daily_summary（日別集計）+ assigned_map。Phase 2/4: labor_cost（人件費）+ night_premium（深夜割増25%）+ labor_warnings（労基法警告6ルール）+ period_revenue/labor_cost_ratio/target_labor_cost_ratio |
 | `publish-check.php` | GET | manager+ | Phase 2b/4: 週間カレンダーの公開前チェック。人数不足、持ち場不足、休憩不足、希望未提出、予約/売上予測による必要人数、予定人件費率、未確認シフト、予定労務リスク、予定vs実績差分、他店舗ヘルプ候補を返却 |
-| `today-status.php` | GET | manager+ | Phase 4: 当日不足ダッシュボード。未打刻、勤務中、承認済み欠勤、未対応交代/欠勤、時間帯不足、今日呼べる候補を返却 |
-| `swap-requests.php` | GET/POST/PATCH | staff+ / PATCH=manager+ | Phase 4: 同店舗の交代依頼・欠勤連絡。GET=申請一覧、`?action=candidates&assignment_id=...`=交代候補、POST=申請作成、PATCH=承認/却下/キャンセル |
+| `today-status.php` | GET | manager+ | Phase 4/P1-60: 当日不足ダッシュボード。未打刻、勤務中、承認済み欠勤、未対応交代/欠勤、時間帯不足、今日呼べる候補を返却。未打刻行には `followup_status` / `followup_by` / `followup_at` を含める |
+| `swap-requests.php` | GET/POST/PATCH | staff+ / PATCH=manager+ | Phase 4/P1-58: 同店舗の交代依頼・欠勤連絡。GET=申請一覧、`?action=candidates&assignment_id=...`=交代候補、POST=申請作成、PATCH=承認/却下/キャンセル。交代なし欠勤承認時は `needs_fill=true` と対象シフト情報を返し、画面側で穴埋め導線を起動する |
+| `field-ops.php` | GET/POST/PATCH | dashboard/create/approve/settings/attendance-followup=manager+、open-shifts/my-tasks/apply/task-status=staff+ | P1-57/59/60: 当日・ヘルプの現場シフト運用。`GET action=dashboard` で空きシフト募集、担当作業、スキル不足、休憩不足、人件費着地、経験者なし、希望未提出、変更差分、変更未確認を返却。管理画面は `today-status.php`、`swap-requests.php`、`field-ops.php` の結果から「今日の店長チェック」を構成する。`POST action=attendance-followup` で未打刻を `contacted` / `late_notice` / `absent` に更新し、`absent` は承認済み欠勤を作成する。`POST action=create-open-shift`、`POST action=apply-open-shift`、`PATCH action=handle-open-shift`、`POST action=add-task`、`PATCH action=task-status`、`POST action=save-skill`、`POST action=assign-staff-skill`、`POST action=save-position-skill` に対応 |
 | `ai-suggest-data.php` | GET | manager+ | L-3 Phase 2: AI提案用データ集計。templates, availabilities, staffList（時給・実績・連続勤務日数）, salesByDayHour（過去4週平均）, positions（持ち場）を一括返却。フロントエンドがGemini APIに送信するデータソース |
 | `apply-ai-suggestions.php` | POST | manager+ | P1-21: AI提案シフトを `shift_assignments` に一括反映。DELETE + INSERT トランザクション、`note='AI提案'` タグで手動追加シフトを保護（既存手動シフトは削除しない）。マルチテナント境界 + staff 403 ガード + 監査ログ記録。`shift-calendar.js` から呼出 |
 | `help-requests.php` | GET/POST/PATCH | manager+ | L-3 Phase 3: 店舗間ヘルプ要請。GET=送信/受信一覧（?action=list-stores で他店舗一覧、?action=list-staff で対象店舗スタッフ一覧、?action=candidates で日時・役割に合う候補スタッフを取得）。POST=要請作成。PATCH=承認（スタッフ指名→shift_assignments自動作成）/却下/キャンセル |
@@ -2715,9 +2796,10 @@ POSLAのメニューは3層構造：
 | AIアシスタント | manager | Yes | SNS投稿文生成 + 売上トレンド分析 + 周辺競合調査（Gemini + Places API）+ AI需要予測・発注提案（7日間売上+在庫+BOM→Gemini予測、ドリンク除外）。モダンカード表示（テーブル変換・バッジ・グラデーション背景）|
 | テイクアウト | テイクアウト注文 | manager+ | テイクアウト注文一覧・ステータス管理（受付/調理中/準備完了/受取済）。日付・ステータスフィルター。30秒自動リフレッシュ。顧客名・電話・受取時間・注文サマリー表示 |
 | カレンダー | - | Yes | L-3: 週次シフトカレンダー（manager=全スタッフ編集、staff=自分の希望提出）|
+| マイシフト | staff/manager | Yes | L-3/P1-57/P1-58/P1-59: 自分のシフト確認、確認済み、変更されたシフトだけの再確認、変更前後比較、交代/欠勤申請、空きシフト応募、担当作業の完了/戻す |
 | テンプレート | manager | Yes | L-3: シフトテンプレート管理（早番/遅番/深夜等のパターン、必要人数、持ち場）|
 | 集計サマリー | manager | Yes | L-3 Phase 2/4: 人件費・人件費率・勤務時間集計（深夜割増・労基法チェック・スタッフ別詳細）|
-| 当日・ヘルプ | manager | Yes | L-3 Phase 3/4: 今日の不足、未打刻、承認済み欠勤、同店舗交代/欠勤申請、店舗間ヘルプ要請（送信/受信一覧・作成・候補スタッフ表示・承認スタッフ指名・却下・キャンセル） |
+| 当日・ヘルプ | manager | Yes | L-3 Phase 3/4/P1-57/P1-58/P1-59/P1-60: 今日の店長チェック、今日の不足、未打刻1タップ対応、承認済み欠勤、同店舗交代/欠勤申請、交代なし欠勤承認後の穴埋め、店舗間ヘルプ要請、空きシフト募集、応募承認、担当作業、スキル不足、休憩不足、人件費着地、経験者なし、希望未提出、変更差分 |
 
 **JSモジュール構成（IIFE パターン）:**
 ```javascript
@@ -3412,6 +3494,10 @@ SOURCE migration-l3b2-user-visible-tools.sql;
 SOURCE migration-l3p2-labor-cost.sql;
 SOURCE migration-l3p3-multi-store-shift.sql;
 SOURCE migration-p1-56-shift-field-ops.sql;
+SOURCE migration-p1-57-shift-human-ops.sql;
+SOURCE migration-p1-58-shift-confirmation-reset.sql;
+SOURCE migration-p1-59-shift-change-detail.sql;
+SOURCE migration-p1-60-shift-attendance-followups.sql;
 
 -- P1 プリリリースクリーンアップ
 SOURCE migration-p1-6c-drop-tenants-ai-key.sql;       -- tenants.ai_api_key DROP
