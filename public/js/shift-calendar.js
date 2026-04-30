@@ -24,6 +24,12 @@
         return y + '-' + m + '-' + d;
     }
 
+    function addDays(dt, days) {
+        var copy = new Date(dt.getTime());
+        copy.setDate(copy.getDate() + days);
+        return copy;
+    }
+
     function apiCall(method, endpoint, body, callback) {
         var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
         if (body && method !== 'GET') opts.body = JSON.stringify(body);
@@ -223,6 +229,7 @@
                 '</div>' +
                 '<div class="cal-actions">' +
                 '<button class="btn btn-sm" id="cal-apply-tpl">テンプレート適用</button> ' +
+                '<button class="btn btn-sm" id="cal-availability-announce">希望提出依頼</button> ' +
                 '<button class="btn btn-sm cal-ai-btn" id="cal-ai-suggest">AI提案</button> ' +
                 '<button class="btn btn-sm btn-primary" id="cal-publish">確定する</button>' +
                 '</div>';
@@ -451,6 +458,10 @@
                 self._showApplyTemplateDialog(start, end);
             });
 
+            document.getElementById('cal-availability-announce').addEventListener('click', function() {
+                self._showAvailabilityAnnouncementDialog(start, end);
+            });
+
             // L-3 Phase 2: AI提案
             document.getElementById('cal-ai-suggest').addEventListener('click', function() {
                 self._showAiSuggestDialog(start, end);
@@ -476,6 +487,64 @@
                     if (err) { alert('確定に失敗しました: ' + (err.message || '')); return; }
                     alert(data.published_count + '件のシフトを確定しました');
                     self.loadWeek();
+                });
+            });
+        },
+
+        _showAvailabilityAnnouncementDialog: function(start, end) {
+            var self = this;
+            var startDt = new Date(start + 'T00:00:00');
+            var dueDt = addDays(startDt, -1);
+            var today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (dueDt < today) {
+                dueDt = today;
+            }
+            var defaultDue = formatDate(dueDt);
+            var defaultMessage = start + ' 〜 ' + end + ' のシフト希望を期限までに入力してください。';
+
+            var overlay = document.createElement('div');
+            overlay.className = 'shift-dialog-overlay';
+            overlay.innerHTML = '<div class="shift-dialog">' +
+                '<h3>希望提出依頼</h3>' +
+                '<label>対象開始日<input type="date" id="avail-ann-start" value="' + esc(start) + '"></label>' +
+                '<label>対象終了日<input type="date" id="avail-ann-end" value="' + esc(end) + '"></label>' +
+                '<label>提出期限<input type="date" id="avail-ann-due" value="' + esc(defaultDue) + '"></label>' +
+                '<label>件名<input type="text" id="avail-ann-title" maxlength="120" value="シフト希望提出依頼"></label>' +
+                '<label>本文<textarea id="avail-ann-message" rows="4">' + esc(defaultMessage) + '</textarea></label>' +
+                '<div class="shift-dialog-actions">' +
+                '<button class="btn btn-primary" id="avail-ann-send">一斉依頼する</button>' +
+                '<button class="btn" id="avail-ann-cancel">キャンセル</button>' +
+                '</div></div>';
+            document.body.appendChild(overlay);
+
+            document.getElementById('avail-ann-cancel').addEventListener('click', function() {
+                document.body.removeChild(overlay);
+            });
+            document.getElementById('avail-ann-send').addEventListener('click', function() {
+                var body = {
+                    store_id: self.storeId,
+                    target_start_date: document.getElementById('avail-ann-start').value,
+                    target_end_date: document.getElementById('avail-ann-end').value,
+                    due_date: document.getElementById('avail-ann-due').value,
+                    title: document.getElementById('avail-ann-title').value,
+                    message: document.getElementById('avail-ann-message').value
+                };
+                if (!body.target_start_date || !body.target_end_date || !body.due_date) {
+                    alert('対象期間と提出期限を入力してください');
+                    return;
+                }
+                if (body.target_start_date > body.target_end_date) {
+                    alert('対象終了日は開始日以降にしてください');
+                    return;
+                }
+                apiCall('POST', 'availability-announcements.php?store_id=' + encodeURIComponent(self.storeId), body, function(data, err) {
+                    if (err) {
+                        alert('希望提出依頼に失敗しました: ' + (err.message || ''));
+                        return;
+                    }
+                    document.body.removeChild(overlay);
+                    alert('スタッフ画面へ希望提出依頼を表示しました');
                 });
             });
         },

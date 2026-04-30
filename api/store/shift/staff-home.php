@@ -31,6 +31,16 @@ function sh_decode_change_detail($value)
     return is_array($decoded) ? $decoded : [];
 }
 
+function sh_days_inclusive($startDate, $endDate)
+{
+    $start = strtotime($startDate . ' 00:00:00');
+    $end = strtotime($endDate . ' 00:00:00');
+    if ($start === false || $end === false || $end < $start) {
+        return 0;
+    }
+    return (int)floor(($end - $start) / 86400) + 1;
+}
+
 start_auth_session();
 handle_preflight();
 require_method(['GET']);
@@ -275,6 +285,48 @@ $stmtAvail = $pdo->prepare(
 $stmtAvail->execute([$tenantId, $storeId, $userId, $today, $futureEnd]);
 $availabilitySubmittedCount = (int)$stmtAvail->fetchColumn();
 
+$stmtAnn = $pdo->prepare(
+    'SELECT a.id, a.target_start_date, a.target_end_date, a.due_date,
+            a.title, a.message, a.status, a.created_at,
+            u.display_name AS created_by_name, u.username AS created_by_username,
+            r.read_at
+     FROM shift_availability_announcements a
+     LEFT JOIN users u ON u.id = a.created_by AND u.tenant_id = a.tenant_id
+     LEFT JOIN shift_availability_announcement_reads r
+       ON r.tenant_id = a.tenant_id
+      AND r.store_id = a.store_id
+      AND r.announcement_id = a.id
+      AND r.user_id = ?
+     WHERE a.tenant_id = ? AND a.store_id = ?
+       AND a.status = ?
+       AND a.target_end_date >= ?
+     ORDER BY a.due_date ASC, a.created_at DESC
+     LIMIT 10'
+);
+$stmtAnn->execute([$userId, $tenantId, $storeId, 'active', $today]);
+$availabilityAnnouncements = $stmtAnn->fetchAll();
+$availabilityAnnouncementCount = 0;
+$stmtAnnSubmitted = $pdo->prepare(
+    'SELECT COUNT(DISTINCT target_date)
+     FROM shift_availabilities
+     WHERE tenant_id = ? AND store_id = ? AND user_id = ?
+       AND target_date BETWEEN ? AND ?'
+);
+foreach ($availabilityAnnouncements as &$ann) {
+    $requiredDays = sh_days_inclusive($ann['target_start_date'], $ann['target_end_date']);
+    $stmtAnnSubmitted->execute([$tenantId, $storeId, $userId, $ann['target_start_date'], $ann['target_end_date']]);
+    $submittedDays = (int)$stmtAnnSubmitted->fetchColumn();
+    $ann['required_days'] = $requiredDays;
+    $ann['submitted_days'] = $submittedDays;
+    $ann['missing_days'] = max(0, $requiredDays - $submittedDays);
+    $ann['is_submitted'] = ($requiredDays > 0 && $submittedDays >= $requiredDays);
+    $ann['is_read'] = !empty($ann['read_at']);
+    if (!$ann['is_submitted']) {
+        $availabilityAnnouncementCount++;
+    }
+}
+unset($ann);
+
 json_response([
     'date' => $date,
     'server_now' => date('Y-m-d H:i:s'),
@@ -288,6 +340,7 @@ json_response([
     'unread_request_notifications' => $unreadNotifications,
     'open_shifts' => $openShifts,
     'attendance_corrections' => $corrections,
+    'active_availability_announcements' => $availabilityAnnouncements,
     'availability' => [
         'range_start' => $today,
         'range_end' => $futureEnd,
@@ -301,5 +354,6 @@ json_response([
         'unread_request_notification_count' => $unreadNotificationCount,
         'open_shift_count' => count($openShifts),
         'pending_correction_count' => $pendingCorrectionCount,
+        'availability_announcement_count' => $availabilityAnnouncementCount,
     ],
 ]);

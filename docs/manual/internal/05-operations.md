@@ -838,6 +838,7 @@ mysql -h $DBHOST -u $DBUSER -p$DBPASS $DBNAME -e "SELECT COUNT(*) AS tenants FRO
 | 71 | `migration-s3-refund-pending.sql` | **【適用済 2026-04-19】** payments.refund_status ENUM に 'pending' 追加（S3 #10 二重返金防止） |
 | 72 | `migration-s3-reservation-uniq.sql` | **【保留 2026-04-19】** reservations への複合 UNIQUE 追加（S3 #7 二重予約防止）。重複データ 1 件あり、テストデータ削除後に適用 |
 | 73 | `migration-s3-fix-comment.sql` | **【スキップ 2026-04-19】** スキーマコメント文字化け修正（store_settings.default_hourly_rate カラム不在のため不要） |
+| 74 | `migration-p1-69-shift-availability-announcements.sql` | シフト希望提出依頼。`shift_availability_announcements` と `shift_availability_announcement_reads` を追加し、店長/副店長からスタッフ画面への依頼表示と既読を管理 |
 
 ### 5.6.3 マイグレーション実行手順
 
@@ -865,6 +866,10 @@ docker compose exec -T db mysql \
 
 ::: warning マイグレーション実行のタイミング
 **コードデプロイの直前** に実行する。先にコードをデプロイすると、新カラム参照で 500 エラーになる。逆に、SQL 変更だけ先行するのは OK（旧コードは新カラムを無視するため）。
+:::
+
+::: warning P1-69 シフト希望提出依頼
+`api/store/shift/staff-home.php` と `api/store/shift/availability-announcements.php` は `shift_availability_announcements` を参照する。P1-69 適用前にコードだけ反映するとスタッフ画面で 500 エラーになるため、`migration-p1-69-shift-availability-announcements.sql` を先に適用する。
 :::
 
 ---

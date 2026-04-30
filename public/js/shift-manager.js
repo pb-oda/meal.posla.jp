@@ -282,6 +282,20 @@
             if (subBtn) subBtn.click();
         },
 
+        _openAvailabilityAnnouncement: function(announcementId, startDate) {
+            if (startDate && /^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+                this._availWeekStart = this._mondayOfDate(startDate);
+            }
+            if (announcementId) {
+                this._pendingAvailabilityAnnouncementId = announcementId;
+                apiPatch('availability-announcements.php?id=' + encodeURIComponent(announcementId) +
+                    '&store_id=' + encodeURIComponent(this.storeId), {
+                    action: 'mark_read'
+                }, function() {});
+            }
+            this._openStaffShiftTab('shift-availability');
+        },
+
         _renderStaffHomeSummary: function(container, data) {
             var self = this;
             var a = data.today_assignment || data.next_assignment;
@@ -343,6 +357,26 @@
             var self = this;
             var m = data.metrics || {};
             var items = [];
+            var announcements = data.active_availability_announcements || [];
+            var openAnnouncements = [];
+            for (var ai = 0; ai < announcements.length; ai++) {
+                if (!announcements[ai].is_submitted) {
+                    openAnnouncements.push(announcements[ai]);
+                }
+            }
+            if (openAnnouncements.length > 0) {
+                var firstAnn = openAnnouncements[0];
+                items.push({
+                    label: '希望提出依頼',
+                    value: openAnnouncements.length + '件',
+                    desc: (firstAnn.title || 'シフト希望提出依頼') + ' / 期限 ' + (firstAnn.due_date || '') +
+                        (firstAnn.missing_days ? ' / 未提出 ' + firstAnn.missing_days + '日' : ''),
+                    tab: 'shift-availability',
+                    announcementId: firstAnn.id,
+                    startDate: firstAnn.target_start_date,
+                    warn: true
+                });
+            }
             if ((m.pending_confirmation_count || 0) > 0) {
                 items.push({
                     label: 'シフト確認',
@@ -415,12 +449,17 @@
             var html = '';
             for (var i = 0; i < items.length; i++) {
                 var item = items[i];
+                var attrs = ' data-tab="' + esc(item.tab || '') + '"';
+                if (item.announcementId) {
+                    attrs += ' data-announcement-id="' + esc(item.announcementId) + '"';
+                    attrs += ' data-start-date="' + esc(item.startDate || '') + '"';
+                }
                 html += '<div class="staff-home-todo' + (item.warn ? ' staff-home-todo--warn' : '') + '">' +
                     '<div class="staff-home-todo__label">' + esc(item.label) + '</div>' +
                     '<div class="staff-home-todo__value">' + esc(item.value) + '</div>' +
                     '<p class="staff-home-todo__desc">' + esc(item.desc) + '</p>' +
                     '<button type="button" class="btn btn-sm staff-home-todo__action ' +
-                    (item.correction ? 'staff-home-open-correction' : 'staff-home-open-tab') + '" data-tab="' + esc(item.tab || '') + '">確認</button>' +
+                    (item.correction ? 'staff-home-open-correction' : 'staff-home-open-tab') + '"' + attrs + '>確認</button>' +
                     '</div>';
             }
             container.innerHTML = html;
@@ -428,7 +467,13 @@
             for (var t = 0; t < tabBtns.length; t++) {
                 (function(btn) {
                     btn.addEventListener('click', function() {
-                        self._openStaffShiftTab(btn.getAttribute('data-tab') || 'shift-my');
+                        var tab = btn.getAttribute('data-tab') || 'shift-my';
+                        var annId = btn.getAttribute('data-announcement-id') || '';
+                        if (tab === 'shift-availability' && annId) {
+                            self._openAvailabilityAnnouncement(annId, btn.getAttribute('data-start-date') || '');
+                            return;
+                        }
+                        self._openStaffShiftTab(tab);
                     });
                 })(tabBtns[t]);
             }
@@ -729,15 +774,19 @@
                     container.innerHTML = '<p class="error">読み込みに失敗しました</p>';
                     return;
                 }
-                self._renderAvailabilities(container, data.availabilities, start, endDt);
+                apiGet('availability-announcements.php', { store_id: self.storeId }, function(annData) {
+                    var list = annData && annData.announcements ? annData.announcements : [];
+                    self._renderAvailabilities(container, data.availabilities, start, endDt, list);
+                });
             });
         },
 
-        _renderAvailabilities: function(container, existing, startStr, endDt) {
+        _renderAvailabilities: function(container, existing, startStr, endDt, announcements) {
             var self = this;
             var startDt = new Date(startStr + 'T00:00:00');
             var endStr = self._formatDate(endDt);
             var todayStr = self._formatDate(new Date());
+            announcements = announcements || [];
 
             // 既存データをマップ化
             var existMap = {};
@@ -755,6 +804,28 @@
                        '</div>' +
                        '<button class="btn btn-sm avail-head__nav" id="avail-next">次の週 ▶</button>' +
                        '</header>';
+
+            var visibleAnnouncements = self._availabilityAnnouncementsForRange(announcements, startStr, endStr);
+            if (visibleAnnouncements.length > 0) {
+                html += '<div class="avail-request-list">';
+                for (var ar = 0; ar < visibleAnnouncements.length; ar++) {
+                    var req = visibleAnnouncements[ar];
+                    html += '<section class="avail-request">' +
+                        '<div class="avail-request__head">' +
+                        '<span class="avail-request__label">提出依頼</span>' +
+                        '<strong>' + esc(req.title || 'シフト希望提出依頼') + '</strong>' +
+                        '</div>' +
+                        '<div class="avail-request__meta">対象 ' + esc(req.target_start_date || '') + ' 〜 ' + esc(req.target_end_date || '') +
+                        ' / 期限 ' + esc(req.due_date || '') +
+                        (req.missing_days ? ' / 未提出 ' + esc(String(req.missing_days)) + '日' : '') +
+                        '</div>';
+                    if (req.message) {
+                        html += '<p class="avail-request__message">' + esc(req.message) + '</p>';
+                    }
+                    html += '</section>';
+                }
+                html += '</div>';
+            }
 
             html += '<div class="avail-form">';
             html += '<div class="avail-day-list">';
@@ -800,7 +871,7 @@
             html += '</div>'; // .avail-day-list
 
             html += '<div class="avail-note-wrap">' +
-                    '<label class="avail-note-label" for="avail-note">店長宛てのメモ<span class="avail-note-opt">(任意)</span></label>' +
+                    '<label class="avail-note-label" for="avail-note">責任者宛てのメモ<span class="avail-note-opt">(任意)</span></label>' +
                     '<textarea id="avail-note" class="avail-note" rows="2" placeholder="例: 試験期間中 / 午前のみ / 通院で中抜けあり"></textarea>' +
                     '</div>';
             html += '<div class="avail-submit-row">' +
@@ -871,6 +942,7 @@
                     if (err) { alert('提出に失敗しました: ' + (err.message || '')); return; }
                     alert('希望を提出しました');
                     self.loadAvailabilities();
+                    self.loadStaffHome();
                 });
             });
         },
@@ -2127,6 +2199,38 @@
                 parts.push('内容確認');
             }
             return parts.join(' / ');
+        },
+
+        _availabilityAnnouncementsForRange: function(announcements, startStr, endStr) {
+            var list = [];
+            for (var i = 0; i < announcements.length; i++) {
+                var ann = announcements[i];
+                if (ann.is_submitted) continue;
+                if ((ann.target_start_date || '') <= endStr && (ann.target_end_date || '') >= startStr) {
+                    list.push(ann);
+                }
+            }
+            if (this._pendingAvailabilityAnnouncementId && list.length > 1) {
+                var selectedId = this._pendingAvailabilityAnnouncementId;
+                list.sort(function(a, b) {
+                    if (a.id === selectedId) return -1;
+                    if (b.id === selectedId) return 1;
+                    return String(a.due_date || '').localeCompare(String(b.due_date || ''));
+                });
+            }
+            return list;
+        },
+
+        _mondayOfDate: function(dateStr) {
+            var dt = new Date(dateStr + 'T00:00:00');
+            if (isNaN(dt.getTime())) {
+                dt = new Date();
+            }
+            var day = dt.getDay();
+            var diff = dt.getDate() - day + (day === 0 ? -6 : 1);
+            var monday = new Date(dt.setDate(diff));
+            monday.setHours(0, 0, 0, 0);
+            return monday;
         },
 
         _formatDate: function(dt) {

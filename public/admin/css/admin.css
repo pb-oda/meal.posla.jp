@@ -3348,6 +3348,58 @@ body {
   flex: 0 0 auto;
 }
 
+.avail-request-list {
+  max-width: 960px;
+  margin: 0 auto var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.avail-request {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid rgba(230, 81, 0, 0.28);
+  border-left: 4px solid var(--warning);
+  border-radius: var(--radius);
+  background: var(--warning-light);
+}
+
+.avail-request__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+}
+
+.avail-request__label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(230, 81, 0, 0.28);
+  color: #e65100;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.avail-request__meta {
+  margin-top: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.avail-request__message {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
 .avail-form {
   /* 旧 max-width:500px 廃止: 流体化し panel-body の幅に追従 */
   max-width: 960px;
@@ -3592,7 +3644,10 @@ body {
 
 /* tablet / desktop: 既存グリッドで OK */
 /* mobile: day card を縦積み、segment は全幅 flex、times は横並び維持 */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .avail-request-list {
+    max-width: none;
+  }
   .avail-head {
     flex-direction: column;
     align-items: stretch;
@@ -3622,6 +3677,7 @@ body {
   .avail-btn {
     flex: 1 1 0;
     min-width: 0;
+    min-height: 44px;
   }
   .avail-times {
     width: 100%;
@@ -3630,10 +3686,16 @@ body {
   .avail-times input[type="time"] {
     flex: 1 1 0;
     max-width: 140px;
+    min-height: 44px;
+    font-size: 16px;
   }
   .avail-submit {
     width: 100%;
     min-width: 0;
+    min-height: 48px;
+  }
+  .avail-note {
+    font-size: 16px;
   }
 }
 
@@ -5112,6 +5174,68 @@ body.sidebar-open .admin-sidebar-backdrop {
   background: var(--primary-50);
   color: var(--primary-dark);
   border-color: var(--primary-light);
+}
+
+/* ── スマホ前提: 大きめタップ領域 + 1列フロー ── */
+@media (max-width: 768px) {
+  .staff-home {
+    max-width: none;
+    padding: var(--space-4) var(--space-3) calc(var(--space-6) + env(safe-area-inset-bottom));
+    gap: var(--space-4);
+  }
+  .staff-home__header {
+    padding: 0;
+  }
+  .staff-home__title {
+    font-size: var(--fs-lg);
+  }
+  .staff-home__subtitle,
+  .staff-home__card-desc {
+    font-size: var(--fs-xs);
+  }
+  .staff-home__card-head {
+    padding: var(--space-3) var(--space-4) var(--space-2);
+  }
+  .staff-home__card-body {
+    padding: var(--space-3) var(--space-4) var(--space-4);
+  }
+  .staff-home__card-body--grid,
+  .staff-home-todos,
+  .staff-home__tools-grid {
+    grid-template-columns: 1fr;
+  }
+  .staff-home-status__main,
+  .staff-home-attendance__row {
+    grid-template-columns: 1fr;
+  }
+  .staff-home-status__actions,
+  .staff-home-attendance__actions {
+    justify-content: stretch;
+  }
+  .staff-home-status__actions .btn,
+  .staff-home-attendance__actions .btn,
+  .staff-home-todo__action,
+  .btn-back-to-staff-home {
+    display: inline-flex;
+    align-items: center;
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .staff-home__action {
+    min-height: 68px;
+  }
+  .staff-clock__buttons {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .staff-clock__btn {
+    max-width: 100%;
+    min-height: 56px;
+  }
+  .staff-back-bar {
+    padding: var(--space-2) var(--space-3);
+  }
 }
 
 /* ── モバイル: grid を 1 列に、打刻ボタンは縦積み ── */
