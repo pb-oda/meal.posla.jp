@@ -1493,7 +1493,10 @@
       var statusText = isLinked ? '連携中' : '解除済';
       var action = '';
       if (isLinked) {
-        action = '<button class="btn btn-sm line-link-unlink-btn" data-link-id="' + Utils.escapeHtml(r.id) + '" style="color:#c62828;border-color:#c62828;">解除</button>';
+        action = '<div style="display:flex;gap:0.35rem;flex-wrap:wrap;">'
+          + '<button class="btn btn-sm line-link-test-btn" data-link-id="' + Utils.escapeHtml(r.id) + '">テスト</button>'
+          + '<button class="btn btn-sm line-link-unlink-btn" data-link-id="' + Utils.escapeHtml(r.id) + '" style="color:#c62828;border-color:#c62828;">解除</button>'
+          + '</div>';
       } else {
         action = '<span style="color:#bbb;font-size:0.8rem;">—</span>';
       }
@@ -1524,6 +1527,26 @@
         unlinkLineCustomerLink(linkId);
       });
     }
+    var testBtns = container.querySelectorAll('.line-link-test-btn');
+    for (var j = 0; j < testBtns.length; j++) {
+      testBtns[j].addEventListener('click', function (e) {
+        var linkId = e.currentTarget.getAttribute('data-link-id');
+        if (!linkId) return;
+        testLineCustomerLink(linkId);
+      });
+    }
+  }
+
+  function testLineCustomerLink(linkId) {
+    AdminApi.testLinePush(linkId).then(function (res) {
+      if (res && res.sent) {
+        showToast('LINEテスト送信を実行しました', 'success');
+      } else {
+        showToast((res && res.error) ? res.error : 'LINEテスト送信に失敗しました', 'error');
+      }
+    }).catch(function (err) {
+      showToast(err.message || 'LINEテスト送信に失敗しました', 'error');
+    });
   }
 
   function unlinkLineCustomerLink(linkId) {

@@ -9,9 +9,10 @@
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/line-messaging.php';
 require_once __DIR__ . '/../config/app.php';
 
-require_method(['GET', 'PATCH']);
+require_method(['GET', 'PATCH', 'POST']);
 $user = require_role('owner');
 $pdo = get_db();
 
@@ -236,4 +237,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
     $saved = $stmt->fetch();
 
     json_response(['line' => build_line_settings_payload($tenant, $saved)]);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!line_settings_table_exists($pdo)) {
+        json_error('NOT_CONFIGURED', 'LINE連携用マイグレーションが未適用です', 503);
+    }
+
+    $data = get_json_body();
+    $action = trim((string)($data['action'] ?? ''));
+    if ($action !== 'test_push') {
+        json_error('INVALID_ACTION', 'action が不正です', 400);
+    }
+
+    $linkId = trim((string)($data['link_id'] ?? ''));
+    if ($linkId === '') {
+        json_error('MISSING_LINK', 'テスト送信先の LINE 顧客連携 ID が必要です', 400);
+    }
+
+    $stmt = $pdo->prepare('SELECT * FROM tenant_line_settings WHERE tenant_id = ?');
+    $stmt->execute([$user['tenant_id']]);
+    $settings = $stmt->fetch();
+    if (!$settings || (int)$settings['is_enabled'] !== 1) {
+        json_error('LINE_DISABLED', 'LINE連携が無効です', 400);
+    }
+    if (empty($settings['channel_access_token'])) {
+        json_error('TOKEN_MISSING', 'Channel Access Token が未設定です', 400);
+    }
+
+    $linkStmt = $pdo->prepare(
+        'SELECT l.id, l.line_user_id, l.display_name, c.customer_name
+           FROM reservation_customer_line_links l
+           LEFT JOIN reservation_customers c
+             ON c.id = l.reservation_customer_id
+            AND c.tenant_id = l.tenant_id
+          WHERE l.id = ? AND l.tenant_id = ? AND l.link_status = "linked"
+          LIMIT 1'
+    );
+    $linkStmt->execute([$linkId, $user['tenant_id']]);
+    $link = $linkStmt->fetch();
+    if (!$link || empty($link['line_user_id'])) {
+        json_error('LINK_NOT_FOUND', '連携中の LINE 顧客が見つかりません', 404);
+    }
+
+    $message = "POSLA LINE接続テスト\n"
+        . "このメッセージが届いていれば、LINE公式アカウントの接続は有効です。\n"
+        . date('Y-m-d H:i:s');
+    $result = line_push_message($settings['channel_access_token'], $link['line_user_id'], [line_text_message($message)]);
+
+    json_response([
+        'sent' => !empty($result['success']),
+        'http_status' => isset($result['http_status']) ? (int)$result['http_status'] : 0,
+        'error' => $result['success'] ? null : ($result['error'] ?? 'LINE_SEND_FAILED'),
+        'target' => [
+            'link_id' => $link['id'],
+            'customer_name' => $link['customer_name'] ?? '',
+            'display_name' => $link['display_name'] ?? '',
+        ],
+    ]);
 }

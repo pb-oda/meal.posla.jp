@@ -1704,6 +1704,7 @@
       html += group('waitlist_lock_minutes', 'キャンセル待ち優先確保 (分)', s.waitlist_lock_minutes || 15, 'number');
       html += '<div class="rb-modal__form-group"><label><input type="checkbox" name="sms_enabled" ' + (parseInt(s.sms_enabled, 10) ? 'checked' : '') + '> SMS Webhook通知を有効化</label></div>';
       html += group('sms_webhook_url', 'SMS Webhook URL (https)', s.sms_webhook_url || '', 'url');
+      html += '<div class="rb-modal__form-group"><label>SMSテスト送信先</label><div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;"><input type="tel" id="rb-sms-test-phone" value="" placeholder="09012345678" style="flex:1;min-width:220px;"><button class="rb-btn-edit" id="rb-sms-test" type="button">SMS接続テスト</button></div></div>';
       html += '<div class="rb-modal__form-group"><label><input type="checkbox" name="ai_chat_enabled" ' + (parseInt(s.ai_chat_enabled, 10) ? 'checked' : '') + '> AIチャット予約 (Gemini)</label></div>';
       html += group('notification_email', '店舗側通知メール', s.notification_email || '', 'email');
       html += group('notes_to_customer', '客向け注意事項', s.notes_to_customer || '', 'textarea');
@@ -1711,6 +1712,7 @@
       html += '</form>';
       document.getElementById('rb-settings-area').innerHTML = html;
       document.getElementById('rb-set-save').addEventListener('click', saveSettings);
+      document.getElementById('rb-sms-test').addEventListener('click', testSmsConnection);
     });
     function group(name, label, value, type) {
       if (type === 'textarea') return '<div class="rb-modal__form-group"><label>' + label + '</label><textarea name="' + name + '" rows="2">' + escapeHtml(value) + '</textarea></div>';
@@ -1732,6 +1734,14 @@
     apiSend('PATCH', '/reservation-settings.php', body, function (err) {
       if (err) { alert(err.message); return; }
       alert('設定を保存しました');
+    });
+  }
+  function testSmsConnection() {
+    var phone = document.getElementById('rb-sms-test-phone').value;
+    apiSend('POST', '/reservation-notification-test.php', { store_id: _storeId, channel: 'sms', phone: phone }, function (err, data) {
+      if (err) { alert(err.message); return; }
+      if (data && data.sent) alert('SMS接続テストを実行しました');
+      else alert('SMS接続テストに失敗しました: ' + ((data && data.error) ? data.error : 'unknown'));
     });
   }
 

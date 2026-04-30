@@ -96,6 +96,10 @@ var AdminApi = (function () {
     return request('PATCH', '/owner/line-settings.php', data);
   }
 
+  function testLinePush(linkId) {
+    return request('POST', '/owner/line-settings.php', { action: 'test_push', link_id: linkId });
+  }
+
   // L-17 Phase 2A-1: LINE 顧客連携
   function getLineCustomerLinks() {
     return request('GET', '/owner/line-customer-links.php');
@@ -806,6 +810,7 @@ var AdminApi = (function () {
     updateTenant: updateTenant,
     getLineSettings: getLineSettings,
     updateLineSettings: updateLineSettings,
+    testLinePush: testLinePush,
     getLineCustomerLinks: getLineCustomerLinks,
     unlinkLineCustomer: unlinkLineCustomer,
     getLineLinkTokens: getLineLinkTokens,
