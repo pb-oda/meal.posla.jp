@@ -3092,12 +3092,28 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
 }
 .shift-section-header h3 {
   margin: 0;
   font-size: 1.1rem;
+}
+.cal-weekbar {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+.cal-weekbar__range {
+  min-width: 220px;
+  text-align: center;
+}
+.cal-weekbar__range span {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
 }
 
 /* シフトテーブル共通 */
@@ -3125,65 +3141,114 @@ body {
 
 /* 週間カレンダー */
 .cal-scroll {
-  overflow-x: auto;
-  margin: 0 -16px;
-  padding: 0 16px;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  max-height: calc(100vh - 300px);
+  min-height: 360px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
 }
 .shift-calendar-table {
-  min-width: 700px;
+  min-width: 1080px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.shift-calendar-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  border-top: none;
 }
 .cal-name-col {
   white-space: nowrap;
   font-weight: 600;
-  min-width: 90px;
+  min-width: 150px;
+  width: 150px;
   text-align: left !important;
   position: sticky;
   left: 0;
   background: #fff;
-  z-index: 1;
+  z-index: 2;
+  box-shadow: 1px 0 0 var(--border);
+}
+.shift-calendar-table thead .cal-name-col {
+  z-index: 4;
+  background: #f8fafc;
 }
 .cal-day-col {
-  min-width: 80px;
+  min-width: 130px;
+  width: 130px;
+  background: #f8fafc;
+}
+.cal-day-col__date,
+.cal-day-col__dow {
+  display: block;
+  line-height: 1.25;
+}
+.cal-day-col__date {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+.cal-day-col__dow {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
 }
 .cal-day-col.weekend {
-  background: #fff3e0;
+  background: #fff7ed;
+}
+.cal-day-col.today {
+  background: #e8f0ff;
+  color: var(--primary-dark);
 }
 .cal-cell {
   cursor: pointer;
-  min-height: 48px;
+  height: 78px;
   vertical-align: top;
-  padding: 4px !important;
+  padding: 6px !important;
+  background: #fff;
 }
 .cal-cell:hover {
   background: rgba(63, 81, 181, 0.08);
 }
+.cal-cell.today {
+  background: #f6f9ff;
+}
 
 /* シフトセル内のシフト表示 */
 .cal-shift {
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  padding: 5px 6px;
+  border-radius: 6px;
+  font-size: 0.78rem;
   line-height: 1.3;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
   cursor: pointer;
+  border: 1px solid transparent;
+  word-break: keep-all;
 }
 .cal-shift.shift-draft {
-  background: #e0e0e0;
-  color: #666;
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
 }
 .cal-shift.shift-published {
-  background: #bbdefb;
-  color: #1565c0;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
 }
 .cal-shift.shift-confirmed {
-  background: #c8e6c9;
-  color: #2e7d32;
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
 }
 .cal-empty {
-  color: #ccc;
+  color: #cbd5e1;
   font-size: 1.2rem;
   text-align: center;
-  line-height: 40px;
+  line-height: 58px;
 }
 
 /* 希望シフト背景色 */
@@ -3202,12 +3267,49 @@ body {
   background: var(--bg-secondary, #f5f5f5);
   font-weight: 600;
 }
+.shift-calendar-table tbody tr:last-child td {
+  border-bottom: none;
+}
 
 /* カレンダーアクション */
 .cal-actions {
   margin-bottom: 12px;
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+@media (max-width: 720px) {
+  .cal-weekbar {
+    align-items: stretch;
+  }
+  .cal-weekbar__range {
+    order: -1;
+    width: 100%;
+    text-align: left;
+  }
+  .cal-scroll {
+    max-height: 62vh;
+    min-height: 420px;
+  }
+  .shift-calendar-table {
+    min-width: 930px;
+  }
+  .cal-name-col {
+    min-width: 120px;
+    width: 120px;
+  }
+  .cal-day-col {
+    min-width: 115px;
+    width: 115px;
+  }
+  .cal-actions .btn {
+    flex: 1 1 44%;
+  }
 }
 
 /* 凡例 */
@@ -3228,17 +3330,35 @@ body {
 .shift-published-swatch,
 .shift-confirmed-swatch,
 .avail-preferred-swatch,
-.avail-unavailable-swatch {
+.avail-unavailable-swatch,
+.shift-help-swatch {
   display: inline-block;
   width: 14px;
   height: 14px;
   border-radius: 3px;
 }
-.shift-draft-swatch { background: #e0e0e0; }
-.shift-published-swatch { background: #bbdefb; }
-.shift-confirmed-swatch { background: #c8e6c9; }
+.shift-draft-swatch { background: #f1f5f9; border: 1px solid #cbd5e1; }
+.shift-published-swatch { background: #dbeafe; border: 1px solid #bfdbfe; }
+.shift-confirmed-swatch { background: #dcfce7; border: 1px solid #bbf7d0; }
 .avail-preferred-swatch { background: rgba(255, 193, 7, 0.4); }
 .avail-unavailable-swatch { background: rgba(229, 57, 53, 0.3); }
+.shift-help-swatch { background: #ffedd5; border: 1px solid #fdba74; }
+.cal-shift.shift-help {
+  background: #ffedd5;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+.help-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
 
 /* ダイアログ */
 .shift-dialog-overlay {
@@ -7344,6 +7464,81 @@ button.ops-kpi:hover {
   word-break: break-all;
 }
 
+.menu-csv-panel {
+  margin: 12px 0 0;
+  padding: 14px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.menu-csv-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.menu-csv-panel__head h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--fs-lg);
+  line-height: 1.3;
+}
+
+.menu-csv-panel__head p,
+.menu-csv-panel__card p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.menu-csv-panel__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.menu-csv-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.menu-csv-panel__card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.menu-csv-panel__card h4 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+}
+
+.menu-csv-panel__card code {
+  display: block;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
 .settings-logo-upload .form-input {
   flex: 1 1 auto;
 }
@@ -7367,8 +7562,18 @@ button.ops-kpi:hover {
   .ops-two-col,
   .ops-kpi-grid,
   .ops-check-grid,
-  .csv-guide__grid {
+  .csv-guide__grid,
+  .menu-csv-panel__grid {
     grid-template-columns: 1fr;
+  }
+
+  .menu-csv-panel__head {
+    flex-direction: column;
+  }
+
+  .menu-csv-panel__actions {
+    justify-content: flex-start;
+    width: 100%;
   }
 
   .ops-list-row span {

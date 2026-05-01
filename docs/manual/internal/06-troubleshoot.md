@@ -37,7 +37,7 @@ POSLA運営（プラスビリーフ）がテナントからの問い合わせや
 | 3 | エラーコード（`[Exxxx]`） | スクリーンショット | あればカタログ確認、なければ症状から推定 |
 | 4 | 症状の再現性（毎回/たまに） | 聞き取り | 「たまに」なら時間帯ログを取る |
 | 5 | ブラウザ・端末 | 聞き取り | KDS/レジ/ハンディは Android Chrome が標準環境。iOS Safari は業務端末としては非推奨 (音声操作・通知音・PWAインストールに制約) |
-| 6 | サーバー応答 | `curl http://127.0.0.1:8081/api/monitor/ping.php` または `curl https://meal.posla.jp/api/monitor/ping.php` | 落ちてれば全体障害 |
+| 6 | サーバー応答 | `curl http://127.0.0.1:8081/api/monitor/ping.php` または `curl https://<production-domain>/api/monitor/ping.php` | 落ちてれば全体障害 |
 | 7 | 直近 1 時間の error_log 状況 | 6.11 のクエリ実行 | 多発なら共通障害 |
 | 8 | 該当テナントの `is_active` | `SELECT is_active, subscription_status FROM tenants WHERE slug=?` | 0 なら停止中 |
 
@@ -473,7 +473,7 @@ WHERE user_id IN (SELECT id FROM users WHERE tenant_id = (SELECT id FROM tenants
 3. 発生時刻を確認
    ↓
 4. ヘルスチェック確認:
-   - https://meal.posla.jp/api/monitor/ping.php → 200 OK?
+   - https://<production-domain>/api/monitor/ping.php → 200 OK?
    - サーバー負荷（監視コンソール / `docker stats`）
    - monitor_events に異常記録ないか
    ↓
@@ -663,7 +663,7 @@ ORDER BY created_at DESC;
 お客様から「`E2017` というエラーが出ました」と連絡が来た場合:
 
 1. **まずカタログを確認**:
-   - tenant 公開版 → `https://meal.posla.jp/docs-tenant/tenant/99-error-catalog.html`
+   - tenant 公開版 → `https://<production-domain>/docs-tenant/tenant/99-error-catalog.html`
    - リポジトリ → `docs/manual/tenant/99-error-catalog.md`
    - **POSLA管理画面 → サポートタブ → エラーコード** で `E2017` を直引き（2026-04-23 以降、非AI の `posla-supportdesk.js` + `internal-supportdesk.json` 経由。代表 10 件は即表示、全件は上記カタログへ誘導）
 2. カタログ記載の対処方法をお客様に案内
@@ -836,7 +836,7 @@ generator は `docs/manual/tenant/99-error-catalog.md` の `### Exxxx` 詳細ブ
 現行の container-based 配備では、503 切替は **reverse proxy / LB / Apache vhost** 側で行います。
 最低限の条件は次の 2 点です。
 
-- `https://meal.posla.jp/api/monitor/ping.php` は生かす
+- `https://<production-domain>/api/monitor/ping.php` は生かす
 - それ以外は `503 Service Unavailable` + `Retry-After` を返す
 
 アプリコード側を急に書き換えるのではなく、**入口で止める** のが原則です。
@@ -1079,7 +1079,7 @@ HAVING distinct_ips >= 3;
 
 ```bash
 # 1. ヘルスチェック
-curl https://meal.posla.jp/api/monitor/ping.php
+curl https://<production-domain>/api/monitor/ping.php
 
 # 2. DB 接続確認（credentials は env 経由で供給）
 source docker/env/app.env
@@ -1184,7 +1184,7 @@ POSLA 運営チーム / プラスビリーフ株式会社
 
 | ツール | 用途 |
 |---|---|
-| `https://meal.posla.jp/api/monitor/ping.php` | ヘルスチェック |
+| `https://<production-domain>/api/monitor/ping.php` | ヘルスチェック |
 | `tail -f /home/odah/log/php_errors.log` | リアルタイム PHP エラー監視 |
 | `mysql -e "SELECT * FROM error_log ORDER BY id DESC LIMIT 20"` | API エラー直近 20 件 |
 | Chrome DevTools → Network | フロント側のリクエスト/レスポンス確認 |
@@ -1214,7 +1214,7 @@ POSLA 運営チーム / プラスビリーフ株式会社
 A. CP1 / CB1d の仕様。PIN 入力ミス、または該当スタッフが未出勤。`SELECT cashier_pin_hash, ... FROM users WHERE id=?` と `attendance_logs` を確認。
 
 ### Q2. 全テナントが急に「サーバーエラー」を出している
-A. **全体障害**。`https://meal.posla.jp/api/monitor/ping.php` または `http://127.0.0.1:8081/api/monitor/ping.php` を確認。落ちていればインフラ障害情報 / DB 接続テスト → 6.15 へ。
+A. **全体障害**。`https://<production-domain>/api/monitor/ping.php` または `http://127.0.0.1:8081/api/monitor/ping.php` を確認。落ちていればインフラ障害情報 / DB 接続テスト → 6.15 へ。
 
 ### Q3. 特定テナントだけログインできない
 A. `SELECT is_active, subscription_status FROM tenants WHERE slug=?`。`is_active=0` or `subscription_status='canceled'` なら停止中。

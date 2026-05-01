@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#3f51b5">
   <title>管理ダッシュボード</title>
-  <link rel="stylesheet" href="css/admin.css?v=20260430-admin-ops">
+  <link rel="stylesheet" href="css/admin.css?v=20260430-calendar-csv-visibility">
   <link rel="stylesheet" href="css/reservation-board.css?v=20260430-reservation-empty-state">
   <style>
     /* L-3 Phase 3: ヘルプスタッフ表示 */
@@ -251,27 +251,34 @@
         <div class="panel-toolbar__actions">
           <button class="btn btn-sm btn-outline" id="btn-translate-menu" title="未翻訳の品目のみ英語・中国語・韓国語に翻訳（既存の翻訳は保持）">🌐 一括翻訳</button>
           <button class="btn btn-sm btn-outline" id="btn-retranslate-menu" title="既存の翻訳を全て上書きして再生成">🔄 強制再翻訳</button>
-          <button class="btn btn-sm btn-outline" id="btn-override-csv-export">CSVエクスポート</button>
-          <button class="btn btn-sm btn-outline" id="btn-override-csv-import">CSVインポート</button>
-          <input type="file" accept=".csv" id="override-csv-file" style="display:none">
           <button class="btn btn-primary" id="btn-add-store-menu">+ メニュー追加</button>
         </div>
       </div>
-      <details class="csv-guide">
-        <summary>CSVの書き方・取込ルール</summary>
-        <div class="csv-guide__grid">
+      <section class="menu-csv-panel" aria-label="CSV一括更新">
+        <div class="menu-csv-panel__head">
           <div>
-            <h3>店舗メニューCSV</h3>
-            <p>既存の「CSVエクスポート」でテンプレートを出し、列名を変えずに編集してからインポートします。価格、非表示、品切れ、店舗別画像URLを一括更新できます。</p>
+            <h3>CSV一括更新</h3>
+            <p>価格、非表示、品切れ、画像URLをまとめて更新します。最初にエクスポートしたCSVを編集してから取り込みます。</p>
+          </div>
+          <div class="menu-csv-panel__actions">
+            <button class="btn btn-sm btn-outline" id="btn-override-csv-export">CSVエクスポート</button>
+            <button class="btn btn-sm btn-primary" id="btn-override-csv-import">CSVインポート</button>
+            <input type="file" accept=".csv" id="override-csv-file" style="display:none">
+          </div>
+        </div>
+        <div class="menu-csv-panel__grid">
+          <div class="menu-csv-panel__card">
+            <h4>店舗メニューCSV</h4>
+            <p>本部マスタの商品に対して、店舗別の価格・非表示・品切れ・画像URLだけを上書きします。</p>
             <code>template_id,name,category_name,base_price,price,is_hidden,is_sold_out,image_url</code>
           </div>
-          <div>
-            <h3>限定メニューCSV</h3>
-            <p>店舗だけで扱う日替わり・季節商品は「限定メニュー」側のCSVを使います。カテゴリ名、商品名、価格、説明、画像URL、品切れを登録できます。</p>
+          <div class="menu-csv-panel__card">
+            <h4>限定メニューCSV</h4>
+            <p>日替わり・季節商品など、その店舗だけの商品は「限定メニュー」タブでCSV入出力します。</p>
             <code>id,category_name,name,name_en,description,price,image_url,is_sold_out</code>
           </div>
         </div>
-      </details>
+      </section>
       <!-- N-1: 今日のおすすめ設定 -->
       <details class="recommend-section" style="margin:12px 0;border:1px solid var(--border-color,#ddd);border-radius:8px;padding:0">
         <summary style="padding:10px 16px;cursor:pointer;font-weight:600;font-size:0.95rem;background:var(--bg-secondary,#f5f5f5);border-radius:8px">今日のおすすめ設定</summary>
@@ -939,7 +946,7 @@
   <script src="js/takeout-manager.js"></script>
   <script src="js/ai-assistant.js?v=20260422-batch-a2b"></script>
   <script src="../js/shift-manager.js?v=20260430-shift-announce-mobile"></script>
-  <script src="../js/shift-calendar.js?v=20260430-shift-announce-mobile"></script>
+  <script src="../js/shift-calendar.js?v=20260430-calendar-csv-visibility"></script>
   <script src="js/shift-help.js?v=20260430-shift-field-diff"></script>
   <script src="../js/attendance-clock.js?v=20260430-staff-home-ops"></script>
   <script src="js/reservation-board.js?v=20260430-reservation-fast-tab"></script>
@@ -1712,6 +1719,10 @@
       document.querySelectorAll('.tab-panel').forEach(function (p) {
         p.classList.toggle('active', p.id === 'panel-' + tabId);
       });
+
+      if (tabId === 'shift-calendar' || tabId === 'store-menu') {
+        window.scrollTo(0, 0);
+      }
 
       // データ読み込み
       switch (tabId) {

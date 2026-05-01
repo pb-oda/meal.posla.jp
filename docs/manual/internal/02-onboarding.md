@@ -108,7 +108,7 @@ POST /api/signup/register.php
 ### 2.1.1 LP（ランディングページ）からの申込
 
 テナント側の操作（参考）：
-1. ブラウザで `https://meal.posla.jp/` にアクセス
+1. ブラウザで `https://<production-domain>/` にアクセス
 2. 「30日無料トライアルを始める」ボタンをクリック
 3. 申込フォームに以下を入力:
 

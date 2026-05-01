@@ -14,7 +14,7 @@ hero:
       link: /operations/part1-daily-operations
 features:
   - title: 管理画面
-    details: 店舗ダッシュボード、タブ操作、店舗切替、メニュー・テーブル・レポート・設定の入口です。
+    details: 運営コックピット、全体検索、売上ドリル、初期設定、端末稼働、カート離脱まで、店長が毎日見る入口です。
     link: /tenant/03-dashboard
   - title: メニュー管理
     details: カテゴリ、商品、オプション、限定メニュー、CSV入出力、多言語表示の設定方法を確認できます。
@@ -29,17 +29,20 @@ features:
     details: 通常会計、支払い記録、個別会計、返金、レジ開け、現金移動、レジ締め、緊急レジを確認できます。
     link: /tenant/08-cashier
   - title: テイクアウト
-    details: テイクアウト設定、注文受付、受取時間、受け渡し、決済済み注文の扱いを確認できます。
+    details: 受取時間枠、厨房キャパ、SLA警告、梱包、準備完了通知、受取遅れ、キャンセル・返金対応を確認できます。
     link: /tenant/09-takeout
   - title: 予約管理
-    details: 予約ページ、予約台帳、自動着席、無断キャンセル管理、予約金、コース予約の使い方を確認できます。
+    details: 予約台帳、当日受付、顧客台帳、空席判定、変更履歴、リマインド、予約金、キャンセル待ちを確認できます。
     link: /tenant/24-reservations
   - title: シフト管理・勤怠
-    details: シフト作成、希望提出、出退勤打刻、GPS確認、人件費の確認など、スタッフ管理の操作を確認できます。
+    details: スマホ前提のスタッフ画面、希望提出依頼、交代/欠勤申請、当日・ヘルプ、担当作業、人件費を確認できます。
     link: /tenant/12-shift
   - title: レポート
-    details: 売上、ABC分析、回転率、スタッフ評価、レジ分析、CSV出力を確認できます。
+    details: 売上、レジ、注文、回転率、スタッフ評価、満足度、併売、売上ドリル、カート離脱を確認できます。
     link: /tenant/13-reports
+  - title: 店舗設定
+    details: 営業日区切り、税率、レジ、プリンタ、テイクアウト枠、予約QR、ロゴアップロード、外観を確認できます。
+    link: /tenant/16-settings
   - title: セルフオーダー
     details: お客様画面、AIウェイター、呼び出し、テーブル開放認証の流れを確認できます。
     link: /tenant/17-customer

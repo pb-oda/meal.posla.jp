@@ -24,6 +24,11 @@ id_ecdsa.pem
 id_ecdsa
 *.pem
 sshkey.txt
+擬似本番アカウント.txt
+
+# ローカル実行用 env / trigger secret は Cloud Build に送らない
+docker/env/*.env
+!docker/env/*.env.example
 
 # DB 接続は環境変数で渡す。database.php 自体は env 参照コードなので
 # cell artifact には含める。
@@ -45,9 +50,12 @@ uploads/
 
 # 内部資料 / 社外秘
 docs/internal/
+*no_deploy/
+public/docs-internal/
 
 # Node
 node_modules/
+**/node_modules/
 npm-debug.log
 
 # VitePress build artifacts

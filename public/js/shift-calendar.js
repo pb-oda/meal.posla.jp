@@ -222,9 +222,12 @@
             var end = formatDate(endDt);
 
             // ── ヘッダー: 週ナビ + アクション ──
-            var html = '<div class="shift-section-header">' +
+            var html = '<div class="shift-section-header cal-weekbar">' +
                 '<button class="btn btn-sm" id="cal-prev">◀ 前の週</button>' +
+                '<div class="cal-weekbar__range">' +
                 '<h3>' + start + ' 〜 ' + end + '</h3>' +
+                '<span>スタッフ別の週間シフト</span>' +
+                '</div>' +
                 '<button class="btn btn-sm" id="cal-next">次の週 ▶</button>' +
                 '</div>' +
                 '<div class="cal-actions">' +
@@ -232,10 +235,6 @@
                 '<button class="btn btn-sm" id="cal-availability-announce">希望提出依頼</button> ' +
                 '<button class="btn btn-sm cal-ai-btn" id="cal-ai-suggest">AI提案</button> ' +
                 '<button class="btn btn-sm btn-primary" id="cal-publish">確定する</button>' +
-                '</div>';
-
-            html += '<div id="cal-publish-check" class="cal-publish-check">' +
-                '<div class="cal-publish-check__loading">公開前チェックを読み込み中...</div>' +
                 '</div>';
 
             // ── カレンダーテーブル ──
@@ -246,6 +245,7 @@
                 dates.push({ str: formatDate(dt), date: new Date(dt), dow: dt.getDay() });
                 dt.setDate(dt.getDate() + 1);
             }
+            var todayStr = formatDate(new Date());
 
             html += '<div class="cal-scroll"><table class="shift-table shift-calendar-table">';
 
@@ -254,9 +254,10 @@
             for (var h = 0; h < dates.length; h++) {
                 var dInfo = dates[h];
                 var isWeekend = (dInfo.dow === 0 || dInfo.dow === 6);
-                html += '<th class="cal-day-col' + (isWeekend ? ' weekend' : '') + '">' +
-                        (dInfo.date.getMonth() + 1) + '/' + dInfo.date.getDate() +
-                        '<br><small>' + DAY_NAMES[dInfo.dow] + '</small></th>';
+                var dayClass = 'cal-day-col' + (isWeekend ? ' weekend' : '') + (dInfo.str === todayStr ? ' today' : '');
+                html += '<th class="' + dayClass + '">' +
+                        '<span class="cal-day-col__date">' + (dInfo.date.getMonth() + 1) + '/' + dInfo.date.getDate() + '</span>' +
+                        '<span class="cal-day-col__dow">' + DAY_NAMES[dInfo.dow] + '</span></th>';
             }
             html += '</tr></thead><tbody>';
 
@@ -290,7 +291,7 @@
                     var cellAssignments = (assignMap[usr.id] && assignMap[usr.id][dateStr]) || [];
                     var cellAvail = (availMap[usr.id] && availMap[usr.id][dateStr]) || null;
 
-                    var cellClass = 'cal-cell';
+                    var cellClass = 'cal-cell' + (dateStr === todayStr ? ' today' : '');
                     var cellContent = '';
 
                     // 希望の背景色 + 希望時間帯表示
@@ -408,6 +409,10 @@
             if (weekLaborCost > 0) {
                 html += '<div class="cal-week-cost">推定週間人件費: <strong>¥' + weekLaborCost.toLocaleString() + '</strong></div>';
             }
+
+            html += '<div id="cal-publish-check" class="cal-publish-check">' +
+                '<div class="cal-publish-check__loading">公開前チェックを読み込み中...</div>' +
+                '</div>';
 
             container.innerHTML = html;
 
