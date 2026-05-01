@@ -1,14 +1,38 @@
-# AGENTS.md — 【擬似本番環境】meal.posla.jp
+# AGENTS.md — meal.posla.jp（テスト/本番 共通）
 
-## この環境の位置付け
+## このリポジトリの位置付け
 
-このフォルダは POSLA の **擬似本番環境** です。
-**Docker Compose で `127.0.0.1:8081` に起動し**、本番移行前の vendor-neutral 検証・本番デプロイ前の dry-run・運用支援基盤（`【AI運用支援】codex-ops-platform`）の接続先として使います。
+このリポジトリは POSLA の `meal.posla.jp` 用コードベースです。
+ローカル作業フォルダは **【テスト環境】meal.posla.jp** と **【本番環境】meal.posla.jp** に分けて運用します。
+
+| フォルダ | Gitブランチ | 目的 | 直接編集 |
+|---|---|---|---|
+| `【テスト環境】meal.posla.jp` | `test` | 通常開発・修正・スモーク・本番前確認 | OK |
+| `【本番環境】meal.posla.jp` | `main` または releaseタグ | Cloud Run本番デプロイ用の固定状態 | 原則禁止 |
+
+**本番フォルダへ手動コピーしてはいけません。**
+テスト環境で確認済みの commit を GitHub に push し、本番環境フォルダでは `git pull` または releaseタグ checkout で取り込みます。
+
+## 【テスト環境】meal.posla.jp
+
+普段の実装・検証は **【テスト環境】meal.posla.jp** で行います。
+Docker Compose で `127.0.0.1:8081` に起動し、本番移行前の vendor-neutral 検証・本番デプロイ前 dry-run・運用支援基盤（`【AI運用支援】codex-ops-platform`）の接続先として使います。
 
 - **配信先 URL**: `http://127.0.0.1:8081`（ローカル Docker のみ、外部公開しない）
-- **起動方法**: このフォルダで `docker compose up -d`
+- **起動方法**: テスト環境フォルダで `docker compose up -d`
 - **DB**: Docker 内 MySQL 5.7（ホスト公開ポート `3306`、`host.docker.internal:3306`）
 - **ファイル配信**: `./public`, `./api`, `./docs`, `./scripts` を bind mount
+- **Git運用**: 作業後は `test` ブランチへ commit/push する
+
+## 【本番環境】meal.posla.jp
+
+本番環境フォルダは、Cloud Run 本番デプロイ用の作業コピーです。
+通常の実装・修正は行わず、テスト環境で検証済みの commit だけを取り込みます。
+
+- **Git運用**: `main` ブランチ、または `release-*` / `cloudrun-preflight-*` タグを使用する
+- **取り込み方法**: `git pull`、または `git fetch --tags` + releaseタグ checkout
+- **禁止事項**: 本番フォルダで直接ファイル編集しない。本番フォルダから新規実装を始めない。
+- **デプロイ前提**: Gemini API / 本番 Stripe API などの本番SecretはCloud Run/Secret Manager側で設定する
 
 ## ドキュメント表記ルール（重要）
 
@@ -23,16 +47,17 @@
 
 ## 【デモ環境】との役割分担（厳守）
 
-| 項目 | 【擬似本番環境】（このフォルダ） | 【デモ環境】 |
-|---|---|---|
-| 目的 | 本番移行前の vendor-neutral 検証 | 営業デモ・社内レビュー |
-| 配信先 | Docker `127.0.0.1:8081` | `eat.posla.jp`（sandbox） |
-| ドキュメント URL | `<production-domain>` プレースホルダ | `eat.posla.jp` 明示 |
-| DB | Docker 内 MySQL 5.7 (host:3306) | さくら mysql80（共有 sandbox） |
-| デプロイ | `docker compose up` のみ | `scp`/`ssh` で sandbox に配布 |
+| 項目 | 【テスト環境】 | 【本番環境】 | 【デモ環境】 |
+|---|---|---|---|
+| 目的 | 通常開発・本番前検証 | Cloud Run本番デプロイ | 営業デモ・社内レビュー |
+| 配信先 | Docker `127.0.0.1:8081` | `<production-domain>` | `eat.posla.jp`（sandbox） |
+| ドキュメント URL | `<production-domain>` プレースホルダ | `<production-domain>` | `eat.posla.jp` 明示 |
+| DB | Docker 内 MySQL 5.7 (host:3306) | 本番DB | さくら mysql80（共有 sandbox） |
+| デプロイ | `docker compose up` のみ | Cloud Run | `scp`/`ssh` で sandbox に配布 |
 
-- **両環境間で `rsync --delete` してはならない。** 2026-04-24 のインシデント以降、両 tree は完全独立運用。
-- このフォルダのコード/ドキュメントは **【デモ環境】とは別の実体**として編集する。両者の乖離を恐れない。
+- **環境間で `rsync --delete` してはならない。** 2026-04-24 のインシデント以降、tree 間の自動同期は禁止。
+- **【テスト環境】/【本番環境】から【デモ環境】へ自動同期してはならない。**
+- 【デモ環境】側で同じ修正を適用する必要があるなら、手動で Edit する。
 
 ## 起動・停止手順
 
@@ -54,18 +79,20 @@ docker compose down
 
 ## 【AI運用支援】codex-ops-platform から接続される
 
-`/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【AI運用支援】codex-ops-platform` は、この擬似本番環境に対して **read-only で疎通確認**する外部スキャフォールドです。
+`/Users/odahiroki/Library/CloudStorage/GoogleDrive-oda@plusbelief.co.jp/共有ドライブ/05_infra/※開発関連/POSLA/【AI運用支援】codex-ops-platform` は、テスト環境に対して **read-only で疎通確認**する外部スキャフォールドです。
 
 - App ping URL: `http://host.docker.internal:8081/api/monitor/ping.php`
 - DB: `host.docker.internal:3306`（read-only アカウントで接続）
 
-このフォルダの Docker を落とすと、AI運用支援側の bootstrap も失敗する。
+テスト環境の Docker を落とすと、AI運用支援側の bootstrap も失敗する。
 
-## チェックリスト（このフォルダで作業する時）
+## チェックリスト（作業する時）
 
-- [ ] 自分が今いるフォルダが **`【擬似本番環境】meal.posla.jp`** であることを `pwd` で確認
+- [ ] 通常作業は **`【テスト環境】meal.posla.jp`** で行っていることを `pwd` で確認
+- [ ] **`【本番環境】meal.posla.jp`** で直接編集していないことを確認
 - [ ] ドキュメントに `eat.posla.jp` を書こうとしていないか確認（`<production-domain>` を優先）
-- [ ] 変更後は **Docker Compose で確認**する（sandbox には配布しない）
+- [ ] 変更後は **テスト環境の Docker Compose で確認**する（sandbox には配布しない）
+- [ ] テストOK後は `test` へ commit/push し、本番反映時だけ `main` または releaseタグへ昇格する
 - [ ] 【デモ環境】のファイルは触らない
 - [ ] 【デモ環境】側で同じ修正を適用する必要があるなら、**手動で** Edit する（rsync 禁止）
 
@@ -243,7 +270,7 @@ docker compose down
 <claude-mem-context>
 # Memory Context
 
-# [【擬似本番環境】meal.posla.jp] recent context, 2026-05-01 12:20pm GMT+9
+# [【擬似本番環境】meal.posla.jp] recent context, 2026-05-01 12:32pm GMT+9
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision
 Format: ID TIME TYPE TITLE
