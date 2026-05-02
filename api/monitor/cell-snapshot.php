@@ -47,6 +47,9 @@ $snapshot['monitor_events'] = fetch_monitor_event_summary($pdo);
 $snapshot['tier0'] = fetch_tier0_payment_cashier_snapshot($pdo);
 $snapshot['kds'] = fetch_kds_operations_snapshot($pdo);
 $snapshot['register'] = fetch_register_operations_snapshot($pdo);
+$snapshot['reservations'] = fetch_reservation_operations_snapshot($pdo);
+$snapshot['shifts'] = fetch_shift_operations_snapshot($pdo);
+$snapshot['takeout'] = fetch_takeout_operations_snapshot($pdo);
 $snapshot['terminal_heartbeat'] = apply_terminal_heartbeat_operational_policy(
     fetch_terminal_heartbeat_snapshot($pdo),
     $snapshot
@@ -61,7 +64,7 @@ if (!empty($snapshot['cron']['lag_sec']) && (int)$snapshot['cron']['lag_sec'] > 
 if (!empty($snapshot['tier0']['status']) && $snapshot['tier0']['status'] === 'error') {
     $snapshot['ok'] = false;
 }
-foreach (['kds', 'register'] as $section) {
+foreach (['kds', 'register', 'reservations', 'shifts', 'takeout'] as $section) {
     if (!empty($snapshot[$section]['status']) && $snapshot[$section]['status'] === 'error') {
         $snapshot['ok'] = false;
     }
@@ -1024,6 +1027,463 @@ function fetch_register_operations_snapshot(PDO $pdo): array
     return $snapshot;
 }
 
+function fetch_reservation_operations_snapshot(PDO $pdo): array
+{
+    $snapshot = [
+        'status' => 'ok',
+        'thresholds' => [
+            'pending_warn_min' => 15,
+            'arrival_warn_min' => 30,
+            'notification_queue_warn_min' => 10,
+        ],
+        'reservations_available' => false,
+        'notifications_available' => false,
+        'pending_reservations_over_15m' => null,
+        'pending_reservations' => [],
+        'arrival_unhandled_over_30m' => null,
+        'arrival_unhandled' => [],
+        'failed_notifications_24h' => null,
+        'failed_notifications' => [],
+        'queued_notifications_over_10m' => null,
+        'queued_notifications' => [],
+    ];
+
+    try {
+        if (table_exists($pdo, 'reservations')) {
+            $snapshot['reservations_available'] = true;
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM reservations
+                 WHERE status = 'pending'
+                   AND created_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)"
+            );
+            $snapshot['pending_reservations_over_15m'] = (int)$stmt->fetchColumn();
+            if ($snapshot['pending_reservations_over_15m'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+
+            $rows = $pdo->query(
+                "SELECT r.id AS reservation_id, r.tenant_id,
+                        t.slug AS tenant_slug, t.name AS tenant_name,
+                        r.store_id, s.slug AS store_slug, s.name AS store_name,
+                        r.customer_name, r.party_size, r.reserved_at, r.status,
+                        r.source, r.created_at, r.updated_at
+                 FROM reservations r
+                 LEFT JOIN stores s ON s.id = r.store_id
+                 LEFT JOIN tenants t ON t.id = r.tenant_id
+                 WHERE r.status = 'pending'
+                   AND r.created_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+                 ORDER BY r.created_at ASC
+                 LIMIT 10"
+            );
+            $snapshot['pending_reservations'] = $rows ? $rows->fetchAll() : [];
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM reservations
+                 WHERE status = 'confirmed'
+                   AND reserved_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                   AND table_session_id IS NULL"
+            );
+            $snapshot['arrival_unhandled_over_30m'] = (int)$stmt->fetchColumn();
+            if ($snapshot['arrival_unhandled_over_30m'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+
+            $rows = $pdo->query(
+                "SELECT r.id AS reservation_id, r.tenant_id,
+                        t.slug AS tenant_slug, t.name AS tenant_name,
+                        r.store_id, s.slug AS store_slug, s.name AS store_name,
+                        r.customer_name, r.party_size, r.reserved_at, r.status,
+                        r.source, r.created_at, r.updated_at
+                 FROM reservations r
+                 LEFT JOIN stores s ON s.id = r.store_id
+                 LEFT JOIN tenants t ON t.id = r.tenant_id
+                 WHERE r.status = 'confirmed'
+                   AND r.reserved_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                   AND r.table_session_id IS NULL
+                 ORDER BY r.reserved_at ASC
+                 LIMIT 10"
+            );
+            $snapshot['arrival_unhandled'] = $rows ? $rows->fetchAll() : [];
+        }
+
+        if (table_exists($pdo, 'reservation_notifications_log')) {
+            $snapshot['notifications_available'] = true;
+            $resolvedClause = column_exists($pdo, 'reservation_notifications_log', 'resolved_at')
+                ? 'AND resolved_at IS NULL'
+                : '';
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM reservation_notifications_log
+                 WHERE status = 'failed'
+                   AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                   " . $resolvedClause
+            );
+            $snapshot['failed_notifications_24h'] = (int)$stmt->fetchColumn();
+            if ($snapshot['failed_notifications_24h'] > 0) {
+                raise_operational_status($snapshot, 'error');
+            }
+
+            $rows = $pdo->query(
+                "SELECT rnl.id AS notification_id, rnl.reservation_id, rnl.store_id,
+                        s.slug AS store_slug, s.name AS store_name,
+                        t.id AS tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                        rnl.notification_type, rnl.channel, rnl.status,
+                        rnl.error_message, rnl.created_at, rnl.sent_at
+                 FROM reservation_notifications_log rnl
+                 LEFT JOIN stores s ON s.id = rnl.store_id
+                 LEFT JOIN tenants t ON t.id = s.tenant_id
+                 WHERE rnl.status = 'failed'
+                   AND rnl.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                   " . str_replace('resolved_at', 'rnl.resolved_at', $resolvedClause) . "
+                 ORDER BY rnl.created_at DESC
+                 LIMIT 10"
+            );
+            $snapshot['failed_notifications'] = $rows ? $rows->fetchAll() : [];
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM reservation_notifications_log
+                 WHERE status = 'queued'
+                   AND created_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
+            );
+            $snapshot['queued_notifications_over_10m'] = (int)$stmt->fetchColumn();
+            if ($snapshot['queued_notifications_over_10m'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+
+            $rows = $pdo->query(
+                "SELECT rnl.id AS notification_id, rnl.reservation_id, rnl.store_id,
+                        s.slug AS store_slug, s.name AS store_name,
+                        t.id AS tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                        rnl.notification_type, rnl.channel, rnl.status,
+                        rnl.created_at, rnl.sent_at
+                 FROM reservation_notifications_log rnl
+                 LEFT JOIN stores s ON s.id = rnl.store_id
+                 LEFT JOIN tenants t ON t.id = s.tenant_id
+                 WHERE rnl.status = 'queued'
+                   AND rnl.created_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+                 ORDER BY rnl.created_at ASC
+                 LIMIT 10"
+            );
+            $snapshot['queued_notifications'] = $rows ? $rows->fetchAll() : [];
+        }
+    } catch (PDOException $e) {
+        $snapshot['status'] = 'unknown';
+    }
+
+    return $snapshot;
+}
+
+function fetch_shift_operations_snapshot(PDO $pdo): array
+{
+    $snapshot = [
+        'status' => 'ok',
+        'thresholds' => [
+            'clock_in_missing_warn_min' => 30,
+            'open_attendance_error_hours' => 12,
+            'help_request_warn_min' => 30,
+        ],
+        'assignments_available' => false,
+        'attendance_available' => false,
+        'help_requests_available' => false,
+        'clock_in_missing_over_30m' => null,
+        'clock_in_missing' => [],
+        'open_attendance_over_12h' => null,
+        'open_attendance' => [],
+        'pending_help_requests_over_30m' => null,
+        'pending_help_requests' => [],
+    ];
+
+    try {
+        if (table_exists($pdo, 'shift_assignments')) {
+            $snapshot['assignments_available'] = true;
+            $hasAttendance = table_exists($pdo, 'attendance_logs');
+            $snapshot['attendance_available'] = $hasAttendance;
+
+            if ($hasAttendance) {
+                $stmt = $pdo->query(
+                    "SELECT COUNT(*)
+                     FROM shift_assignments sa
+                     WHERE sa.status IN ('published','confirmed')
+                       AND TIMESTAMP(sa.shift_date, sa.start_time) < DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                       AND TIMESTAMP(sa.shift_date, sa.end_time) > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+                       AND NOT EXISTS (
+                         SELECT 1
+                         FROM attendance_logs al
+                         WHERE al.shift_assignment_id = sa.id
+                            OR (al.tenant_id = sa.tenant_id AND al.user_id = sa.user_id AND DATE(al.clock_in) = sa.shift_date)
+                       )"
+                );
+                $snapshot['clock_in_missing_over_30m'] = (int)$stmt->fetchColumn();
+                if ($snapshot['clock_in_missing_over_30m'] > 0) {
+                    raise_operational_status($snapshot, 'warn');
+                }
+
+                $rows = $pdo->query(
+                    "SELECT sa.id AS shift_assignment_id, sa.tenant_id,
+                            t.slug AS tenant_slug, t.name AS tenant_name,
+                            sa.store_id, s.slug AS store_slug, s.name AS store_name,
+                            sa.user_id, u.display_name, sa.shift_date, sa.start_time,
+                            sa.end_time, sa.role_type, sa.status
+                     FROM shift_assignments sa
+                     LEFT JOIN stores s ON s.id = sa.store_id
+                     LEFT JOIN tenants t ON t.id = sa.tenant_id
+                     LEFT JOIN users u ON u.id = sa.user_id
+                     WHERE sa.status IN ('published','confirmed')
+                       AND TIMESTAMP(sa.shift_date, sa.start_time) < DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                       AND TIMESTAMP(sa.shift_date, sa.end_time) > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+                       AND NOT EXISTS (
+                         SELECT 1
+                         FROM attendance_logs al
+                         WHERE al.shift_assignment_id = sa.id
+                            OR (al.tenant_id = sa.tenant_id AND al.user_id = sa.user_id AND DATE(al.clock_in) = sa.shift_date)
+                       )
+                     ORDER BY sa.shift_date ASC, sa.start_time ASC
+                     LIMIT 10"
+                );
+                $snapshot['clock_in_missing'] = $rows ? $rows->fetchAll() : [];
+
+                $stmt = $pdo->query(
+                    "SELECT COUNT(*)
+                     FROM attendance_logs
+                     WHERE clock_out IS NULL
+                       AND clock_in < DATE_SUB(NOW(), INTERVAL 12 HOUR)"
+                );
+                $snapshot['open_attendance_over_12h'] = (int)$stmt->fetchColumn();
+                if ($snapshot['open_attendance_over_12h'] > 0) {
+                    raise_operational_status($snapshot, 'error');
+                }
+
+                $rows = $pdo->query(
+                    "SELECT al.id AS attendance_id, al.tenant_id,
+                            t.slug AS tenant_slug, t.name AS tenant_name,
+                            al.store_id, s.slug AS store_slug, s.name AS store_name,
+                            al.user_id, u.display_name, al.shift_assignment_id,
+                            al.clock_in, al.status
+                     FROM attendance_logs al
+                     LEFT JOIN stores s ON s.id = al.store_id
+                     LEFT JOIN tenants t ON t.id = al.tenant_id
+                     LEFT JOIN users u ON u.id = al.user_id
+                     WHERE al.clock_out IS NULL
+                       AND al.clock_in < DATE_SUB(NOW(), INTERVAL 12 HOUR)
+                     ORDER BY al.clock_in ASC
+                     LIMIT 10"
+                );
+                $snapshot['open_attendance'] = $rows ? $rows->fetchAll() : [];
+            }
+        }
+
+        if (table_exists($pdo, 'shift_help_requests')) {
+            $snapshot['help_requests_available'] = true;
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM shift_help_requests
+                 WHERE status = 'pending'
+                   AND created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)"
+            );
+            $snapshot['pending_help_requests_over_30m'] = (int)$stmt->fetchColumn();
+            if ($snapshot['pending_help_requests_over_30m'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+
+            $rows = $pdo->query(
+                "SELECT shr.id AS help_request_id, shr.tenant_id,
+                        t.slug AS tenant_slug, t.name AS tenant_name,
+                        shr.from_store_id, fs.slug AS from_store_slug, fs.name AS from_store_name,
+                        shr.to_store_id, ts.slug AS to_store_slug, ts.name AS to_store_name,
+                        shr.requested_date, shr.start_time, shr.end_time,
+                        shr.requested_staff_count, shr.role_hint, shr.status, shr.created_at
+                 FROM shift_help_requests shr
+                 LEFT JOIN tenants t ON t.id = shr.tenant_id
+                 LEFT JOIN stores fs ON fs.id = shr.from_store_id
+                 LEFT JOIN stores ts ON ts.id = shr.to_store_id
+                 WHERE shr.status = 'pending'
+                   AND shr.created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                 ORDER BY shr.created_at ASC
+                 LIMIT 10"
+            );
+            $snapshot['pending_help_requests'] = $rows ? $rows->fetchAll() : [];
+        }
+    } catch (PDOException $e) {
+        $snapshot['status'] = 'unknown';
+    }
+
+    return $snapshot;
+}
+
+function fetch_takeout_operations_snapshot(PDO $pdo): array
+{
+    $snapshot = [
+        'status' => 'ok',
+        'thresholds' => [
+            'pending_payment_warn_min' => 15,
+            'pickup_overdue_error_min' => 15,
+            'ready_waiting_warn_min' => 30,
+            'arrival_waiting_warn_min' => 10,
+        ],
+        'orders_available' => false,
+        'pending_payment_over_15m' => null,
+        'pending_payment_orders' => [],
+        'pickup_overdue_over_15m' => null,
+        'pickup_overdue_orders' => [],
+        'ready_waiting_over_30m' => null,
+        'ready_waiting_orders' => [],
+        'ready_notification_failed_24h' => null,
+        'ready_notification_failed_orders' => [],
+        'arrival_waiting_over_10m' => null,
+        'arrival_waiting_orders' => [],
+    ];
+
+    if (!table_exists($pdo, 'orders')) {
+        return $snapshot;
+    }
+
+    $snapshot['orders_available'] = true;
+    try {
+        $stmt = $pdo->query(
+            "SELECT COUNT(*)
+             FROM orders
+             WHERE order_type = 'takeout'
+               AND status = 'pending_payment'
+               AND updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)"
+        );
+        $snapshot['pending_payment_over_15m'] = (int)$stmt->fetchColumn();
+        if ($snapshot['pending_payment_over_15m'] > 0) {
+            raise_operational_status($snapshot, 'warn');
+        }
+
+        $snapshot['pending_payment_orders'] = fetch_takeout_order_rows(
+            $pdo,
+            "o.order_type = 'takeout'
+             AND o.status = 'pending_payment'
+             AND o.updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)",
+            'o.updated_at ASC'
+        );
+
+        $stmt = $pdo->query(
+            "SELECT COUNT(*)
+             FROM orders
+             WHERE order_type = 'takeout'
+               AND status IN ('pending','preparing')
+               AND pickup_at IS NOT NULL
+               AND pickup_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)"
+        );
+        $snapshot['pickup_overdue_over_15m'] = (int)$stmt->fetchColumn();
+        if ($snapshot['pickup_overdue_over_15m'] > 0) {
+            raise_operational_status($snapshot, 'error');
+        }
+
+        $snapshot['pickup_overdue_orders'] = fetch_takeout_order_rows(
+            $pdo,
+            "o.order_type = 'takeout'
+             AND o.status IN ('pending','preparing')
+             AND o.pickup_at IS NOT NULL
+             AND o.pickup_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)",
+            'o.pickup_at ASC'
+        );
+
+        $stmt = $pdo->query(
+            "SELECT COUNT(*)
+             FROM orders
+             WHERE order_type = 'takeout'
+               AND status = 'ready'
+               AND pickup_at IS NOT NULL
+               AND pickup_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)"
+        );
+        $snapshot['ready_waiting_over_30m'] = (int)$stmt->fetchColumn();
+        if ($snapshot['ready_waiting_over_30m'] > 0) {
+            raise_operational_status($snapshot, 'warn');
+        }
+
+        $snapshot['ready_waiting_orders'] = fetch_takeout_order_rows(
+            $pdo,
+            "o.order_type = 'takeout'
+             AND o.status = 'ready'
+             AND o.pickup_at IS NOT NULL
+             AND o.pickup_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)",
+            'o.pickup_at ASC'
+        );
+
+        if (column_exists($pdo, 'orders', 'takeout_ready_notification_status')) {
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM orders
+                 WHERE order_type = 'takeout'
+                   AND takeout_ready_notification_status = 'failed'
+                   AND updated_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)"
+            );
+            $snapshot['ready_notification_failed_24h'] = (int)$stmt->fetchColumn();
+            if ($snapshot['ready_notification_failed_24h'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+
+            $snapshot['ready_notification_failed_orders'] = fetch_takeout_order_rows(
+                $pdo,
+                "o.order_type = 'takeout'
+                 AND o.takeout_ready_notification_status = 'failed'
+                 AND o.updated_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)",
+                'o.updated_at DESC'
+            );
+        }
+
+        if (column_exists($pdo, 'orders', 'takeout_arrived_at')) {
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM orders
+                 WHERE order_type = 'takeout'
+                   AND takeout_arrived_at IS NOT NULL
+                   AND status NOT IN ('served','paid','cancelled')
+                   AND takeout_arrived_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
+            );
+            $snapshot['arrival_waiting_over_10m'] = (int)$stmt->fetchColumn();
+            if ($snapshot['arrival_waiting_over_10m'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+
+            $snapshot['arrival_waiting_orders'] = fetch_takeout_order_rows(
+                $pdo,
+                "o.order_type = 'takeout'
+                 AND o.takeout_arrived_at IS NOT NULL
+                 AND o.status NOT IN ('served','paid','cancelled')
+                 AND o.takeout_arrived_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)",
+                'o.takeout_arrived_at ASC'
+            );
+        }
+    } catch (PDOException $e) {
+        $snapshot['status'] = 'unknown';
+    }
+
+    return $snapshot;
+}
+
+function fetch_takeout_order_rows(PDO $pdo, string $where, string $orderBy): array
+{
+    $optionalColumns = [];
+    foreach (['takeout_ready_notification_status', 'takeout_ready_notification_error', 'takeout_ops_status', 'takeout_arrived_at'] as $column) {
+        if (column_exists($pdo, 'orders', $column)) {
+            $optionalColumns[] = 'o.' . $column;
+        }
+    }
+    $optionalSelect = count($optionalColumns) > 0 ? ', ' . implode(', ', $optionalColumns) : '';
+
+    $rows = $pdo->query(
+        "SELECT o.id AS order_id, o.store_id,
+                s.slug AS store_slug, s.name AS store_name,
+                t.id AS tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                o.customer_name, o.customer_phone, o.status, o.total_amount,
+                o.pickup_at, o.created_at, o.updated_at" . $optionalSelect . "
+         FROM orders o
+         LEFT JOIN stores s ON s.id = o.store_id
+         LEFT JOIN tenants t ON t.id = s.tenant_id
+         WHERE " . $where . "
+         ORDER BY " . $orderBy . "
+         LIMIT 10"
+    );
+    return $rows ? $rows->fetchAll() : [];
+}
+
 function fetch_terminal_heartbeat_snapshot(PDO $pdo): array
 {
     $snapshot = [
@@ -1034,6 +1494,9 @@ function fetch_terminal_heartbeat_snapshot(PDO $pdo): array
             'stale_error_sec' => 1800,
         ],
         'total' => null,
+        'monitored_total' => null,
+        'ignored_total' => null,
+        'ignored_by_reason' => [],
         'mode_counts' => [],
         'stale_over_10m' => null,
         'stale_over_30m' => null,
@@ -1048,60 +1511,180 @@ function fetch_terminal_heartbeat_snapshot(PDO $pdo): array
     $snapshot['available'] = true;
 
     try {
-        $stmt = $pdo->query('SELECT COUNT(*) FROM handy_terminals');
-        $snapshot['total'] = (int)$stmt->fetchColumn();
+        $hasMonitoringEnabled = column_exists($pdo, 'handy_terminals', 'monitoring_enabled');
+        $hasOperationalStatus = column_exists($pdo, 'handy_terminals', 'operational_status');
+        $hasBusinessHoursOnly = column_exists($pdo, 'handy_terminals', 'monitor_business_hours_only');
+        $hasReservationSettings = table_exists($pdo, 'reservation_settings');
+        $select = [
+            'ht.id AS terminal_id',
+            'ht.tenant_id',
+            't.slug AS tenant_slug',
+            't.name AS tenant_name',
+            'ht.store_id',
+            's.slug AS store_slug',
+            's.name AS store_name',
+            's.is_active AS store_is_active',
+            's.timezone AS store_timezone',
+            'ht.device_uid',
+            'ht.device_label',
+            'ht.terminal_mode',
+            'ht.sound_enabled',
+            'ht.realert_enabled',
+            'ht.realert_interval_sec',
+            'ht.last_seen_at',
+            'ht.updated_at',
+        ];
+        $select[] = $hasReservationSettings ? 'rs.open_time' : 'NULL AS open_time';
+        $select[] = $hasReservationSettings ? 'rs.close_time' : 'NULL AS close_time';
+        $select[] = $hasReservationSettings ? 'rs.weekly_closed_days' : 'NULL AS weekly_closed_days';
+        $select[] = $hasMonitoringEnabled ? 'ht.monitoring_enabled' : '1 AS monitoring_enabled';
+        $select[] = $hasOperationalStatus ? 'ht.operational_status' : "'active' AS operational_status";
+        $select[] = $hasBusinessHoursOnly ? 'ht.monitor_business_hours_only' : '1 AS monitor_business_hours_only';
+        $reservationSettingsJoin = $hasReservationSettings ? 'LEFT JOIN reservation_settings rs ON rs.store_id = ht.store_id' : '';
 
         $rows = $pdo->query(
-            "SELECT terminal_mode, COUNT(*) AS count
-             FROM handy_terminals
-             GROUP BY terminal_mode
-             ORDER BY terminal_mode ASC"
-        );
-        $snapshot['mode_counts'] = $rows ? normalize_count_rows($rows->fetchAll()) : [];
-
-        $stmt = $pdo->query(
-            "SELECT COUNT(*)
-             FROM handy_terminals
-             WHERE last_seen_at IS NULL
-                OR last_seen_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
-        );
-        $snapshot['stale_over_10m'] = (int)$stmt->fetchColumn();
-        if ($snapshot['stale_over_10m'] > 0) {
-            raise_operational_status($snapshot, 'warn');
-        }
-
-        $stmt = $pdo->query(
-            "SELECT COUNT(*)
-             FROM handy_terminals
-             WHERE last_seen_at IS NULL
-                OR last_seen_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)"
-        );
-        $snapshot['stale_over_30m'] = (int)$stmt->fetchColumn();
-        if ($snapshot['stale_over_30m'] > 0) {
-            raise_operational_status($snapshot, 'error');
-        }
-
-        $rows = $pdo->query(
-            "SELECT ht.id AS terminal_id, ht.tenant_id,
-                    t.slug AS tenant_slug, t.name AS tenant_name,
-                    ht.store_id, s.slug AS store_slug, s.name AS store_name,
-                    ht.device_uid, ht.device_label, ht.terminal_mode,
-                    ht.sound_enabled, ht.realert_enabled, ht.realert_interval_sec,
-                    ht.last_seen_at, ht.updated_at
+            "SELECT " . implode(', ', $select) . "
              FROM handy_terminals ht
              LEFT JOIN tenants t ON t.id = ht.tenant_id
              LEFT JOIN stores s ON s.id = ht.store_id
-             WHERE ht.last_seen_at IS NULL
-                OR ht.last_seen_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)
-             ORDER BY ht.last_seen_at IS NULL DESC, ht.last_seen_at ASC, ht.updated_at ASC
-             LIMIT 20"
+             " . $reservationSettingsJoin . "
+             ORDER BY ht.updated_at DESC
+             LIMIT 500"
         );
-        $snapshot['stale_terminals'] = $rows ? $rows->fetchAll() : [];
+        $terminals = $rows ? $rows->fetchAll() : [];
+        $snapshot['total'] = count($terminals);
+        $snapshot['monitored_total'] = 0;
+        $snapshot['ignored_total'] = 0;
+        $snapshot['stale_over_10m'] = 0;
+        $snapshot['stale_over_30m'] = 0;
+        $modeCounts = [];
+        $ignoredByReason = [];
+        $now = time();
+
+        foreach ($terminals as $terminal) {
+            $mode = (string)($terminal['terminal_mode'] ?? 'unknown');
+            $modeCounts[$mode] = ($modeCounts[$mode] ?? 0) + 1;
+
+            $ignoreReason = terminal_heartbeat_ignore_reason($terminal);
+            if ($ignoreReason !== '') {
+                $snapshot['ignored_total']++;
+                $ignoredByReason[$ignoreReason] = ($ignoredByReason[$ignoreReason] ?? 0) + 1;
+                continue;
+            }
+
+            $snapshot['monitored_total']++;
+            $lastSeenTs = !empty($terminal['last_seen_at']) ? strtotime((string)$terminal['last_seen_at']) : false;
+            $staleSec = $lastSeenTs === false ? null : ($now - $lastSeenTs);
+            if ($lastSeenTs === false || $staleSec >= 600) {
+                $snapshot['stale_over_10m']++;
+                if (count($snapshot['stale_terminals']) < 20) {
+                    $terminal['stale_sec'] = $staleSec;
+                    $snapshot['stale_terminals'][] = $terminal;
+                }
+            }
+            if ($lastSeenTs === false || $staleSec >= 1800) {
+                $snapshot['stale_over_30m']++;
+            }
+        }
+
+        foreach ($modeCounts as $mode => $count) {
+            $snapshot['mode_counts'][] = ['terminal_mode' => $mode, 'count' => (int)$count];
+        }
+        foreach ($ignoredByReason as $reason => $count) {
+            $snapshot['ignored_by_reason'][] = ['reason' => $reason, 'count' => (int)$count];
+        }
+
+        if ($snapshot['stale_over_10m'] > 0) {
+            raise_operational_status($snapshot, 'warn');
+        }
+        if ($snapshot['stale_over_30m'] > 0) {
+            raise_operational_status($snapshot, 'error');
+        }
     } catch (PDOException $e) {
         $snapshot['status'] = 'unknown';
     }
 
     return $snapshot;
+}
+
+function terminal_heartbeat_ignore_reason(array $terminal): string
+{
+    if ((int)($terminal['monitoring_enabled'] ?? 1) === 0) {
+        return 'monitoring_disabled';
+    }
+    $operationalStatus = strtolower(trim((string)($terminal['operational_status'] ?? 'active')));
+    if (in_array($operationalStatus, ['unused', 'retired', 'disabled', 'inactive'], true)) {
+        return 'terminal_not_active';
+    }
+    if (array_key_exists('store_is_active', $terminal) && (int)$terminal['store_is_active'] === 0) {
+        return 'store_inactive';
+    }
+    if ((int)($terminal['monitor_business_hours_only'] ?? 1) === 1 && !terminal_heartbeat_store_is_open_now($terminal)) {
+        return 'outside_business_hours';
+    }
+    return '';
+}
+
+function terminal_heartbeat_store_is_open_now(array $terminal): bool
+{
+    $openTime = trim((string)($terminal['open_time'] ?? ''));
+    $closeTime = trim((string)($terminal['close_time'] ?? ''));
+    if ($openTime === '' || $closeTime === '') {
+        return true;
+    }
+
+    $timezoneName = trim((string)($terminal['store_timezone'] ?? 'Asia/Tokyo')) ?: 'Asia/Tokyo';
+    try {
+        $timezone = new DateTimeZone($timezoneName);
+    } catch (Throwable $e) {
+        $timezone = new DateTimeZone('Asia/Tokyo');
+    }
+    $now = new DateTimeImmutable('now', $timezone);
+    $day = (int)$now->format('w');
+    if (terminal_heartbeat_weekly_closed($terminal['weekly_closed_days'] ?? '', $day)) {
+        return false;
+    }
+
+    $today = $now->format('Y-m-d');
+    $open = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $today . ' ' . normalize_time_for_datetime($openTime), $timezone);
+    $close = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $today . ' ' . normalize_time_for_datetime($closeTime), $timezone);
+    if (!$open || !$close) {
+        return true;
+    }
+    if ($close <= $open) {
+        $close = $close->modify('+1 day');
+    }
+    return $now >= $open && $now <= $close;
+}
+
+function normalize_time_for_datetime(string $time): string
+{
+    $time = trim($time);
+    if (preg_match('/^\d{2}:\d{2}$/', $time)) {
+        return $time . ':00';
+    }
+    if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $time)) {
+        return $time;
+    }
+    return '00:00:00';
+}
+
+function terminal_heartbeat_weekly_closed($closedDays, int $day): bool
+{
+    $value = trim((string)$closedDays);
+    if ($value === '') {
+        return false;
+    }
+    $parts = preg_split('/[,\s]+/', $value);
+    foreach ($parts as $part) {
+        if ($part === '') {
+            continue;
+        }
+        if (is_numeric($part) && (int)$part === $day) {
+            return true;
+        }
+    }
+    return false;
 }
 
 function apply_terminal_heartbeat_operational_policy(array $heartbeat, array $snapshot): array
