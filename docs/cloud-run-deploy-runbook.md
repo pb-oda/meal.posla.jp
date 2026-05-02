@@ -4,6 +4,8 @@
 最終更新: 2026-05-02
 対象: `【本番環境】meal.posla.jp` / Cloud Run production
 
+超詳細な本番デプロイ手順は [cloud-run-production-complete-deploy-guide.md](./cloud-run-production-complete-deploy-guide.md) を正本とします。この文書は要点と実行順を短く確認するためのrunbookです。
+
 ## 1. 前提
 
 本番値は repo に置かない。Cloud Run env / Secret Manager / Cloud SQL / Memorystore / Cloud Storage を正とする。
