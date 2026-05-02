@@ -1,7 +1,8 @@
 # POSLA Cloud Run Deploy Runbook
 
 作成日: 2026-04-28
-対象: `【擬似本番環境】meal.posla.jp`
+最終更新: 2026-05-02
+対象: `【本番環境】meal.posla.jp` / Cloud Run production
 
 ## 1. 前提
 
@@ -27,7 +28,35 @@ Redisについて:
 - VPSは provisioner / OP / runner の配置先として使う可能性があるが、POSLA session用Redisとは別論点にする
 - Redis portをpublic internetへ開けない
 
-## 2. Image build
+## 2. デプロイ順
+
+本番フォルダは直接編集しない。`test` で検証済みのcommitを `main` へpromoteし、本番フォルダはGitから取り込むだけにする。
+
+```text
+1. 【テスト環境】meal.posla.jp で実装、Docker確認、pre-deploy check
+2. testへcommit/push
+3. testをmainへpromote
+4. 【本番環境】meal.posla.jp でgit pull
+5. Cloud Run image build / push
+6. 本番DB migration
+7. Cloud Run service deploy
+8. Cloud Run Jobs / Cloud Scheduler確認
+9. 本番URL smoke
+10. OPからping/snapshot/Google Chat通知確認
+```
+
+デプロイ担当者は、開始前に以下を確認する。
+
+```bash
+git status -sb
+git branch --show-current
+git log --oneline -1
+BASE_URL=http://127.0.0.1:8081 bash scripts/cloudrun/pre-deploy-check.sh
+```
+
+この端末に `gcloud` がない場合は、Cloud Shellまたはgcloud導入済み端末で 5 以降を実行する。
+
+## 3. Image build
 
 デプロイ前に、作業コピーのcommit、Cloud Run用entrypoint、必須migration、OP監視endpointを確認する。
 
@@ -35,12 +64,29 @@ Redisについて:
 BASE_URL=http://127.0.0.1:8081 bash scripts/cloudrun/pre-deploy-check.sh
 ```
 
+image tagはGit commitを含め、後からどのコードをdeployしたか追えるようにする。
+
 ```bash
-docker build -f docker/php/Dockerfile.cloudrun -t <region>-docker.pkg.dev/<project-id>/<artifact-repo>/posla-web:<image-tag> .
-docker push <region>-docker.pkg.dev/<project-id>/<artifact-repo>/posla-web:<image-tag>
+PROJECT_ID=<project-id>
+REGION=<region>
+REPOSITORY=<artifact-repo>
+IMAGE_TAG=$(git rev-parse --short HEAD)
+IMAGE_URL=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/posla-web:${IMAGE_TAG}
+
+gcloud auth configure-docker ${REGION}-docker.pkg.dev
+docker build -f docker/php/Dockerfile.cloudrun -t ${IMAGE_URL} .
+docker push ${IMAGE_URL}
 ```
 
-## 3. Web service
+ローカルでCloud Run image起動確認をする場合:
+
+```bash
+docker build -f docker/php/Dockerfile.cloudrun -t posla-web:predeploy .
+docker run --rm -p 18080:8080 --env-file <local-test-env-file> -e PORT=8080 -e POSLA_CRON_ENABLED=0 posla-web:predeploy
+curl -sf http://127.0.0.1:18080/api/monitor/ping.php
+```
+
+## 4. Web service
 
 Cloud Run service の container port は `8080`。`PORT` は Cloud Run が注入するため、env file に固定値として置かない。
 
@@ -60,7 +106,21 @@ Web service では以下を必ず守る:
 
 Cloud Storage bucket は `/var/www/html/uploads` に mount する。POSLA は `uploads/menu/...` をURLとして返すため、Apache の `/uploads` Alias がこの mount を配信する。
 
-## 4. DB migration
+service deploy:
+
+```bash
+gcloud run deploy posla-web \
+  --project=${PROJECT_ID} \
+  --region=${REGION} \
+  --image=${IMAGE_URL} \
+  --platform=managed \
+  --port=8080 \
+  --no-allow-unauthenticated
+```
+
+公開Webとして外部アクセスを許可する場合だけ、アクセス制御方針を確認してから `--allow-unauthenticated` を使う。公開前にCloud Armor、ロードバランサ、IAP、またはCloud Run IAMのどれで守るかを決める。
+
+## 5. DB migration
 
 Cloud Run service の切替前に、対象DBへ未適用 migration を適用する。
 
@@ -81,7 +141,9 @@ OP連携のrelease直前確認:
 - `GET /api/monitor/cell-snapshot.php` がOP read secret付きで取得できる
 - snapshotに `reservations`、`shifts`、`takeout`、`menu_inventory`、`customer_line`、`external_integrations`、`terminal_heartbeat` が含まれる
 
-## 5. Cron jobs
+DB migrationは本番DB backup取得後に実行する。migration後に上記カラム存在確認を行い、失敗した場合はCloud Run service切替を止める。
+
+## 6. Cron jobs
 
 同じ image を Cloud Run Jobs でも使う。command は以下。
 
@@ -113,7 +175,32 @@ POSLA_CRON_TASK=hourly
 
 Cloud Scheduler は Cloud Run Jobs の実行APIを叩く。Scheduler の認証は専用 service account で行い、公開HTTP endpointを増やさない。
 
-## 6. Mail
+job作成または更新の例:
+
+```bash
+gcloud run jobs deploy posla-cron-every-5-minutes \
+  --project=${PROJECT_ID} \
+  --region=${REGION} \
+  --image=${IMAGE_URL} \
+  --command=/usr/local/bin/posla-cron-job-cloudrun.sh \
+  --set-env-vars=POSLA_CRON_TASK=every-5-minutes
+
+gcloud run jobs deploy posla-cron-hourly \
+  --project=${PROJECT_ID} \
+  --region=${REGION} \
+  --image=${IMAGE_URL} \
+  --command=/usr/local/bin/posla-cron-job-cloudrun.sh \
+  --set-env-vars=POSLA_CRON_TASK=hourly
+```
+
+初回確認:
+
+```bash
+gcloud run jobs execute posla-cron-every-5-minutes --project=${PROJECT_ID} --region=${REGION} --wait
+gcloud run jobs execute posla-cron-hourly --project=${PROJECT_ID} --region=${REGION} --wait
+```
+
+## 7. Mail
 
 Cloud Run では `mail()` / `mb_send_mail()` に依存しない。
 
@@ -126,7 +213,7 @@ POSLA_MAIL_FROM_NAME=POSLA
 
 送信元ドメインは SPF / DKIM / DMARC を設定する。管理画面の運用通知メールテストで疎通を確認する。
 
-## 7. Smoke test
+## 8. Smoke test
 
 デプロイ後、最低限これを確認する。
 
@@ -149,8 +236,56 @@ curl -sf https://<production-domain>/api/monitor/ping.php
 | self checkout | Stripe Connect 設定ありで「お会計」表示、OFF/未設定では非表示 |
 | takeout payment | テイクアウトはPOSLA決済（Stripe Connect）で決済完了後に注文反映される |
 
-## 8. まだ外部設計が必要なもの
+OP連携確認:
+
+```bash
+curl -sf https://<production-domain>/api/monitor/ping.php
+curl -sf -H 'X-POSLA-OPS-SECRET: <secret-from-runtime>' https://<production-domain>/api/monitor/cell-snapshot.php
+```
+
+secretをコマンド履歴に残したくない場合は、Cloud Shellや運用端末の一時環境変数からheaderへ渡す。
+
+## 9. Rollback
+
+アプリrevisionだけの問題なら、Cloud Runで直前の正常revisionへtrafficを戻す。
+
+```bash
+gcloud run revisions list --service=posla-web --project=${PROJECT_ID} --region=${REGION}
+gcloud run services update-traffic posla-web \
+  --project=${PROJECT_ID} \
+  --region=${REGION} \
+  --to-revisions=<previous-revision>=100
+```
+
+imageを戻す場合:
+
+```bash
+ROLLBACK_IMAGE_URL=<previous-known-good-image>
+gcloud run deploy posla-web \
+  --project=${PROJECT_ID} \
+  --region=${REGION} \
+  --image=${ROLLBACK_IMAGE_URL} \
+  --platform=managed \
+  --port=8080
+```
+
+DB migrationを伴う場合は、安易に自動rollbackしない。事前backupからの復旧、forward fix、影響テーブルの手動確認を選ぶ。今回の `p1-46`、`p1-47`、`p1-70` は追加カラム中心のため、基本はforward fix優先とする。
+
+rollback後もOPで以下を確認する。
+
+- production Sourceが `source_ok`
+- Google Chatへ復旧通知または手動報告が届いている
+- 管理画面、注文、KDS、レジ締め、テイクアウトのsmokeが通る
+
+## 10. まだ外部設計が必要なもの
 
 `scripts/cell/*` の cell provisioning は Docker Compose / host-side 実行前提が残る。Cloud Run web service から直接 Docker 作業はしないため、`POSLA_PROVISIONER_TRIGGER_URL` の先には専用VM上の `posla_provisioner` container を置く。
 
 詳細は [provisioner-runner.md](./provisioner-runner.md) を正とする。
+
+## 11. 参考
+
+- Google Cloud: Deploying container images to Cloud Run - https://cloud.google.com/run/docs/deploying
+- Google Cloud: Create Cloud Run jobs - https://cloud.google.com/run/docs/create-jobs
+- Google Cloud: Execute Cloud Run jobs - https://cloud.google.com/run/docs/execute/jobs
+- Google Cloud: Cloud Scheduler documentation - https://cloud.google.com/scheduler/docs
