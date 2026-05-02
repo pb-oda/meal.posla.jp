@@ -50,6 +50,9 @@ $snapshot['register'] = fetch_register_operations_snapshot($pdo);
 $snapshot['reservations'] = fetch_reservation_operations_snapshot($pdo);
 $snapshot['shifts'] = fetch_shift_operations_snapshot($pdo);
 $snapshot['takeout'] = fetch_takeout_operations_snapshot($pdo);
+$snapshot['menu_inventory'] = fetch_menu_inventory_operations_snapshot($pdo);
+$snapshot['customer_line'] = fetch_customer_line_operations_snapshot($pdo);
+$snapshot['external_integrations'] = fetch_external_integrations_operations_snapshot($pdo);
 $snapshot['terminal_heartbeat'] = apply_terminal_heartbeat_operational_policy(
     fetch_terminal_heartbeat_snapshot($pdo),
     $snapshot
@@ -64,7 +67,7 @@ if (!empty($snapshot['cron']['lag_sec']) && (int)$snapshot['cron']['lag_sec'] > 
 if (!empty($snapshot['tier0']['status']) && $snapshot['tier0']['status'] === 'error') {
     $snapshot['ok'] = false;
 }
-foreach (['kds', 'register', 'reservations', 'shifts', 'takeout'] as $section) {
+foreach (['kds', 'register', 'reservations', 'shifts', 'takeout', 'menu_inventory', 'customer_line', 'external_integrations'] as $section) {
     if (!empty($snapshot[$section]['status']) && $snapshot[$section]['status'] === 'error') {
         $snapshot['ok'] = false;
     }
@@ -1482,6 +1485,442 @@ function fetch_takeout_order_rows(PDO $pdo, string $where, string $orderBy): arr
          LIMIT 10"
     );
     return $rows ? $rows->fetchAll() : [];
+}
+
+function fetch_menu_inventory_operations_snapshot(PDO $pdo): array
+{
+    $snapshot = [
+        'status' => 'ok',
+        'thresholds' => [
+            'api_error_error_min' => 1,
+            'negative_stock_error_min' => 1,
+            'low_stock_warn_min' => 1,
+        ],
+        'menu_available' => false,
+        'inventory_available' => false,
+        'recipes_available' => false,
+        'active_menu_templates' => null,
+        'sold_out_menu_templates' => null,
+        'store_sold_out_overrides' => null,
+        'local_menu_items' => null,
+        'low_stock_ingredients' => null,
+        'low_stock_items' => [],
+        'negative_stock_ingredients' => null,
+        'negative_stock_items' => [],
+        'ingredients_without_threshold' => null,
+        'active_menu_without_recipe' => null,
+        'api_errors_15m' => null,
+        'api_error_rows' => [],
+    ];
+
+    try {
+        if (table_exists($pdo, 'menu_templates')) {
+            $snapshot['menu_available'] = true;
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM menu_templates
+                 WHERE is_active = 1"
+            );
+            $snapshot['active_menu_templates'] = (int)$stmt->fetchColumn();
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM menu_templates
+                 WHERE is_active = 1
+                   AND is_sold_out = 1"
+            );
+            $snapshot['sold_out_menu_templates'] = (int)$stmt->fetchColumn();
+
+            if (table_exists($pdo, 'recipes')) {
+                $snapshot['recipes_available'] = true;
+                $stmt = $pdo->query(
+                    "SELECT COUNT(*)
+                     FROM menu_templates mt
+                     WHERE mt.is_active = 1
+                       AND NOT EXISTS (
+                         SELECT 1
+                         FROM recipes r
+                         WHERE r.menu_template_id = mt.id
+                       )"
+                );
+                $snapshot['active_menu_without_recipe'] = (int)$stmt->fetchColumn();
+            }
+        }
+
+        if (table_exists($pdo, 'store_menu_overrides')) {
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM store_menu_overrides
+                 WHERE is_sold_out = 1"
+            );
+            $snapshot['store_sold_out_overrides'] = (int)$stmt->fetchColumn();
+        }
+
+        if (table_exists($pdo, 'store_local_items')) {
+            $stmt = $pdo->query('SELECT COUNT(*) FROM store_local_items');
+            $snapshot['local_menu_items'] = (int)$stmt->fetchColumn();
+        }
+
+        if (table_exists($pdo, 'ingredients')) {
+            $snapshot['inventory_available'] = true;
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM ingredients
+                 WHERE is_active = 1
+                   AND low_stock_threshold IS NOT NULL
+                   AND stock_quantity <= low_stock_threshold"
+            );
+            $snapshot['low_stock_ingredients'] = (int)$stmt->fetchColumn();
+            if ($snapshot['low_stock_ingredients'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+
+            $rows = $pdo->query(
+                "SELECT i.id AS ingredient_id, i.tenant_id,
+                        t.slug AS tenant_slug, t.name AS tenant_name,
+                        i.name, i.unit, i.stock_quantity, i.low_stock_threshold, i.updated_at
+                 FROM ingredients i
+                 LEFT JOIN tenants t ON t.id = i.tenant_id
+                 WHERE i.is_active = 1
+                   AND i.low_stock_threshold IS NOT NULL
+                   AND i.stock_quantity <= i.low_stock_threshold
+                 ORDER BY (i.stock_quantity - i.low_stock_threshold) ASC, i.updated_at DESC
+                 LIMIT 10"
+            );
+            $snapshot['low_stock_items'] = $rows ? $rows->fetchAll() : [];
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM ingredients
+                 WHERE is_active = 1
+                   AND stock_quantity < 0"
+            );
+            $snapshot['negative_stock_ingredients'] = (int)$stmt->fetchColumn();
+            if ($snapshot['negative_stock_ingredients'] > 0) {
+                raise_operational_status($snapshot, 'error');
+            }
+
+            $rows = $pdo->query(
+                "SELECT i.id AS ingredient_id, i.tenant_id,
+                        t.slug AS tenant_slug, t.name AS tenant_name,
+                        i.name, i.unit, i.stock_quantity, i.low_stock_threshold, i.updated_at
+                 FROM ingredients i
+                 LEFT JOIN tenants t ON t.id = i.tenant_id
+                 WHERE i.is_active = 1
+                   AND i.stock_quantity < 0
+                 ORDER BY i.stock_quantity ASC, i.updated_at DESC
+                 LIMIT 10"
+            );
+            $snapshot['negative_stock_items'] = $rows ? $rows->fetchAll() : [];
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM ingredients
+                 WHERE is_active = 1
+                   AND low_stock_threshold IS NULL"
+            );
+            $snapshot['ingredients_without_threshold'] = (int)$stmt->fetchColumn();
+        }
+
+        $apiErrors = fetch_operation_error_log_snapshot(
+            $pdo,
+            "(request_path LIKE '%/menu%'
+              OR request_path LIKE '%/ingredients%'
+              OR request_path LIKE '%/recipes%'
+              OR request_path LIKE '%inventory%'
+              OR code IN ('IMPORT_FAILED','MIGRATION','FILE_READ_ERROR','DELETE_FAILED'))"
+        );
+        $snapshot['api_errors_15m'] = $apiErrors['count'];
+        $snapshot['api_error_rows'] = $apiErrors['rows'];
+        if ((int)$snapshot['api_errors_15m'] > 0) {
+            raise_operational_status($snapshot, 'error');
+        }
+    } catch (PDOException $e) {
+        $snapshot['status'] = 'unknown';
+    }
+
+    return $snapshot;
+}
+
+function fetch_customer_line_operations_snapshot(PDO $pdo): array
+{
+    $snapshot = [
+        'status' => 'ok',
+        'thresholds' => [
+            'api_error_error_min' => 1,
+            'enabled_missing_token_error_min' => 1,
+            'expired_link_tokens_warn_min' => 1,
+        ],
+        'line_settings_available' => false,
+        'line_links_available' => false,
+        'line_tokens_available' => false,
+        'enabled_tenants' => null,
+        'enabled_missing_token' => null,
+        'enabled_missing_token_tenants' => [],
+        'linked_customers' => null,
+        'stale_link_interactions_over_90d' => null,
+        'expired_unused_tokens' => null,
+        'api_errors_15m' => null,
+        'api_error_rows' => [],
+    ];
+
+    try {
+        if (table_exists($pdo, 'tenant_line_settings')) {
+            $snapshot['line_settings_available'] = true;
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM tenant_line_settings
+                 WHERE is_enabled = 1"
+            );
+            $snapshot['enabled_tenants'] = (int)$stmt->fetchColumn();
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM tenant_line_settings
+                 WHERE is_enabled = 1
+                   AND (channel_access_token IS NULL OR channel_access_token = '')"
+            );
+            $snapshot['enabled_missing_token'] = (int)$stmt->fetchColumn();
+            if ($snapshot['enabled_missing_token'] > 0) {
+                raise_operational_status($snapshot, 'error');
+            }
+
+            $rows = $pdo->query(
+                "SELECT tls.tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                        tls.is_enabled, tls.notify_reservation_created,
+                        tls.notify_reservation_reminder_day, tls.notify_takeout_ready,
+                        tls.last_webhook_at, tls.last_webhook_event_type, tls.updated_at
+                 FROM tenant_line_settings tls
+                 LEFT JOIN tenants t ON t.id = tls.tenant_id
+                 WHERE tls.is_enabled = 1
+                   AND (tls.channel_access_token IS NULL OR tls.channel_access_token = '')
+                 ORDER BY tls.updated_at DESC
+                 LIMIT 10"
+            );
+            $snapshot['enabled_missing_token_tenants'] = $rows ? $rows->fetchAll() : [];
+        }
+
+        if (table_exists($pdo, 'reservation_customer_line_links')) {
+            $snapshot['line_links_available'] = true;
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM reservation_customer_line_links
+                 WHERE link_status = 'linked'"
+            );
+            $snapshot['linked_customers'] = (int)$stmt->fetchColumn();
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM reservation_customer_line_links
+                 WHERE link_status = 'linked'
+                   AND last_interaction_at IS NOT NULL
+                   AND last_interaction_at < DATE_SUB(NOW(), INTERVAL 90 DAY)"
+            );
+            $snapshot['stale_link_interactions_over_90d'] = (int)$stmt->fetchColumn();
+        }
+
+        if (table_exists($pdo, 'reservation_customer_line_link_tokens')) {
+            $snapshot['line_tokens_available'] = true;
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM reservation_customer_line_link_tokens
+                 WHERE used_at IS NULL
+                   AND revoked_at IS NULL
+                   AND expires_at < NOW()"
+            );
+            $snapshot['expired_unused_tokens'] = (int)$stmt->fetchColumn();
+            if ($snapshot['expired_unused_tokens'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+        }
+
+        $apiErrors = fetch_operation_error_log_snapshot(
+            $pdo,
+            "(request_path LIKE '%/line/%'
+              OR request_path LIKE '%line-%'
+              OR request_path LIKE '%line_%'
+              OR code IN ('LINE_NOT_CONFIGURED','NOT_CONFIGURED','TOKEN_ISSUE_FAILED','UNLINK_FAILED','INVALID_SIGNATURE'))"
+        );
+        $snapshot['api_errors_15m'] = $apiErrors['count'];
+        $snapshot['api_error_rows'] = $apiErrors['rows'];
+        if ((int)$snapshot['api_errors_15m'] > 0) {
+            raise_operational_status($snapshot, 'error');
+        }
+    } catch (PDOException $e) {
+        $snapshot['status'] = 'unknown';
+    }
+
+    return $snapshot;
+}
+
+function fetch_external_integrations_operations_snapshot(PDO $pdo): array
+{
+    $snapshot = [
+        'status' => 'ok',
+        'thresholds' => [
+            'api_error_error_min' => 1,
+            'smaregi_token_expiring_warn_hours' => 24,
+            'smaregi_token_expired_error_min' => 1,
+            'smaregi_menu_sync_warn_hours' => 24,
+            'stripe_missing_secret_error_min' => 1,
+        ],
+        'tenants_available' => false,
+        'smaregi_store_mapping_available' => false,
+        'stripe_gateway_tenants' => null,
+        'stripe_missing_secret_tenants' => null,
+        'smaregi_connected_tenants' => null,
+        'smaregi_token_expired' => null,
+        'smaregi_token_expiring_24h' => null,
+        'smaregi_unsynced_stores_24h' => null,
+        'api_errors_15m' => null,
+        'api_error_rows' => [],
+    ];
+
+    try {
+        if (table_exists($pdo, 'tenants')) {
+            $snapshot['tenants_available'] = true;
+
+            if (column_exists($pdo, 'tenants', 'payment_gateway') && column_exists($pdo, 'tenants', 'stripe_secret_key')) {
+                $stmt = $pdo->query(
+                    "SELECT COUNT(*)
+                     FROM tenants
+                     WHERE is_active = 1
+                       AND payment_gateway = 'stripe'"
+                );
+                $snapshot['stripe_gateway_tenants'] = (int)$stmt->fetchColumn();
+
+                $stmt = $pdo->query(
+                    "SELECT COUNT(*)
+                     FROM tenants
+                     WHERE is_active = 1
+                       AND payment_gateway = 'stripe'
+                       AND (stripe_secret_key IS NULL OR stripe_secret_key = '')"
+                );
+                $snapshot['stripe_missing_secret_tenants'] = (int)$stmt->fetchColumn();
+                if ($snapshot['stripe_missing_secret_tenants'] > 0) {
+                    raise_operational_status($snapshot, 'error');
+                }
+            }
+
+            if (column_exists($pdo, 'tenants', 'smaregi_contract_id') && column_exists($pdo, 'tenants', 'smaregi_token_expires_at')) {
+                $stmt = $pdo->query(
+                    "SELECT COUNT(*)
+                     FROM tenants
+                     WHERE is_active = 1
+                       AND smaregi_contract_id IS NOT NULL
+                       AND smaregi_contract_id <> ''"
+                );
+                $snapshot['smaregi_connected_tenants'] = (int)$stmt->fetchColumn();
+
+                $stmt = $pdo->query(
+                    "SELECT COUNT(*)
+                     FROM tenants
+                     WHERE is_active = 1
+                       AND smaregi_contract_id IS NOT NULL
+                       AND smaregi_contract_id <> ''
+                       AND smaregi_token_expires_at IS NOT NULL
+                       AND smaregi_token_expires_at <= NOW()"
+                );
+                $snapshot['smaregi_token_expired'] = (int)$stmt->fetchColumn();
+                if ($snapshot['smaregi_token_expired'] > 0) {
+                    raise_operational_status($snapshot, 'error');
+                }
+
+                $stmt = $pdo->query(
+                    "SELECT COUNT(*)
+                     FROM tenants
+                     WHERE is_active = 1
+                       AND smaregi_contract_id IS NOT NULL
+                       AND smaregi_contract_id <> ''
+                       AND smaregi_token_expires_at > NOW()
+                       AND smaregi_token_expires_at <= DATE_ADD(NOW(), INTERVAL 24 HOUR)"
+                );
+                $snapshot['smaregi_token_expiring_24h'] = (int)$stmt->fetchColumn();
+                if ($snapshot['smaregi_token_expiring_24h'] > 0) {
+                    raise_operational_status($snapshot, 'warn');
+                }
+            }
+        }
+
+        if (table_exists($pdo, 'smaregi_store_mapping')) {
+            $snapshot['smaregi_store_mapping_available'] = true;
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM smaregi_store_mapping
+                 WHERE sync_enabled = 1
+                   AND (last_menu_sync IS NULL OR last_menu_sync < DATE_SUB(NOW(), INTERVAL 24 HOUR))"
+            );
+            $snapshot['smaregi_unsynced_stores_24h'] = (int)$stmt->fetchColumn();
+            if ($snapshot['smaregi_unsynced_stores_24h'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+        }
+
+        $apiErrors = fetch_operation_error_log_snapshot(
+            $pdo,
+            "(request_path LIKE '%/smaregi/%'
+              OR request_path LIKE '%stripe%'
+              OR request_path LIKE '%checkout%'
+              OR request_path LIKE '%payment%'
+              OR request_path LIKE '%ai-%'
+              OR code IN ('SMAREGI_API_ERROR','SMAREGI_NOT_CONFIGURED','GEMINI_ERROR','GEMINI_NETWORK','GEMINI_PARSE','AI_FAILED','AI_NOT_CONFIGURED','CHECKOUT_FAILED','GATEWAY_ERROR','PAYMENT_GATEWAY_ERROR'))"
+        );
+        $snapshot['api_errors_15m'] = $apiErrors['count'];
+        $snapshot['api_error_rows'] = $apiErrors['rows'];
+        if ((int)$snapshot['api_errors_15m'] > 0) {
+            raise_operational_status($snapshot, 'error');
+        }
+    } catch (PDOException $e) {
+        $snapshot['status'] = 'unknown';
+    }
+
+    return $snapshot;
+}
+
+function fetch_operation_error_log_snapshot(PDO $pdo, string $filterSql): array
+{
+    if (!table_exists($pdo, 'error_log')) {
+        return ['available' => false, 'count' => null, 'rows' => []];
+    }
+
+    try {
+        $stmt = $pdo->query(
+            "SELECT COUNT(*)
+             FROM error_log
+             WHERE created_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+               AND http_status >= 500
+               AND " . $filterSql
+        );
+        $count = (int)$stmt->fetchColumn();
+
+        $rows = $pdo->query(
+            "SELECT e.error_no, e.code, e.http_status, e.request_path,
+                    e.tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                    e.store_id, s.slug AS store_slug, s.name AS store_name,
+                    COUNT(*) AS count, MAX(e.created_at) AS latest_at
+             FROM error_log e
+             LEFT JOIN stores s ON s.id = e.store_id
+             LEFT JOIN tenants t ON t.id = COALESCE(e.tenant_id, s.tenant_id)
+             WHERE e.created_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+               AND e.http_status >= 500
+               AND " . $filterSql . "
+             GROUP BY e.error_no, e.code, e.http_status, e.request_path,
+                      e.tenant_id, t.slug, t.name, e.store_id, s.slug, s.name
+             ORDER BY count DESC, latest_at DESC
+             LIMIT 10"
+        );
+
+        return [
+            'available' => true,
+            'count' => $count,
+            'rows' => $rows ? normalize_count_rows($rows->fetchAll()) : [],
+        ];
+    } catch (PDOException $e) {
+        return ['available' => true, 'count' => null, 'rows' => []];
+    }
 }
 
 function fetch_terminal_heartbeat_snapshot(PDO $pdo): array
