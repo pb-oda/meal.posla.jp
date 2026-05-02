@@ -142,6 +142,9 @@
     var sendOpsMailTestBtn = document.getElementById('btn-send-ops-mail-test');
     if (sendOpsMailTestBtn) sendOpsMailTestBtn.addEventListener('click', sendOpsMailTest);
 
+    var saveOpsConnectionBtn = document.getElementById('btn-save-ops-connection');
+    if (saveOpsConnectionBtn) saveOpsConnectionBtn.addEventListener('click', saveOpsConnectionSettings);
+
     var saveOpsSourceBtn = document.getElementById('btn-save-ops-source');
     if (saveOpsSourceBtn) saveOpsSourceBtn.addEventListener('click', saveOpsSource);
 
@@ -225,7 +228,18 @@
     var anchor = document.createElement('a');
     anchor.href = endpoint;
     if (!anchor.protocol || !anchor.host) return '';
+    if (anchor.hostname === 'host.docker.internal') {
+      var browserHost = (window.location && window.location.hostname) ? window.location.hostname : '';
+      anchor.hostname = (browserHost === 'localhost' || browserHost === '127.0.0.1') ? browserHost : '127.0.0.1';
+    }
     return anchor.protocol + '//' + anchor.host + '/';
+  }
+
+  function opBaseUrlFromSettings(settings) {
+    var publicUrl = _getPlainValue(settings, 'codex_ops_public_url');
+    if (publicUrl) return deriveOpBaseUrl(publicUrl);
+    return deriveOpBaseUrl(_getPlainValue(settings, 'codex_ops_case_endpoint')) ||
+      deriveOpBaseUrl(_getPlainValue(settings, 'codex_ops_alert_endpoint'));
   }
 
   function buildOpUrl(baseUrl, path) {
@@ -247,9 +261,7 @@
     if (!PoslaApi || !PoslaApi.getSettings) return;
     PoslaApi.getSettings().then(function(data) {
       var s = (data && data.settings) ? data.settings : {};
-      var caseEndpoint = _getPlainValue(s, 'codex_ops_case_endpoint');
-      var alertEndpoint = _getPlainValue(s, 'codex_ops_alert_endpoint');
-      updateOpLinks(deriveOpBaseUrl(caseEndpoint) || deriveOpBaseUrl(alertEndpoint));
+      updateOpLinks(opBaseUrlFromSettings(s));
     }).catch(function() {
       updateOpLinks('');
     });
@@ -582,17 +594,42 @@
     if (summaryEl) summaryEl.innerHTML = '<div style="padding:1rem;color:var(--text-muted);">読み込み中...</div>';
     if (listEl) listEl.innerHTML = '';
 
-    PoslaApi.getOpsSources().then(function(data) {
-      renderOpsSource(data || {});
+    Promise.all([
+      PoslaApi.getOpsSources(),
+      PoslaApi.getSettings()
+    ]).then(function(results) {
+      renderOpsSource(results[0] || {}, results[1] || {});
     }).catch(function(err) {
       if (summaryEl) {
-        summaryEl.innerHTML = '<div style="padding:1rem;color:#c62828;">OP連携 source の読み込みに失敗しました: ' + Utils.escapeHtml(err.message) + '</div>';
+        summaryEl.innerHTML = '<div style="padding:1rem;color:#c62828;">OP連携設定の読み込みに失敗しました: ' + Utils.escapeHtml(err.message) + '</div>';
       }
-      showToast('OP連携 source の読み込みに失敗しました: ' + err.message);
+      showToast('OP連携設定の読み込みに失敗しました: ' + err.message);
     });
   }
 
-  function renderOpsSource(data) {
+  function renderOpsConnectionSettings(settingsData) {
+    var s = (settingsData && settingsData.settings) ? settingsData.settings : {};
+    var publicUrl = _getPlainValue(s, 'codex_ops_public_url');
+    var caseEndpoint = _getPlainValue(s, 'codex_ops_case_endpoint');
+    var alertEndpoint = _getPlainValue(s, 'codex_ops_alert_endpoint');
+    var caseToken = _getKeyInfo(s, 'codex_ops_case_token');
+    var alertToken = _getKeyInfo(s, 'codex_ops_alert_token');
+
+    _setInputValue('ops-connection-public-url', publicUrl);
+    _setInputValue('ops-connection-case-endpoint', caseEndpoint);
+    _setInputValue('ops-connection-alert-endpoint', alertEndpoint);
+    updateOpLinks(opBaseUrlFromSettings(s));
+
+    return _buildSummaryCard('OP ACCESS', 'OP画面', [
+      _summaryLine('URL', publicUrl ? '<code>' + Utils.escapeHtml(publicUrl) + '</code>' : '<span style="color:#999;">未設定</span>')
+    ]) +
+      _buildSummaryCard('OP INGEST', 'POSLAからOPへ送信', [
+        _summaryLine('障害報告', (caseEndpoint && caseToken.set) ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
+        _summaryLine('監視Alert', (alertEndpoint && alertToken.set) ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn'))
+      ]);
+  }
+
+  function renderOpsSource(data, settingsData) {
     var source = data.source || {};
     var auth = data.auth || {};
     var sources = data.sources || [];
@@ -610,7 +647,7 @@
     _setInputValue('ops-source-notes', source.notes || '');
 
     if (summaryEl) {
-      summaryEl.innerHTML =
+      summaryEl.innerHTML = renderOpsConnectionSettings(settingsData) +
         _buildSummaryCard('SOURCE', source.label || 'POSLA control source', [
           _summaryLine('source_id', '<code>' + Utils.escapeHtml(source.source_id || '-') + '</code>'),
           _summaryLine('status', _buildStatusPill(source.status || 'unknown', source.status === 'active' ? 'ok' : 'warn')),
@@ -656,6 +693,40 @@
       '<td><code>' + Utils.escapeHtml(source.auth_type || '-') + '</code></td>' +
       '<td>' + Utils.escapeHtml(source.updated_at || '-') + '</td>' +
       '</tr>';
+  }
+
+  function saveOpsConnectionSettings() {
+    var btn = document.getElementById('btn-save-ops-connection');
+    var payload = {};
+    var publicUrl = _readInputValue('ops-connection-public-url');
+    var caseEndpoint = _readInputValue('ops-connection-case-endpoint');
+    var caseToken = _readInputValue('ops-connection-case-token');
+    var alertEndpoint = _readInputValue('ops-connection-alert-endpoint');
+    var alertToken = _readInputValue('ops-connection-alert-token');
+
+    if (publicUrl !== '') payload.codex_ops_public_url = publicUrl;
+    if (caseEndpoint !== '') payload.codex_ops_case_endpoint = caseEndpoint;
+    if (caseToken !== '') payload.codex_ops_case_token = caseToken;
+    if (alertEndpoint !== '') payload.codex_ops_alert_endpoint = alertEndpoint;
+    if (alertToken !== '') payload.codex_ops_alert_token = alertToken;
+
+    if (Object.keys(payload).length === 0) {
+      showToast('保存するOP接続情報を入力してください');
+      return;
+    }
+
+    if (btn) btn.disabled = true;
+    PoslaApi.updateSettings(payload).then(function() {
+      showToast('OP接続情報を保存しました');
+      _setInputValue('ops-connection-case-token', '');
+      _setInputValue('ops-connection-alert-token', '');
+      refreshOpLinksFromSettings();
+      loadOpsSource();
+    }).catch(function(err) {
+      showToast('OP接続情報の保存に失敗しました: ' + err.message);
+    }).then(function() {
+      if (btn) btn.disabled = false;
+    });
   }
 
   function saveOpsSource() {
@@ -2230,9 +2301,10 @@
       var smaregiClientIdVal = _getPlainValue(s, 'smaregi_client_id');
       var opsNotifyEmailVal = _getPlainValue(s, 'ops_notify_email');
       var heartbeatVal = _getPlainValue(s, 'monitor_last_heartbeat');
+      var opsPublicUrlVal = _getPlainValue(s, 'codex_ops_public_url');
       var opsCaseEndpointVal = _getPlainValue(s, 'codex_ops_case_endpoint');
       var opsAlertEndpointVal = _getPlainValue(s, 'codex_ops_alert_endpoint');
-      updateOpLinks(deriveOpBaseUrl(opsCaseEndpointVal) || deriveOpBaseUrl(opsAlertEndpointVal));
+      updateOpLinks(opBaseUrlFromSettings(s));
 
       statusEl.innerHTML =
         _buildSummaryCard('AI / MAPS', 'Gemini・Places', [
@@ -2289,6 +2361,7 @@
       _setInputValue('posla-connect-fee', connectFeeVal);
       _setInputValue('posla-smaregi-client-id', smaregiClientIdVal);
       _setInputValue('posla-ops-notify-email', opsNotifyEmailVal);
+      _setInputValue('posla-codex-ops-public-url', opsPublicUrlVal);
       _setInputValue('posla-codex-ops-case-endpoint', opsCaseEndpointVal);
       _setInputValue('posla-codex-ops-alert-endpoint', opsAlertEndpointVal);
 
@@ -2323,10 +2396,12 @@
     var connectFee = connectFeeEl ? connectFeeEl.value.trim() : '';
     var googleChatWebhook = document.getElementById('posla-google-chat-webhook').value.trim();
     var opsNotifyEmail = document.getElementById('posla-ops-notify-email').value.trim();
+    var opsPublicUrlEl = document.getElementById('posla-codex-ops-public-url');
     var opsCaseEndpointEl = document.getElementById('posla-codex-ops-case-endpoint');
     var opsCaseTokenEl = document.getElementById('posla-codex-ops-case-token');
     var opsAlertEndpointEl = document.getElementById('posla-codex-ops-alert-endpoint');
     var opsAlertTokenEl = document.getElementById('posla-codex-ops-alert-token');
+    var opsPublicUrl = opsPublicUrlEl ? opsPublicUrlEl.value.trim() : '';
     var opsCaseEndpoint = opsCaseEndpointEl ? opsCaseEndpointEl.value.trim() : '';
     var opsCaseToken = opsCaseTokenEl ? opsCaseTokenEl.value.trim() : '';
     var opsAlertEndpoint = opsAlertEndpointEl ? opsAlertEndpointEl.value.trim() : '';
@@ -2345,6 +2420,7 @@
     if (connectFee !== '') data.connect_application_fee_percent = connectFee;
     if (googleChatWebhook) data.google_chat_webhook_url = googleChatWebhook;
     if (opsNotifyEmail !== '') data.ops_notify_email = opsNotifyEmail;
+    if (opsPublicUrl !== '') data.codex_ops_public_url = opsPublicUrl;
     if (opsCaseEndpoint !== '') data.codex_ops_case_endpoint = opsCaseEndpoint;
     if (opsCaseToken !== '') data.codex_ops_case_token = opsCaseToken;
     if (opsAlertEndpoint !== '') data.codex_ops_alert_endpoint = opsAlertEndpoint;

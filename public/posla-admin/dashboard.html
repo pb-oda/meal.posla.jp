@@ -1698,6 +1698,11 @@
             <div class="settings-card__title">OP障害報告 / 監視アラート連携</div>
             <div class="settings-card__note">テナント画面の障害報告と monitor-health の監視アラートを codex-ops-platform へ送る設定です。トークンは空欄送信では変更しません。</div>
             <div class="form-group">
+              <label class="form-label" for="posla-codex-ops-public-url">OP画面URL</label>
+              <input class="form-input" type="url" id="posla-codex-ops-public-url" placeholder="http://127.0.0.1:8091/">
+              <span class="form-hint">POSLA管理画面からブラウザで開くURLです。Docker内から送信するEndpointとは別に設定します。</span>
+            </div>
+            <div class="form-group">
               <label class="form-label" for="posla-codex-ops-case-endpoint">障害報告 Endpoint</label>
               <input class="form-input" type="url" id="posla-codex-ops-case-endpoint" placeholder="http://127.0.0.1:8091/api/cases.php">
             </div>
@@ -1752,6 +1757,51 @@
       </div>
 
       <div class="settings-summary-grid" id="ops-source-summary"></div>
+
+      <div class="settings-layout">
+        <div class="card settings-card">
+          <div class="card__body">
+            <div class="settings-card__eyebrow">OP Access</div>
+            <div class="settings-card__title">OP画面</div>
+            <div class="settings-card__note">POSLA管理画面から開くOPの公開URLです。ローカルでは `http://127.0.0.1:8091/`、本番では `https://op.posla.jp/` を使います。</div>
+            <div class="form-group">
+              <label class="form-label" for="ops-connection-public-url">OP画面URL</label>
+              <input class="form-input" type="url" id="ops-connection-public-url" placeholder="https://op.posla.jp/">
+            </div>
+            <div class="settings-inline-actions">
+              <a class="btn btn-secondary" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card settings-card">
+          <div class="card__body">
+            <div class="settings-card__eyebrow">OP Ingest</div>
+            <div class="settings-card__title">POSLAからOPへ送るEndpoint</div>
+            <div class="settings-card__note">Cloud RunからVPS上のOPへ障害報告・監視Alertを送る接続先です。Tokenは空欄送信では変更しません。</div>
+            <div class="form-group">
+              <label class="form-label" for="ops-connection-case-endpoint">障害報告 Endpoint</label>
+              <input class="form-input" type="url" id="ops-connection-case-endpoint" placeholder="https://op.posla.jp/api/cases.php">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ops-connection-case-token">障害報告 Token</label>
+              <input class="form-input" type="password" id="ops-connection-case-token" placeholder="変更する場合のみ入力">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ops-connection-alert-endpoint">監視Alert Endpoint</label>
+              <input class="form-input" type="url" id="ops-connection-alert-endpoint" placeholder="https://op.posla.jp/api/ingest/posla-alert">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ops-connection-alert-token">監視Alert Token</label>
+              <input class="form-input" type="password" id="ops-connection-alert-token" placeholder="変更する場合のみ入力">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <button class="btn btn-primary" id="btn-save-ops-connection" type="button">OP接続情報を保存</button>
+      </div>
 
       <div class="settings-layout">
         <div class="card settings-card">

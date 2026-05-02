@@ -54,6 +54,7 @@ function _public_setting_keys() {
         // 運用設定
         'monitor_last_heartbeat',
         'ops_notify_email',
+        'codex_ops_public_url',
         'codex_ops_case_endpoint',
         'codex_ops_alert_endpoint',
         // LLM パラメータ
@@ -109,6 +110,7 @@ function _setting_label_map() {
         'smaregi_client_secret' => 'スマレジ Client Secret',
         'google_chat_webhook_url' => 'Google Chat Webhook URL',
         'ops_notify_email' => '運用通知メール',
+        'codex_ops_public_url' => 'OP画面URL',
         'codex_ops_case_endpoint' => 'OP Incident Report Endpoint',
         'codex_ops_case_token' => 'OP Incident Report Token',
         'codex_ops_alert_endpoint' => 'OP Alert Endpoint',
@@ -119,6 +121,13 @@ function _setting_label_map() {
 function _setting_label($key) {
     $labels = _setting_label_map();
     return $labels[$key] ?? $key;
+}
+
+function _settings_valid_http_url($value) {
+    if ($value === null || $value === '') {
+        return true;
+    }
+    return is_string($value) && strlen($value) <= 255 && preg_match('/^https?:\/\/[^\s]+$/', $value) === 1;
 }
 
 function _build_audit_setting_value($key, $value) {
@@ -321,6 +330,7 @@ function _build_config_health(array $settingsMap): array {
         ]
     );
 
+    $opsPublicUrlSet = _setting_is_present($settingsMap, 'codex_ops_public_url');
     $opsCaseEndpointSet = _setting_is_present($settingsMap, 'codex_ops_case_endpoint');
     $opsCaseTokenSet = _setting_is_present($settingsMap, 'codex_ops_case_token');
     $opsAlertEndpointSet = _setting_is_present($settingsMap, 'codex_ops_alert_endpoint');
@@ -328,9 +338,10 @@ function _build_config_health(array $settingsMap): array {
     $checks[] = _build_config_check(
         'ops_case_bridge',
         'OP障害報告 / Alert連携',
-        ($opsCaseEndpointSet && $opsCaseTokenSet && $opsAlertEndpointSet && $opsAlertTokenSet) ? 'ok' : 'warn',
-        (($opsCaseEndpointSet ? 1 : 0) + ($opsCaseTokenSet ? 1 : 0) + ($opsAlertEndpointSet ? 1 : 0) + ($opsAlertTokenSet ? 1 : 0)) . '/4 設定済み',
+        ($opsPublicUrlSet && $opsCaseEndpointSet && $opsCaseTokenSet && $opsAlertEndpointSet && $opsAlertTokenSet) ? 'ok' : 'warn',
+        (($opsPublicUrlSet ? 1 : 0) + ($opsCaseEndpointSet ? 1 : 0) + ($opsCaseTokenSet ? 1 : 0) + ($opsAlertEndpointSet ? 1 : 0) + ($opsAlertTokenSet ? 1 : 0)) . '/5 設定済み',
         [
+            'OP画面URL: ' . ($opsPublicUrlSet ? '設定済み' : '未設定'),
             '障害報告 Endpoint: ' . ($opsCaseEndpointSet ? '設定済み' : '未設定'),
             '障害報告 Token: ' . ($opsCaseTokenSet ? '設定済み' : '未設定'),
             '監視アラート Endpoint: ' . ($opsAlertEndpointSet ? '設定済み' : '未設定'),
@@ -485,7 +496,7 @@ if ($method === 'PATCH') {
     $input = get_json_body();
     // P1-35: α-1 化で stripe_price_standard/pro/enterprise → base/additional_store/hq_broadcast
     // 旧キーは posla_settings の row として温存（rollback 用）。allowedKeys からは削除して UI 編集経路を閉じる
-    $allowedKeys = ['gemini_api_key', 'google_places_api_key', 'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret', 'stripe_webhook_secret_signup', 'stripe_price_base', 'stripe_price_additional_store', 'stripe_price_hq_broadcast', 'connect_application_fee_percent', 'smaregi_client_id', 'smaregi_client_secret', 'google_chat_webhook_url', 'ops_notify_email', 'codex_ops_case_endpoint', 'codex_ops_case_token', 'codex_ops_alert_endpoint', 'codex_ops_alert_token'];
+    $allowedKeys = ['gemini_api_key', 'google_places_api_key', 'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret', 'stripe_webhook_secret_signup', 'stripe_price_base', 'stripe_price_additional_store', 'stripe_price_hq_broadcast', 'connect_application_fee_percent', 'smaregi_client_id', 'smaregi_client_secret', 'google_chat_webhook_url', 'ops_notify_email', 'codex_ops_public_url', 'codex_ops_case_endpoint', 'codex_ops_case_token', 'codex_ops_alert_endpoint', 'codex_ops_alert_token'];
     $updated = 0;
     $updatedKeys = [];
     $currentSettings = _fetch_current_settings_map($pdo);
@@ -495,6 +506,9 @@ if ($method === 'PATCH') {
         if (!array_key_exists($key, $input)) continue;
 
         $val = $input[$key];
+        if (in_array($key, ['codex_ops_public_url', 'codex_ops_case_endpoint', 'codex_ops_alert_endpoint'], true) && !_settings_valid_http_url($val)) {
+            json_error('INVALID_URL', _setting_label($key) . ' は http(s) のURLで入力してください', 400);
+        }
 
         // 空文字 = 「変更しない」（フォーム未入力扱い）
         // 機密キーで実値が見えない以上、ユーザーが「何も入れない」=「現状維持」が直感的
