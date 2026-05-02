@@ -29,6 +29,12 @@ Redisについて:
 
 ## 2. Image build
 
+デプロイ前に、作業コピーのcommit、Cloud Run用entrypoint、必須migration、OP監視endpointを確認する。
+
+```bash
+BASE_URL=http://127.0.0.1:8081 bash scripts/cloudrun/pre-deploy-check.sh
+```
+
 ```bash
 docker build -f docker/php/Dockerfile.cloudrun -t <region>-docker.pkg.dev/<project-id>/<artifact-repo>/posla-web:<image-tag> .
 docker push <region>-docker.pkg.dev/<project-id>/<artifact-repo>/posla-web:<image-tag>
