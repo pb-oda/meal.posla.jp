@@ -47,7 +47,10 @@ $snapshot['monitor_events'] = fetch_monitor_event_summary($pdo);
 $snapshot['tier0'] = fetch_tier0_payment_cashier_snapshot($pdo);
 $snapshot['kds'] = fetch_kds_operations_snapshot($pdo);
 $snapshot['register'] = fetch_register_operations_snapshot($pdo);
-$snapshot['terminal_heartbeat'] = fetch_terminal_heartbeat_snapshot($pdo);
+$snapshot['terminal_heartbeat'] = apply_terminal_heartbeat_operational_policy(
+    fetch_terminal_heartbeat_snapshot($pdo),
+    $snapshot
+);
 
 if (($snapshot['db']['status'] ?? 'ng') !== 'ok') {
     $snapshot['ok'] = false;
@@ -58,10 +61,13 @@ if (!empty($snapshot['cron']['lag_sec']) && (int)$snapshot['cron']['lag_sec'] > 
 if (!empty($snapshot['tier0']['status']) && $snapshot['tier0']['status'] === 'error') {
     $snapshot['ok'] = false;
 }
-foreach (['kds', 'register', 'terminal_heartbeat'] as $section) {
+foreach (['kds', 'register'] as $section) {
     if (!empty($snapshot[$section]['status']) && $snapshot[$section]['status'] === 'error') {
         $snapshot['ok'] = false;
     }
+}
+if (terminal_heartbeat_blocks_snapshot($snapshot)) {
+    $snapshot['ok'] = false;
 }
 
 json_response($snapshot);
@@ -1096,6 +1102,34 @@ function fetch_terminal_heartbeat_snapshot(PDO $pdo): array
     }
 
     return $snapshot;
+}
+
+function apply_terminal_heartbeat_operational_policy(array $heartbeat, array $snapshot): array
+{
+    $environment = defined('APP_ENVIRONMENT') ? (string)APP_ENVIRONMENT : (string)($snapshot['environment'] ?? '');
+    $cellEnvironment = (string)($snapshot['registry']['cell']['environment'] ?? ($snapshot['registry']['control_cell']['environment'] ?? ''));
+    $nonProductionEnvironments = ['test', 'dev', 'development', 'local', 'demo', 'pseudo-prod'];
+    $isNonProduction = in_array($environment, $nonProductionEnvironments, true)
+        || in_array($cellEnvironment, $nonProductionEnvironments, true);
+
+    $heartbeat['blocking'] = !$isNonProduction;
+    $heartbeat['operator_level'] = ($heartbeat['status'] ?? 'unknown') === 'ok'
+        ? 'ok'
+        : ($isNonProduction ? 'check' : 'incident');
+    $heartbeat['policy_reason'] = $isNonProduction
+        ? 'non_production_terminal_heartbeat_is_check_only'
+        : 'production_terminal_heartbeat_blocks_snapshot';
+
+    return $heartbeat;
+}
+
+function terminal_heartbeat_blocks_snapshot(array $snapshot): bool
+{
+    $heartbeat = $snapshot['terminal_heartbeat'] ?? [];
+    if (!is_array($heartbeat)) {
+        return false;
+    }
+    return ($heartbeat['status'] ?? '') === 'error' && !empty($heartbeat['blocking']);
 }
 
 function raise_operational_status(array &$snapshot, string $status): void
