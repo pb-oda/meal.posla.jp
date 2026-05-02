@@ -45,6 +45,9 @@ $snapshot['tenant_insights'] = fetch_tenant_insight_snapshot($pdo, empty($snapsh
 $snapshot['errors'] = fetch_error_summary($pdo);
 $snapshot['monitor_events'] = fetch_monitor_event_summary($pdo);
 $snapshot['tier0'] = fetch_tier0_payment_cashier_snapshot($pdo);
+$snapshot['kds'] = fetch_kds_operations_snapshot($pdo);
+$snapshot['register'] = fetch_register_operations_snapshot($pdo);
+$snapshot['terminal_heartbeat'] = fetch_terminal_heartbeat_snapshot($pdo);
 
 if (($snapshot['db']['status'] ?? 'ng') !== 'ok') {
     $snapshot['ok'] = false;
@@ -54,6 +57,11 @@ if (!empty($snapshot['cron']['lag_sec']) && (int)$snapshot['cron']['lag_sec'] > 
 }
 if (!empty($snapshot['tier0']['status']) && $snapshot['tier0']['status'] === 'error') {
     $snapshot['ok'] = false;
+}
+foreach (['kds', 'register', 'terminal_heartbeat'] as $section) {
+    if (!empty($snapshot[$section]['status']) && $snapshot[$section]['status'] === 'error') {
+        $snapshot['ok'] = false;
+    }
 }
 
 json_response($snapshot);
@@ -620,6 +628,483 @@ function fetch_tier0_payment_cashier_snapshot(PDO $pdo): array
     }
 
     return $snapshot;
+}
+
+function fetch_kds_operations_snapshot(PDO $pdo): array
+{
+    $snapshot = [
+        'status' => 'ok',
+        'thresholds' => [
+            'preparing_warn_min' => 15,
+            'ready_error_min' => 30,
+            'kitchen_call_warn_min' => 10,
+        ],
+        'orders_available' => false,
+        'order_items_available' => false,
+        'call_alerts_available' => false,
+        'preparing_orders_over_15m' => null,
+        'preparing_orders' => [],
+        'ready_orders_over_30m' => null,
+        'ready_orders' => [],
+        'preparing_items_over_15m' => null,
+        'preparing_items' => [],
+        'ready_items_over_30m' => null,
+        'ready_items' => [],
+        'pending_kitchen_calls_over_10m' => null,
+        'pending_kitchen_calls' => [],
+    ];
+
+    try {
+        if (table_exists($pdo, 'orders')) {
+            $snapshot['orders_available'] = true;
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM orders
+                 WHERE status = 'preparing'
+                   AND COALESCE(prepared_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL 15 MINUTE)"
+            );
+            $snapshot['preparing_orders_over_15m'] = (int)$stmt->fetchColumn();
+            if ($snapshot['preparing_orders_over_15m'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+
+            $rows = $pdo->query(
+                "SELECT o.id AS order_id, o.store_id,
+                        s.slug AS store_slug, s.name AS store_name,
+                        t.id AS tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                        o.table_id, o.total_amount, o.status, o.order_type,
+                        o.created_at, o.updated_at, o.prepared_at, o.ready_at
+                 FROM orders o
+                 LEFT JOIN stores s ON s.id = o.store_id
+                 LEFT JOIN tenants t ON t.id = s.tenant_id
+                 WHERE o.status = 'preparing'
+                   AND COALESCE(o.prepared_at, o.updated_at, o.created_at) < DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+                 ORDER BY COALESCE(o.prepared_at, o.updated_at, o.created_at) ASC
+                 LIMIT 10"
+            );
+            $snapshot['preparing_orders'] = $rows ? $rows->fetchAll() : [];
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM orders
+                 WHERE status = 'ready'
+                   AND COALESCE(ready_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL 30 MINUTE)"
+            );
+            $snapshot['ready_orders_over_30m'] = (int)$stmt->fetchColumn();
+            if ($snapshot['ready_orders_over_30m'] > 0) {
+                raise_operational_status($snapshot, 'error');
+            }
+
+            $rows = $pdo->query(
+                "SELECT o.id AS order_id, o.store_id,
+                        s.slug AS store_slug, s.name AS store_name,
+                        t.id AS tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                        o.table_id, o.total_amount, o.status, o.order_type,
+                        o.created_at, o.updated_at, o.prepared_at, o.ready_at
+                 FROM orders o
+                 LEFT JOIN stores s ON s.id = o.store_id
+                 LEFT JOIN tenants t ON t.id = s.tenant_id
+                 WHERE o.status = 'ready'
+                   AND COALESCE(o.ready_at, o.updated_at, o.created_at) < DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                 ORDER BY COALESCE(o.ready_at, o.updated_at, o.created_at) ASC
+                 LIMIT 10"
+            );
+            $snapshot['ready_orders'] = $rows ? $rows->fetchAll() : [];
+        }
+
+        if (table_exists($pdo, 'order_items')) {
+            $snapshot['order_items_available'] = true;
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM order_items
+                 WHERE status = 'preparing'
+                   AND COALESCE(prepared_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL 15 MINUTE)"
+            );
+            $snapshot['preparing_items_over_15m'] = (int)$stmt->fetchColumn();
+            if ($snapshot['preparing_items_over_15m'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+
+            $rows = $pdo->query(
+                "SELECT oi.id AS order_item_id, oi.order_id, oi.store_id,
+                        s.slug AS store_slug, s.name AS store_name,
+                        t.id AS tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                        oi.name, oi.qty, oi.status, oi.created_at, oi.updated_at, oi.prepared_at, oi.ready_at
+                 FROM order_items oi
+                 LEFT JOIN stores s ON s.id = oi.store_id
+                 LEFT JOIN tenants t ON t.id = s.tenant_id
+                 WHERE oi.status = 'preparing'
+                   AND COALESCE(oi.prepared_at, oi.updated_at, oi.created_at) < DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+                 ORDER BY COALESCE(oi.prepared_at, oi.updated_at, oi.created_at) ASC
+                 LIMIT 10"
+            );
+            $snapshot['preparing_items'] = $rows ? $rows->fetchAll() : [];
+
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM order_items
+                 WHERE status = 'ready'
+                   AND COALESCE(ready_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL 30 MINUTE)"
+            );
+            $snapshot['ready_items_over_30m'] = (int)$stmt->fetchColumn();
+            if ($snapshot['ready_items_over_30m'] > 0) {
+                raise_operational_status($snapshot, 'error');
+            }
+
+            $rows = $pdo->query(
+                "SELECT oi.id AS order_item_id, oi.order_id, oi.store_id,
+                        s.slug AS store_slug, s.name AS store_name,
+                        t.id AS tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                        oi.name, oi.qty, oi.status, oi.created_at, oi.updated_at, oi.prepared_at, oi.ready_at
+                 FROM order_items oi
+                 LEFT JOIN stores s ON s.id = oi.store_id
+                 LEFT JOIN tenants t ON t.id = s.tenant_id
+                 WHERE oi.status = 'ready'
+                   AND COALESCE(oi.ready_at, oi.updated_at, oi.created_at) < DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                 ORDER BY COALESCE(oi.ready_at, oi.updated_at, oi.created_at) ASC
+                 LIMIT 10"
+            );
+            $snapshot['ready_items'] = $rows ? $rows->fetchAll() : [];
+        }
+
+        if (table_exists($pdo, 'call_alerts')) {
+            $snapshot['call_alerts_available'] = true;
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM call_alerts
+                 WHERE type IN ('kitchen_call','product_ready')
+                   AND status IN ('pending','in_progress')
+                   AND created_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
+            );
+            $snapshot['pending_kitchen_calls_over_10m'] = (int)$stmt->fetchColumn();
+            if ($snapshot['pending_kitchen_calls_over_10m'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+
+            $rows = $pdo->query(
+                "SELECT ca.id AS call_alert_id, ca.store_id,
+                        s.slug AS store_slug, s.name AS store_name,
+                        t.id AS tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                        ca.table_id, ca.table_code, ca.type, ca.reason, ca.item_name,
+                        ca.status, ca.created_at, ca.acknowledged_at
+                 FROM call_alerts ca
+                 LEFT JOIN stores s ON s.id = ca.store_id
+                 LEFT JOIN tenants t ON t.id = s.tenant_id
+                 WHERE ca.type IN ('kitchen_call','product_ready')
+                   AND ca.status IN ('pending','in_progress')
+                   AND ca.created_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+                 ORDER BY ca.created_at ASC
+                 LIMIT 10"
+            );
+            $snapshot['pending_kitchen_calls'] = $rows ? $rows->fetchAll() : [];
+        }
+    } catch (PDOException $e) {
+        $snapshot['status'] = 'unknown';
+    }
+
+    return $snapshot;
+}
+
+function fetch_register_operations_snapshot(PDO $pdo): array
+{
+    $snapshot = [
+        'status' => 'ok',
+        'thresholds' => [
+            'bill_requested_warn_min' => 15,
+            'pending_payment_warn_min' => 15,
+            'open_difference_error_min' => 30,
+            'unclosed_register_error_days' => 1,
+        ],
+        'table_sessions_available' => false,
+        'orders_available' => false,
+        'cash_log_available' => false,
+        'pre_close_logs_available' => false,
+        'bill_requested_sessions_over_15m' => null,
+        'bill_requested_sessions' => [],
+        'pending_payment_orders_over_15m' => null,
+        'pending_payment_orders' => [],
+        'open_pre_close_differences_over_30m' => null,
+        'open_pre_close_differences' => [],
+        'unclosed_register_days' => null,
+        'unclosed_registers' => [],
+        'recent_close_differences_24h' => null,
+        'recent_close_differences' => [],
+    ];
+
+    try {
+        if (table_exists($pdo, 'table_sessions')) {
+            $snapshot['table_sessions_available'] = true;
+            $hasStatusChangedAt = column_exists($pdo, 'table_sessions', 'status_changed_at');
+            $billRequestedAtExpr = $hasStatusChangedAt
+                ? 'COALESCE(status_changed_at, started_at)'
+                : 'started_at';
+            $qualifiedBillRequestedAtExpr = $hasStatusChangedAt
+                ? 'COALESCE(ts.status_changed_at, ts.started_at)'
+                : 'ts.started_at';
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM table_sessions
+                 WHERE status = 'bill_requested'
+                   AND " . $billRequestedAtExpr . " < DATE_SUB(NOW(), INTERVAL 15 MINUTE)"
+            );
+            $snapshot['bill_requested_sessions_over_15m'] = (int)$stmt->fetchColumn();
+            if ($snapshot['bill_requested_sessions_over_15m'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+
+            $rows = $pdo->query(
+                "SELECT ts.id AS table_session_id, ts.store_id,
+                        s.slug AS store_slug, s.name AS store_name,
+                        t.id AS tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                        ts.table_id, ts.status, ts.guest_count, ts.started_at,
+                        " . $qualifiedBillRequestedAtExpr . " AS bill_requested_at,
+                        ts.last_order_at
+                 FROM table_sessions ts
+                 LEFT JOIN stores s ON s.id = ts.store_id
+                 LEFT JOIN tenants t ON t.id = s.tenant_id
+                 WHERE ts.status = 'bill_requested'
+                   AND " . $qualifiedBillRequestedAtExpr . " < DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+                 ORDER BY bill_requested_at ASC
+                 LIMIT 10"
+            );
+            $snapshot['bill_requested_sessions'] = $rows ? $rows->fetchAll() : [];
+        }
+
+        if (table_exists($pdo, 'orders')) {
+            $snapshot['orders_available'] = true;
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM orders
+                 WHERE status = 'pending_payment'
+                   AND updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)"
+            );
+            $snapshot['pending_payment_orders_over_15m'] = (int)$stmt->fetchColumn();
+            if ($snapshot['pending_payment_orders_over_15m'] > 0) {
+                raise_operational_status($snapshot, 'warn');
+            }
+
+            $rows = $pdo->query(
+                "SELECT o.id AS order_id, o.store_id,
+                        s.slug AS store_slug, s.name AS store_name,
+                        t.id AS tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                        o.table_id, o.total_amount, o.status, o.order_type, o.created_at, o.updated_at
+                 FROM orders o
+                 LEFT JOIN stores s ON s.id = o.store_id
+                 LEFT JOIN tenants t ON t.id = s.tenant_id
+                 WHERE o.status = 'pending_payment'
+                   AND o.updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+                 ORDER BY o.updated_at ASC
+                 LIMIT 10"
+            );
+            $snapshot['pending_payment_orders'] = $rows ? $rows->fetchAll() : [];
+        }
+
+        if (table_exists($pdo, 'register_pre_close_logs')) {
+            $snapshot['pre_close_logs_available'] = true;
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM register_pre_close_logs
+                 WHERE status = 'open'
+                   AND ABS(COALESCE(difference_amount, 0)) > 0
+                   AND created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)"
+            );
+            $snapshot['open_pre_close_differences_over_30m'] = (int)$stmt->fetchColumn();
+            if ($snapshot['open_pre_close_differences_over_30m'] > 0) {
+                raise_operational_status($snapshot, 'error');
+            }
+
+            $rows = $pdo->query(
+                "SELECT rpcl.id AS pre_close_log_id, rpcl.tenant_id,
+                        t.slug AS tenant_slug, t.name AS tenant_name,
+                        rpcl.store_id, s.slug AS store_slug, s.name AS store_name,
+                        rpcl.business_day, rpcl.actual_cash_amount, rpcl.expected_cash_amount,
+                        rpcl.difference_amount, rpcl.status, rpcl.created_at
+                 FROM register_pre_close_logs rpcl
+                 LEFT JOIN tenants t ON t.id = rpcl.tenant_id
+                 LEFT JOIN stores s ON s.id = rpcl.store_id
+                 WHERE rpcl.status = 'open'
+                   AND ABS(COALESCE(rpcl.difference_amount, 0)) > 0
+                   AND rpcl.created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                 ORDER BY rpcl.created_at ASC
+                 LIMIT 10"
+            );
+            $snapshot['open_pre_close_differences'] = $rows ? $rows->fetchAll() : [];
+        }
+
+        if (table_exists($pdo, 'cash_log')) {
+            $snapshot['cash_log_available'] = true;
+            $stmt = $pdo->query(
+                "SELECT COUNT(*)
+                 FROM cash_log opened
+                 WHERE opened.type = 'open'
+                   AND opened.created_at < CURDATE()
+                   AND opened.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                   AND NOT EXISTS (
+                     SELECT 1
+                     FROM cash_log closed
+                     WHERE closed.store_id = opened.store_id
+                       AND closed.type = 'close'
+                       AND closed.created_at > opened.created_at
+                       AND closed.created_at < DATE_ADD(DATE(opened.created_at), INTERVAL 2 DAY)
+                   )"
+            );
+            $snapshot['unclosed_register_days'] = (int)$stmt->fetchColumn();
+            if ($snapshot['unclosed_register_days'] > 0) {
+                raise_operational_status($snapshot, 'error');
+            }
+
+            $rows = $pdo->query(
+                "SELECT opened.id AS cash_open_id, opened.store_id,
+                        s.slug AS store_slug, s.name AS store_name,
+                        t.id AS tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                        DATE(opened.created_at) AS business_day, opened.amount, opened.created_at
+                 FROM cash_log opened
+                 LEFT JOIN stores s ON s.id = opened.store_id
+                 LEFT JOIN tenants t ON t.id = s.tenant_id
+                 WHERE opened.type = 'open'
+                   AND opened.created_at < CURDATE()
+                   AND opened.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                   AND NOT EXISTS (
+                     SELECT 1
+                     FROM cash_log closed
+                     WHERE closed.store_id = opened.store_id
+                       AND closed.type = 'close'
+                       AND closed.created_at > opened.created_at
+                       AND closed.created_at < DATE_ADD(DATE(opened.created_at), INTERVAL 2 DAY)
+                   )
+                 ORDER BY opened.created_at ASC
+                 LIMIT 10"
+            );
+            $snapshot['unclosed_registers'] = $rows ? $rows->fetchAll() : [];
+
+            if (column_exists($pdo, 'cash_log', 'difference_amount')) {
+                $stmt = $pdo->query(
+                    "SELECT COUNT(*)
+                     FROM cash_log
+                     WHERE type = 'close'
+                       AND ABS(COALESCE(difference_amount, 0)) > 0
+                       AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)"
+                );
+                $snapshot['recent_close_differences_24h'] = (int)$stmt->fetchColumn();
+                if ($snapshot['recent_close_differences_24h'] > 0) {
+                    raise_operational_status($snapshot, 'warn');
+                }
+
+                $rows = $pdo->query(
+                    "SELECT cl.id AS cash_close_id, cl.store_id,
+                            s.slug AS store_slug, s.name AS store_name,
+                            t.id AS tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
+                            cl.amount, cl.expected_amount, cl.difference_amount,
+                            cl.cash_sales_amount, cl.card_sales_amount, cl.qr_sales_amount,
+                            cl.created_at
+                     FROM cash_log cl
+                     LEFT JOIN stores s ON s.id = cl.store_id
+                     LEFT JOIN tenants t ON t.id = s.tenant_id
+                     WHERE cl.type = 'close'
+                       AND ABS(COALESCE(cl.difference_amount, 0)) > 0
+                       AND cl.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                     ORDER BY cl.created_at DESC
+                     LIMIT 10"
+                );
+                $snapshot['recent_close_differences'] = $rows ? $rows->fetchAll() : [];
+            }
+        }
+    } catch (PDOException $e) {
+        $snapshot['status'] = 'unknown';
+    }
+
+    return $snapshot;
+}
+
+function fetch_terminal_heartbeat_snapshot(PDO $pdo): array
+{
+    $snapshot = [
+        'status' => 'unknown',
+        'available' => false,
+        'thresholds' => [
+            'stale_warn_sec' => 600,
+            'stale_error_sec' => 1800,
+        ],
+        'total' => null,
+        'mode_counts' => [],
+        'stale_over_10m' => null,
+        'stale_over_30m' => null,
+        'stale_terminals' => [],
+    ];
+
+    if (!table_exists($pdo, 'handy_terminals')) {
+        return $snapshot;
+    }
+
+    $snapshot['status'] = 'ok';
+    $snapshot['available'] = true;
+
+    try {
+        $stmt = $pdo->query('SELECT COUNT(*) FROM handy_terminals');
+        $snapshot['total'] = (int)$stmt->fetchColumn();
+
+        $rows = $pdo->query(
+            "SELECT terminal_mode, COUNT(*) AS count
+             FROM handy_terminals
+             GROUP BY terminal_mode
+             ORDER BY terminal_mode ASC"
+        );
+        $snapshot['mode_counts'] = $rows ? normalize_count_rows($rows->fetchAll()) : [];
+
+        $stmt = $pdo->query(
+            "SELECT COUNT(*)
+             FROM handy_terminals
+             WHERE last_seen_at IS NULL
+                OR last_seen_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
+        );
+        $snapshot['stale_over_10m'] = (int)$stmt->fetchColumn();
+        if ($snapshot['stale_over_10m'] > 0) {
+            raise_operational_status($snapshot, 'warn');
+        }
+
+        $stmt = $pdo->query(
+            "SELECT COUNT(*)
+             FROM handy_terminals
+             WHERE last_seen_at IS NULL
+                OR last_seen_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)"
+        );
+        $snapshot['stale_over_30m'] = (int)$stmt->fetchColumn();
+        if ($snapshot['stale_over_30m'] > 0) {
+            raise_operational_status($snapshot, 'error');
+        }
+
+        $rows = $pdo->query(
+            "SELECT ht.id AS terminal_id, ht.tenant_id,
+                    t.slug AS tenant_slug, t.name AS tenant_name,
+                    ht.store_id, s.slug AS store_slug, s.name AS store_name,
+                    ht.device_uid, ht.device_label, ht.terminal_mode,
+                    ht.sound_enabled, ht.realert_enabled, ht.realert_interval_sec,
+                    ht.last_seen_at, ht.updated_at
+             FROM handy_terminals ht
+             LEFT JOIN tenants t ON t.id = ht.tenant_id
+             LEFT JOIN stores s ON s.id = ht.store_id
+             WHERE ht.last_seen_at IS NULL
+                OR ht.last_seen_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+             ORDER BY ht.last_seen_at IS NULL DESC, ht.last_seen_at ASC, ht.updated_at ASC
+             LIMIT 20"
+        );
+        $snapshot['stale_terminals'] = $rows ? $rows->fetchAll() : [];
+    } catch (PDOException $e) {
+        $snapshot['status'] = 'unknown';
+    }
+
+    return $snapshot;
+}
+
+function raise_operational_status(array &$snapshot, string $status): void
+{
+    $rank = ['ok' => 0, 'warn' => 1, 'error' => 2, 'unknown' => 0];
+    $current = $snapshot['status'] ?? 'ok';
+    if (($rank[$status] ?? 0) > ($rank[$current] ?? 0)) {
+        $snapshot['status'] = $status;
+    }
 }
 
 function tier0_raise_status(array &$snapshot, string $status): void
