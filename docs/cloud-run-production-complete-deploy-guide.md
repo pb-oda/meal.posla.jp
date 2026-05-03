@@ -4,6 +4,8 @@
 
 この文書は、POSLA本体 `meal.posla.jp` をGoogle Cloud Run本番へデプロイするための超詳細手順書です。作業場所、Git反映、GCPリソース、image build、Cloud Run service、Cloud Run Jobs、DB migration、OP連携、smoke、rollbackまでを1本で扱います。
 
+初めて担当する人が実作業で上から順に追う場合は、先に [production-deploy-operator-step-by-step.md](./production-deploy-operator-step-by-step.md) を使ってください。この文書は設計背景と補足を含む正本です。
+
 secret、password、API key、tokenの実値はこの文書に書きません。実値はGoogle Cloud Secret Manager、Cloud Run env、Cloud SQL、Memorystore、Cloud Storage、OP Settingsで管理します。
 
 ## 1. 絶対ルール
