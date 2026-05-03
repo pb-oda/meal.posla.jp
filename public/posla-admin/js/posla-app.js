@@ -181,6 +181,12 @@
     var saveOpsConnectionBtn = document.getElementById('btn-save-ops-connection');
     if (saveOpsConnectionBtn) saveOpsConnectionBtn.addEventListener('click', saveOpsConnectionSettings);
 
+    var generateOpsCaseTokenBtn = document.getElementById('btn-generate-ops-case-token');
+    if (generateOpsCaseTokenBtn) generateOpsCaseTokenBtn.addEventListener('click', generateOpsCaseToken);
+
+    var copyOpsCaseTokenBtn = document.getElementById('btn-copy-ops-case-token');
+    if (copyOpsCaseTokenBtn) copyOpsCaseTokenBtn.addEventListener('click', copyOpsCaseToken);
+
     var refreshPushBtn = document.getElementById('btn-refresh-push');
     if (refreshPushBtn) refreshPushBtn.addEventListener('click', loadPushStatus);
 
@@ -800,6 +806,52 @@
   function _readInputValue(id) {
     var el = document.getElementById(id);
     return el ? el.value.trim() : '';
+  }
+
+  function generateSharedSecret() {
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+    var bytes = new Uint8Array(48);
+    if (window.crypto && window.crypto.getRandomValues) {
+      window.crypto.getRandomValues(bytes);
+    } else {
+      for (var i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    var token = '';
+    for (var j = 0; j < bytes.length; j++) token += chars[bytes[j] % chars.length];
+    return token;
+  }
+
+  function generateOpsCaseToken() {
+    var el = document.getElementById('ops-connection-case-token');
+    if (!el) return;
+    el.type = 'text';
+    el.value = generateSharedSecret();
+    el.focus();
+    el.select();
+    copyOpsCaseToken(false);
+    showToast('障害報告Tokenを発行しました。同じ値をOP側にも保存してください。');
+  }
+
+  function copyOpsCaseToken(showEmptyMessage) {
+    var el = document.getElementById('ops-connection-case-token');
+    var value = el ? el.value.trim() : '';
+    if (value === '') {
+      if (showEmptyMessage !== false) showToast('コピーするTokenがありません');
+      return;
+    }
+    if (el) {
+      el.focus();
+      el.select();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(value).then(function() {
+        if (showEmptyMessage !== false) showToast('Tokenをコピーしました');
+      }).catch(function() {
+        if (showEmptyMessage !== false) showToast('Tokenを選択しました。必要に応じてコピーしてください');
+      });
+    } else if (showEmptyMessage !== false) {
+      showToast('Tokenを選択しました。必要に応じてコピーしてください');
+    }
   }
 
   // ── PWA/Push タブ ──

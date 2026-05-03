@@ -2030,6 +2030,11 @@
             <div class="form-group">
               <label class="form-label" for="ops-connection-case-token">障害報告 Token</label>
               <input class="form-input" type="password" id="ops-connection-case-token" placeholder="変更する場合のみ入力">
+              <div class="settings-inline-actions">
+                <button class="btn btn-secondary btn-sm" id="btn-generate-ops-case-token" type="button">Tokenを発行</button>
+                <button class="btn btn-secondary btn-sm" id="btn-copy-ops-case-token" type="button">コピー</button>
+              </div>
+              <div class="settings-card__note">OP側 Settings の「POSLAから受ける障害報告」で発行したTokenを貼り付けるか、この画面で発行したTokenをOP側にも同じ値で保存します。保存後は実値を表示しません。</div>
             </div>
           </div>
         </div>

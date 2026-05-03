@@ -313,7 +313,7 @@ function _build_settings_checklist(array $settingsMap): array {
     $opsDefinitions = [
         ['codex_ops_public_url', 'OP画面URL', $opsPublicUrl, false, 'POSLA管理画面から開くOP URLです。'],
         ['codex_ops_case_endpoint', 'OP障害報告 Endpoint', $opsCaseEndpoint, false, 'POSLAからOPの POST /api/ingest/posla-case へ障害報告を送り、OP側でcaseと調査を作るURLです。'],
-        ['codex_ops_case_token', 'OP障害報告 Token', '', true, 'secret値は表示しません。OP側 POSLA_OPS_CASE_TOKEN と同じ値です。'],
+        ['codex_ops_case_token', 'OP障害報告 Token', '', true, 'secret値は表示しません。OP側 Settings の障害報告受信Tokenと同じ値です。envは固定運用時のfallbackです。'],
     ];
 
     foreach ($opsDefinitions as $definition) {
@@ -345,12 +345,12 @@ function _build_settings_checklist(array $settingsMap): array {
     );
 
     $runtimeEnv = [
-        ['POSLA_APP_BASE_URL', 'POSLA_APP_BASE_URL', '本番ではpublic https URLが必須です。'],
-        ['POSLA_ALLOWED_ORIGINS', 'POSLA_ALLOWED_ORIGINS', '本番では許可Originを明示してください。'],
-        ['POSLA_ALLOWED_HOSTS', 'POSLA_ALLOWED_HOSTS', '本番では許可Hostを明示してください。'],
-        ['POSLA_CRON_SECRET', 'POSLA_CRON_SECRET', 'HTTP cron / monitor-actions用の共有secretです。'],
-        ['POSLA_OPS_READ_SECRET', 'POSLA_OPS_READ_SECRET', 'OPがPOSLAをread-only参照する共有secretです。'],
-        ['POSLA_OP_LAUNCH_SECRET', 'POSLA_OP_LAUNCH_SECRET', 'POSLA管理画面からOP sessionを発行する共有secretです。'],
+        ['POSLA_APP_BASE_URL', 'POSLA_APP_BASE_URL', 'このPOSLA本体をブラウザで開く正規URLです。例: https://meal.posla.jp'],
+        ['POSLA_ALLOWED_ORIGINS', 'POSLA_ALLOWED_ORIGINS', 'CORSで許可するOriginです。scheme付きで、pathなし。例: https://meal.posla.jp,https://admin.meal.posla.jp'],
+        ['POSLA_ALLOWED_HOSTS', 'POSLA_ALLOWED_HOSTS', 'CSRF/Host検証で許可するHostです。schemeなし、pathなし。例: meal.posla.jp,admin.meal.posla.jp'],
+        ['POSLA_CRON_SECRET', 'POSLA_CRON_SECRET', 'POSLA内部cronやmonitor-actionsで使う共有secretです。32文字以上のランダム値を入れます。OP監視は通常 POSLA_OPS_READ_SECRET を使います。'],
+        ['POSLA_OPS_READ_SECRET', 'POSLA_OPS_READ_SECRET', 'OPがPOSLAの cell-snapshot をread-only参照する共有secretです。OP側Sourceのauth typeを ops_read_secret にし、OP側にも同じ値を設定します。'],
+        ['POSLA_OP_LAUNCH_SECRET', 'POSLA_OP_LAUNCH_SECRET', 'POSLA管理画面からOPを開く時にOP sessionを発行する共有secretです。POSLA側とOP側に同じ32文字以上のランダム値を入れます。未設定だとOPを開くだけで、OP session guardは有効になりません。'],
     ];
 
     foreach ($runtimeEnv as $definition) {
@@ -766,6 +766,9 @@ if ($method === 'PATCH') {
         }
         if ($key === RELEASE_PLAN_ACTIONS_TOKEN_KEY && is_string($val) && $val !== '' && strlen($val) < 32) {
             json_error('INVALID_RELEASE_PLAN_TOKEN', _setting_label($key) . ' は32文字以上で入力してください', 400);
+        }
+        if ($key === 'codex_ops_case_token' && is_string($val) && $val !== '' && (strlen($val) < 32 || preg_match('/\s/', $val))) {
+            json_error('INVALID_OP_CASE_TOKEN', _setting_label($key) . ' は空白を含まない32文字以上のTokenで入力してください', 400);
         }
 
         // 空文字 = 「変更しない」（フォーム未入力扱い）

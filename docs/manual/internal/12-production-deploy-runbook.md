@@ -146,6 +146,17 @@ POSLA_CELL_APP_URL_PATTERN=https://{tenant_slug}.<production-domain>
 
 `POSLA_SESSION_STORE=redis` は本番必須です。PHP コンテナを rebuild / replace してもログインセッションを維持するため、PHP の `$_SESSION` 本体を Redis に置きます。`user_sessions` / `posla_admin_sessions` は引き続き DB 側の有効性台帳として使います。
 
+よく迷うenvの書き方:
+
+| env | 何を書くか | UIで代替できるか |
+|---|---|---|
+| `POSLA_ALLOWED_ORIGINS` | ブラウザのOrigin。`https://meal.posla.jp` のように scheme あり、path なし。複数ならカンマ区切り | できません。CORS/CSRFの入口なので起動envで固定します |
+| `POSLA_ALLOWED_HOSTS` | Host名だけ。`meal.posla.jp` のように scheme なし、path なし。複数ならカンマ区切り | できません。Host検証の入口なので起動envで固定します |
+| `POSLA_CRON_SECRET` | POSLA内部cron / monitor-actions用の32文字以上のランダム値 | できません。cron実行元とPOSLA本体の起動envで合わせます |
+| `POSLA_OPS_READ_SECRET` | OPがPOSLAの `cell-snapshot.php` をread-onlyで読むための32文字以上のランダム値 | できません。POSLA本体とOPのenvで同じ値にします |
+| `POSLA_OP_LAUNCH_SECRET` | POSLA管理画面からOP sessionを発行する32文字以上のランダム値 | できません。POSLA本体とOPのenvで同じ値にします |
+| `POSLA_OP_CASE_TOKEN` | POSLAからOPへ障害報告を送るToken | 原則UIで保存します。envはUI保存を使わない固定運用時だけ |
+
 db env の必須確認:
 
 ```text
