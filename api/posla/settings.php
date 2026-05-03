@@ -312,8 +312,8 @@ function _build_settings_checklist(array $settingsMap): array {
     $opsCaseEndpoint = _setting_value($settingsMap, 'codex_ops_case_endpoint');
     $opsDefinitions = [
         ['codex_ops_public_url', 'OP画面URL', $opsPublicUrl, false, 'POSLA管理画面から開くOP URLです。'],
-        ['codex_ops_case_endpoint', 'OP障害報告 Endpoint', $opsCaseEndpoint, false, 'POSLAからOPへ障害報告を送るURLです。'],
-        ['codex_ops_case_token', 'OP障害報告 Token', '', true, 'secret値は表示しません。'],
+        ['codex_ops_case_endpoint', 'OP障害報告 Endpoint', $opsCaseEndpoint, false, 'POSLAからOPの POST /api/ingest/posla-case へ障害報告を送り、OP側でcaseと調査を作るURLです。'],
+        ['codex_ops_case_token', 'OP障害報告 Token', '', true, 'secret値は表示しません。OP側 POSLA_OPS_CASE_TOKEN と同じ値です。'],
     ];
 
     foreach ($opsDefinitions as $definition) {

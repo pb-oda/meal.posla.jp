@@ -2022,10 +2022,10 @@
           <div class="card__body">
             <div class="settings-card__eyebrow">Incident Report</div>
             <div class="settings-card__title">手動障害報告Webhook</div>
-            <div class="settings-card__note">POSLAの障害報告フォームからVPS上のOPへcaseを作る接続先です。監視結果はここでは送らず、OP側の監視設定で確認します。Tokenは空欄送信では変更しません。</div>
+            <div class="settings-card__note">POSLAの障害報告フォームからVPS上のOPへcaseと調査を作る接続先です。監視結果はここでは送らず、OP側の監視設定で確認します。TokenはOP側の POSLA_OPS_CASE_TOKEN と同じ値を入れ、空欄送信では変更しません。</div>
             <div class="form-group">
               <label class="form-label" for="ops-connection-case-endpoint">障害報告Webhook Endpoint</label>
-              <input class="form-input" type="url" id="ops-connection-case-endpoint" placeholder="https://op.posla.jp/api/cases">
+              <input class="form-input" type="url" id="ops-connection-case-endpoint" placeholder="https://op.posla.jp/api/ingest/posla-case">
             </div>
             <div class="form-group">
               <label class="form-label" for="ops-connection-case-token">障害報告 Token</label>

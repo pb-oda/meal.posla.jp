@@ -516,9 +516,9 @@ POSLA側:
 
 接続先側:
 
-- 障害報告 Endpoint: `https://<ops-domain>/api/cases.php`
+- 障害報告 Endpoint: `https://<ops-domain>/api/ingest/posla-case`
 - 監視アラート Endpoint: `https://<ops-domain>/api/alerts.php`
-- 障害報告 env/header: `OPS_CASE_INGEST_TOKEN` / `X-OPS-CASE-TOKEN`
+- 障害報告 env/header: `POSLA_OPS_CASE_TOKEN` / `X-OPS-CASE-TOKEN`
 - 監視アラート env/header: `OPS_ALERT_INGEST_TOKEN` / `X-OPS-ALERT-TOKEN`
 
 送信される主な情報:

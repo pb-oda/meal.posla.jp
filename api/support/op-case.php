@@ -4,7 +4,7 @@
  *
  * POSLA tenant screens call this endpoint with the current page/error context.
  * This endpoint enriches the request with authenticated tenant/store/user/cell
- * metadata and forwards it to OP. POSLA business data is not written here.
+ * metadata and forwards it to OP /api/ingest/posla-case. POSLA business data is not written here.
  */
 
 require_once __DIR__ . '/../lib/response.php';
@@ -210,7 +210,14 @@ if (!$result['ok']) {
 }
 
 $opBody = json_decode($result['body'], true);
+$case = null;
+$investigation = null;
+if (is_array($opBody)) {
+    $case = $opBody['case'] ?? ($opBody['data']['case'] ?? null);
+    $investigation = $opBody['investigation'] ?? ($opBody['data']['investigation'] ?? null);
+}
 json_response([
     'message' => '障害報告を送信しました',
-    'case' => is_array($opBody) && isset($opBody['case']) ? $opBody['case'] : null,
+    'case' => $case,
+    'investigation' => $investigation,
 ]);

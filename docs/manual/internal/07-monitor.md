@@ -236,8 +236,8 @@ OP 連携で使う設定:
 |---|---|
 | `POSLA_OP_ALERT_ENDPOINT` | `https://<op-domain>/api/alerts.php` |
 | `POSLA_OP_ALERT_TOKEN` | OP側 `OPS_ALERT_INGEST_TOKEN` |
-| `POSLA_OP_CASE_ENDPOINT` | `https://<op-domain>/api/cases.php` |
-| `POSLA_OP_CASE_TOKEN` | OP側 `OPS_CASE_INGEST_TOKEN` |
+| `POSLA_OP_CASE_ENDPOINT` | `https://<op-domain>/api/ingest/posla-case` |
+| `POSLA_OP_CASE_TOKEN` | OP側 `POSLA_OPS_CASE_TOKEN` |
 | `POSLA_OPS_READ_SECRET` | OPが `cell-snapshot.php` を読む秘密 |
 
 直接 alert は OP 側で `要対応` / `緊急` に分類された時だけ Google Chat に送られます。

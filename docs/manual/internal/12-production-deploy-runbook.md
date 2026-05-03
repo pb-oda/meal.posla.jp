@@ -271,8 +271,8 @@ API設定で本番前に必ず入れる値:
 |---|---|
 | 決済 provider | 本番 provider 確定後の live key / webhook secret / Price ID |
 | Google Chat / 運用通知 | 本番の通知先 |
-| 外部障害報告連携 Endpoint | `https://<ops-domain>/api/cases.php` |
-| 外部障害報告連携 Token | 接続先側の ingest token と同じ値 |
+| 外部障害報告連携 Endpoint | `https://<ops-domain>/api/ingest/posla-case` |
+| 外部障害報告連携 Token | OP側 `POSLA_OPS_CASE_TOKEN` と同じ値 |
 | 外部監視アラート連携 Endpoint | `https://<ops-domain>/api/alerts.php` |
 | 外部監視アラート連携 Token | 接続先側の ingest token と同じ値 |
 

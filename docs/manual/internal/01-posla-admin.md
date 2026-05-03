@@ -410,8 +410,8 @@ curl -X POST https://<production-domain>/api/posla/tenants.php \
 | キー名 | 説明 |
 |--------|------|
 | `google_chat_webhook_url` | 異常検知・OP調査結果の通知先 Google Chat Webhook URL |
-| `codex_ops_case_endpoint` | 障害報告窓口から OP へ送る `https://<op-domain>/api/cases.php` |
-| `codex_ops_case_token` | OP 側 `OPS_CASE_INGEST_TOKEN` と同じ秘密値 |
+| `codex_ops_case_endpoint` | 障害報告窓口から OP へ送る `https://<op-domain>/api/ingest/posla-case` |
+| `codex_ops_case_token` | OP 側 `POSLA_OPS_CASE_TOKEN` と同じ秘密値 |
 | `codex_ops_alert_endpoint` | monitor-health から OP へ送る `https://<op-domain>/api/alerts.php` |
 | `codex_ops_alert_token` | OP 側 `OPS_ALERT_INGEST_TOKEN` と同じ秘密値 |
 | `slack_webhook_url` | legacy fallback 用 Slack Incoming Webhook URL |
