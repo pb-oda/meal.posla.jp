@@ -56,8 +56,21 @@
     if (adminContent) {
       adminContent.addEventListener('click', function(e) {
         var jumpBtn = e.target.closest('[data-tab-jump]');
-        if (!jumpBtn) return;
-        activateTab(jumpBtn.getAttribute('data-tab-jump'));
+        if (jumpBtn) {
+          activateTab(jumpBtn.getAttribute('data-tab-jump'));
+          return;
+        }
+
+        var releaseBtn = e.target.closest('[data-release-action]');
+        if (releaseBtn) {
+          handleReleaseReadinessAction(releaseBtn);
+          return;
+        }
+
+        var openTenantBtn = e.target.closest('[data-open-tenant]');
+        if (openTenantBtn) {
+          openTenantModal(openTenantBtn.getAttribute('data-open-tenant'));
+        }
       });
     }
 
@@ -69,6 +82,12 @@
     if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
     if (overlay) {
       overlay.addEventListener('click', function(e) {
+        var resolveBtn = e.target.closest('[data-monitor-resolve-id]');
+        if (resolveBtn) {
+          e.preventDefault();
+          handleResolveMonitorEvent(resolveBtn);
+          return;
+        }
         if (e.target === overlay) closeModal();
       });
     }
@@ -1239,6 +1258,7 @@
     var sourceLabel;
     var meta = [];
     var detail;
+    var actionsHtml;
 
     if (!items || !items.length) {
       return '<div class="tenant-modal-timeline__empty">直近 14 日の監視イベントはありません。未解決アラートも無く、いまは安定稼働です。</div>';
@@ -1263,6 +1283,12 @@
         meta.push('解消: ' + formatTenantTimelineDate(item.resolved_at));
       }
       detail = item.detail ? escapeHtml(item.detail) : '詳細メッセージは記録されていません。';
+      actionsHtml = '';
+      if (!parseInt(item.resolved, 10) && item.id) {
+        actionsHtml = '<div class="tenant-timeline-item__actions">' +
+          '<button class="btn btn-secondary btn-sm" type="button" data-monitor-resolve-id="' + escapeHtml(item.id) + '">解消済みにする</button>' +
+        '</div>';
+      }
 
       html += '<div class="tenant-timeline-item tenant-timeline-item--' + escapeHtml(tone) + '">' +
         '<div class="tenant-timeline-item__head">' +
@@ -1274,10 +1300,35 @@
         '</div>' +
         '<div class="tenant-timeline-item__meta">' + escapeHtml(meta.join(' / ')) + '</div>' +
         '<div class="tenant-timeline-item__detail">' + detail + '</div>' +
+        actionsHtml +
       '</div>';
     }
 
     return html;
+  }
+
+  function handleResolveMonitorEvent(btn) {
+    var id = btn.getAttribute('data-monitor-resolve-id') || '';
+    var tenantIdEl = document.getElementById('modal-tenant-id');
+    var tenantId = tenantIdEl ? tenantIdEl.value : '';
+
+    if (!id) return;
+    if (!window.confirm('この監視イベントを解消済みにします。原因確認後の復旧操作として続けますか？')) {
+      return;
+    }
+
+    btn.disabled = true;
+    PoslaApi.resolveMonitorEvent(id).then(function() {
+      showToast('監視イベントを解消済みにしました');
+      if (tenantId) {
+        openTenantModal(tenantId);
+      }
+      loadDashboard();
+    }).catch(function(err) {
+      showToast('監視イベントの更新に失敗しました: ' + err.message);
+    }).then(function() {
+      btn.disabled = false;
+    });
   }
 
   function buildTenantOpsTimelineHtml(items) {
@@ -1370,6 +1421,11 @@
         }
         html += '</div>';
       }
+      if (item.id) {
+        html += '<div class="tenant-timeline-item__actions">' +
+          '<button class="btn btn-secondary btn-sm" type="button" data-open-tenant="' + escapeHtml(item.id) + '">詳細を開く</button>' +
+        '</div>';
+      }
       html += '</div>';
     }
 
@@ -1416,12 +1472,86 @@
           '<div class="release-readiness-check__label">' + escapeHtml(check.label || '-') + '</div>' +
           '<div class="release-readiness-check__value">' + escapeHtml(check.value || '-') + '</div>' +
           '<div class="release-readiness-check__detail">' + escapeHtml(check.detail || '-') + '</div>' +
+          buildReleaseReadinessActionsHtml(check) +
         '</div>';
       }
     }
 
     html += '</div></section>';
     root.innerHTML = html;
+  }
+
+  function buildReleaseReadinessActionsHtml(check) {
+    var key = check && check.key ? String(check.key) : '';
+    var status = check && check.status ? String(check.status) : '';
+    var actions = [];
+
+    if (status === 'ok') return '';
+
+    if (key === 'cell_queue') {
+      actions.push(['open-cell-provisioning', 'Cell配備を開く']);
+      actions.push(['refresh', '再確認']);
+    } else if (key === 'cell_registry' || key === 'cell_snapshot') {
+      actions.push(['refresh', '再確認']);
+      actions.push(['open-cell-provisioning', 'Cell配備を開く']);
+    } else if (key === 'tier0' || key === 'health' || key === 'incidents') {
+      actions.push(['refresh', '再確認']);
+      actions.push(['scroll-risky-tenants', '危険テナントを見る']);
+    } else if (key === 'onboarding') {
+      actions.push(['open-tenants', 'テナント管理を開く']);
+      actions.push(['scroll-onboarding', '要フォローを見る']);
+    } else {
+      actions.push(['refresh', '再確認']);
+    }
+
+    var html = '<div class="release-readiness-check__actions">';
+    for (var i = 0; i < actions.length; i++) {
+      html += '<button class="btn btn-secondary btn-sm" type="button" data-release-action="' + escapeHtml(actions[i][0]) + '">' + escapeHtml(actions[i][1]) + '</button>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function handleReleaseReadinessAction(btn) {
+    var action = btn.getAttribute('data-release-action') || '';
+    if (action === 'refresh') {
+      btn.disabled = true;
+      showToast('リリース準備状況を再確認しています');
+      loadDashboard().then(function() {
+        showToast('リリース準備状況を更新しました');
+      }).catch(function(err) {
+        showToast('再確認に失敗しました: ' + err.message);
+      }).then(function() {
+        btn.disabled = false;
+      });
+      return;
+    }
+
+    if (action === 'open-cell-provisioning') {
+      activateTab('cell-provisioning');
+      return;
+    }
+    if (action === 'open-tenants') {
+      activateTab('tenants');
+      return;
+    }
+    if (action === 'scroll-risky-tenants') {
+      scrollDashboardTarget('risky-tenants-card');
+      return;
+    }
+    if (action === 'scroll-onboarding') {
+      scrollDashboardTarget('onboarding-watchlist-card');
+    }
+  }
+
+  function scrollDashboardTarget(id) {
+    activateTab('overview');
+    window.setTimeout(function() {
+      var target = document.getElementById(id);
+      if (target && target.scrollIntoView) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
   }
 
   function renderTenantCreateResult(data) {
@@ -1740,7 +1870,7 @@
 
   // ── ダッシュボード ──
   function loadDashboard() {
-    PoslaApi.getDashboard().then(function(data) {
+    return PoslaApi.getDashboard().then(function(data) {
       // 統計カード
       var statsEl = document.getElementById('overview-stats');
       if (statsEl) {
@@ -1806,6 +1936,7 @@
       renderCellOnboardingRequests(data);
     }).catch(function(err) {
       showToast('ダッシュボードの読み込みに失敗しました: ' + err.message);
+      throw err;
     });
   }
 

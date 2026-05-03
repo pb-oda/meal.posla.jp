@@ -6,17 +6,10 @@
  * PATCH { id, resolved: 1 } → 対応済にマーク
  */
 
-require_once __DIR__ . '/../lib/db.php';
-require_once __DIR__ . '/../lib/response.php';
-require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/auth-helper.php';
 
 $method = require_method(['GET','PATCH']);
-$user = require_auth();
-// POSLA 管理者権限 (is_posla_admin カラム想定、フォールバックで role='owner' かつ tenant_id='posla' を許可)
-if (empty($user['is_posla_admin']) && (empty($user['tenant_id']) || $user['tenant_id'] !== 'posla')) {
-    json_error('FORBIDDEN', 'POSLA管理者のみアクセス可能です', 403);
-}
-
+$admin = require_posla_admin();
 $pdo = get_db();
 
 if ($method === 'GET') {
@@ -53,7 +46,7 @@ if ($method === 'PATCH') {
     if (!$id) json_error('MISSING_ID', 'id が必要です', 400);
     if (!empty($body['resolved'])) {
         $pdo->prepare('UPDATE monitor_events SET resolved = 1, resolved_at = NOW(), resolved_by = ? WHERE id = ?')
-            ->execute([$user['user_id'], $id]);
+            ->execute([$admin['admin_id'], $id]);
     }
     json_response(['ok' => true]);
 }

@@ -706,6 +706,18 @@
       line-height: 1.5;
       margin-top: 0.32rem;
     }
+    .release-readiness-check__actions,
+    .tenant-timeline-item__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.7rem;
+    }
+    .release-readiness-check__actions .btn,
+    .tenant-timeline-item__actions .btn {
+      font-size: 0.76rem;
+      padding: 0.35rem 0.6rem;
+    }
     .feature-flag-summary {
       display: grid;
       gap: 0.75rem;
@@ -1407,7 +1419,7 @@
         </section>
       </div>
       <div class="panel-grid panel-grid--two" style="margin-top:1rem;">
-        <section class="card table-card">
+        <section class="card table-card" id="risky-tenants-card">
           <div class="card__header">
             <div>
               <h3 class="section-title" style="margin-bottom:0;">危険テナント上位</h3>
@@ -1418,7 +1430,7 @@
             <div id="risky-tenants"></div>
           </div>
         </section>
-        <section class="card card--tint table-card">
+        <section class="card card--tint table-card" id="onboarding-watchlist-card">
           <div class="card__header">
             <div>
               <h3 class="section-title" style="margin-bottom:0;">オンボーディング要フォロー</h3>
@@ -1431,7 +1443,7 @@
         </section>
       </div>
       <div class="panel-grid" style="margin-top:1rem;">
-        <section class="card table-card">
+        <section class="card table-card" id="cell-onboarding-card">
           <div class="card__header">
             <div>
               <h3 class="section-title" style="margin-bottom:0;">Cell作成待ち</h3>

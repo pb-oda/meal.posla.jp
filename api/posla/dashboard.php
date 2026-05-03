@@ -114,8 +114,13 @@ function build_release_readiness(array $activeTenants, array $cellOnboarding): a
     $snapshotBad = count_tenants_by_callback($activeTenants, function ($tenant) {
         return !empty($tenant['cell_id']) && ($tenant['cell_snapshot_status'] ?? '') !== 'ok';
     });
+    $tier0Unknown = count_tenants_by_callback($activeTenants, function ($tenant) {
+        return !empty($tenant['cell_id']) && ($tenant['cell_snapshot_status'] ?? '') !== 'ok';
+    });
     $tier0Bad = count_tenants_by_callback($activeTenants, function ($tenant) {
-        return !empty($tenant['cell_id']) && ($tenant['cell_tier0_status'] ?? '') !== 'ok';
+        return !empty($tenant['cell_id'])
+            && ($tenant['cell_snapshot_status'] ?? '') === 'ok'
+            && ($tenant['cell_tier0_status'] ?? '') !== 'ok';
     });
     $onboardingIncomplete = count_tenants_by_callback($activeTenants, function ($tenant) {
         return (int)($tenant['onboarding_progress'] ?? 0) < 100;
@@ -152,16 +157,18 @@ function build_release_readiness(array $activeTenants, array $cellOnboarding): a
         build_release_readiness_check(
             'cell_snapshot',
             'Cell snapshot',
-            $snapshotBad === 0 ? 'ok' : 'fail',
+            $snapshotBad === 0 ? 'ok' : 'warn',
             $snapshotBad === 0 ? 'OK' : (string)$snapshotBad,
-            $snapshotBad === 0 ? 'control から各cellの read-only snapshot を取得できています。' : 'snapshot 取得に失敗している cell があります。'
+            $snapshotBad === 0 ? 'control から各cellの read-only snapshot を取得できています。' : 'snapshot が未取得の cell があります。再確認し、続く場合は Cell配備のURL/secretを確認してください。'
         ),
         build_release_readiness_check(
             'tier0',
             'Tier0',
-            $tier0Bad === 0 ? 'ok' : 'fail',
-            $tier0Bad === 0 ? 'OK' : (string)$tier0Bad,
-            $tier0Bad === 0 ? '決済・レジ系の監視ステータスは正常です。' : '決済・レジ系に要確認の cell があります。'
+            $tier0Bad > 0 ? 'fail' : ($tier0Unknown > 0 ? 'warn' : 'ok'),
+            $tier0Bad > 0 ? (string)$tier0Bad : ($tier0Unknown > 0 ? '未判定' : 'OK'),
+            $tier0Bad > 0
+                ? '決済・レジ系に要確認の cell があります。'
+                : ($tier0Unknown > 0 ? 'snapshot 未取得のため Tier0 は未判定です。まず snapshot を再確認してください。' : '決済・レジ系の監視ステータスは正常です。')
         ),
         build_release_readiness_check(
             'onboarding',

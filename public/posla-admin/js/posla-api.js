@@ -106,6 +106,9 @@ var PoslaApi = (function() {
       body.action = action;
       return request('POST', '/monitor-actions.php', body);
     },
+    resolveMonitorEvent: function(id) {
+      return request('PATCH', '/monitor-events.php', { id: id, resolved: 1 });
+    },
     getAdminUsers: function() {
       return request('GET', '/admin-users.php');
     },
