@@ -1834,15 +1834,15 @@
         <div class="settings-section__head">
           <div>
             <div class="settings-section__title">OP連携</div>
-            <div class="settings-section__meta">OPのブラウザURL、POSLAからOPへ送るAPI URL、Source接続は「OP接続 / Source」で更新します。</div>
+            <div class="settings-section__meta">OPのブラウザURL、障害報告送信先、OPがPOSLAを読むSource接続は「OP接続 / Source」で更新します。</div>
           </div>
         </div>
         <div class="settings-layout">
         <div class="card settings-card">
           <div class="card__body">
             <div class="settings-card__eyebrow">Operations Bridge</div>
-            <div class="settings-card__title">OP障害報告 / 監視アラート連携</div>
-            <div class="settings-card__note">この画面では状態だけ確認します。URL、Endpoint、Token、OPがPOSLAを読むSourceは「OP接続 / Source」でまとめて更新します。</div>
+            <div class="settings-card__title">OP障害報告 / Source連携</div>
+            <div class="settings-card__note">監視はOPがPOSLAを読むSourceを正とします。この画面ではOP画面URLと障害報告送信先の状態だけ確認します。</div>
             <div class="settings-inline-actions">
               <button class="btn btn-primary" type="button" data-tab-jump="ops-source">OP接続 / Source を開く</button>
               <a class="btn btn-secondary" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>
@@ -1883,7 +1883,7 @@
       <div class="panel-header">
         <div class="panel-header__eyebrow">Operations Source</div>
         <h2 class="panel-header__title">OP接続 / Source</h2>
-        <p class="panel-header__lead">POSLA管理画面からOPを開くURL、POSLAからOPへ送るEndpoint、OPがPOSLAを読むSourceをここにまとめます。secret値は保存後も表示しません。</p>
+        <p class="panel-header__lead">POSLA管理画面からOPを開くURL、POSLAからOPへ送る障害報告Endpoint、OPがPOSLAを読むSourceをここにまとめます。監視はOPがSourceを読む構成に統一します。</p>
       </div>
 
       <div class="settings-summary-grid" id="ops-source-summary"></div>
@@ -1906,24 +1906,16 @@
 
         <div class="card settings-card">
           <div class="card__body">
-            <div class="settings-card__eyebrow">OP Ingest</div>
-            <div class="settings-card__title">POSLAからOPへ送るEndpoint</div>
-            <div class="settings-card__note">Cloud RunからVPS上のOPへ障害報告・監視Alertを送る接続先です。Tokenは空欄送信では変更しません。</div>
+            <div class="settings-card__eyebrow">Incident Report</div>
+            <div class="settings-card__title">障害報告送信</div>
+            <div class="settings-card__note">POSLAの障害報告フォームからVPS上のOPへcaseを作る接続先です。監視結果はここでは送らず、OPがPOSLAを読むSourceで確認します。Tokenは空欄送信では変更しません。</div>
             <div class="form-group">
               <label class="form-label" for="ops-connection-case-endpoint">障害報告 Endpoint</label>
-              <input class="form-input" type="url" id="ops-connection-case-endpoint" placeholder="https://op.posla.jp/api/cases.php">
+              <input class="form-input" type="url" id="ops-connection-case-endpoint" placeholder="https://op.posla.jp/api/cases">
             </div>
             <div class="form-group">
               <label class="form-label" for="ops-connection-case-token">障害報告 Token</label>
               <input class="form-input" type="password" id="ops-connection-case-token" placeholder="変更する場合のみ入力">
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="ops-connection-alert-endpoint">監視Alert Endpoint</label>
-              <input class="form-input" type="url" id="ops-connection-alert-endpoint" placeholder="https://op.posla.jp/api/ingest/posla-alert">
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="ops-connection-alert-token">監視Alert Token</label>
-              <input class="form-input" type="password" id="ops-connection-alert-token" placeholder="変更する場合のみ入力">
             </div>
           </div>
         </div>
@@ -1978,8 +1970,8 @@
         <div class="card settings-card">
           <div class="card__body">
             <div class="settings-card__eyebrow">Endpoint</div>
-            <div class="settings-card__title">opが読むURL</div>
-            <div class="settings-card__note">op側には snapshot URL と認証ヘッダーを登録します。ping URL は疎通確認、snapshot URL は cell discovery に使います。</div>
+            <div class="settings-card__title">OPが読むURL</div>
+            <div class="settings-card__note">OP側には snapshot URL と認証ヘッダーを登録します。ping URL は疎通確認、snapshot URL は cell discovery と monitor_events 確認に使います。</div>
             <div class="form-group">
               <label class="form-label" for="ops-source-base-url">Base URL</label>
               <input class="form-input" type="url" id="ops-source-base-url" placeholder="http://127.0.0.1:8081">

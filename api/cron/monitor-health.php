@@ -14,6 +14,7 @@
  *   - Google Chat webhook 通知 (posla_settings.google_chat_webhook_url)
  *     ※ 旧 slack_webhook_url は fallback 用に温存
  *   - 同一イベント連続3件以上 → Hiro個人メール (ops_notify_email) へ
+ *   - OPは /api/monitor/cell-snapshot.php を読み、monitor_events を取得する
  *
  * 認証: CLI または X-POSLA-CRON-SECRET ヘッダ
  */
@@ -32,12 +33,12 @@ require_once __DIR__ . '/../config/app.php';
 $pdo = get_db();
 
 $now = date('Y-m-d H:i:s');
-$result = ['php_errors' => 0, 'stripe_failed' => 0, 'reserve_mail_failed' => 0, 'api_errors' => 0, 'alert_sent' => 0, 'slack_sent' => 0, 'op_alert_sent' => 0, 'op_alert_failed' => 0];
+$result = ['php_errors' => 0, 'stripe_failed' => 0, 'reserve_mail_failed' => 0, 'api_errors' => 0, 'alert_sent' => 0, 'slack_sent' => 0];
 
 // posla_settings から通知先を取得
 $settings = [];
 try {
-    $stmt = $pdo->query("SELECT setting_key, setting_value FROM posla_settings WHERE setting_key IN ('google_chat_webhook_url','slack_webhook_url','ops_notify_email','codex_ops_alert_endpoint','codex_ops_alert_token')");
+    $stmt = $pdo->query("SELECT setting_key, setting_value FROM posla_settings WHERE setting_key IN ('google_chat_webhook_url','slack_webhook_url','ops_notify_email')");
     foreach ($stmt->fetchAll() as $r) $settings[$r['setting_key']] = $r['setting_value'];
 } catch (PDOException $e) { /* テーブル未存在は無視 */ }
 
@@ -249,91 +250,9 @@ function _logEvent($pdo, $type, $severity, $source, $title, $detail, $tenantId =
             $storeId,
             $notifiedWebhook ? 1 : 0,
         ]);
-        $opResult = _notifyOpsPlatformAlert([
-            'source_event_id' => $id,
-            'source' => 'posla_monitor_health',
-            'event_type' => $type,
-            'severity' => $severity,
-            'source_table' => $source,
-            'title' => mb_substr($title, 0, 250),
-            'message' => mb_substr($detail ?? '', 0, 1000),
-            'tenant_id' => $tenantId,
-            'store_id' => $storeId,
-            'cell_id' => getenv('POSLA_CELL_ID') ?: getenv('POSLA_OPS_SOURCE_ID') ?: '',
-            'environment' => getenv('POSLA_ENVIRONMENT') ?: getenv('POSLA_ENV') ?: '',
-            'deploy_version' => getenv('POSLA_DEPLOY_VERSION') ?: '',
-            'occurred_at' => date('c'),
-        ] + (is_array($extra) ? $extra : []));
-        global $result;
-        if (is_array($result) && ($opResult['status'] ?? '') !== 'skipped') {
-            if (!empty($opResult['ok'])) $result['op_alert_sent']++;
-            else $result['op_alert_failed']++;
-        }
     } catch (PDOException $e) {
         error_log('[I-1][monitor] log_event_failed: ' . $e->getMessage(), 3, POSLA_PHP_ERROR_LOG);
     }
-}
-
-function _notifyOpsPlatformAlert($payload) {
-    global $settings;
-    $endpoint = trim((string)(getenv('POSLA_OP_ALERT_ENDPOINT') ?: ''));
-    $token = trim((string)(getenv('POSLA_OP_ALERT_TOKEN') ?: ''));
-    if ($endpoint === '' && is_array($settings)) {
-        $endpoint = trim((string)($settings['codex_ops_alert_endpoint'] ?? ''));
-    }
-    if ($token === '' && is_array($settings)) {
-        $token = trim((string)($settings['codex_ops_alert_token'] ?? ''));
-    }
-    if ($endpoint === '') {
-        return ['ok' => true, 'status' => 'skipped'];
-    }
-    if (!preg_match('/^https?:\/\//', $endpoint)) {
-        error_log('[I-1][monitor] op_alert_invalid_endpoint', 3, POSLA_PHP_ERROR_LOG);
-        return ['ok' => false, 'status' => 'invalid_endpoint'];
-    }
-
-    $payload['action'] = 'ingest';
-    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if ($json === false) {
-        return ['ok' => false, 'status' => 'json_encode_failed'];
-    }
-
-    $headers = ['Content-Type: application/json; charset=utf-8', 'Accept: application/json'];
-    if ($token !== '') {
-        $headers[] = 'X-OPS-ALERT-TOKEN: ' . $token;
-    }
-
-    if (function_exists('curl_init')) {
-        $ch = curl_init($endpoint);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $json,
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_TIMEOUT => 180,
-            CURLOPT_RETURNTRANSFER => true,
-        ]);
-        $raw = @curl_exec($ch);
-        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-        if ($raw !== false && $httpCode >= 200 && $httpCode < 300) {
-            return ['ok' => true, 'status' => 'sent', 'http_status' => $httpCode];
-        }
-        error_log('[I-1][monitor] op_alert_failed status=' . $httpCode . ' error=' . $error, 3, POSLA_PHP_ERROR_LOG);
-        return ['ok' => false, 'status' => 'failed', 'http_status' => $httpCode, 'error' => $error];
-    }
-
-    $context = stream_context_create([
-        'http' => [
-            'method' => 'POST',
-            'header' => implode("\r\n", $headers),
-            'content' => $json,
-            'timeout' => 180,
-            'ignore_errors' => true,
-        ],
-    ]);
-    $raw = @file_get_contents($endpoint, false, $context);
-    return ['ok' => $raw !== false, 'status' => $raw !== false ? 'sent' : 'failed'];
 }
 
 function _notifyOpsAlert($settings, $title, $detail) {

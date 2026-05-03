@@ -257,8 +257,7 @@
   function opBaseUrlFromSettings(settings) {
     var publicUrl = _getPlainValue(settings, 'codex_ops_public_url');
     if (publicUrl) return deriveOpBaseUrl(publicUrl);
-    return deriveOpBaseUrl(_getPlainValue(settings, 'codex_ops_case_endpoint')) ||
-      deriveOpBaseUrl(_getPlainValue(settings, 'codex_ops_alert_endpoint'));
+    return deriveOpBaseUrl(_getPlainValue(settings, 'codex_ops_case_endpoint'));
   }
 
   function buildOpUrl(baseUrl, path) {
@@ -631,21 +630,18 @@
     var s = (settingsData && settingsData.settings) ? settingsData.settings : {};
     var publicUrl = _getPlainValue(s, 'codex_ops_public_url');
     var caseEndpoint = _getPlainValue(s, 'codex_ops_case_endpoint');
-    var alertEndpoint = _getPlainValue(s, 'codex_ops_alert_endpoint');
     var caseToken = _getKeyInfo(s, 'codex_ops_case_token');
-    var alertToken = _getKeyInfo(s, 'codex_ops_alert_token');
 
     _setInputValue('ops-connection-public-url', publicUrl);
     _setInputValue('ops-connection-case-endpoint', caseEndpoint);
-    _setInputValue('ops-connection-alert-endpoint', alertEndpoint);
     updateOpLinks(opBaseUrlFromSettings(s));
 
     return _buildSummaryCard('OP ACCESS', 'OP画面', [
       _summaryLine('URL', publicUrl ? '<code>' + Utils.escapeHtml(publicUrl) + '</code>' : '<span style="color:#999;">未設定</span>')
     ]) +
-      _buildSummaryCard('OP INGEST', 'POSLAからOPへ送信', [
-        _summaryLine('障害報告', (caseEndpoint && caseToken.set) ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
-        _summaryLine('監視Alert', (alertEndpoint && alertToken.set) ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn'))
+      _buildSummaryCard('CASE', '障害報告送信', [
+        _summaryLine('Endpoint', caseEndpoint ? '<code>' + Utils.escapeHtml(caseEndpoint) + '</code>' : '<span style="color:#999;">未設定</span>'),
+        _summaryLine('Token', caseToken.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn'))
       ]);
   }
 
@@ -721,14 +717,10 @@
     var publicUrl = _readInputValue('ops-connection-public-url');
     var caseEndpoint = _readInputValue('ops-connection-case-endpoint');
     var caseToken = _readInputValue('ops-connection-case-token');
-    var alertEndpoint = _readInputValue('ops-connection-alert-endpoint');
-    var alertToken = _readInputValue('ops-connection-alert-token');
 
     if (publicUrl !== '') payload.codex_ops_public_url = publicUrl;
     if (caseEndpoint !== '') payload.codex_ops_case_endpoint = caseEndpoint;
     if (caseToken !== '') payload.codex_ops_case_token = caseToken;
-    if (alertEndpoint !== '') payload.codex_ops_alert_endpoint = alertEndpoint;
-    if (alertToken !== '') payload.codex_ops_alert_token = alertToken;
 
     if (Object.keys(payload).length === 0) {
       showToast('保存するOP接続情報を入力してください');
@@ -739,7 +731,6 @@
     PoslaApi.updateSettings(payload).then(function() {
       showToast('OP接続情報を保存しました');
       _setInputValue('ops-connection-case-token', '');
-      _setInputValue('ops-connection-alert-token', '');
       refreshOpLinksFromSettings();
       loadOpsSource();
     }).catch(function(err) {
@@ -2474,7 +2465,6 @@
       var slackWebhook = _getKeyInfo(s, 'slack_webhook_url');
       var monitorSecret = _getKeyInfo(s, 'monitor_cron_secret');
       var opsCaseToken = _getKeyInfo(s, 'codex_ops_case_token');
-      var opsAlertToken = _getKeyInfo(s, 'codex_ops_alert_token');
 
       var priceBaseVal = _getPlainValue(s, 'stripe_price_base');
       var priceAddVal = _getPlainValue(s, 'stripe_price_additional_store');
@@ -2488,7 +2478,6 @@
       var heartbeatVal = _getPlainValue(s, 'monitor_last_heartbeat');
       var opsPublicUrlVal = _getPlainValue(s, 'codex_ops_public_url');
       var opsCaseEndpointVal = _getPlainValue(s, 'codex_ops_case_endpoint');
-      var opsAlertEndpointVal = _getPlainValue(s, 'codex_ops_alert_endpoint');
       updateOpLinks(opBaseUrlFromSettings(s));
 
       statusEl.innerHTML =
@@ -2512,9 +2501,10 @@
           _summaryLine('送信元', mailFromEmailVal ? Utils.escapeHtml(mailFromEmailVal) : '<span style="color:#999;">env fallback</span>'),
           _summaryLine('heartbeat', heartbeatVal ? Utils.escapeHtml(heartbeatVal) : '<span style="color:#999;">未到達</span>')
         ]) +
-        _buildSummaryCard('OPS BRIDGE', 'OP障害報告 / Alert', [
+        _buildSummaryCard('OPS BRIDGE', 'OP障害報告 / Source', [
+          _summaryLine('OP画面URL', opsPublicUrlVal ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
           _summaryLine('障害報告', (opsCaseEndpointVal && opsCaseToken.set) ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
-          _summaryLine('監視Alert', (opsAlertEndpointVal && opsAlertToken.set) ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn'))
+          _summaryLine('監視', _buildStatusPill('OP Sourceで確認', 'info'))
         ]);
 
       if (monitorStatusEl) {
