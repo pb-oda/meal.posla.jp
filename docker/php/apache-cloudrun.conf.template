@@ -9,12 +9,19 @@
     ServerName localhost
     DocumentRoot /var/www/html/public
 
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
     <Directory /var/www/html/public>
         Options Indexes FollowSymLinks
         AllowOverride All
         Require all granted
         DirectoryIndex index.html index.php
     </Directory>
+
+    # Internal documentation must not be exposed on the public Cloud Run surface.
+    <Location "/docs-internal">
+        Require all denied
+    </Location>
 
     Alias /api /var/www/html/api
     <Directory /var/www/html/api>

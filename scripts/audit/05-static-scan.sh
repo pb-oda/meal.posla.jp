@@ -54,6 +54,8 @@ if [ "$code" = "200" ] && [ -z "$auth" ]; then
   fail_c "public/docs-internal/ is HTTP 200 with no WWW-Authenticate header"
 elif [ "$code" = "401" ] || [ -n "$auth" ]; then
   pass "public/docs-internal/ requires authentication"
+elif [ "$code" = "403" ] || [ "$code" = "404" ]; then
+  pass "public/docs-internal/ returns $code (blocked)"
 else
   fail_m "public/docs-internal/ returns $code / auth header: $auth"
 fi
