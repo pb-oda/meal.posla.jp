@@ -706,29 +706,6 @@
       line-height: 1.5;
       margin-top: 0.32rem;
     }
-    .release-readiness-check__items {
-      border-top: 1px solid #e4e9f5;
-      display: flex;
-      flex-direction: column;
-      gap: 0.45rem;
-      margin-top: 0.65rem;
-      padding-top: 0.55rem;
-    }
-    .release-readiness-check__item {
-      color: var(--text-primary);
-      font-size: 0.76rem;
-      line-height: 1.5;
-      word-break: break-word;
-    }
-    .release-readiness-check__item strong {
-      display: block;
-      font-size: 0.78rem;
-      margin-bottom: 0.08rem;
-    }
-    .release-readiness-check__item span {
-      color: var(--text-secondary);
-      display: block;
-    }
     .release-readiness-check__actions,
     .tenant-timeline-item__actions {
       display: flex;
@@ -1369,7 +1346,7 @@
 
       <nav class="tab-nav" id="posla-tab-nav">
         <div class="posla-nav-section">
-          <div class="posla-nav-section__label">監視・顧客</div>
+          <div class="posla-nav-section__label">顧客</div>
           <button class="tab-nav__btn" data-tab="overview">ダッシュボード</button>
           <button class="tab-nav__btn" data-tab="tenants">テナント管理</button>
         </div>
@@ -1401,7 +1378,6 @@
           <a class="header-shortcut" href="/docs-internal/" target="_blank" rel="noopener">運営マニュアル</a>
           <a class="header-shortcut" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OP</a>
           <a class="header-shortcut" href="/docs-tenant/" target="_blank" rel="noopener">テナント docs</a>
-          <a class="header-shortcut" href="/api/monitor/ping.php" target="_blank" rel="noopener">監視エンドポイント <code>/api/monitor/ping.php</code></a>
         </div>
       </div>
     </aside>
@@ -1413,7 +1389,7 @@
         <div class="admin-header__left">
           <span class="admin-header__title" id="posla-header-title">
             POSLA管理画面
-            <span class="posla-admin-shell-note">テナント運用、共通設定、サポート、監視をまとめて扱います</span>
+            <span class="posla-admin-shell-note">テナント運用、共通設定、サポートをまとめて扱います</span>
           </span>
         </div>
 
@@ -1439,7 +1415,7 @@
       <div class="panel-header">
         <div class="panel-header__eyebrow">Operations Overview</div>
         <h2 class="panel-header__title">ダッシュボード</h2>
-        <p class="panel-header__lead">POSLA全体の稼働状況を素早く把握するための入口です。テナント数、店舗数、利用状況の偏りをここで確認し、必要なら各管理タブに移動します。</p>
+        <p class="panel-header__lead">POSLA全体のテナント、契約、導入状況を素早く把握するための入口です。ping、snapshot、Tier0、AlertはOPで確認します。</p>
         <div class="panel-header__actions">
           <button class="btn btn-secondary" type="button" data-tab-jump="tenants">テナント管理へ</button>
           <button class="btn btn-secondary" type="button" data-tab-jump="api-settings">設定センターへ</button>
@@ -1473,17 +1449,6 @@
         </section>
       </div>
       <div class="panel-grid panel-grid--two" style="margin-top:1rem;">
-        <section class="card table-card" id="risky-tenants-card">
-          <div class="card__header">
-            <div>
-              <h3 class="section-title" style="margin-bottom:0;">危険テナント上位</h3>
-              <p class="card-intro">ここでは概要だけを表示します。監視、Alert、障害報告、AI調査はOPで扱います。</p>
-            </div>
-          </div>
-          <div class="card__body">
-            <div id="risky-tenants"></div>
-          </div>
-        </section>
         <section class="card card--tint table-card" id="onboarding-watchlist-card">
           <div class="card__header">
             <div>

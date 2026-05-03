@@ -398,7 +398,7 @@ if ($method === 'GET') {
     $id = $_GET['id'] ?? '';
 
     if ($id !== '') {
-        $insights = posla_fetch_tenant_insights($pdo, $id);
+        $insights = posla_fetch_tenant_insights($pdo, $id, false);
         $tenant = !empty($insights) ? $insights[0] : null;
 
         if (!$tenant) {
@@ -413,7 +413,7 @@ if ($method === 'GET') {
     }
 
     // 全件一覧
-    $tenants = array_map('normalize_tenant_contract', posla_fetch_tenant_insights($pdo));
+    $tenants = array_map('normalize_tenant_contract', posla_fetch_tenant_insights($pdo, null, false));
 
     json_response(['tenants' => $tenants]);
 }

@@ -1433,201 +1433,49 @@
     return html;
   }
 
-  function renderReleaseReadiness(readiness) {
+  function renderOpMonitoringDelegation(monitoring) {
     var root = document.getElementById('release-readiness');
-    var checks = readiness.checks || [];
-    var status = readiness.status || 'warn';
-    var statusTone = status === 'ok' ? 'ok' : (status === 'fail' ? 'danger' : 'warn');
-    var html = '';
-    var i;
-    var check;
-    var checkTone;
-
     if (!root) return;
 
-    html += '<section class="release-readiness">' +
+    monitoring = monitoring || {};
+    root.innerHTML = '<section class="release-readiness">' +
       '<div class="release-readiness__head">' +
         '<div>' +
-          '<div class="release-readiness__title">リリース準備状況</div>' +
-          '<div class="release-readiness__meta">Cell / snapshot / Tier0 / onboarding をまとめて確認します。完了 ' +
-            escapeHtml(String(readiness.completed_checks || 0)) + ' / ' + escapeHtml(String(readiness.total_checks || 0)) +
-            ' ・ 要対応 ' + escapeHtml(String(readiness.failure_count || 0)) +
-            ' ・ 要確認 ' + escapeHtml(String(readiness.warning_count || 0)) + '</div>' +
+          '<div class="release-readiness__title">' + escapeHtml(monitoring.label || '監視はOPで確認') + '</div>' +
+          '<div class="release-readiness__meta">' + escapeHtml(monitoring.detail || 'ping / snapshot / Tier0 / Alert はOPを正とします。') + '</div>' +
         '</div>' +
-        _buildStatusPill(readiness.label || '要確認あり', statusTone) +
+        _buildStatusPill('OP -> POSLA', 'ok') +
       '</div>' +
-      '<div class="release-readiness__checks">';
-
-    if (!checks.length) {
-      html += '<div class="release-readiness-check release-readiness-check--warn">' +
-        '<div class="release-readiness-check__label">No data</div>' +
-        '<div class="release-readiness-check__value">未取得</div>' +
-        '<div class="release-readiness-check__detail">ダッシュボードAPIの readiness 情報を確認してください。</div>' +
-      '</div>';
-    } else {
-      for (i = 0; i < checks.length; i++) {
-        check = checks[i] || {};
-        checkTone = check.status === 'ok' ? 'ok' : (check.status === 'fail' ? 'fail' : 'warn');
-        html += '<div class="release-readiness-check release-readiness-check--' + checkTone + '">' +
-          '<div class="release-readiness-check__label">' + escapeHtml(check.label || '-') + '</div>' +
-          '<div class="release-readiness-check__value">' + escapeHtml(check.value || '-') + '</div>' +
-          '<div class="release-readiness-check__detail">' + escapeHtml(check.detail || '-') + '</div>' +
-          buildReleaseReadinessItemsHtml(check) +
-          buildReleaseReadinessActionsHtml(check) +
-        '</div>';
-      }
-    }
-
-    html += '</div></section>';
-    root.innerHTML = html;
-  }
-
-  function buildReleaseReadinessItemsHtml(check) {
-    var items = (check && check.items) || [];
-    var html = '';
-    var i;
-    var item;
-    var meta;
-
-    if (!items.length) return '';
-
-    html += '<div class="release-readiness-check__items">';
-    for (i = 0; i < items.length; i++) {
-      item = items[i] || {};
-      meta = [];
-      if (item.cell_id) meta.push('cell: ' + item.cell_id);
-      if (item.cell_app_base_url) meta.push('url: ' + item.cell_app_base_url);
-      if (item.cell_snapshot_status) meta.push('snapshot: ' + item.cell_snapshot_status);
-      if (item.cell_tier0_status) meta.push('tier0: ' + item.cell_tier0_status);
-      if (parseInt(item.open_incident_count || 0, 10) > 0) meta.push('未解決: ' + item.open_incident_count + '件');
-      if (parseInt(item.critical_open_count || 0, 10) > 0) meta.push('critical: ' + item.critical_open_count + '件');
-      if (item.recent_incident_label) meta.push(item.recent_incident_label);
-      if (item.last_incident_at) meta.push('最終: ' + formatTenantTimelineDate(item.last_incident_at));
-
-      html += '<div class="release-readiness-check__item">' +
-        '<strong>' + escapeHtml(item.tenant_name || item.tenant_slug || item.tenant_id || '-') + '</strong>' +
-        (meta.length ? ('<span>' + escapeHtml(meta.join(' / ')) + '</span>') : '') +
-      '</div>';
-    }
-    html += '</div>';
-    return html;
-  }
-
-  function getFirstReleaseReadinessTenantId(check) {
-    var items = (check && check.items) || [];
-    for (var i = 0; i < items.length; i++) {
-      if (items[i] && items[i].tenant_id) {
-        return String(items[i].tenant_id);
-      }
-    }
-    return '';
-  }
-
-  function buildReleaseReadinessActionsHtml(check) {
-    var key = check && check.key ? String(check.key) : '';
-    var status = check && check.status ? String(check.status) : '';
-    var firstTenantId = getFirstReleaseReadinessTenantId(check);
-    var actions = [];
-
-    if (status === 'ok') return '';
-
-    if (key === 'cell_queue') {
-      actions.push(['open-cell-provisioning', 'Cell配備を開く']);
-      actions.push(['refresh', '再確認']);
-    } else if (key === 'cell_registry' || key === 'cell_snapshot') {
-      actions.push(['refresh', '再確認']);
-      if (firstTenantId) actions.push(['open-release-tenant', '対象テナントを開く', firstTenantId]);
-      actions.push(['open-cell-provisioning', 'Cell配備を開く']);
-    } else if (key === 'tier0' || key === 'health' || key === 'incidents') {
-      actions.push(['refresh', '再確認']);
-      if (firstTenantId) actions.push(['open-release-tenant', '対象テナントを開く', firstTenantId]);
-      if (key === 'incidents' && firstTenantId) actions.push(['resolve-release-tenant-incidents', '未解決をまとめて解消', firstTenantId]);
-      actions.push(['scroll-risky-tenants', '危険テナントを見る']);
-    } else if (key === 'onboarding') {
-      actions.push(['open-tenants', 'テナント管理を開く']);
-      if (firstTenantId) actions.push(['open-release-tenant', '対象テナントを開く', firstTenantId]);
-      actions.push(['scroll-onboarding', '要フォローを見る']);
-    } else {
-      actions.push(['refresh', '再確認']);
-    }
-
-    var html = '<div class="release-readiness-check__actions">';
-    for (var i = 0; i < actions.length; i++) {
-      html += '<button class="btn btn-secondary btn-sm" type="button" data-release-action="' + escapeHtml(actions[i][0]) + '"' +
-        (actions[i][2] ? (' data-release-tenant-id="' + escapeHtml(actions[i][2]) + '"') : '') +
-        '>' + escapeHtml(actions[i][1]) + '</button>';
-    }
-    html += '</div>';
-    return html;
+      '<div class="release-readiness__checks">' +
+        '<div class="release-readiness-check release-readiness-check--ok">' +
+          '<div class="release-readiness-check__label">監視主体</div>' +
+          '<div class="release-readiness-check__value">OP</div>' +
+          '<div class="release-readiness-check__detail">OPがPOSLAの ping / snapshot を取得し、source health と証跡を保持します。</div>' +
+        '</div>' +
+        '<div class="release-readiness-check release-readiness-check--ok">' +
+          '<div class="release-readiness-check__label">POSLA</div>' +
+          '<div class="release-readiness-check__value">受け口のみ</div>' +
+          '<div class="release-readiness-check__detail">POSLA管理画面では監視結果を再判定しません。Source URLとsecretの管理だけを行います。</div>' +
+        '</div>' +
+        '<div class="release-readiness-check release-readiness-check--ok">' +
+          '<div class="release-readiness-check__label">確認場所</div>' +
+          '<div class="release-readiness-check__value">Source Health</div>' +
+          '<div class="release-readiness-check__detail">OPの Source Health / Release readiness / Alert で現在状態を確認します。</div>' +
+          '<div class="release-readiness-check__actions">' +
+            '<a class="btn btn-primary btn-sm" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>' +
+            '<button class="btn btn-secondary btn-sm" type="button" data-release-action="open-ops-source">OP接続 / Source</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</section>';
+    updateOpLinks(monitoring.op_public_url || '');
   }
 
   function handleReleaseReadinessAction(btn) {
     var action = btn.getAttribute('data-release-action') || '';
-    var tenantId = btn.getAttribute('data-release-tenant-id') || '';
-    if (action === 'refresh') {
-      btn.disabled = true;
-      showToast('リリース準備状況を再確認しています');
-      loadDashboard().then(function() {
-        showToast('リリース準備状況を更新しました');
-      }).catch(function(err) {
-        showToast('再確認に失敗しました: ' + err.message);
-      }).then(function() {
-        btn.disabled = false;
-      });
-      return;
+    if (action === 'open-ops-source') {
+      activateTab('ops-source');
     }
-
-    if (action === 'open-cell-provisioning') {
-      activateTab('cell-provisioning');
-      return;
-    }
-    if (action === 'open-tenants') {
-      activateTab('tenants');
-      return;
-    }
-    if (action === 'open-release-tenant') {
-      if (tenantId) openTenantModal(tenantId);
-      return;
-    }
-    if (action === 'resolve-release-tenant-incidents') {
-      resolveReleaseTenantIncidents(btn, tenantId);
-      return;
-    }
-    if (action === 'scroll-risky-tenants') {
-      scrollDashboardTarget('risky-tenants-card');
-      return;
-    }
-    if (action === 'scroll-onboarding') {
-      scrollDashboardTarget('onboarding-watchlist-card');
-    }
-  }
-
-  function scrollDashboardTarget(id) {
-    activateTab('overview');
-    window.setTimeout(function() {
-      var target = document.getElementById(id);
-      if (target && target.scrollIntoView) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 50);
-  }
-
-  function resolveReleaseTenantIncidents(btn, tenantId) {
-    if (!tenantId) return;
-    if (!window.confirm('対象テナントの未解決 error / critical 監視イベントをまとめて解消済みにします。原因確認後の復旧操作として続けますか？')) {
-      return;
-    }
-
-    btn.disabled = true;
-    PoslaApi.resolveTenantMonitorEvents(tenantId).then(function(data) {
-      showToast('未解決イベントを解消済みにしました: ' + String(data.updated || 0) + '件');
-      loadDashboard();
-      openTenantModal(tenantId);
-    }).catch(function(err) {
-      showToast('未解決イベントの一括解消に失敗しました: ' + err.message);
-    }).then(function() {
-      btn.disabled = false;
-    });
   }
 
   function renderTenantCreateResult(data) {
@@ -2014,11 +1862,10 @@
           '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.totalUsers)) + '</div><div class="stat-card__label">ユーザー数</div></div>' +
           '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.averageHealthScore || 0)) + '</div><div class="stat-card__label">平均健全性スコア</div></div>' +
           '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.onboardingTenantCount || 0)) + '</div><div class="stat-card__label">要フォロー導入中</div></div>' +
-          '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.alertTenantCount || 0)) + '</div><div class="stat-card__label">要対応テナント</div></div>' +
           '<div class="stat-card"><div class="stat-card__value">' + Utils.escapeHtml(String(data.cellOnboardingPendingCount || 0)) + '</div><div class="stat-card__label">Cell作成待ち</div></div>';
       }
 
-      renderReleaseReadiness(data.releaseReadiness || {});
+      renderOpMonitoringDelegation(data.releaseMonitoring || {});
 
       // 契約構成
       var planEl = document.getElementById('plan-distribution');
