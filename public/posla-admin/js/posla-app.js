@@ -588,7 +588,7 @@
     PoslaOpsCenter.mount(rootEl);
   }
 
-  // ── OP連携 source ──
+  // ── OP接続 / Source ──
   function loadOpsSource() {
     var summaryEl = document.getElementById('ops-source-summary');
     var listEl = document.getElementById('ops-source-list');
@@ -602,9 +602,9 @@
       renderOpsSource(results[0] || {}, results[1] || {});
     }).catch(function(err) {
       if (summaryEl) {
-        summaryEl.innerHTML = '<div style="padding:1rem;color:#c62828;">OP連携設定の読み込みに失敗しました: ' + Utils.escapeHtml(err.message) + '</div>';
+        summaryEl.innerHTML = '<div style="padding:1rem;color:#c62828;">OP接続 / Source の読み込みに失敗しました: ' + Utils.escapeHtml(err.message) + '</div>';
       }
-      showToast('OP連携設定の読み込みに失敗しました: ' + err.message);
+      showToast('OP接続 / Source の読み込みに失敗しました: ' + err.message);
     });
   }
 
@@ -666,7 +666,7 @@
 
     if (!listEl) return;
     if (!data.available) {
-      listEl.innerHTML = '<div style="padding:1rem;color:#c62828;">OP連携 source テーブルが未作成です。migration-p1-45 を適用してください。</div>';
+      listEl.innerHTML = '<div style="padding:1rem;color:#c62828;">OP接続 / Source テーブルが未作成です。migration-p1-45 を適用してください。</div>';
       return;
     }
 
@@ -751,10 +751,10 @@
 
     if (btn) btn.disabled = true;
     PoslaApi.updateOpsSource(payload).then(function() {
-      showToast('OP連携 source を保存しました');
+      showToast('OP接続 / Source を保存しました');
       loadOpsSource();
     }).catch(function(err) {
-      showToast('OP連携 source の保存に失敗しました: ' + err.message);
+      showToast('OP接続 / Source の保存に失敗しました: ' + err.message);
     }).then(function() {
       if (btn) btn.disabled = false;
     });
@@ -2015,7 +2015,7 @@
     });
   }
 
-  // ── API設定（POSLA共通） ──
+  // ── 設定センター（POSLA共通） ──
   var _apiSettings = {};
 
   function _buildKeyDisplay(isSet, masked) {
@@ -2438,10 +2438,6 @@
       _setInputValue('posla-mail-from-email', mailFromEmailVal);
       _setInputValue('posla-mail-from-name', mailFromNameVal);
       _setInputValue('posla-mail-support-email', mailSupportEmailVal);
-      _setInputValue('posla-codex-ops-public-url', opsPublicUrlVal);
-      _setInputValue('posla-codex-ops-case-endpoint', opsCaseEndpointVal);
-      _setInputValue('posla-codex-ops-alert-endpoint', opsAlertEndpointVal);
-
       if (auditSummaryEl) {
         auditSummaryEl.innerHTML = _renderSettingsAuditSummary(data.audit_summary || {});
       }
@@ -2458,7 +2454,7 @@
         notifyCenterEl.innerHTML = _renderNotificationCenter(data.notification_center || {});
       }
     }).catch(function(err) {
-      showToast('API設定の読み込みに失敗しました: ' + err.message);
+      showToast('設定センターの読み込みに失敗しました: ' + err.message);
     });
   }
 
@@ -2482,16 +2478,6 @@
     var mailFromEmail = mailFromEmailEl ? mailFromEmailEl.value.trim() : '';
     var mailFromName = mailFromNameEl ? mailFromNameEl.value.trim() : '';
     var mailSupportEmail = mailSupportEmailEl ? mailSupportEmailEl.value.trim() : '';
-    var opsPublicUrlEl = document.getElementById('posla-codex-ops-public-url');
-    var opsCaseEndpointEl = document.getElementById('posla-codex-ops-case-endpoint');
-    var opsCaseTokenEl = document.getElementById('posla-codex-ops-case-token');
-    var opsAlertEndpointEl = document.getElementById('posla-codex-ops-alert-endpoint');
-    var opsAlertTokenEl = document.getElementById('posla-codex-ops-alert-token');
-    var opsPublicUrl = opsPublicUrlEl ? opsPublicUrlEl.value.trim() : '';
-    var opsCaseEndpoint = opsCaseEndpointEl ? opsCaseEndpointEl.value.trim() : '';
-    var opsCaseToken = opsCaseTokenEl ? opsCaseTokenEl.value.trim() : '';
-    var opsAlertEndpoint = opsAlertEndpointEl ? opsAlertEndpointEl.value.trim() : '';
-    var opsAlertToken = opsAlertTokenEl ? opsAlertTokenEl.value.trim() : '';
 
     var data = {};
     if (aiKey) data.gemini_api_key = aiKey;
@@ -2509,11 +2495,6 @@
     if (mailFromEmail !== '') data.mail_from_email = mailFromEmail;
     if (mailFromName !== '') data.mail_from_name = mailFromName;
     if (mailSupportEmail !== '') data.mail_support_email = mailSupportEmail;
-    if (opsPublicUrl !== '') data.codex_ops_public_url = opsPublicUrl;
-    if (opsCaseEndpoint !== '') data.codex_ops_case_endpoint = opsCaseEndpoint;
-    if (opsCaseToken !== '') data.codex_ops_case_token = opsCaseToken;
-    if (opsAlertEndpoint !== '') data.codex_ops_alert_endpoint = opsAlertEndpoint;
-    if (opsAlertToken !== '') data.codex_ops_alert_token = opsAlertToken;
 
     var smaregiClientId = document.getElementById('posla-smaregi-client-id');
     var smaregiClientSecret = document.getElementById('posla-smaregi-client-secret');
@@ -2537,8 +2518,6 @@
       document.getElementById('posla-stripe-webhook').value = '';
       document.getElementById('posla-stripe-webhook-signup').value = '';
       document.getElementById('posla-google-chat-webhook').value = '';
-      if (opsCaseTokenEl) opsCaseTokenEl.value = '';
-      if (opsAlertTokenEl) opsAlertTokenEl.value = '';
       var smSecEl = document.getElementById('posla-smaregi-client-secret');
       if (smSecEl) smSecEl.value = '';
       loadApiStatus();
@@ -2563,9 +2542,7 @@
       stripe_webhook_secret: null,
       stripe_webhook_secret_signup: null,
       smaregi_client_secret: null,
-      google_chat_webhook_url: null,
-      codex_ops_case_token: null,
-      codex_ops_alert_token: null
+      google_chat_webhook_url: null
     }).then(function() {
       document.getElementById('posla-ai-key').value = '';
       document.getElementById('posla-places-key').value = '';
@@ -2574,10 +2551,6 @@
       document.getElementById('posla-stripe-webhook').value = '';
       document.getElementById('posla-stripe-webhook-signup').value = '';
       document.getElementById('posla-google-chat-webhook').value = '';
-      var opsCaseTokenEl = document.getElementById('posla-codex-ops-case-token');
-      if (opsCaseTokenEl) opsCaseTokenEl.value = '';
-      var opsAlertTokenEl = document.getElementById('posla-codex-ops-alert-token');
-      if (opsAlertTokenEl) opsAlertTokenEl.value = '';
       var smSecEl = document.getElementById('posla-smaregi-client-secret');
       if (smSecEl) smSecEl.value = '';
       showToast('機密値をクリアしました');

@@ -144,6 +144,54 @@
       gap: 0.75rem;
       margin-top: 1.25rem;
     }
+    .settings-center-nav {
+      background: #fff;
+      border: 1px solid #dde3f5;
+      border-radius: 8px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      margin-bottom: 1rem;
+      padding: 0.8rem;
+    }
+    .settings-center-nav__link {
+      background: #f5f7fc;
+      border: 1px solid #dfe4f5;
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 0.5rem 0.7rem;
+      text-decoration: none;
+    }
+    .settings-center-nav__link:hover {
+      border-color: #9fb3ff;
+      color: var(--primary);
+    }
+    .settings-section {
+      margin-bottom: 1rem;
+      scroll-margin-top: 1rem;
+    }
+    .settings-section__head {
+      align-items: flex-start;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin: 0.4rem 0 0.75rem;
+    }
+    .settings-section__title {
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 800;
+      line-height: 1.45;
+    }
+    .settings-section__meta {
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      line-height: 1.65;
+      margin-top: 0.15rem;
+    }
     .settings-inline-actions {
       display: flex;
       flex-wrap: wrap;
@@ -1267,8 +1315,8 @@
         </div>
         <div class="posla-nav-section">
           <div class="posla-nav-section__label">基盤設定</div>
-          <button class="tab-nav__btn" data-tab="api-settings">API設定</button>
-          <button class="tab-nav__btn" data-tab="ops-source">OP連携</button>
+          <button class="tab-nav__btn" data-tab="api-settings">設定センター</button>
+          <button class="tab-nav__btn" data-tab="ops-source">OP接続 / Source</button>
           <button class="tab-nav__btn" data-tab="pwa-push">PWA / Web Push</button>
         </div>
         <div class="posla-nav-section">
@@ -1328,7 +1376,7 @@
         <p class="panel-header__lead">POSLA全体の稼働状況を素早く把握するための入口です。テナント数、店舗数、利用状況の偏りをここで確認し、必要なら各管理タブに移動します。</p>
         <div class="panel-header__actions">
           <button class="btn btn-secondary" type="button" data-tab-jump="tenants">テナント管理へ</button>
-          <button class="btn btn-secondary" type="button" data-tab-jump="api-settings">API設定へ</button>
+          <button class="btn btn-secondary" type="button" data-tab-jump="api-settings">設定センターへ</button>
           <a class="btn btn-primary" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>
         </div>
       </div>
@@ -1570,20 +1618,28 @@
       </div>
     </div>
 
-    <!-- API設定 -->
+    <!-- 設定センター -->
     <div class="posla-tab-panel" id="posla-panel-api-settings">
       <div class="panel-header">
         <div class="panel-header__eyebrow">Platform Settings</div>
-        <h2 class="panel-header__title">API設定（POSLA共通）</h2>
-        <p class="panel-header__lead">POSLA運営が全テナント共通で使う外部連携設定です。実値は読み出さず、状態だけ表示して変更時のみ新しい値を入力します。運用監視は Google Chat webhook を正系、旧 Slack webhook を後方互換 fallback として扱います。</p>
+        <h2 class="panel-header__title">設定センター</h2>
+        <p class="panel-header__lead">POSLA運営が全テナント共通で使う設定をまとめます。実値は読み出さず、状態だけ表示して変更時のみ新しい値を入力します。OPのURL、Endpoint、Tokenは「OP接続 / Source」に集約します。</p>
       </div>
 
       <div class="settings-summary-grid" id="current-api-status"></div>
 
-      <div class="card card--accent settings-health-wrap">
+      <div class="settings-center-nav" aria-label="設定センター内ナビゲーション">
+        <a class="settings-center-nav__link" href="#posla-settings-section-readiness">本番投入チェック</a>
+        <a class="settings-center-nav__link" href="#posla-settings-section-external">外部連携</a>
+        <a class="settings-center-nav__link" href="#posla-settings-section-notify">通知 / メール</a>
+        <a class="settings-center-nav__link" href="#posla-settings-section-op">OP連携</a>
+        <a class="settings-center-nav__link" href="#posla-settings-section-history">変更履歴</a>
+      </div>
+
+      <div class="card card--accent settings-health-wrap settings-section" id="posla-settings-section-readiness">
         <div class="card__header">
           <div>
-            <h3 class="section-title" style="margin-bottom:0;">設定チェックリスト</h3>
+            <h3 class="section-title" style="margin-bottom:0;">本番投入チェック</h3>
             <p class="card-intro">設定を `UI設定` / `env必須` / `外部設定` に分けて、どこで何を対応するかを確認します。secret値は表示しません。</p>
           </div>
         </div>
@@ -1595,7 +1651,7 @@
       <div class="card card--accent settings-health-wrap">
         <div class="card__header">
           <div>
-            <h3 class="section-title" style="margin-bottom:0;">秘密値充足チェック</h3>
+            <h3 class="section-title" style="margin-bottom:0;">外部連携の状態</h3>
             <p class="card-intro">実値は表示せず、連携ごとの `設定済 / 未設定 / 不整合` だけを判定します。本番投入前の差分確認用です。</p>
           </div>
         </div>
@@ -1604,6 +1660,13 @@
         </div>
       </div>
 
+      <div class="settings-section" id="posla-settings-section-external">
+        <div class="settings-section__head">
+          <div>
+            <div class="settings-section__title">外部連携</div>
+            <div class="settings-section__meta">AI、地図、課金、スマレジなどPOSLA本体が直接使う共通設定です。</div>
+          </div>
+        </div>
       <div class="settings-layout">
         <div class="card settings-card">
           <div class="card__body">
@@ -1678,7 +1741,17 @@
             </div>
           </div>
         </div>
+      </div>
+      </div>
 
+      <div class="settings-section" id="posla-settings-section-notify">
+        <div class="settings-section__head">
+          <div>
+            <div class="settings-section__title">通知 / メール</div>
+            <div class="settings-section__meta">POSLA側で保持する通知先とメール送信元です。監視判断と調査はOPに集約します。</div>
+          </div>
+        </div>
+        <div class="settings-layout">
         <div class="card settings-card">
           <div class="card__body">
             <div class="settings-card__eyebrow">Monitoring</div>
@@ -1723,42 +1796,36 @@
             <div class="settings-test-result" id="posla-notify-test-result">Google Chat / 運用通知メールの実送信確認はOP側で行います。Web Push は PWA / Web Push タブで詳細確認します。</div>
           </div>
         </div>
+      </div>
+      </div>
 
+      <div class="settings-section" id="posla-settings-section-op">
+        <div class="settings-section__head">
+          <div>
+            <div class="settings-section__title">OP連携</div>
+            <div class="settings-section__meta">OPのブラウザURL、POSLAからOPへ送るAPI URL、Source接続は「OP接続 / Source」で更新します。</div>
+          </div>
+        </div>
+        <div class="settings-layout">
         <div class="card settings-card">
           <div class="card__body">
             <div class="settings-card__eyebrow">Operations Bridge</div>
             <div class="settings-card__title">OP障害報告 / 監視アラート連携</div>
-            <div class="settings-card__note">テナント画面の障害報告と monitor-health の監視アラートを codex-ops-platform へ送る設定です。トークンは空欄送信では変更しません。</div>
-            <div class="form-group">
-              <label class="form-label" for="posla-codex-ops-public-url">OP画面URL</label>
-              <input class="form-input" type="url" id="posla-codex-ops-public-url" placeholder="http://127.0.0.1:8091/">
-              <span class="form-hint">POSLA管理画面からブラウザで開くURLです。Docker内から送信するEndpointとは別に設定します。</span>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="posla-codex-ops-case-endpoint">障害報告 Endpoint</label>
-              <input class="form-input" type="url" id="posla-codex-ops-case-endpoint" placeholder="http://127.0.0.1:8091/api/cases.php">
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="posla-codex-ops-case-token">障害報告 Token</label>
-              <input class="form-input" type="password" id="posla-codex-ops-case-token" placeholder="OP側 OPS_CASE_INGEST_TOKEN と同じ値">
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="posla-codex-ops-alert-endpoint">監視アラート Endpoint</label>
-              <input class="form-input" type="url" id="posla-codex-ops-alert-endpoint" placeholder="http://127.0.0.1:8091/api/alerts.php">
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="posla-codex-ops-alert-token">監視アラート Token</label>
-              <input class="form-input" type="password" id="posla-codex-ops-alert-token" placeholder="OP側 OPS_ALERT_INGEST_TOKEN と同じ値">
+            <div class="settings-card__note">この画面では状態だけ確認します。URL、Endpoint、Token、OPがPOSLAを読むSourceは「OP接続 / Source」でまとめて更新します。</div>
+            <div class="settings-inline-actions">
+              <button class="btn btn-primary" type="button" data-tab-jump="ops-source">OP接続 / Source を開く</button>
+              <a class="btn btn-secondary" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>
             </div>
           </div>
         </div>
+      </div>
       </div>
       <div class="settings-actions">
         <button class="btn btn-primary" id="btn-save-api">保存</button>
         <button class="btn btn-secondary" id="btn-clear-api" type="button">機密値をクリア</button>
       </div>
 
-      <div class="panel-grid panel-grid--two" style="margin-top:1rem;">
+      <div class="panel-grid panel-grid--two settings-section" id="posla-settings-section-history" style="margin-top:1rem;">
         <div class="card card--tint">
           <div class="card__body">
             <h3 class="section-title">設定変更サマリ</h3>
@@ -1780,12 +1847,12 @@
       </div>
     </div>
 
-    <!-- OP連携 source -->
+    <!-- OP接続 / Source -->
     <div class="posla-tab-panel" id="posla-panel-ops-source">
       <div class="panel-header">
         <div class="panel-header__eyebrow">Operations Source</div>
-        <h2 class="panel-header__title">OP連携</h2>
-        <p class="panel-header__lead">codex-ops-platform が POSLA の snapshot を読む入口を管理します。ここで扱う source は顧客cellではなく、顧客cell一覧を返すための制御用入口です。</p>
+        <h2 class="panel-header__title">OP接続 / Source</h2>
+        <p class="panel-header__lead">POSLA管理画面からOPを開くURL、POSLAからOPへ送るEndpoint、OPがPOSLAを読むSourceをここにまとめます。secret値は保存後も表示しません。</p>
       </div>
 
       <div class="settings-summary-grid" id="ops-source-summary"></div>
