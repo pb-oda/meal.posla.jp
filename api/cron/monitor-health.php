@@ -433,7 +433,7 @@ function _pushImportantError($pdo, $tenantId, $type, $title, $detail) {
 function _sendOpsMail($to, $subject, $body) {
     $result = posla_send_mail($to, $subject, $body, [
         'from_name' => 'POSLA 運用監視',
-        'from_email' => APP_FROM_EMAIL,
+        'from_email' => posla_mail_default_from_email(),
     ]);
     if (empty($result['success'])) {
         error_log('[I-1][monitor] ops_mail_failed: ' . ($result['error'] ?? 'unknown'), 3, POSLA_PHP_ERROR_LOG);

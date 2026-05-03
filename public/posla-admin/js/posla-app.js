@@ -253,7 +253,8 @@
   function updateOpLinks(baseUrl) {
     var links = document.querySelectorAll('[data-op-link]');
     for (var i = 0; i < links.length; i++) {
-      links[i].setAttribute('href', buildOpUrl(baseUrl, links[i].getAttribute('data-op-path') || ''));
+      links[i].setAttribute('href', '../../api/posla/op-launch.php');
+      links[i].setAttribute('data-op-target-url', buildOpUrl(baseUrl, links[i].getAttribute('data-op-path') || ''));
     }
   }
 
@@ -2163,6 +2164,74 @@
     return html;
   }
 
+  function _settingsChecklistTone(status) {
+    if (status === 'ready') return 'ok';
+    if (status === 'warning') return 'warn';
+    if (status === 'manual') return 'info';
+    return 'danger';
+  }
+
+  function _settingsChecklistLabel(status) {
+    if (status === 'ready') return '設定済み';
+    if (status === 'warning') return '要確認';
+    if (status === 'manual') return '手動確認';
+    return '未設定';
+  }
+
+  function _renderSettingsChecklist(data) {
+    var groups = (data && data.groups) || [];
+    var overall = (data && data.overall) || {};
+    var html = '<div class="metric-list" style="margin-bottom:1rem;">' +
+      buildMetricRow('設定済み', escapeHtml(String(overall.ready_count || 0)), 'UIまたはenvで確認できた項目') +
+      buildMetricRow('要確認', escapeHtml(String(overall.warning_count || 0)), 'ローカルURLなど本番前に見直す項目') +
+      buildMetricRow('未設定', escapeHtml(String(overall.missing_count || 0)), '未入力または不足している項目') +
+      buildMetricRow('手動確認', escapeHtml(String(overall.manual_count || 0)), 'DNS/VPS/Cloud Runなど外部で確認する項目') +
+      '</div>';
+    var i;
+    var j;
+    var group;
+    var item;
+    var details;
+    var tone;
+
+    if (!groups.length) {
+      return html + '<div class="tenant-modal-timeline__empty">設定チェックリストはまだありません。</div>';
+    }
+
+    for (i = 0; i < groups.length; i++) {
+      group = groups[i] || {};
+      html += '<div class="settings-card__eyebrow" style="margin:1rem 0 0.35rem;">' + escapeHtml(group.title || '-') + '</div>';
+      if (group.description) {
+        html += '<div class="settings-card__note" style="margin-bottom:0.6rem;">' + escapeHtml(group.description) + '</div>';
+      }
+      html += '<div class="settings-health-grid">';
+      for (j = 0; j < (group.items || []).length; j++) {
+        item = group.items[j] || {};
+        details = item.details || [];
+        tone = _settingsChecklistTone(item.status || 'missing');
+        html += '<div class="settings-health-card">' +
+          '<div class="settings-health-card__head">' +
+            '<div>' +
+              '<div class="settings-health-card__title">' + escapeHtml(item.label || '-') + '</div>' +
+              '<div class="settings-health-card__summary">' + escapeHtml(item.classification || '-') + ' / source ' + escapeHtml(item.source || '-') + '</div>' +
+            '</div>' +
+            _buildStatusPill(_settingsChecklistLabel(item.status || 'missing'), tone) +
+          '</div>' +
+          '<ul class="settings-health-card__details">' +
+            '<li>次: ' + escapeHtml(item.next_action || '-') + '</li>';
+        if (details.length) {
+          for (var k = 0; k < details.length; k++) {
+            html += '<li>' + escapeHtml(details[k]) + '</li>';
+          }
+        }
+        html += '</ul></div>';
+      }
+      html += '</div>';
+    }
+
+    return html;
+  }
+
   function _renderNotificationCenter(data) {
     var center = data || {};
     var googleChat = center.google_chat || {};
@@ -2274,6 +2343,7 @@
       _apiSettings = data.settings || {};
       var s = _apiSettings;
       var statusEl = document.getElementById('current-api-status');
+      var settingsChecklistEl = document.getElementById('posla-settings-checklist');
       var configHealthEl = document.getElementById('posla-config-health');
       var notifyCenterEl = document.getElementById('posla-notification-center');
       var monitorStatusEl = document.getElementById('posla-monitor-status');
@@ -2300,6 +2370,9 @@
       var connectFeeVal = _getPlainValue(s, 'connect_application_fee_percent');
       var smaregiClientIdVal = _getPlainValue(s, 'smaregi_client_id');
       var opsNotifyEmailVal = _getPlainValue(s, 'ops_notify_email');
+      var mailFromEmailVal = _getPlainValue(s, 'mail_from_email');
+      var mailFromNameVal = _getPlainValue(s, 'mail_from_name');
+      var mailSupportEmailVal = _getPlainValue(s, 'mail_support_email');
       var heartbeatVal = _getPlainValue(s, 'monitor_last_heartbeat');
       var opsPublicUrlVal = _getPlainValue(s, 'codex_ops_public_url');
       var opsCaseEndpointVal = _getPlainValue(s, 'codex_ops_case_endpoint');
@@ -2324,6 +2397,7 @@
         _buildSummaryCard('MONITORING', 'Google Chat・運用通知', [
           _summaryLine('Google Chat', googleChat.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
           _summaryLine('運用通知', opsNotifyEmailVal ? Utils.escapeHtml(opsNotifyEmailVal) : '<span style="color:#999;">未設定</span>'),
+          _summaryLine('送信元', mailFromEmailVal ? Utils.escapeHtml(mailFromEmailVal) : '<span style="color:#999;">env fallback</span>'),
           _summaryLine('heartbeat', heartbeatVal ? Utils.escapeHtml(heartbeatVal) : '<span style="color:#999;">未到達</span>')
         ]) +
         _buildSummaryCard('OPS BRIDGE', 'OP障害報告 / Alert', [
@@ -2361,6 +2435,9 @@
       _setInputValue('posla-connect-fee', connectFeeVal);
       _setInputValue('posla-smaregi-client-id', smaregiClientIdVal);
       _setInputValue('posla-ops-notify-email', opsNotifyEmailVal);
+      _setInputValue('posla-mail-from-email', mailFromEmailVal);
+      _setInputValue('posla-mail-from-name', mailFromNameVal);
+      _setInputValue('posla-mail-support-email', mailSupportEmailVal);
       _setInputValue('posla-codex-ops-public-url', opsPublicUrlVal);
       _setInputValue('posla-codex-ops-case-endpoint', opsCaseEndpointVal);
       _setInputValue('posla-codex-ops-alert-endpoint', opsAlertEndpointVal);
@@ -2373,6 +2450,9 @@
       }
       if (configHealthEl) {
         configHealthEl.innerHTML = _renderConfigHealth(data.config_health || {});
+      }
+      if (settingsChecklistEl) {
+        settingsChecklistEl.innerHTML = _renderSettingsChecklist(data.settings_checklist || {});
       }
       if (notifyCenterEl) {
         notifyCenterEl.innerHTML = _renderNotificationCenter(data.notification_center || {});
@@ -2396,6 +2476,12 @@
     var connectFee = connectFeeEl ? connectFeeEl.value.trim() : '';
     var googleChatWebhook = document.getElementById('posla-google-chat-webhook').value.trim();
     var opsNotifyEmail = document.getElementById('posla-ops-notify-email').value.trim();
+    var mailFromEmailEl = document.getElementById('posla-mail-from-email');
+    var mailFromNameEl = document.getElementById('posla-mail-from-name');
+    var mailSupportEmailEl = document.getElementById('posla-mail-support-email');
+    var mailFromEmail = mailFromEmailEl ? mailFromEmailEl.value.trim() : '';
+    var mailFromName = mailFromNameEl ? mailFromNameEl.value.trim() : '';
+    var mailSupportEmail = mailSupportEmailEl ? mailSupportEmailEl.value.trim() : '';
     var opsPublicUrlEl = document.getElementById('posla-codex-ops-public-url');
     var opsCaseEndpointEl = document.getElementById('posla-codex-ops-case-endpoint');
     var opsCaseTokenEl = document.getElementById('posla-codex-ops-case-token');
@@ -2420,6 +2506,9 @@
     if (connectFee !== '') data.connect_application_fee_percent = connectFee;
     if (googleChatWebhook) data.google_chat_webhook_url = googleChatWebhook;
     if (opsNotifyEmail !== '') data.ops_notify_email = opsNotifyEmail;
+    if (mailFromEmail !== '') data.mail_from_email = mailFromEmail;
+    if (mailFromName !== '') data.mail_from_name = mailFromName;
+    if (mailSupportEmail !== '') data.mail_support_email = mailSupportEmail;
     if (opsPublicUrl !== '') data.codex_ops_public_url = opsPublicUrl;
     if (opsCaseEndpoint !== '') data.codex_ops_case_endpoint = opsCaseEndpoint;
     if (opsCaseToken !== '') data.codex_ops_case_token = opsCaseToken;

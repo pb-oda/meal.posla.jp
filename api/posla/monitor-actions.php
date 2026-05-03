@@ -257,7 +257,7 @@ function _send_ops_mail_test($to, $subject, $body, $transport)
 {
     $result = posla_send_mail($to, $subject, $body, [
         'from_name' => 'POSLA 通知テスト',
-        'from_email' => defined('APP_FROM_EMAIL') ? APP_FROM_EMAIL : 'noreply@meal.posla.jp',
+        'from_email' => posla_mail_default_from_email(),
     ]);
     return !empty($result['success']);
 }

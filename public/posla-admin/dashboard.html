@@ -1583,6 +1583,18 @@
       <div class="card card--accent settings-health-wrap">
         <div class="card__header">
           <div>
+            <h3 class="section-title" style="margin-bottom:0;">設定チェックリスト</h3>
+            <p class="card-intro">設定を `UI設定` / `env必須` / `外部設定` に分けて、どこで何を対応するかを確認します。secret値は表示しません。</p>
+          </div>
+        </div>
+        <div class="card__body">
+          <div id="posla-settings-checklist"></div>
+        </div>
+      </div>
+
+      <div class="card card--accent settings-health-wrap">
+        <div class="card__header">
+          <div>
             <h3 class="section-title" style="margin-bottom:0;">秘密値充足チェック</h3>
             <p class="card-intro">実値は表示せず、連携ごとの `設定済 / 未設定 / 不整合` だけを判定します。本番投入前の差分確認用です。</p>
           </div>
@@ -1684,9 +1696,29 @@
               <label class="form-label" for="posla-ops-notify-email">運用通知メール</label>
               <input class="form-input" type="email" id="posla-ops-notify-email" placeholder="support@posla.jp">
             </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-mail-from-email">メール送信元アドレス</label>
+              <input class="form-input" type="email" id="posla-mail-from-email" placeholder="noreply@meal.posla.jp">
+              <span class="form-hint">未設定時は env `POSLA_FROM_EMAIL` を使います。</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-mail-from-name">メール送信元名</label>
+              <input class="form-input" type="text" id="posla-mail-from-name" maxlength="120" placeholder="POSLA">
+              <span class="form-hint">未設定時は env `POSLA_MAIL_FROM_NAME` を使います。</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-mail-support-email">問い合わせ先メール</label>
+              <input class="form-input" type="email" id="posla-mail-support-email" placeholder="support@meal.posla.jp">
+              <span class="form-hint">申込・管理者招待などの案内文に使います。</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="posla-monitor-message">通知テスト本文</label>
+              <textarea class="form-input" id="posla-monitor-message" rows="3" placeholder="任意の確認メッセージ"></textarea>
+            </div>
             <div class="settings-inline-actions">
               <a class="btn btn-primary" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPで監視・通知を確認</a>
               <button class="btn btn-secondary" type="button" data-tab-jump="pwa-push">PWA / Web Push を開く</button>
+              <button class="btn btn-secondary" id="btn-send-ops-mail-test" type="button">メール送信テスト</button>
             </div>
             <div class="settings-test-result" id="posla-notify-test-result">Google Chat / 運用通知メールの実送信確認はOP側で行います。Web Push は PWA / Web Push タブで詳細確認します。</div>
           </div>

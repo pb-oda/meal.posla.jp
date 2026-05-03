@@ -155,7 +155,7 @@ if (!function_exists('reservation_waitlist_notify_open_slot')) {
                     . "※期限後は他のお客様にも開放されます。\n";
                 $send = posla_send_mail($row['customer_email'], $subject, $body, [
                     'from_name' => $store['name'],
-                    'from_email' => APP_FROM_EMAIL,
+                    'from_email' => posla_mail_default_from_email(),
                 ]);
                 if (!empty($send['success'])) {
                     $pdo->prepare(

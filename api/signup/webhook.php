@@ -157,11 +157,11 @@ function _a5_send_welcome_mail($to, $displayName, $username, $storeName, $signup
           . "■ 準備状況: {$statusUrl}\n\n"
           . "準備完了後、ログインURLをメールでお送りします。\n"
           . "期間内のキャンセルで請求は発生しません。\n\n"
-          . "ご不明な点は " . APP_SUPPORT_EMAIL . " までお気軽にお問い合わせください。\n\n"
+          . "ご不明な点は " . posla_mail_default_support_email() . " までお気軽にお問い合わせください。\n\n"
           . "--\nPOSLA 運営チーム";
     $result = posla_send_mail($to, $subject, $body, [
-        'from_name' => 'POSLA',
-        'from_email' => APP_FROM_EMAIL,
+        'from_name' => posla_mail_default_from_name(),
+        'from_email' => posla_mail_default_from_email(),
     ]);
     if (empty($result['success'])) {
         error_log('[A5][webhook] welcome_mail_failed: ' . ($result['error'] ?? 'unknown'), 3, POSLA_PHP_ERROR_LOG);

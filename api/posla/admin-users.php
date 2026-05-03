@@ -66,12 +66,12 @@ function _posla_admin_users_send_invite_mail($to, $displayName, $password, $acto
           . "■ 初期パスワード: {$password}\n"
           . "■ 追加者: {$actorLabel}\n\n"
           . "初回ログイン後は、右上メニューの「パスワード変更」から必ず初期パスワードを変更してください。\n\n"
-          . "ご不明な点は " . APP_SUPPORT_EMAIL . " までお問い合わせください。\n\n"
+          . "ご不明な点は " . posla_mail_default_support_email() . " までお問い合わせください。\n\n"
           . "--\nPOSLA 運営チーム";
 
     $result = posla_send_mail($to, $subject, $body, [
-        'from_name' => 'POSLA',
-        'from_email' => APP_FROM_EMAIL,
+        'from_name' => posla_mail_default_from_name(),
+        'from_email' => posla_mail_default_from_email(),
     ]);
     return !empty($result['success']);
 }

@@ -169,8 +169,8 @@ function _a5_send_welcome($to, $displayName, $username, $storeName, $signupToken
           . "準備状況はこちらで確認できます:\n{$statusUrl}\n\n"
           . "準備完了後、ログインURLをメールでお送りします。\n\n--\nPOSLA 運営チーム";
     $result = posla_send_mail($to, $subject, $body, [
-        'from_name' => 'POSLA',
-        'from_email' => APP_FROM_EMAIL,
+        'from_name' => posla_mail_default_from_name(),
+        'from_email' => posla_mail_default_from_email(),
     ]);
     if (empty($result['success'])) {
         error_log('[A5][activate] welcome_mail_failed: ' . ($result['error'] ?? 'unknown'), 3, POSLA_PHP_ERROR_LOG);

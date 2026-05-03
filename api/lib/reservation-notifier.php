@@ -397,7 +397,7 @@ if (!function_exists('send_reservation_notification')) {
             $channels['email'] = $emailResult;
         } else {
             $fromName = $store['name'];
-            $fromEmail = APP_FROM_EMAIL;
+            $fromEmail = posla_mail_default_from_email();
             $replyTo = !empty($settings['notification_email']) ? $settings['notification_email'] : null;
 
             $r = _l9_mail_send($reservation['customer_email'], $tpl['subject'], $tpl['body'], $fromName, $fromEmail, $replyTo);

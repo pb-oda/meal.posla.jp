@@ -78,6 +78,9 @@ var PoslaApi = (function() {
     updateSettings: function(data) {
       return request('PATCH', '/settings.php', data);
     },
+    createOpLaunch: function() {
+      return request('POST', '/op-launch.php', {});
+    },
     getOpsSources: function() {
       return request('GET', '/ops-sources.php');
     },

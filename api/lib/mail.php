@@ -15,8 +15,37 @@ function posla_mail_env($key, $default = '')
     return trim((string)$value);
 }
 
+function posla_mail_setting($key)
+{
+    static $cache = null;
+    if ($cache === null) {
+        $cache = array();
+        if (function_exists('get_db')) {
+            try {
+                $pdo = get_db();
+                $stmt = $pdo->query(
+                    "SELECT setting_key, setting_value
+                     FROM posla_settings
+                     WHERE setting_key IN ('mail_from_email','mail_from_name','mail_support_email')"
+                );
+                foreach ($stmt->fetchAll() as $row) {
+                    $cache[$row['setting_key']] = trim((string)$row['setting_value']);
+                }
+            } catch (Throwable $e) {
+                $cache = array();
+            }
+        }
+    }
+
+    return isset($cache[$key]) && $cache[$key] !== '' ? $cache[$key] : '';
+}
+
 function posla_mail_default_from_email()
 {
+    $setting = posla_mail_setting('mail_from_email');
+    if ($setting !== '' && filter_var($setting, FILTER_VALIDATE_EMAIL)) {
+        return $setting;
+    }
     if (defined('APP_FROM_EMAIL')) {
         return APP_FROM_EMAIL;
     }
@@ -25,7 +54,23 @@ function posla_mail_default_from_email()
 
 function posla_mail_default_from_name()
 {
+    $setting = posla_mail_setting('mail_from_name');
+    if ($setting !== '') {
+        return $setting;
+    }
     return posla_mail_env('POSLA_MAIL_FROM_NAME', 'POSLA');
+}
+
+function posla_mail_default_support_email()
+{
+    $setting = posla_mail_setting('mail_support_email');
+    if ($setting !== '' && filter_var($setting, FILTER_VALIDATE_EMAIL)) {
+        return $setting;
+    }
+    if (defined('APP_SUPPORT_EMAIL')) {
+        return APP_SUPPORT_EMAIL;
+    }
+    return posla_mail_env('POSLA_SUPPORT_EMAIL', 'info@meal.posla.jp');
 }
 
 function posla_mail_transport()
