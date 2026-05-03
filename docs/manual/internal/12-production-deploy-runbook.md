@@ -148,13 +148,15 @@ POSLA_CELL_APP_URL_PATTERN=https://{tenant_slug}.<production-domain>
 
 よく迷うenvの書き方:
 
+`POSLA_CRON_SECRET` / `POSLA_OPS_READ_SECRET` / `POSLA_OP_LAUNCH_SECRET` は、POSLA管理画面の `設定センター > env Secret発行ヘルパー` で用途を選んで発行します。画面には保存されないため、発行直後に必要なenvやOP側設定へ同じ値を設定します。CLIで作る場合は `openssl rand -hex 32` を使います。
+
 | env | 何を書くか | UIで代替できるか |
 |---|---|---|
 | `POSLA_ALLOWED_ORIGINS` | ブラウザのOrigin。`https://meal.posla.jp` のように scheme あり、path なし。複数ならカンマ区切り | できません。CORS/CSRFの入口なので起動envで固定します |
 | `POSLA_ALLOWED_HOSTS` | Host名だけ。`meal.posla.jp` のように scheme なし、path なし。複数ならカンマ区切り | できません。Host検証の入口なので起動envで固定します |
-| `POSLA_CRON_SECRET` | POSLA内部cron / monitor-actions用の32文字以上のランダム値 | できません。cron実行元とPOSLA本体の起動envで合わせます |
-| `POSLA_OPS_READ_SECRET` | OPがPOSLAの `cell-snapshot.php` をread-onlyで読むための32文字以上のランダム値 | できません。POSLA本体とOPのenvで同じ値にします |
-| `POSLA_OP_LAUNCH_SECRET` | POSLA管理画面からOP sessionを発行する32文字以上のランダム値 | できません。POSLA本体とOPのenvで同じ値にします |
+| `POSLA_CRON_SECRET` | POSLA内部cron / monitor-actions用の32文字以上のランダム値 | 保存はできません。発行ヘルパーで作成し、cron実行元とPOSLA本体の起動envで合わせます |
+| `POSLA_OPS_READ_SECRET` | OPがPOSLAの `cell-snapshot.php` をread-onlyで読むための32文字以上のランダム値 | 保存はできません。発行ヘルパーで作成し、POSLA本体とOPの設定で同じ値にします |
+| `POSLA_OP_LAUNCH_SECRET` | POSLA管理画面からOP sessionを発行する32文字以上のランダム値 | 保存はできません。発行ヘルパーで作成し、POSLA本体とOPのenvで同じ値にします |
 | `POSLA_OP_CASE_TOKEN` | POSLAからOPへ障害報告を送るToken | 原則UIで保存します。envはUI保存を使わない固定運用時だけ |
 
 db env の必須確認:

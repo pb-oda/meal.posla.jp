@@ -88,7 +88,7 @@ POSLA_CRON_ENABLED=1
 
 control stack の本番 env は `docker/env/app.production.env.example` を雛形にし、`POSLA_APP_BASE_URL` / `POSLA_ALLOWED_ORIGINS` / `POSLA_ALLOWED_HOSTS` を必ず本番ドメインへ置換します。`POSLA_ENVIRONMENT=production` では `localhost` / `127.0.0.1` / `host.docker.internal` の公開URL設定を起動時に拒否します。
 
-`POSLA_ALLOWED_ORIGINS` は `https://...` から始まるOrigin、`POSLA_ALLOWED_HOSTS` はHost名だけを入れます。`POSLA_CRON_SECRET`、`POSLA_OPS_READ_SECRET`、`POSLA_OP_LAUNCH_SECRET` は32文字以上のランダム値を使います。`POSLA_OPS_READ_SECRET` と `POSLA_OP_LAUNCH_SECRET` はOP/VPS側にも同じ値を入れ、`POSLA_CRON_SECRET` はcron実行元とPOSLA側で合わせます。障害報告TokenはUI保存が基本で、env `POSLA_OP_CASE_TOKEN` は固定運用時のfallbackです。
+`POSLA_ALLOWED_ORIGINS` は `https://...` から始まるOrigin、`POSLA_ALLOWED_HOSTS` はHost名だけを入れます。`POSLA_CRON_SECRET`、`POSLA_OPS_READ_SECRET`、`POSLA_OP_LAUNCH_SECRET` はPOSLA管理画面の `設定センター > env Secret発行ヘルパー` で用途を選んで発行します。`POSLA_OPS_READ_SECRET` と `POSLA_OP_LAUNCH_SECRET` はOP/VPS側にも同じ値を入れ、`POSLA_CRON_SECRET` はcron実行元とPOSLA側で合わせます。障害報告TokenはUI保存が基本で、env `POSLA_OP_CASE_TOKEN` は固定運用時のfallbackです。
 
 `cell.env` では同一ホスト上で衝突しない port と image artifact を指定します。
 

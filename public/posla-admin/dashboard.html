@@ -1749,6 +1749,7 @@
 
       <div class="settings-center-nav" aria-label="設定センター内ナビゲーション">
         <a class="settings-center-nav__link" href="#posla-settings-section-readiness">本番投入チェック</a>
+        <a class="settings-center-nav__link" href="#posla-settings-section-env-helper">env Secret発行</a>
         <a class="settings-center-nav__link" href="#posla-settings-section-external">外部連携</a>
         <a class="settings-center-nav__link" href="#posla-settings-section-notify">メール設定</a>
         <a class="settings-center-nav__link" href="#posla-settings-section-op">OP起動・障害報告</a>
@@ -1765,6 +1766,65 @@
         </div>
         <div class="card__body">
           <div id="posla-settings-checklist"></div>
+        </div>
+      </div>
+
+      <div class="settings-section" id="posla-settings-section-env-helper">
+        <div class="settings-section__head">
+          <div>
+            <div class="settings-section__title">env Secret発行ヘルパー</div>
+            <div class="settings-section__meta">envに貼り付ける共有secretだけを発行します。ここでは保存せず、発行直後に必要な場所へ同じ値を設定します。</div>
+          </div>
+        </div>
+        <div class="settings-layout">
+          <div class="card settings-card">
+            <div class="card__body">
+              <div class="settings-card__eyebrow">Bootstrap Secret</div>
+              <div class="settings-card__title">POSLA / OP 共通secret</div>
+              <div class="settings-card__note">用途を選んで発行します。同じ用途では同じ値を使い、違う用途のsecretは使い回しません。</div>
+              <div class="form-group">
+                <label class="form-label" for="posla-env-secret-kind">発行するsecret</label>
+                <select class="form-select" id="posla-env-secret-kind">
+                  <option value="POSLA_OPS_READ_SECRET">POSLA_OPS_READ_SECRET - OPがPOSLAをread-only監視する</option>
+                  <option value="POSLA_OP_LAUNCH_SECRET">POSLA_OP_LAUNCH_SECRET - POSLA管理画面からOP sessionを発行する</option>
+                  <option value="POSLA_CRON_SECRET">POSLA_CRON_SECRET - POSLA内部cron / monitor-actions用</option>
+                </select>
+              </div>
+              <div class="settings-test-result" id="posla-env-secret-guide"></div>
+              <div class="settings-inline-actions">
+                <button class="btn btn-secondary" id="btn-generate-env-secret" type="button">Secretを発行</button>
+                <button class="btn btn-secondary" id="btn-copy-env-secret" type="button">コピー</button>
+              </div>
+              <div class="push-secret-output" id="posla-env-secret-output">
+                <div class="push-secret-output__head">
+                  <div class="push-secret-output__title" id="posla-env-secret-label">env secret</div>
+                </div>
+                <textarea id="posla-env-secret-value" readonly placeholder="Secretを発行するとここに表示します"></textarea>
+                <div class="push-secret-output__note" id="posla-env-secret-note">実値は保存しません。ページを離れる前に必要なenvへ設定してください。</div>
+              </div>
+            </div>
+          </div>
+          <div class="card settings-card">
+            <div class="card__body">
+              <div class="settings-card__eyebrow">URL / Host</div>
+              <div class="settings-card__title">発行しないenv</div>
+              <div class="settings-card__note">URLやHostはsecretではないため発行しません。実際に公開するドメインをそのまま書きます。</div>
+              <div class="settings-monitor-status">
+                <div class="settings-monitor-status__row">
+                  <div class="settings-monitor-status__label">POSLA_ALLOWED_ORIGINS</div>
+                  <div class="settings-monitor-status__value"><code>https://meal.posla.jp</code></div>
+                </div>
+                <div class="settings-monitor-status__row">
+                  <div class="settings-monitor-status__label">POSLA_ALLOWED_HOSTS</div>
+                  <div class="settings-monitor-status__value"><code>meal.posla.jp</code></div>
+                </div>
+                <div class="settings-monitor-status__row">
+                  <div class="settings-monitor-status__label">複数指定</div>
+                  <div class="settings-monitor-status__value">カンマ区切り。Originはschemeあり、Hostはschemeなし。</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2022,7 +2082,7 @@
           <div class="card__body">
             <div class="settings-card__eyebrow">Incident Report</div>
             <div class="settings-card__title">手動障害報告Webhook</div>
-            <div class="settings-card__note">POSLAの障害報告フォームからVPS上のOPへcaseと調査を作る接続先です。監視結果はここでは送らず、OP側の監視設定で確認します。TokenはOP側の POSLA_OPS_CASE_TOKEN と同じ値を入れ、空欄送信では変更しません。</div>
+            <div class="settings-card__note">POSLAの障害報告フォームからVPS上のOPへcaseと調査を作る接続先です。監視結果はここでは送らず、OP側の監視設定で確認します。TokenはOP側 Settings の障害報告受信Tokenと同じ値を入れ、空欄送信では変更しません。</div>
             <div class="form-group">
               <label class="form-label" for="ops-connection-case-endpoint">障害報告Webhook Endpoint</label>
               <input class="form-input" type="url" id="ops-connection-case-endpoint" placeholder="https://op.posla.jp/api/ingest/posla-case">

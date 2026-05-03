@@ -348,9 +348,9 @@ function _build_settings_checklist(array $settingsMap): array {
         ['POSLA_APP_BASE_URL', 'POSLA_APP_BASE_URL', 'このPOSLA本体をブラウザで開く正規URLです。例: https://meal.posla.jp'],
         ['POSLA_ALLOWED_ORIGINS', 'POSLA_ALLOWED_ORIGINS', 'CORSで許可するOriginです。scheme付きで、pathなし。例: https://meal.posla.jp,https://admin.meal.posla.jp'],
         ['POSLA_ALLOWED_HOSTS', 'POSLA_ALLOWED_HOSTS', 'CSRF/Host検証で許可するHostです。schemeなし、pathなし。例: meal.posla.jp,admin.meal.posla.jp'],
-        ['POSLA_CRON_SECRET', 'POSLA_CRON_SECRET', 'POSLA内部cronやmonitor-actionsで使う共有secretです。32文字以上のランダム値を入れます。OP監視は通常 POSLA_OPS_READ_SECRET を使います。'],
-        ['POSLA_OPS_READ_SECRET', 'POSLA_OPS_READ_SECRET', 'OPがPOSLAの cell-snapshot をread-only参照する共有secretです。OP側Sourceのauth typeを ops_read_secret にし、OP側にも同じ値を設定します。'],
-        ['POSLA_OP_LAUNCH_SECRET', 'POSLA_OP_LAUNCH_SECRET', 'POSLA管理画面からOPを開く時にOP sessionを発行する共有secretです。POSLA側とOP側に同じ32文字以上のランダム値を入れます。未設定だとOPを開くだけで、OP session guardは有効になりません。'],
+        ['POSLA_CRON_SECRET', 'POSLA_CRON_SECRET', 'POSLA内部cronやmonitor-actionsで使う共有secretです。設定センターのenv Secret発行ヘルパーで作成できます。OP監視は通常 POSLA_OPS_READ_SECRET を使います。'],
+        ['POSLA_OPS_READ_SECRET', 'POSLA_OPS_READ_SECRET', 'OPがPOSLAの cell-snapshot をread-only参照する共有secretです。設定センターのenv Secret発行ヘルパーで作成し、OP側Sourceのauth typeを ops_read_secret にして同じ値を設定します。'],
+        ['POSLA_OP_LAUNCH_SECRET', 'POSLA_OP_LAUNCH_SECRET', 'POSLA管理画面からOPを開く時にOP sessionを発行する共有secretです。設定センターのenv Secret発行ヘルパーで作成し、POSLA側とOP側に同じ値を入れます。未設定だとOPを開くだけで、OP session guardは有効になりません。'],
     ];
 
     foreach ($runtimeEnv as $definition) {

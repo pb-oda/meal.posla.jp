@@ -169,6 +169,15 @@
     var clearApiBtn = document.getElementById('btn-clear-api');
     if (clearApiBtn) clearApiBtn.addEventListener('click', clearApiSettings);
 
+    var envSecretKind = document.getElementById('posla-env-secret-kind');
+    if (envSecretKind) envSecretKind.addEventListener('change', updateEnvSecretGuide);
+
+    var generateEnvSecretBtn = document.getElementById('btn-generate-env-secret');
+    if (generateEnvSecretBtn) generateEnvSecretBtn.addEventListener('click', generateEnvSecret);
+
+    var copyEnvSecretBtn = document.getElementById('btn-copy-env-secret');
+    if (copyEnvSecretBtn) copyEnvSecretBtn.addEventListener('click', copyEnvSecret);
+
     var runMonitorBtn = document.getElementById('btn-run-monitor-health');
     if (runMonitorBtn) runMonitorBtn.addEventListener('click', runMonitorHealth);
 
@@ -213,6 +222,8 @@
 
     var downloadPushBtn = document.getElementById('btn-push-secret-download');
     if (downloadPushBtn) downloadPushBtn.addEventListener('click', downloadPushSecretValue);
+
+    updateEnvSecretGuide();
 
     // サポートセンター (HELPDESK-P2-NONAI-ALL-20260423: AIコード案内→非AI置換)
     // 実装は js/posla-supportdesk.js (PoslaSupportdesk.mount)
@@ -851,6 +862,110 @@
       });
     } else if (showEmptyMessage !== false) {
       showToast('Tokenを選択しました。必要に応じてコピーしてください');
+    }
+  }
+
+  var ENV_SECRET_DEFINITIONS = {
+    POSLA_OPS_READ_SECRET: {
+      label: 'POSLA_OPS_READ_SECRET',
+      title: 'OPがPOSLAをread-only監視する共有secret',
+      purpose: 'OPがPOSLAの cell-snapshot を読むために使います。',
+      paste: 'POSLA側 env に POSLA_OPS_READ_SECRET=<この値> を設定し、OP側 Source の secret にも同じ値を保存します。',
+      note: 'OP側 Source の auth type は ops_read_secret を選びます。監視方向は OP -> POSLA です。'
+    },
+    POSLA_OP_LAUNCH_SECRET: {
+      label: 'POSLA_OP_LAUNCH_SECRET',
+      title: 'POSLA管理画面からOP sessionを発行する共有secret',
+      purpose: 'POSLA管理画面からOPを開く時に署名付きlaunch tokenを作るために使います。',
+      paste: 'POSLA側 env と OP側 env の POSLA_OP_LAUNCH_SECRET に同じ値を設定します。',
+      note: '未設定の場合、POSLA管理画面はOPを開くだけで、OP session guardは有効になりません。'
+    },
+    POSLA_CRON_SECRET: {
+      label: 'POSLA_CRON_SECRET',
+      title: 'POSLA内部cron / monitor-actions用secret',
+      purpose: 'POSLA本体のcron系HTTP実行を認証するために使います。',
+      paste: 'POSLA側 env に POSLA_CRON_SECRET=<この値> を設定し、cron実行元にも同じ値を設定します。',
+      note: '通常のOP監視は POSLA_OPS_READ_SECRET を使います。cron_secret authを選ぶ時だけOP側にも同じ値を入れます。'
+    }
+  };
+
+  var _envSecretState = {
+    key: '',
+    label: '',
+    value: ''
+  };
+
+  function selectedEnvSecretDefinition() {
+    var select = document.getElementById('posla-env-secret-kind');
+    var key = select ? select.value : 'POSLA_OPS_READ_SECRET';
+    return ENV_SECRET_DEFINITIONS[key] || ENV_SECRET_DEFINITIONS.POSLA_OPS_READ_SECRET;
+  }
+
+  function updateEnvSecretGuide() {
+    var guideEl = document.getElementById('posla-env-secret-guide');
+    var labelEl = document.getElementById('posla-env-secret-label');
+    var noteEl = document.getElementById('posla-env-secret-note');
+    var def = selectedEnvSecretDefinition();
+
+    if (_envSecretState.value && _envSecretState.key !== def.label) {
+      setEnvSecretOutput(def, '');
+    }
+    if (labelEl) labelEl.textContent = def.label;
+    if (noteEl && !_envSecretState.value) {
+      noteEl.textContent = '実値は保存しません。発行後、ページを離れる前に必要なenvへ設定してください。';
+    }
+    if (!guideEl) return;
+
+    guideEl.innerHTML =
+      '<div class="settings-monitor-status">' +
+      '<div class="settings-monitor-status__row"><div class="settings-monitor-status__label">用途</div><div class="settings-monitor-status__value">' + Utils.escapeHtml(def.purpose) + '</div></div>' +
+      '<div class="settings-monitor-status__row"><div class="settings-monitor-status__label">設定先</div><div class="settings-monitor-status__value">' + Utils.escapeHtml(def.paste) + '</div></div>' +
+      '<div class="settings-monitor-status__row"><div class="settings-monitor-status__label">注意</div><div class="settings-monitor-status__value">' + Utils.escapeHtml(def.note) + '</div></div>' +
+      '</div>';
+  }
+
+  function setEnvSecretOutput(def, value) {
+    var valueEl = document.getElementById('posla-env-secret-value');
+    var labelEl = document.getElementById('posla-env-secret-label');
+    var noteEl = document.getElementById('posla-env-secret-note');
+
+    _envSecretState = {
+      key: def.label,
+      label: def.title,
+      value: value || ''
+    };
+    if (labelEl) labelEl.textContent = def.label;
+    if (valueEl) valueEl.value = value || '';
+    if (noteEl) noteEl.textContent = value ? def.paste : '実値は保存しません。発行後、ページを離れる前に必要なenvへ設定してください。';
+  }
+
+  function generateEnvSecret() {
+    var def = selectedEnvSecretDefinition();
+    var value = generateSharedSecret();
+    setEnvSecretOutput(def, value);
+    copyEnvSecret(false);
+    showToast(def.label + ' を発行しました。必要な場所へ同じ値を設定してください。');
+  }
+
+  function copyEnvSecret(showEmptyMessage) {
+    var valueEl = document.getElementById('posla-env-secret-value');
+    var value = valueEl ? valueEl.value.trim() : '';
+    if (value === '') {
+      if (showEmptyMessage !== false) showToast('コピーするSecretがありません');
+      return;
+    }
+    if (valueEl) {
+      valueEl.focus();
+      valueEl.select();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(value).then(function() {
+        if (showEmptyMessage !== false) showToast('Secretをコピーしました');
+      }).catch(function() {
+        if (showEmptyMessage !== false) showToast('Secretを選択しました。必要に応じてコピーしてください');
+      });
+    } else if (showEmptyMessage !== false) {
+      showToast('Secretを選択しました。必要に応じてコピーしてください');
     }
   }
 
