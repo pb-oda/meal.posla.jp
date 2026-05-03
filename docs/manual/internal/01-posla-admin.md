@@ -417,6 +417,12 @@ curl -X POST https://<production-domain>/api/posla/tenants.php \
 | `slack_webhook_url` | legacy fallback 用 Slack Incoming Webhook URL |
 | `ops_notify_email` | Hiro ほか運営チームの通知先メールアドレス（連続 3 件以上のエラー時） |
 
+**Actions連携：**
+
+| キー名 | 説明 |
+|--------|------|
+| `release_plan_actions_token` | GitHub Actions が `/api/deploy/release-plan.php` で Release Plan を読むための Bearer Token。GitHub Secrets `POSLA_RELEASE_PLAN_TOKEN` と同じ値 |
+
 詳細は [7. 運用監視エージェント](./07-monitor.md) 参照。
 
 ### 1.4.2 キーの表示とマスキング

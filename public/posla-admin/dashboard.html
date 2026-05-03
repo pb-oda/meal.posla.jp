@@ -1607,6 +1607,7 @@
             <li>先行確認は「単一cell」で `POSLA運用確認用 / test-01` を選びます。</li>
             <li>コードを全体で統一する通常リリースは「全active cell」を選びます。これで全cellへ同じコードを反映する前提を明示します。</li>
             <li>Feature Flagsはデプロイ後の公開範囲です。全active cellへデプロイしても、FlagがOFFなら顧客には表示しません。</li>
+            <li>GitHub Actionsは `/api/deploy/release-plan.php` を読み、ここで保存した設定と合う場合だけ実行対象にします。</li>
             <li>未設定または手動確認のみの場合、Actionsは自動デプロイを停止扱いにします。</li>
           </ul>
         </div>
@@ -1743,7 +1744,7 @@
       <div class="panel-header">
         <div class="panel-header__eyebrow">Platform Settings</div>
         <h2 class="panel-header__title">設定センター</h2>
-        <p class="panel-header__lead">POSLA運営が全テナント共通で使う設定をまとめます。実値は読み出さず、状態だけ表示して変更時のみ新しい値を入力します。OPのURL、Endpoint、Tokenは「OP連携」に集約します。</p>
+        <p class="panel-header__lead">POSLA運営が全テナント共通で使う設定をまとめます。実値は読み出さず、状態だけ表示して変更時のみ新しい値を入力します。OPのURL、Endpoint、TokenとActions連携Tokenもここに集約します。</p>
       </div>
 
       <div class="settings-summary-grid" id="current-api-status"></div>
@@ -1753,6 +1754,7 @@
         <a class="settings-center-nav__link" href="#posla-settings-section-external">外部連携</a>
         <a class="settings-center-nav__link" href="#posla-settings-section-notify">通知 / メール</a>
         <a class="settings-center-nav__link" href="#posla-settings-section-op">OP連携</a>
+        <a class="settings-center-nav__link" href="#posla-settings-section-deploy">Actions連携</a>
         <a class="settings-center-nav__link" href="#posla-settings-section-history">変更履歴</a>
       </div>
 
@@ -1935,6 +1937,39 @@
             <div class="settings-inline-actions">
               <button class="btn btn-primary" type="button" data-tab-jump="ops-source">OP連携を開く</button>
               <a class="btn btn-secondary" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+      <div class="settings-section" id="posla-settings-section-deploy">
+        <div class="settings-section__head">
+          <div>
+            <div class="settings-section__title">Actions連携</div>
+            <div class="settings-section__meta">GitHub ActionsがPOSLA側のRelease Planを読むための読み取り専用APIです。UIの次回デプロイ計画を正とします。</div>
+          </div>
+        </div>
+        <div class="settings-layout">
+        <div class="card settings-card">
+          <div class="card__body">
+            <div class="settings-card__eyebrow">Deploy Automation</div>
+            <div class="settings-card__title">GitHub Actions Release Plan API</div>
+            <div class="settings-card__note">ActionsはこのAPIで `manual_only` / `single_cell` / `all_active_cells` を読みます。GitHub側の入力値とUI設定が食い違う場合は停止させます。</div>
+            <div class="settings-monitor-status" id="posla-release-plan-actions-status"></div>
+            <div class="form-group">
+              <label class="form-label" for="posla-release-plan-actions-token">Release Plan Token</label>
+              <input class="form-input" type="password" id="posla-release-plan-actions-token" placeholder="GitHub Secret と同じ32文字以上のtoken">
+              <span class="form-hint">GitHub Secrets の `POSLA_RELEASE_PLAN_TOKEN` と同じ値を保存します。空欄送信では変更しません。</span>
+            </div>
+            <div class="settings-test-result">
+              Actionsから読むURL: <code>/api/deploy/release-plan.php</code><br>
+              Header: <code>Authorization: Bearer $POSLA_RELEASE_PLAN_TOKEN</code><br>
+              Gate workflow: <code>.github/workflows/release-plan-gate.yml</code><br>
+              Feature FlagsはこのAPIでは変更しません。
+            </div>
+            <div class="settings-inline-actions">
+              <button class="btn btn-secondary" type="button" data-tab-jump="cell-provisioning">次回デプロイ計画を開く</button>
+              <button class="btn btn-secondary" type="button" data-tab-jump="feature-flags">Feature Flagsを開く</button>
             </div>
           </div>
         </div>

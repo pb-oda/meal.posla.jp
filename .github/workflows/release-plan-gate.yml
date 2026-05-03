@@ -1,0 +1,78 @@
+name: POSLA Release Plan Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      posla_base_url:
+        description: POSLA base URL
+        required: true
+        default: https://meal.posla.jp
+  workflow_call:
+    inputs:
+      posla_base_url:
+        description: POSLA base URL
+        required: false
+        type: string
+        default: https://meal.posla.jp
+    secrets:
+      POSLA_RELEASE_PLAN_TOKEN:
+        required: true
+    outputs:
+      deploy_allowed:
+        description: Whether POSLA Release Plan allows Actions deployment
+        value: ${{ jobs.release-plan.outputs.deploy_allowed }}
+      target_scope:
+        description: single_cell or all_active_cells
+        value: ${{ jobs.release-plan.outputs.target_scope }}
+      target_cell_ids:
+        description: JSON array of target cell IDs
+        value: ${{ jobs.release-plan.outputs.target_cell_ids }}
+
+jobs:
+  release-plan:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy_allowed: ${{ steps.plan.outputs.deploy_allowed }}
+      target_scope: ${{ steps.plan.outputs.target_scope }}
+      target_cell_ids: ${{ steps.plan.outputs.target_cell_ids }}
+    steps:
+      - name: Fetch POSLA Release Plan
+        id: plan
+        env:
+          POSLA_BASE_URL: ${{ inputs.posla_base_url }}
+          POSLA_RELEASE_PLAN_TOKEN: ${{ secrets.POSLA_RELEASE_PLAN_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${POSLA_RELEASE_PLAN_TOKEN}" ]; then
+            echo "POSLA_RELEASE_PLAN_TOKEN is not configured." >&2
+            exit 1
+          fi
+
+          endpoint="${POSLA_BASE_URL%/}/api/deploy/release-plan.php"
+          curl -fsS \
+            -H "Authorization: Bearer ${POSLA_RELEASE_PLAN_TOKEN}" \
+            "${endpoint}" \
+            -o release-plan.json
+
+          deploy_allowed="$(jq -r '.data.deploy_allowed // false' release-plan.json)"
+          target_scope="$(jq -r '.data.decision.target_scope // ""' release-plan.json)"
+          target_cell_ids="$(jq -c '.data.decision.target_cell_ids // []' release-plan.json)"
+          reason="$(jq -r '.data.decision.reason // ""' release-plan.json)"
+          feature_flags_policy="$(jq -r '.data.decision.feature_flags_policy // "do_not_change"' release-plan.json)"
+
+          {
+            echo "deploy_allowed=${deploy_allowed}"
+            echo "target_scope=${target_scope}"
+            echo "target_cell_ids=${target_cell_ids}"
+          } >> "${GITHUB_OUTPUT}"
+
+          {
+            echo "## POSLA Release Plan"
+            echo ""
+            echo "- deploy_allowed: \`${deploy_allowed}\`"
+            echo "- target_scope: \`${target_scope:-unset}\`"
+            echo "- target_cell_ids: \`${target_cell_ids}\`"
+            echo "- feature_flags_policy: \`${feature_flags_policy}\`"
+            echo "- reason: ${reason:-none}"
+          } >> "${GITHUB_STEP_SUMMARY}"

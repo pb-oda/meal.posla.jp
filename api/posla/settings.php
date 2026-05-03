@@ -14,6 +14,7 @@
 require_once __DIR__ . '/auth-helper.php';
 require_once __DIR__ . '/admin-audit-helper.php';
 require_once __DIR__ . '/../lib/mail.php';
+require_once __DIR__ . '/../lib/release-plan.php';
 
 $admin = require_posla_admin();
 $method = require_method(['GET', 'PATCH']);
@@ -118,6 +119,7 @@ function _setting_label_map() {
         'codex_ops_public_url' => 'OP画面URL',
         'codex_ops_case_endpoint' => 'OP Incident Report Endpoint',
         'codex_ops_case_token' => 'OP Incident Report Token',
+        RELEASE_PLAN_ACTIONS_TOKEN_KEY => 'GitHub Actions Release Plan Token',
     ];
 }
 
@@ -290,6 +292,7 @@ function _build_settings_checklist(array $settingsMap): array {
         ['mail_support_email', '問い合わせ先メール', false, 'API設定で更新できます。未設定時はenvを使います。', '問い合わせ先メールを保存してください。'],
         ['web_push_vapid_public', 'Web Push VAPID公開鍵', false, 'PWA / Web Pushタブで生成・適用できます。', 'PWA / Web PushタブでVAPID鍵を生成してください。'],
         ['web_push_vapid_private_pem', 'Web Push VAPID秘密鍵', true, 'PWA / Web Pushタブで生成・適用できます。', 'PWA / Web PushタブでVAPID鍵を生成してください。'],
+        [RELEASE_PLAN_ACTIONS_TOKEN_KEY, 'GitHub Actions Release Plan Token', true, 'Actions連携で更新できます。', 'Actions連携でRelease Plan Tokenを保存してください。'],
     ];
 
     foreach ($uiDefinitions as $definition) {
@@ -615,6 +618,20 @@ function _build_config_health(array $settingsMap): array {
         ]
     );
 
+    $releasePlanTokenSet = _setting_is_present($settingsMap, RELEASE_PLAN_ACTIONS_TOKEN_KEY) || _env_is_present('POSLA_RELEASE_PLAN_READ_TOKEN');
+    $checks[] = _build_config_check(
+        'deploy_release_plan_api',
+        'GitHub Actions Release Plan API',
+        $releasePlanTokenSet ? 'ok' : 'warn',
+        $releasePlanTokenSet ? 'Token 設定済み' : 'Token 未設定',
+        [
+            'Endpoint: /api/deploy/release-plan.php',
+            '認証: Authorization: Bearer <GitHub Secret>',
+            'Release Plan: POSLA管理画面の Cell配備 が正',
+            'Feature Flags: Actionsからは変更しない',
+        ]
+    );
+
     $vapidPublicSet = _setting_is_present($settingsMap, 'web_push_vapid_public');
     $vapidPrivateSet = _setting_is_present($settingsMap, 'web_push_vapid_private_pem');
     $pwaReadyCount = ($vapidPublicSet ? 1 : 0) + ($vapidPrivateSet ? 1 : 0);
@@ -764,7 +781,7 @@ if ($method === 'PATCH') {
     $input = get_json_body();
     // P1-35: α-1 化で stripe_price_standard/pro/enterprise → base/additional_store/hq_broadcast
     // 旧キーは posla_settings の row として温存（rollback 用）。allowedKeys からは削除して UI 編集経路を閉じる
-    $allowedKeys = ['gemini_api_key', 'google_places_api_key', 'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret', 'stripe_webhook_secret_signup', 'stripe_price_base', 'stripe_price_additional_store', 'stripe_price_hq_broadcast', 'connect_application_fee_percent', 'smaregi_client_id', 'smaregi_client_secret', 'google_chat_webhook_url', 'ops_notify_email', 'mail_from_email', 'mail_from_name', 'mail_support_email', 'codex_ops_public_url', 'codex_ops_case_endpoint', 'codex_ops_case_token'];
+    $allowedKeys = ['gemini_api_key', 'google_places_api_key', 'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret', 'stripe_webhook_secret_signup', 'stripe_price_base', 'stripe_price_additional_store', 'stripe_price_hq_broadcast', 'connect_application_fee_percent', 'smaregi_client_id', 'smaregi_client_secret', 'google_chat_webhook_url', 'ops_notify_email', 'mail_from_email', 'mail_from_name', 'mail_support_email', 'codex_ops_public_url', 'codex_ops_case_endpoint', 'codex_ops_case_token', RELEASE_PLAN_ACTIONS_TOKEN_KEY];
     $updated = 0;
     $updatedKeys = [];
     $currentSettings = _fetch_current_settings_map($pdo);
@@ -782,6 +799,9 @@ if ($method === 'PATCH') {
         }
         if ($key === 'mail_from_name' && is_string($val) && strlen($val) > 120) {
             json_error('INVALID_MAIL_FROM_NAME', _setting_label($key) . ' は120文字以内で入力してください', 400);
+        }
+        if ($key === RELEASE_PLAN_ACTIONS_TOKEN_KEY && is_string($val) && $val !== '' && strlen($val) < 32) {
+            json_error('INVALID_RELEASE_PLAN_TOKEN', _setting_label($key) . ' は32文字以上で入力してください', 400);
         }
 
         // 空文字 = 「変更しない」（フォーム未入力扱い）

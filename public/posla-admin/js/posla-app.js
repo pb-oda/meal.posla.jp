@@ -2653,6 +2653,7 @@
       var configHealthEl = document.getElementById('posla-config-health');
       var notifyCenterEl = document.getElementById('posla-notification-center');
       var monitorStatusEl = document.getElementById('posla-monitor-status');
+      var releasePlanActionsStatusEl = document.getElementById('posla-release-plan-actions-status');
       var auditSummaryEl = document.getElementById('posla-settings-audit-summary');
       var auditListEl = document.getElementById('posla-settings-audit-list');
       if (!statusEl) return;
@@ -2668,6 +2669,7 @@
       var slackWebhook = _getKeyInfo(s, 'slack_webhook_url');
       var monitorSecret = _getKeyInfo(s, 'monitor_cron_secret');
       var opsCaseToken = _getKeyInfo(s, 'codex_ops_case_token');
+      var releasePlanActionsToken = _getKeyInfo(s, 'release_plan_actions_token');
 
       var priceBaseVal = _getPlainValue(s, 'stripe_price_base');
       var priceAddVal = _getPlainValue(s, 'stripe_price_additional_store');
@@ -2708,6 +2710,11 @@
           _summaryLine('OP画面URL', opsPublicUrlVal ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
           _summaryLine('障害報告', (opsCaseEndpointVal && opsCaseToken.set) ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
           _summaryLine('監視', _buildStatusPill('OPで確認', 'info'))
+        ]) +
+        _buildSummaryCard('DEPLOY', 'Actions Release Plan', [
+          _summaryLine('Token', releasePlanActionsToken.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
+          _summaryLine('Endpoint', '<code>/api/deploy/release-plan.php</code>'),
+          _summaryLine('正', _buildStatusPill('UIのRelease Plan', 'info'))
         ]);
 
       if (monitorStatusEl) {
@@ -2731,6 +2738,21 @@
           '<div class="settings-monitor-status__row">' +
           '<div class="settings-monitor-status__label">DB共有秘密</div>' +
           '<div class="settings-monitor-status__value">' + _buildKeyDisplay(monitorSecret.set, monitorSecret.masked) + '</div>' +
+          '</div>';
+      }
+      if (releasePlanActionsStatusEl) {
+        releasePlanActionsStatusEl.innerHTML =
+          '<div class="settings-monitor-status__row">' +
+          '<div class="settings-monitor-status__label">Release Plan API</div>' +
+          '<div class="settings-monitor-status__value"><code>/api/deploy/release-plan.php</code></div>' +
+          '</div>' +
+          '<div class="settings-monitor-status__row">' +
+          '<div class="settings-monitor-status__label">Token</div>' +
+          '<div class="settings-monitor-status__value">' + _buildKeyDisplay(releasePlanActionsToken.set, releasePlanActionsToken.masked) + '</div>' +
+          '</div>' +
+          '<div class="settings-monitor-status__row">' +
+          '<div class="settings-monitor-status__label">Actions判断</div>' +
+          '<div class="settings-monitor-status__value">Cell配備の次回デプロイ計画を正にします</div>' +
           '</div>';
       }
 
@@ -2780,9 +2802,11 @@
     var mailFromEmailEl = document.getElementById('posla-mail-from-email');
     var mailFromNameEl = document.getElementById('posla-mail-from-name');
     var mailSupportEmailEl = document.getElementById('posla-mail-support-email');
+    var releasePlanActionsTokenEl = document.getElementById('posla-release-plan-actions-token');
     var mailFromEmail = mailFromEmailEl ? mailFromEmailEl.value.trim() : '';
     var mailFromName = mailFromNameEl ? mailFromNameEl.value.trim() : '';
     var mailSupportEmail = mailSupportEmailEl ? mailSupportEmailEl.value.trim() : '';
+    var releasePlanActionsToken = releasePlanActionsTokenEl ? releasePlanActionsTokenEl.value.trim() : '';
 
     var data = {};
     if (aiKey) data.gemini_api_key = aiKey;
@@ -2800,6 +2824,7 @@
     if (mailFromEmail !== '') data.mail_from_email = mailFromEmail;
     if (mailFromName !== '') data.mail_from_name = mailFromName;
     if (mailSupportEmail !== '') data.mail_support_email = mailSupportEmail;
+    if (releasePlanActionsToken !== '') data.release_plan_actions_token = releasePlanActionsToken;
 
     var smaregiClientId = document.getElementById('posla-smaregi-client-id');
     var smaregiClientSecret = document.getElementById('posla-smaregi-client-secret');
@@ -2823,6 +2848,7 @@
       document.getElementById('posla-stripe-webhook').value = '';
       document.getElementById('posla-stripe-webhook-signup').value = '';
       document.getElementById('posla-google-chat-webhook').value = '';
+      if (releasePlanActionsTokenEl) releasePlanActionsTokenEl.value = '';
       var smSecEl = document.getElementById('posla-smaregi-client-secret');
       if (smSecEl) smSecEl.value = '';
       loadApiStatus();
@@ -2847,7 +2873,8 @@
       stripe_webhook_secret: null,
       stripe_webhook_secret_signup: null,
       smaregi_client_secret: null,
-      google_chat_webhook_url: null
+      google_chat_webhook_url: null,
+      release_plan_actions_token: null
     }).then(function() {
       document.getElementById('posla-ai-key').value = '';
       document.getElementById('posla-places-key').value = '';
@@ -2856,6 +2883,8 @@
       document.getElementById('posla-stripe-webhook').value = '';
       document.getElementById('posla-stripe-webhook-signup').value = '';
       document.getElementById('posla-google-chat-webhook').value = '';
+      var releasePlanActionsTokenEl = document.getElementById('posla-release-plan-actions-token');
+      if (releasePlanActionsTokenEl) releasePlanActionsTokenEl.value = '';
       var smSecEl = document.getElementById('posla-smaregi-client-secret');
       if (smSecEl) smSecEl.value = '';
       showToast('機密値をクリアしました');
