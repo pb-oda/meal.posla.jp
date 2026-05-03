@@ -398,22 +398,22 @@ if ($method === 'GET') {
     $id = $_GET['id'] ?? '';
 
     if ($id !== '') {
-        $insights = posla_fetch_tenant_insights($pdo, $id, false);
+        $insights = posla_apply_op_monitoring_delegation_to_tenants(posla_fetch_tenant_insights($pdo, $id, false));
         $tenant = !empty($insights) ? $insights[0] : null;
 
         if (!$tenant) {
             json_error('NOT_FOUND', 'テナントが見つかりません', 404);
         }
 
-        $tenant['incident_timeline'] = posla_fetch_tenant_incident_timeline($pdo, $id);
-        $tenant['ops_timeline'] = posla_fetch_tenant_ops_timeline($pdo, $id);
-        $tenant['investigation_view'] = posla_fetch_tenant_investigation_view($pdo, $id);
+        $tenant['incident_timeline'] = [];
+        $tenant['ops_timeline'] = posla_fetch_tenant_ops_timeline($pdo, $id, 20, false);
+        $tenant['investigation_view'] = posla_fetch_tenant_investigation_view($pdo, $id, false);
 
         json_response(['tenant' => normalize_tenant_contract($tenant)]);
     }
 
     // 全件一覧
-    $tenants = array_map('normalize_tenant_contract', posla_fetch_tenant_insights($pdo, null, false));
+    $tenants = array_map('normalize_tenant_contract', posla_apply_op_monitoring_delegation_to_tenants(posla_fetch_tenant_insights($pdo, null, false)));
 
     json_response(['tenants' => $tenants]);
 }

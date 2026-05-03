@@ -410,6 +410,42 @@ function posla_build_tenant_insight(array $tenant): array
     return $tenant;
 }
 
+function posla_apply_op_monitoring_delegation(array $tenant): array
+{
+    $tenant['posla_monitor_event_reference'] = [
+        'incident_count_24h' => (int)($tenant['incident_count_24h'] ?? 0),
+        'open_incident_count' => (int)($tenant['open_incident_count'] ?? 0),
+        'critical_open_count' => (int)($tenant['critical_open_count'] ?? 0),
+        'last_incident_at' => $tenant['last_incident_at'] ?? null,
+    ];
+    $tenant['monitoring_delegated_to'] = 'op';
+    $tenant['monitoring_delegation_label'] = 'OPで確認';
+    $tenant['monitoring_delegation_detail'] = '監視・障害の現在状態はOPを正とします。POSLA管理画面ではテナント設定と導入状況だけを判定します。';
+
+    $tenant['incident_count_24h'] = 0;
+    $tenant['open_incident_count'] = 0;
+    $tenant['critical_open_count'] = 0;
+    $tenant['last_incident_at'] = null;
+    $tenant['next_action'] = posla_suggest_tenant_next_action($tenant);
+    $tenant['health_score'] = posla_calculate_health_score($tenant);
+    $tenant['health_status'] = posla_get_health_status($tenant['health_score']);
+    $tenant['health_label'] = posla_get_health_label($tenant['health_status']);
+    $tenant['health_flags'] = posla_build_health_flags($tenant);
+    $tenant['risk_priority'] = posla_calculate_risk_priority($tenant);
+    $tenant['recent_incident_label'] = 'OPで確認';
+
+    return $tenant;
+}
+
+function posla_apply_op_monitoring_delegation_to_tenants(array $tenants): array
+{
+    for ($i = 0; $i < count($tenants); $i++) {
+        $tenants[$i] = posla_apply_op_monitoring_delegation($tenants[$i]);
+    }
+
+    return $tenants;
+}
+
 function posla_is_tenant_payment_ready(array $tenant): int
 {
     if (($tenant['payment_gateway'] ?? 'none') === 'stripe' && !empty($tenant['stripe_secret_key'])) {
@@ -725,9 +761,9 @@ function posla_fetch_tenant_incident_timeline(PDO $pdo, string $tenantId, int $l
     return $timeline;
 }
 
-function posla_fetch_tenant_ops_timeline(PDO $pdo, string $tenantId, int $limit = 20): array
+function posla_fetch_tenant_ops_timeline(PDO $pdo, string $tenantId, int $limit = 20, bool $includeIncidents = true): array
 {
-    $incidentRows = posla_fetch_tenant_incident_timeline($pdo, $tenantId, 12, 30);
+    $incidentRows = $includeIncidents ? posla_fetch_tenant_incident_timeline($pdo, $tenantId, 12, 30) : [];
     $auditRows = posla_admin_fetch_entity_audit_log($pdo, 'tenant', $tenantId, 12);
     $timeline = [];
     $i = 0;
@@ -764,18 +800,61 @@ function posla_fetch_tenant_ops_timeline(PDO $pdo, string $tenantId, int $limit 
     return array_slice($timeline, 0, $limit);
 }
 
-function posla_fetch_tenant_investigation_view(PDO $pdo, string $tenantId): array
+function posla_fetch_tenant_investigation_view(PDO $pdo, string $tenantId, bool $includeIncidents = true): array
 {
-    $incidentRows = posla_fetch_tenant_incident_timeline($pdo, $tenantId, 12, 30);
+    $incidentRows = $includeIncidents ? posla_fetch_tenant_incident_timeline($pdo, $tenantId, 12, 30) : [];
     $tenantAuditRows = posla_admin_fetch_entity_audit_log($pdo, 'tenant', $tenantId, 12);
     $settingAuditRows = posla_admin_fetch_recent_audit_log($pdo, 24, 'posla_setting');
     $focusIncident = !empty($incidentRows) ? $incidentRows[0] : null;
     $relatedChanges = posla_build_tenant_investigation_changes($tenantAuditRows, $settingAuditRows, $focusIncident);
 
+    if (!$includeIncidents) {
+        return [
+            'headline' => '監視・障害の現在状態はOPで確認します。ここではPOSLA管理画面で行った設定変更だけを確認します。',
+            'cards' => posla_build_op_monitoring_delegated_investigation_cards($relatedChanges),
+            'related_changes' => array_slice($relatedChanges, 0, 8),
+        ];
+    }
+
     return [
         'headline' => posla_build_tenant_investigation_headline($focusIncident, $relatedChanges),
         'cards' => posla_build_tenant_investigation_cards($focusIncident, $relatedChanges, count($incidentRows)),
         'related_changes' => array_slice($relatedChanges, 0, 8),
+    ];
+}
+
+function posla_build_op_monitoring_delegated_investigation_cards(array $relatedChanges): array
+{
+    $latestChange = !empty($relatedChanges) ? $relatedChanges[0] : null;
+    $changePill = $latestChange ? ($latestChange['status_label'] ?? '設定変更') : '変更なし';
+    $changeTone = $latestChange ? ($latestChange['tone'] ?? 'info') : 'muted';
+    $changeValue = $latestChange ? ($latestChange['title'] ?? '設定変更') : '直近のPOSLA設定変更なし';
+    $changeMeta = $latestChange
+        ? '変更 ' . ($latestChange['created_at'] ?? '-') . ' / 変更者: ' . (($latestChange['actor_label'] ?? '') ?: 'POSLA管理')
+        : 'テナント設定 / 共通設定ともに該当なし';
+
+    return [
+        [
+            'label' => '監視主体',
+            'pill_label' => 'OP',
+            'tone' => 'ok',
+            'value' => '現在状態はOP監視を正とします',
+            'meta' => 'POSLA管理画面では monitor_events を赤判定に使いません。',
+        ],
+        [
+            'label' => 'POSLA設定変更',
+            'pill_label' => $changePill,
+            'tone' => $changeTone,
+            'value' => $changeValue,
+            'meta' => $changeMeta,
+        ],
+        [
+            'label' => '相関メモ',
+            'pill_label' => 'OPで確認',
+            'tone' => 'muted',
+            'value' => '障害との相関はOPの証跡で確認',
+            'meta' => 'この画面ではテナント作成・Cell・API設定の変更履歴だけを確認します。',
+        ],
     ];
 }
 

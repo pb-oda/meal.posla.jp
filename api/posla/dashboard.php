@@ -95,7 +95,7 @@ function build_op_monitoring_delegation(PDO $pdo): array
     ];
 }
 
-$tenantInsights = posla_fetch_tenant_insights($pdo, null, false);
+$tenantInsights = posla_apply_op_monitoring_delegation_to_tenants(posla_fetch_tenant_insights($pdo, null, false));
 $activeTenants = array_values(array_filter($tenantInsights, function ($tenant) {
     return !empty($tenant['is_active']);
 }));

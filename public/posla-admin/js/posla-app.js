@@ -1230,6 +1230,10 @@
     return '<div class="tenant-contract">' + parts.join('') + '</div>';
   }
 
+  function isTenantMonitoringDelegated(tenant) {
+    return tenant && tenant.monitoring_delegated_to === 'op';
+  }
+
   function getHealthTone(status) {
     if (status === 'ok') return 'ok';
     if (status === 'warn') return 'warn';
@@ -1297,6 +1301,13 @@
   }
 
   function buildTenantIncidentHtml(tenant) {
+    if (isTenantMonitoringDelegated(tenant)) {
+      return '<div class="tenant-incident">' +
+        '<span class="status-pill status-pill--info">' + escapeHtml(tenant.monitoring_delegation_label || 'OPで確認') + '</span>' +
+        '<div class="tenant-incident__meta">現在状態はOP監視を正とします</div>' +
+        '</div>';
+    }
+
     var tone = 'muted';
     var meta = '直近異常なし';
     if (parseInt(tenant.critical_open_count, 10) > 0 || parseInt(tenant.open_incident_count, 10) > 0) {
@@ -1324,7 +1335,11 @@
     var incidentValue = tenant.recent_incident_label || '異常なし';
     var incidentMeta = tenant.last_incident_at ? ('最終記録 ' + formatTenantTimelineDate(tenant.last_incident_at)) : '直近 14 日に重大イベントなし';
 
-    if (parseInt(tenant.critical_open_count, 10) > 0 || parseInt(tenant.open_incident_count, 10) > 0) {
+    if (isTenantMonitoringDelegated(tenant)) {
+      incidentTone = 'info';
+      incidentValue = tenant.monitoring_delegation_label || 'OPで確認';
+      incidentMeta = tenant.monitoring_delegation_detail || '監視・障害の現在状態はOPを正とします。';
+    } else if (parseInt(tenant.critical_open_count, 10) > 0 || parseInt(tenant.open_incident_count, 10) > 0) {
       incidentTone = 'danger';
     } else if (parseInt(tenant.incident_count_24h, 10) > 0) {
       incidentTone = 'warn';
@@ -1586,7 +1601,7 @@
         '</div>' +
         '<div class="watch-item__meta">';
       if (mode === 'risk') {
-        html += '<div>直近異常: ' + escapeHtml(item.recent_incident_label || '異常なし') + '</div>' +
+        html += '<div>監視: ' + escapeHtml(isTenantMonitoringDelegated(item) ? (item.monitoring_delegation_label || 'OPで確認') : (item.recent_incident_label || '異常なし')) + '</div>' +
           '<div>次アクション: ' + escapeHtml(item.next_action || '確認') + '</div>';
       } else {
         html += '<div>完了ステップ: ' + escapeHtml(String(item.onboarding_completed_steps || 0)) + ' / ' + escapeHtml(String(item.onboarding_total_steps || 0)) + '</div>' +
@@ -2371,7 +2386,9 @@
         investigationChangesEl.innerHTML = buildTenantInvestigationChangesHtml(t.investigation_view || {});
       }
       if (timelineEl) {
-        timelineEl.innerHTML = buildTenantTimelineHtml(t.incident_timeline || []);
+        timelineEl.innerHTML = isTenantMonitoringDelegated(t)
+          ? '<div class="tenant-modal-timeline__empty">監視イベントの現在状態はOPで確認します。POSLA管理画面では古い monitor_events を赤判定に使いません。</div>'
+          : buildTenantTimelineHtml(t.incident_timeline || []);
       }
       if (opsTimelineEl) {
         opsTimelineEl.innerHTML = buildTenantOpsTimelineHtml(t.ops_timeline || []);

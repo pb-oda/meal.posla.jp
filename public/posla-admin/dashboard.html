@@ -2297,20 +2297,20 @@
 
         <div class="modal-section">
           <div class="modal-section__title">障害調査ビュー</div>
-          <div class="tenant-modal-note">直近異常の前後で、テナント設定変更と POSLA 共通設定変更を束ねて確認します。時刻差が短いものから確認してください。</div>
+          <div class="tenant-modal-note">監視・障害の現在状態はOPを正とします。ここではPOSLA管理画面で行ったテナント設定変更と共通設定変更だけを確認します。</div>
           <div id="modal-tenant-investigation-summary"></div>
           <div id="modal-tenant-investigation-changes" class="tenant-modal-timeline" style="margin-top:0.75rem;"></div>
         </div>
 
         <div class="modal-section">
           <div class="modal-section__title">障害タイムライン</div>
-          <div class="tenant-modal-note">`monitor_events` の直近 14 日・最大 12 件です。未解決イベントを先頭に表示します。</div>
+          <div class="tenant-modal-note">OP監視を正とするため、POSLA管理画面では古い `monitor_events` を現在状態の赤判定に使いません。</div>
           <div id="modal-tenant-incident-timeline" class="tenant-modal-timeline"></div>
         </div>
 
         <div class="modal-section">
           <div class="modal-section__title">運用タイムライン</div>
-          <div class="tenant-modal-note">POSLA 管理画面からの変更履歴と監視イベントを時系列で束ねたビューです。直近 20 件を表示します。</div>
+          <div class="tenant-modal-note">POSLA 管理画面からの変更履歴です。監視イベントの調査と通知はOPで確認します。</div>
           <div id="modal-tenant-ops-timeline" class="tenant-modal-timeline"></div>
         </div>
 
@@ -2327,7 +2327,7 @@
 
   <script src="../shared/js/utils.js"></script>
   <script src="js/posla-api.js?v=20260426-delete-controls1"></script>
-  <script src="js/posla-app.js?v=20260426-delete-controls1"></script>
+  <script src="js/posla-app.js?v=20260503-op-monitoring-delegation"></script>
 
   <!-- パスワード変更モーダル（P1-5） -->
   <div class="modal-overlay" id="password-change-overlay" style="display:none;opacity:1;visibility:visible;">
