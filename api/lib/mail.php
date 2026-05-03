@@ -2,8 +2,8 @@
 /**
  * POSLA mail transport helper.
  *
- * Local / legacy hosting can keep PHP mail. Cloud Run should use an API
- * transport such as SendGrid because sendmail is not available by default.
+ * POSLA uses the server-side PHP mail-compatible transport configured for the
+ * runtime. UI-managed settings only control the sender and support addresses.
  */
 
 function posla_mail_env($key, $default = '')
@@ -76,13 +76,7 @@ function posla_mail_default_support_email()
 function posla_mail_transport()
 {
     $transport = strtolower(posla_mail_env('POSLA_MAIL_TRANSPORT', 'auto'));
-    if ($transport === 'auto') {
-        return posla_mail_env('POSLA_SENDGRID_API_KEY') !== '' ? 'sendgrid' : 'php';
-    }
-    if ($transport === 'sendgrid_api') {
-        return 'sendgrid';
-    }
-    if ($transport === 'mail' || $transport === 'mb_send_mail') {
+    if ($transport === 'auto' || $transport === 'mail' || $transport === 'mb_send_mail') {
         return 'php';
     }
     return $transport;
@@ -113,10 +107,6 @@ function posla_send_mail($to, $subject, $body, array $options = [])
     $fromEmail = isset($options['from_email']) ? (string)$options['from_email'] : posla_mail_default_from_email();
     $replyTo = isset($options['reply_to']) ? trim((string)$options['reply_to']) : '';
     $transport = posla_mail_transport();
-
-    if ($transport === 'sendgrid') {
-        return posla_mail_sendgrid($to, $subject, $body, $fromName, $fromEmail, $replyTo);
-    }
 
     if ($transport === 'log') {
         error_log('[POSLA_MAIL] log transport to=' . $to . ' subject=' . $subject);
@@ -158,67 +148,4 @@ function posla_mail_php($to, $subject, $body, $fromName, $fromEmail, $replyTo)
     }
 
     return ['success' => false, 'transport' => 'php', 'error' => 'PHP_MAIL_UNAVAILABLE'];
-}
-
-function posla_mail_sendgrid($to, $subject, $body, $fromName, $fromEmail, $replyTo)
-{
-    if (!function_exists('curl_init')) {
-        return ['success' => false, 'transport' => 'sendgrid', 'error' => 'CURL_UNAVAILABLE'];
-    }
-
-    $apiKey = posla_mail_env('POSLA_SENDGRID_API_KEY');
-    if ($apiKey === '') {
-        return ['success' => false, 'transport' => 'sendgrid', 'error' => 'SENDGRID_API_KEY_MISSING'];
-    }
-
-    $payload = [
-        'personalizations' => [[
-            'to' => [['email' => $to]],
-        ]],
-        'from' => [
-            'email' => $fromEmail,
-            'name' => $fromName,
-        ],
-        'subject' => $subject,
-        'content' => [[
-            'type' => 'text/plain',
-            'value' => $body,
-        ]],
-    ];
-    if ($replyTo !== '') {
-        $payload['reply_to'] = ['email' => $replyTo];
-    }
-
-    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if ($json === false) {
-        return ['success' => false, 'transport' => 'sendgrid', 'error' => 'JSON_ENCODE_FAILED'];
-    }
-
-    $ch = curl_init('https://api.sendgrid.com/v3/mail/send');
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $json,
-        CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . $apiKey,
-            'Content-Type: application/json',
-        ],
-        CURLOPT_TIMEOUT => (int)posla_mail_env('POSLA_MAIL_TIMEOUT_SEC', '8'),
-        CURLOPT_RETURNTRANSFER => true,
-    ]);
-
-    $raw = @curl_exec($ch);
-    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error = curl_error($ch);
-    curl_close($ch);
-
-    if ($raw !== false && $httpCode >= 200 && $httpCode < 300) {
-        return ['success' => true, 'transport' => 'sendgrid', 'error' => null, 'http_status' => $httpCode];
-    }
-
-    return [
-        'success' => false,
-        'transport' => 'sendgrid',
-        'error' => $error !== '' ? $error : ('HTTP_' . $httpCode),
-        'http_status' => $httpCode,
-    ];
 }

@@ -749,7 +749,7 @@
     return _buildSummaryCard('OP ACCESS', 'OP画面', [
       _summaryLine('URL', publicUrl ? '<code>' + Utils.escapeHtml(publicUrl) + '</code>' : '<span style="color:#999;">未設定</span>')
     ]) +
-      _buildSummaryCard('CASE', '障害報告送信', [
+      _buildSummaryCard('CASE', '手動障害報告Webhook', [
         _summaryLine('Endpoint', caseEndpoint ? '<code>' + Utils.escapeHtml(caseEndpoint) + '</code>' : '<span style="color:#999;">未設定</span>'),
         _summaryLine('Token', caseToken.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn'))
       ]);
@@ -760,7 +760,7 @@
 
     if (summaryEl) {
       summaryEl.innerHTML = renderOpsConnectionSettings(settingsData) +
-        _buildSummaryCard('MONITORING', '監視設定の場所', [
+        _buildSummaryCard('MONITORING', 'OP監視の設定場所', [
           _summaryLine('監視方向', _buildStatusPill('OP -> POSLA', 'info')),
           _summaryLine('監視対象', 'OP側で管理'),
           _summaryLine('POSLA側', 'ping / snapshot の受け口のみ')
@@ -1481,7 +1481,7 @@
           '<div class="release-readiness-check__detail">OPの監視画面 / Release readiness / Alert で現在状態を確認します。</div>' +
           '<div class="release-readiness-check__actions">' +
             '<a class="btn btn-primary btn-sm" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>' +
-            '<button class="btn btn-secondary btn-sm" type="button" data-release-action="open-ops-source">OP連携</button>' +
+            '<button class="btn btn-secondary btn-sm" type="button" data-release-action="open-ops-source">OP起動・障害報告</button>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -1863,7 +1863,7 @@
       buildCellRegistryFieldHtml(index, 'deploy_version', 'Deploy version', item.deploy_version || target.deploy_version || '', 'text') +
       '<div class="cell-registry-field">' +
         '<label>Cron</label>' +
-        '<label class="cell-registry-checkbox"><input type="checkbox" data-cell-field-index="' + index + '" data-cell-field="cron_enabled" ' + (parseInt(item.cron_enabled || 0, 10) ? 'checked' : '') + '> 監視対象</label>' +
+        '<label class="cell-registry-checkbox"><input type="checkbox" data-cell-field-index="' + index + '" data-cell-field="cron_enabled" ' + (parseInt(item.cron_enabled || 0, 10) ? 'checked' : '') + '> POSLA cron有効</label>' +
       '</div>' +
     '</div>';
   }
@@ -2540,23 +2540,21 @@
 
   function _renderNotificationCenter(data) {
     var center = data || {};
-    var googleChat = center.google_chat || {};
     var opsMail = center.ops_mail || {};
     var webPush = center.web_push || {};
-    var monitor = center.monitor || {};
     var html = '<div class="settings-health-grid">';
 
     html += '<div class="settings-health-card">' +
       '<div class="settings-health-card__head">' +
         '<div>' +
-          '<div class="settings-health-card__title">Google Chat</div>' +
-          '<div class="settings-health-card__summary">' + escapeHtml(googleChat.detail || '通知先未設定') + '</div>' +
+          '<div class="settings-health-card__title">OP監視通知</div>' +
+          '<div class="settings-health-card__summary">Google Chatと監視通知はOP側で管理</div>' +
         '</div>' +
-        _buildStatusPill(googleChat.available ? '送信可' : '未設定', googleChat.available ? 'ok' : 'warn') +
+        _buildStatusPill('OPで管理', 'info') +
       '</div>' +
       '<ul class="settings-health-card__details">' +
-        '<li>現在ルート: ' + escapeHtml(googleChat.route || 'none') + '</li>' +
-        '<li>送信は monitor-health 経路を利用</li>' +
+        '<li>POSLA側ではGoogle Chat webhookを入力しません</li>' +
+        '<li>ping / snapshot / Alert通知はOPのSource設定を正にします</li>' +
       '</ul>' +
     '</div>';
 
@@ -2591,14 +2589,14 @@
     html += '<div class="settings-health-card">' +
       '<div class="settings-health-card__head">' +
         '<div>' +
-          '<div class="settings-health-card__title">監視 heartbeat</div>' +
-          '<div class="settings-health-card__summary">' + escapeHtml(monitor.heartbeat || '未到達') + '</div>' +
+          '<div class="settings-health-card__title">POSLA側の範囲</div>' +
+          '<div class="settings-health-card__summary">本体メールとWeb Pushの設定だけを保持</div>' +
         '</div>' +
-        _buildStatusPill(monitor.heartbeat ? '更新中' : '未到達', monitor.heartbeat ? 'ok' : 'warn') +
+        _buildStatusPill('限定', 'info') +
       '</div>' +
       '<ul class="settings-health-card__details">' +
-        '<li>必要時は「監視を再実行」で確認</li>' +
-        '<li>Google Chat テスト送信後に状態更新</li>' +
+        '<li>手動障害報告Webhookは「OP起動・障害報告」で管理</li>' +
+        '<li>監視結果の再判定はPOSLA管理画面では行いません</li>' +
       '</ul>' +
     '</div>';
 
@@ -2665,9 +2663,6 @@
       var stripeWebhook = _getKeyInfo(s, 'stripe_webhook_secret');
       var stripeSignupWebhook = _getKeyInfo(s, 'stripe_webhook_secret_signup');
       var smaregiSecret = _getKeyInfo(s, 'smaregi_client_secret');
-      var googleChat = _getKeyInfo(s, 'google_chat_webhook_url');
-      var slackWebhook = _getKeyInfo(s, 'slack_webhook_url');
-      var monitorSecret = _getKeyInfo(s, 'monitor_cron_secret');
       var opsCaseToken = _getKeyInfo(s, 'codex_ops_case_token');
       var releasePlanActionsToken = _getKeyInfo(s, 'release_plan_actions_token');
 
@@ -2680,7 +2675,6 @@
       var mailFromEmailVal = _getPlainValue(s, 'mail_from_email');
       var mailFromNameVal = _getPlainValue(s, 'mail_from_name');
       var mailSupportEmailVal = _getPlainValue(s, 'mail_support_email');
-      var heartbeatVal = _getPlainValue(s, 'monitor_last_heartbeat');
       var opsPublicUrlVal = _getPlainValue(s, 'codex_ops_public_url');
       var opsCaseEndpointVal = _getPlainValue(s, 'codex_ops_case_endpoint');
       updateOpLinks(opBaseUrlFromSettings(s));
@@ -2700,13 +2694,13 @@
           _summaryLine('Client ID', smaregiClientIdVal ? Utils.escapeHtml(smaregiClientIdVal) : '<span style="color:#999;">未設定</span>'),
           _summaryLine('Client Secret', smaregiSecret.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'muted'))
         ]) +
-        _buildSummaryCard('MONITORING', 'Google Chat・運用通知', [
-          _summaryLine('Google Chat', googleChat.set ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
+        _buildSummaryCard('MAIL', 'メール設定', [
           _summaryLine('運用通知', opsNotifyEmailVal ? Utils.escapeHtml(opsNotifyEmailVal) : '<span style="color:#999;">未設定</span>'),
           _summaryLine('送信元', mailFromEmailVal ? Utils.escapeHtml(mailFromEmailVal) : '<span style="color:#999;">env fallback</span>'),
-          _summaryLine('heartbeat', heartbeatVal ? Utils.escapeHtml(heartbeatVal) : '<span style="color:#999;">未到達</span>')
+          _summaryLine('問い合わせ先', mailSupportEmailVal ? Utils.escapeHtml(mailSupportEmailVal) : '<span style="color:#999;">未設定</span>'),
+          _summaryLine('監視通知', _buildStatusPill('OPで管理', 'info'))
         ]) +
-        _buildSummaryCard('OPS BRIDGE', 'OP障害報告', [
+        _buildSummaryCard('OPS BRIDGE', 'OP起動・障害報告', [
           _summaryLine('OP画面URL', opsPublicUrlVal ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
           _summaryLine('障害報告', (opsCaseEndpointVal && opsCaseToken.set) ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
           _summaryLine('監視', _buildStatusPill('OPで確認', 'info'))
@@ -2720,24 +2714,16 @@
       if (monitorStatusEl) {
         monitorStatusEl.innerHTML =
           '<div class="settings-monitor-status__row">' +
-          '<div class="settings-monitor-status__label">Google Chat</div>' +
-          '<div class="settings-monitor-status__value">' + _buildKeyDisplay(googleChat.set, googleChat.masked) + '</div>' +
-          '</div>' +
-          '<div class="settings-monitor-status__row">' +
-          '<div class="settings-monitor-status__label">Slack fallback</div>' +
-          '<div class="settings-monitor-status__value">' + _buildKeyDisplay(slackWebhook.set, slackWebhook.masked) + '</div>' +
-          '</div>' +
-          '<div class="settings-monitor-status__row">' +
           '<div class="settings-monitor-status__label">運用通知メール</div>' +
           '<div class="settings-monitor-status__value">' + (opsNotifyEmailVal ? Utils.escapeHtml(opsNotifyEmailVal) : '<span style="color:#999;">未設定</span>') + '</div>' +
           '</div>' +
           '<div class="settings-monitor-status__row">' +
-          '<div class="settings-monitor-status__label">最終 heartbeat</div>' +
-          '<div class="settings-monitor-status__value">' + (heartbeatVal ? Utils.escapeHtml(heartbeatVal) : '<span style="color:#999;">未到達</span>') + '</div>' +
+          '<div class="settings-monitor-status__label">監視通知</div>' +
+          '<div class="settings-monitor-status__value">OP側のGoogle Chat設定を使用</div>' +
           '</div>' +
           '<div class="settings-monitor-status__row">' +
-          '<div class="settings-monitor-status__label">DB共有秘密</div>' +
-          '<div class="settings-monitor-status__value">' + _buildKeyDisplay(monitorSecret.set, monitorSecret.masked) + '</div>' +
+          '<div class="settings-monitor-status__label">POSLA側</div>' +
+          '<div class="settings-monitor-status__value">メール送信元と問い合わせ先のみ管理</div>' +
           '</div>';
       }
       if (releasePlanActionsStatusEl) {
@@ -2797,7 +2783,8 @@
     var priceHq = document.getElementById('posla-stripe-price-hq').value.trim();
     var connectFeeEl = document.getElementById('posla-connect-fee');
     var connectFee = connectFeeEl ? connectFeeEl.value.trim() : '';
-    var googleChatWebhook = document.getElementById('posla-google-chat-webhook').value.trim();
+    var googleChatWebhookEl = document.getElementById('posla-google-chat-webhook');
+    var googleChatWebhook = googleChatWebhookEl ? googleChatWebhookEl.value.trim() : '';
     var opsNotifyEmail = document.getElementById('posla-ops-notify-email').value.trim();
     var mailFromEmailEl = document.getElementById('posla-mail-from-email');
     var mailFromNameEl = document.getElementById('posla-mail-from-name');
@@ -2847,7 +2834,7 @@
       document.getElementById('posla-stripe-pub').value = '';
       document.getElementById('posla-stripe-webhook').value = '';
       document.getElementById('posla-stripe-webhook-signup').value = '';
-      document.getElementById('posla-google-chat-webhook').value = '';
+      if (googleChatWebhookEl) googleChatWebhookEl.value = '';
       if (releasePlanActionsTokenEl) releasePlanActionsTokenEl.value = '';
       var smSecEl = document.getElementById('posla-smaregi-client-secret');
       if (smSecEl) smSecEl.value = '';
@@ -2882,7 +2869,8 @@
       document.getElementById('posla-stripe-pub').value = '';
       document.getElementById('posla-stripe-webhook').value = '';
       document.getElementById('posla-stripe-webhook-signup').value = '';
-      document.getElementById('posla-google-chat-webhook').value = '';
+      var googleChatWebhookEl = document.getElementById('posla-google-chat-webhook');
+      if (googleChatWebhookEl) googleChatWebhookEl.value = '';
       var releasePlanActionsTokenEl = document.getElementById('posla-release-plan-actions-token');
       if (releasePlanActionsTokenEl) releasePlanActionsTokenEl.value = '';
       var smSecEl = document.getElementById('posla-smaregi-client-secret');

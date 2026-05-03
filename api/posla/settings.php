@@ -285,8 +285,7 @@ function _build_settings_checklist(array $settingsMap): array {
         ['connect_application_fee_percent', 'Stripe Connect手数料率', false, 'API設定で更新できます。', 'Application Feeを保存してください。'],
         ['smaregi_client_id', 'スマレジ Client ID', false, 'API設定で更新できます。', 'スマレジClient IDを保存してください。'],
         ['smaregi_client_secret', 'スマレジ Client Secret', true, 'API設定で更新できます。', 'スマレジClient Secretを保存してください。'],
-        ['google_chat_webhook_url', 'Google Chat Webhook URL', true, 'API設定で更新できます。', 'Google Chat Webhook URLを保存してください。'],
-        ['ops_notify_email', '運用通知メール', false, 'API設定で更新できます。', '運用通知メールを保存してください。'],
+        ['ops_notify_email', 'POSLA運用通知メール', false, 'メール設定で更新できます。', 'POSLA運用通知メールを保存してください。'],
         ['mail_from_email', 'メール送信元アドレス', false, 'API設定で更新できます。未設定時はenvを使います。', 'メール送信元アドレスを保存してください。'],
         ['mail_from_name', 'メール送信元名', false, 'API設定で更新できます。未設定時はenvを使います。', 'メール送信元名を保存してください。'],
         ['mail_support_email', '問い合わせ先メール', false, 'API設定で更新できます。未設定時はenvを使います。', '問い合わせ先メールを保存してください。'],
@@ -321,7 +320,7 @@ function _build_settings_checklist(array $settingsMap): array {
         [$key, $label, $value, $secret, $detail] = $definition;
         $present = _setting_is_present($settingsMap, $key);
         $status = $present ? 'ready' : 'missing';
-        $nextAction = $present ? 'OP連携タブで更新できます。' : 'OP連携タブで設定してください。';
+        $nextAction = $present ? 'OP起動・障害報告で更新できます。' : 'OP起動・障害報告で設定してください。';
         $details = [$detail];
         if (!$secret && $present && _settings_localish_url($value)) {
             $status = 'warning';
@@ -352,7 +351,6 @@ function _build_settings_checklist(array $settingsMap): array {
         ['POSLA_CRON_SECRET', 'POSLA_CRON_SECRET', 'HTTP cron / monitor-actions用の共有secretです。'],
         ['POSLA_OPS_READ_SECRET', 'POSLA_OPS_READ_SECRET', 'OPがPOSLAをread-only参照する共有secretです。'],
         ['POSLA_OP_LAUNCH_SECRET', 'POSLA_OP_LAUNCH_SECRET', 'POSLA管理画面からOP sessionを発行する共有secretです。'],
-        ['POSLA_SENDGRID_API_KEY', 'POSLA_SENDGRID_API_KEY', 'SendGrid送信用secretです。'],
     ];
 
     foreach ($runtimeEnv as $definition) {
@@ -548,57 +546,23 @@ function _build_config_health(array $settingsMap): array {
         ]
     );
 
-    $googleChatSet = _setting_is_present($settingsMap, 'google_chat_webhook_url');
-    $opsMailSet = _setting_is_present($settingsMap, 'ops_notify_email');
-    $monitorSecretSet = _env_is_present('POSLA_CRON_SECRET') || _setting_is_present($settingsMap, 'monitor_cron_secret');
-    $heartbeat = _setting_value($settingsMap, 'monitor_last_heartbeat');
-    $heartbeatState = '未到達';
-    $monitorTone = 'ok';
-
-    if ($heartbeat !== '') {
-        $lag = time() - strtotime($heartbeat);
-        if ($lag > 900) {
-            $heartbeatState = '遅延 (' . (int)floor($lag / 60) . '分)';
-            $monitorTone = 'warn';
-        } else {
-            $heartbeatState = '正常';
-        }
-    } else {
-        $monitorTone = 'warn';
-    }
-
-    if (!$googleChatSet || !$opsMailSet || !$monitorSecretSet) {
-        $monitorTone = 'warn';
-    }
-
-    $checks[] = _build_config_check(
-        'monitoring',
-        '運用監視 / Google Chat',
-        $monitorTone,
-        (($googleChatSet ? 1 : 0) + ($opsMailSet ? 1 : 0) + ($monitorSecretSet ? 1 : 0)) . '/3 設定済み',
-        [
-            'Google Chat Webhook: ' . ($googleChatSet ? '設定済み' : '未設定'),
-            '運用通知メール: ' . ($opsMailSet ? '設定済み' : '未設定'),
-            'HTTP cron secret: ' . ($monitorSecretSet ? '設定済み' : '未設定') . ' / env必須',
-            'heartbeat: ' . $heartbeatState,
-        ]
-    );
-
     $mailFromEmailSet = _setting_is_present($settingsMap, 'mail_from_email') || _env_is_present('POSLA_FROM_EMAIL');
     $mailFromNameSet = _setting_is_present($settingsMap, 'mail_from_name') || _env_is_present('POSLA_MAIL_FROM_NAME');
     $mailSupportEmailSet = _setting_is_present($settingsMap, 'mail_support_email') || _env_is_present('POSLA_SUPPORT_EMAIL');
-    $sendgridSet = _env_is_present('POSLA_SENDGRID_API_KEY');
-    $mailReadyCount = ($mailFromEmailSet ? 1 : 0) + ($mailFromNameSet ? 1 : 0) + ($mailSupportEmailSet ? 1 : 0) + ($sendgridSet ? 1 : 0);
+    $opsMailSet = _setting_is_present($settingsMap, 'ops_notify_email');
+    $mailReadyCount = ($mailFromEmailSet ? 1 : 0) + ($mailFromNameSet ? 1 : 0) + ($mailSupportEmailSet ? 1 : 0) + ($opsMailSet ? 1 : 0);
     $checks[] = _build_config_check(
         'mail_sender',
-        'メール送信元 / SendGrid',
+        'メール送信元',
         $mailReadyCount === 4 ? 'ok' : 'warn',
         $mailReadyCount . '/4 設定済み',
         [
             '送信元アドレス: ' . ($mailFromEmailSet ? '設定済み' : '未設定') . ' / UI優先・env fallback',
             '送信元名: ' . ($mailFromNameSet ? '設定済み' : '未設定') . ' / UI優先・env fallback',
             '問い合わせ先メール: ' . ($mailSupportEmailSet ? '設定済み' : '未設定') . ' / UI優先・env fallback',
-            'SendGrid API key: ' . ($sendgridSet ? '設定済み' : '未設定') . ' / env必須',
+            'POSLA運用通知メール: ' . ($opsMailSet ? '設定済み' : '未設定') . ' / UI設定',
+            'メール送信方式: ' . posla_mail_transport_label(),
+            'Google Chat監視通知: OP側で管理',
         ]
     );
 
