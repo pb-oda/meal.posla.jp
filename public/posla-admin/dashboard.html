@@ -1359,7 +1359,7 @@
         <div class="posla-nav-section">
           <div class="posla-nav-section__label">基盤設定</div>
           <button class="tab-nav__btn" data-tab="api-settings">設定センター</button>
-          <button class="tab-nav__btn" data-tab="ops-source">OP接続 / Source</button>
+          <button class="tab-nav__btn" data-tab="ops-source">OP連携</button>
           <button class="tab-nav__btn" data-tab="pwa-push">PWA / Web Push</button>
         </div>
         <div class="posla-nav-section">
@@ -1654,7 +1654,7 @@
       <div class="panel-header">
         <div class="panel-header__eyebrow">Platform Settings</div>
         <h2 class="panel-header__title">設定センター</h2>
-        <p class="panel-header__lead">POSLA運営が全テナント共通で使う設定をまとめます。実値は読み出さず、状態だけ表示して変更時のみ新しい値を入力します。OPのURL、Endpoint、Tokenは「OP接続 / Source」に集約します。</p>
+        <p class="panel-header__lead">POSLA運営が全テナント共通で使う設定をまとめます。実値は読み出さず、状態だけ表示して変更時のみ新しい値を入力します。OPのURL、Endpoint、Tokenは「OP連携」に集約します。</p>
       </div>
 
       <div class="settings-summary-grid" id="current-api-status"></div>
@@ -1834,17 +1834,17 @@
         <div class="settings-section__head">
           <div>
             <div class="settings-section__title">OP連携</div>
-            <div class="settings-section__meta">OPのブラウザURL、障害報告送信先、OPがPOSLAを読むSource接続は「OP接続 / Source」で更新します。</div>
+            <div class="settings-section__meta">OPのブラウザURLと障害報告送信先は「OP連携」で更新します。監視対象はOP側で管理します。</div>
           </div>
         </div>
         <div class="settings-layout">
         <div class="card settings-card">
           <div class="card__body">
             <div class="settings-card__eyebrow">Operations Bridge</div>
-            <div class="settings-card__title">OP障害報告 / Source連携</div>
-            <div class="settings-card__note">監視はOPがPOSLAを読むSourceを正とします。この画面ではOP画面URLと障害報告送信先の状態だけ確認します。</div>
+            <div class="settings-card__title">OP障害報告連携</div>
+            <div class="settings-card__note">監視はOPがPOSLAを読む結果を正とします。この画面ではOP画面URLと障害報告送信先の状態だけ確認します。</div>
             <div class="settings-inline-actions">
-              <button class="btn btn-primary" type="button" data-tab-jump="ops-source">OP接続 / Source を開く</button>
+              <button class="btn btn-primary" type="button" data-tab-jump="ops-source">OP連携を開く</button>
               <a class="btn btn-secondary" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>
             </div>
           </div>
@@ -1878,12 +1878,12 @@
       </div>
     </div>
 
-    <!-- OP接続 / Source -->
+    <!-- OP連携 -->
     <div class="posla-tab-panel" id="posla-panel-ops-source">
       <div class="panel-header">
-        <div class="panel-header__eyebrow">Operations Source</div>
-        <h2 class="panel-header__title">OP接続 / Source</h2>
-        <p class="panel-header__lead">POSLA管理画面からOPを開くURL、POSLAからOPへ送る障害報告Endpoint、OPがPOSLAを読むSourceをここにまとめます。監視はOPがSourceを読む構成に統一します。</p>
+        <div class="panel-header__eyebrow">Operations Link</div>
+        <h2 class="panel-header__title">OP連携</h2>
+        <p class="panel-header__lead">POSLA管理画面からOPを開くURLと、POSLAからOPへ障害報告を送るEndpointだけを管理します。監視対象、ping、snapshot、認証ヘッダーはOP側で設定します。</p>
       </div>
 
       <div class="settings-summary-grid" id="ops-source-summary"></div>
@@ -1908,7 +1908,7 @@
           <div class="card__body">
             <div class="settings-card__eyebrow">Incident Report</div>
             <div class="settings-card__title">障害報告送信</div>
-            <div class="settings-card__note">POSLAの障害報告フォームからVPS上のOPへcaseを作る接続先です。監視結果はここでは送らず、OPがPOSLAを読むSourceで確認します。Tokenは空欄送信では変更しません。</div>
+            <div class="settings-card__note">POSLAの障害報告フォームからVPS上のOPへcaseを作る接続先です。監視結果はここでは送らず、OP側の監視設定で確認します。Tokenは空欄送信では変更しません。</div>
             <div class="form-group">
               <label class="form-label" for="ops-connection-case-endpoint">障害報告 Endpoint</label>
               <input class="form-input" type="url" id="ops-connection-case-endpoint" placeholder="https://op.posla.jp/api/cases">
@@ -1923,90 +1923,6 @@
 
       <div class="settings-actions">
         <button class="btn btn-primary" id="btn-save-ops-connection" type="button">OP接続情報を保存</button>
-      </div>
-
-      <div class="settings-layout">
-        <div class="card settings-card">
-          <div class="card__body">
-            <div class="settings-card__eyebrow">Source</div>
-            <div class="settings-card__title">POSLA control source</div>
-            <div class="settings-card__note">`posla_cell_registry` とは分けて管理します。`registry.cells` には tenant 付きの顧客cellだけを出します。</div>
-            <div class="form-group">
-              <label class="form-label" for="ops-source-id">Source ID</label>
-              <input class="form-input" type="text" id="ops-source-id" placeholder="posla-control-local">
-              <span class="form-hint">op側で識別する POSLA 入口 ID。顧客cell ID ではありません。</span>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="ops-source-label">表示名</label>
-              <input class="form-input" type="text" id="ops-source-label" placeholder="POSLA control local">
-            </div>
-            <div class="settings-test-grid">
-              <div class="form-group">
-                <label class="form-label" for="ops-source-environment">Environment</label>
-                <input class="form-input" type="text" id="ops-source-environment" placeholder="pseudo-prod">
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="ops-source-status">Status</label>
-                <select class="form-input" id="ops-source-status">
-                  <option value="active">active</option>
-                  <option value="maintenance">maintenance</option>
-                  <option value="inactive">inactive</option>
-                  <option value="failed">failed</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="ops-source-auth-type">認証方式</label>
-              <select class="form-input" id="ops-source-auth-type">
-                <option value="ops_read_secret">X-POSLA-OPS-SECRET</option>
-                <option value="cron_secret">X-POSLA-CRON-SECRET</option>
-                <option value="none">none</option>
-              </select>
-              <span class="form-hint">本番では `X-POSLA-OPS-SECRET` を正系にします。ローカル検証では cron secret も許可できます。</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="card settings-card">
-          <div class="card__body">
-            <div class="settings-card__eyebrow">Endpoint</div>
-            <div class="settings-card__title">OPが読むURL</div>
-            <div class="settings-card__note">OP側には snapshot URL と認証ヘッダーを登録します。ping URL は疎通確認、snapshot URL は cell discovery と monitor_events 確認に使います。</div>
-            <div class="form-group">
-              <label class="form-label" for="ops-source-base-url">Base URL</label>
-              <input class="form-input" type="url" id="ops-source-base-url" placeholder="http://127.0.0.1:8081">
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="ops-source-ping-url">Ping URL</label>
-              <input class="form-input" type="url" id="ops-source-ping-url" placeholder="http://127.0.0.1:8081/api/monitor/ping.php">
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="ops-source-snapshot-url">Snapshot URL</label>
-              <input class="form-input" type="url" id="ops-source-snapshot-url" placeholder="http://127.0.0.1:8081/api/monitor/cell-snapshot.php">
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="ops-source-notes">メモ</label>
-              <textarea class="form-input" id="ops-source-notes" rows="4" placeholder="この source の用途・op側設定メモ"></textarea>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="settings-actions">
-        <button class="btn btn-primary" id="btn-save-ops-source" type="button">保存</button>
-        <button class="btn btn-secondary" id="btn-refresh-ops-source" type="button">再読込</button>
-      </div>
-
-      <div class="card table-card" style="margin-top:1rem;">
-        <div class="card__header">
-          <div>
-            <h3 class="section-title" style="margin-bottom:0;">登録済み source</h3>
-            <p class="card-intro">複数環境を管理する場合は source を追加し、op側で接続先を選べるようにします。</p>
-          </div>
-        </div>
-        <div class="card__body">
-          <div id="ops-source-list"></div>
-        </div>
       </div>
     </div>
 

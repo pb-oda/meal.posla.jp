@@ -91,7 +91,7 @@ function build_op_monitoring_delegation(PDO $pdo): array
         'label' => '監視はOPで確認',
         'detail' => 'ping / snapshot / Tier0 / monitor events は OP が POSLA を read-only で取得する結果を正とします。POSLA管理画面では再判定しません。',
         'op_public_url' => $opPublicUrl,
-        'source_settings_label' => 'OP接続 / Source',
+        'source_settings_label' => 'OP連携',
     ];
 }
 

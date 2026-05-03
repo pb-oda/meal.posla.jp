@@ -81,12 +81,6 @@ var PoslaApi = (function() {
     createOpLaunch: function() {
       return request('POST', '/op-launch.php', {});
     },
-    getOpsSources: function() {
-      return request('GET', '/ops-sources.php');
-    },
-    updateOpsSource: function(data) {
-      return request('PATCH', '/ops-sources.php', data);
-    },
     getCellProvisioning: function() {
       return request('GET', '/cell-provisioning.php');
     },

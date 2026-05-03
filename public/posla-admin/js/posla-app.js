@@ -164,12 +164,6 @@
     var saveOpsConnectionBtn = document.getElementById('btn-save-ops-connection');
     if (saveOpsConnectionBtn) saveOpsConnectionBtn.addEventListener('click', saveOpsConnectionSettings);
 
-    var saveOpsSourceBtn = document.getElementById('btn-save-ops-source');
-    if (saveOpsSourceBtn) saveOpsSourceBtn.addEventListener('click', saveOpsSource);
-
-    var refreshOpsSourceBtn = document.getElementById('btn-refresh-ops-source');
-    if (refreshOpsSourceBtn) refreshOpsSourceBtn.addEventListener('click', loadOpsSource);
-
     var refreshPushBtn = document.getElementById('btn-refresh-push');
     if (refreshPushBtn) refreshPushBtn.addEventListener('click', loadPushStatus);
 
@@ -606,23 +600,18 @@
     PoslaOpsCenter.mount(rootEl);
   }
 
-  // ── OP接続 / Source ──
+  // ── OP連携 ──
   function loadOpsSource() {
     var summaryEl = document.getElementById('ops-source-summary');
-    var listEl = document.getElementById('ops-source-list');
     if (summaryEl) summaryEl.innerHTML = '<div style="padding:1rem;color:var(--text-muted);">読み込み中...</div>';
-    if (listEl) listEl.innerHTML = '';
 
-    Promise.all([
-      PoslaApi.getOpsSources(),
-      PoslaApi.getSettings()
-    ]).then(function(results) {
-      renderOpsSource(results[0] || {}, results[1] || {});
+    PoslaApi.getSettings().then(function(data) {
+      renderOpsSource(data || {});
     }).catch(function(err) {
       if (summaryEl) {
-        summaryEl.innerHTML = '<div style="padding:1rem;color:#c62828;">OP接続 / Source の読み込みに失敗しました: ' + Utils.escapeHtml(err.message) + '</div>';
+        summaryEl.innerHTML = '<div style="padding:1rem;color:#c62828;">OP連携の読み込みに失敗しました: ' + Utils.escapeHtml(err.message) + '</div>';
       }
-      showToast('OP接続 / Source の読み込みに失敗しました: ' + err.message);
+      showToast('OP連携の読み込みに失敗しました: ' + err.message);
     });
   }
 
@@ -645,70 +634,17 @@
       ]);
   }
 
-  function renderOpsSource(data, settingsData) {
-    var source = data.source || {};
-    var auth = data.auth || {};
-    var sources = data.sources || [];
+  function renderOpsSource(settingsData) {
     var summaryEl = document.getElementById('ops-source-summary');
-    var listEl = document.getElementById('ops-source-list');
-
-    _setInputValue('ops-source-id', source.source_id || data.current_source_id || '');
-    _setInputValue('ops-source-label', source.label || '');
-    _setInputValue('ops-source-environment', source.environment || '');
-    _setInputValue('ops-source-status', source.status || 'active');
-    _setInputValue('ops-source-auth-type', source.auth_type || 'ops_read_secret');
-    _setInputValue('ops-source-base-url', source.base_url || '');
-    _setInputValue('ops-source-ping-url', source.ping_url || '');
-    _setInputValue('ops-source-snapshot-url', source.snapshot_url || '');
-    _setInputValue('ops-source-notes', source.notes || '');
 
     if (summaryEl) {
       summaryEl.innerHTML = renderOpsConnectionSettings(settingsData) +
-        _buildSummaryCard('SOURCE', source.label || 'POSLA control source', [
-          _summaryLine('source_id', '<code>' + Utils.escapeHtml(source.source_id || '-') + '</code>'),
-          _summaryLine('status', _buildStatusPill(source.status || 'unknown', source.status === 'active' ? 'ok' : 'warn')),
-          _summaryLine('environment', Utils.escapeHtml(source.environment || '-'))
-        ]) +
-        _buildSummaryCard('SNAPSHOT', 'op接続先', [
-          _summaryLine('ping', source.ping_url ? '<code>' + Utils.escapeHtml(source.ping_url) + '</code>' : '<span style="color:#999;">未設定</span>'),
-          _summaryLine('snapshot', source.snapshot_url ? '<code>' + Utils.escapeHtml(source.snapshot_url) + '</code>' : '<span style="color:#999;">未設定</span>')
-        ]) +
-        _buildSummaryCard('AUTH', auth.header_name || 'none', [
-          _summaryLine('OPS secret', parseInt(auth.ops_read_secret_env_set, 10) ? _buildStatusPill('env設定済み', 'ok') : _buildStatusPill('env未設定', 'warn')),
-          _summaryLine('Cron secret', parseInt(auth.cron_secret_env_set, 10) ? _buildStatusPill('env設定済み', 'ok') : _buildStatusPill('env未設定', 'warn'))
+        _buildSummaryCard('MONITORING', '監視設定の場所', [
+          _summaryLine('監視方向', _buildStatusPill('OP -> POSLA', 'info')),
+          _summaryLine('監視対象', 'OP側で管理'),
+          _summaryLine('POSLA側', 'ping / snapshot の受け口のみ')
         ]);
     }
-
-    if (!listEl) return;
-    if (!data.available) {
-      listEl.innerHTML = '<div style="padding:1rem;color:#c62828;">OP接続 / Source テーブルが未作成です。migration-p1-45 を適用してください。</div>';
-      return;
-    }
-
-    var html = '<div class="data-table-wrap"><table class="data-table"><thead><tr>' +
-      '<th>Source</th><th>Status</th><th>Endpoint</th><th>Auth</th><th>Updated</th>' +
-      '</tr></thead><tbody>';
-    var i;
-    if (!sources.length) {
-      html += '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">登録済み source がありません</td></tr>';
-    } else {
-      for (i = 0; i < sources.length; i++) {
-        html += buildOpsSourceRowHtml(sources[i]);
-      }
-    }
-    html += '</tbody></table></div>';
-    listEl.innerHTML = html;
-  }
-
-  function buildOpsSourceRowHtml(source) {
-    var tone = source.status === 'active' ? 'ok' : (source.status === 'failed' ? 'danger' : 'warn');
-    return '<tr>' +
-      '<td><strong>' + Utils.escapeHtml(source.label || source.source_id || '-') + '</strong><br><code>' + Utils.escapeHtml(source.source_id || '-') + '</code><br><small>' + Utils.escapeHtml(source.environment || '-') + '</small></td>' +
-      '<td>' + _buildStatusPill(source.status || 'unknown', tone) + '</td>' +
-      '<td><div><small>ping</small><br><code>' + Utils.escapeHtml(source.ping_url || '-') + '</code></div><div style="margin-top:0.4rem;"><small>snapshot</small><br><code>' + Utils.escapeHtml(source.snapshot_url || '-') + '</code></div></td>' +
-      '<td><code>' + Utils.escapeHtml(source.auth_type || '-') + '</code></td>' +
-      '<td>' + Utils.escapeHtml(source.updated_at || '-') + '</td>' +
-      '</tr>';
   }
 
   function saveOpsConnectionSettings() {
@@ -735,36 +671,6 @@
       loadOpsSource();
     }).catch(function(err) {
       showToast('OP接続情報の保存に失敗しました: ' + err.message);
-    }).then(function() {
-      if (btn) btn.disabled = false;
-    });
-  }
-
-  function saveOpsSource() {
-    var btn = document.getElementById('btn-save-ops-source');
-    var payload = {
-      source_id: _readInputValue('ops-source-id'),
-      label: _readInputValue('ops-source-label'),
-      environment: _readInputValue('ops-source-environment'),
-      status: _readInputValue('ops-source-status'),
-      auth_type: _readInputValue('ops-source-auth-type'),
-      base_url: _readInputValue('ops-source-base-url'),
-      ping_url: _readInputValue('ops-source-ping-url'),
-      snapshot_url: _readInputValue('ops-source-snapshot-url'),
-      notes: _readInputValue('ops-source-notes')
-    };
-
-    if (!payload.source_id || !payload.label || !payload.environment) {
-      showToast('Source ID、表示名、Environment は必須です');
-      return;
-    }
-
-    if (btn) btn.disabled = true;
-    PoslaApi.updateOpsSource(payload).then(function() {
-      showToast('OP接続 / Source を保存しました');
-      loadOpsSource();
-    }).catch(function(err) {
-      showToast('OP接続 / Source の保存に失敗しました: ' + err.message);
     }).then(function() {
       if (btn) btn.disabled = false;
     });
@@ -1441,20 +1347,20 @@
         '<div class="release-readiness-check release-readiness-check--ok">' +
           '<div class="release-readiness-check__label">監視主体</div>' +
           '<div class="release-readiness-check__value">OP</div>' +
-          '<div class="release-readiness-check__detail">OPがPOSLAの ping / snapshot を取得し、source health と証跡を保持します。</div>' +
+          '<div class="release-readiness-check__detail">OPがPOSLAの ping / snapshot を取得し、監視状態と証跡を保持します。</div>' +
         '</div>' +
         '<div class="release-readiness-check release-readiness-check--ok">' +
           '<div class="release-readiness-check__label">POSLA</div>' +
           '<div class="release-readiness-check__value">受け口のみ</div>' +
-          '<div class="release-readiness-check__detail">POSLA管理画面では監視結果を再判定しません。Source URLとsecretの管理だけを行います。</div>' +
+          '<div class="release-readiness-check__detail">POSLA管理画面では監視結果を再判定しません。OP画面URLと障害報告連携だけを管理します。</div>' +
         '</div>' +
         '<div class="release-readiness-check release-readiness-check--ok">' +
           '<div class="release-readiness-check__label">確認場所</div>' +
-          '<div class="release-readiness-check__value">Source Health</div>' +
-          '<div class="release-readiness-check__detail">OPの Source Health / Release readiness / Alert で現在状態を確認します。</div>' +
+          '<div class="release-readiness-check__value">OP監視状況</div>' +
+          '<div class="release-readiness-check__detail">OPの監視画面 / Release readiness / Alert で現在状態を確認します。</div>' +
           '<div class="release-readiness-check__actions">' +
             '<a class="btn btn-primary btn-sm" data-op-link href="http://127.0.0.1:8091/" target="_blank" rel="noopener">OPを開く</a>' +
-            '<button class="btn btn-secondary btn-sm" type="button" data-release-action="open-ops-source">OP接続 / Source</button>' +
+            '<button class="btn btn-secondary btn-sm" type="button" data-release-action="open-ops-source">OP連携</button>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -2501,10 +2407,10 @@
           _summaryLine('送信元', mailFromEmailVal ? Utils.escapeHtml(mailFromEmailVal) : '<span style="color:#999;">env fallback</span>'),
           _summaryLine('heartbeat', heartbeatVal ? Utils.escapeHtml(heartbeatVal) : '<span style="color:#999;">未到達</span>')
         ]) +
-        _buildSummaryCard('OPS BRIDGE', 'OP障害報告 / Source', [
+        _buildSummaryCard('OPS BRIDGE', 'OP障害報告', [
           _summaryLine('OP画面URL', opsPublicUrlVal ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
           _summaryLine('障害報告', (opsCaseEndpointVal && opsCaseToken.set) ? _buildStatusPill('設定済み', 'ok') : _buildStatusPill('未設定', 'warn')),
-          _summaryLine('監視', _buildStatusPill('OP Sourceで確認', 'info'))
+          _summaryLine('監視', _buildStatusPill('OPで確認', 'info'))
         ]);
 
       if (monitorStatusEl) {

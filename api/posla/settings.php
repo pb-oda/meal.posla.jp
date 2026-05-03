@@ -604,14 +604,14 @@ function _build_config_health(array $settingsMap): array {
     $opsCaseTokenSet = _setting_is_present($settingsMap, 'codex_ops_case_token');
     $checks[] = _build_config_check(
         'ops_case_bridge',
-        'OP障害報告 / Source連携',
+        'OP障害報告連携',
         ($opsPublicUrlSet && $opsCaseEndpointSet && $opsCaseTokenSet) ? 'ok' : 'warn',
         (($opsPublicUrlSet ? 1 : 0) + ($opsCaseEndpointSet ? 1 : 0) + ($opsCaseTokenSet ? 1 : 0)) . '/3 設定済み',
         [
             'OP画面URL: ' . ($opsPublicUrlSet ? '設定済み' : '未設定'),
             '障害報告 Endpoint: ' . ($opsCaseEndpointSet ? '設定済み' : '未設定'),
             '障害報告 Token: ' . ($opsCaseTokenSet ? '設定済み' : '未設定'),
-            '監視: OP Sourceで確認',
+            '監視: OPで確認',
         ]
     );
 
