@@ -52,10 +52,10 @@ secret、password、API key、tokenの実値はこの文書に書きません。
 | Cloud SQL for MySQL | POSLA production DB | 必須 |
 | Memorystore Redis / Valkey | session / rate limit | 必須 |
 | Cloud Storage bucket | `/var/www/html/uploads` mount | 必須 |
-| Secret Manager | DB password、SendGrid、OP token等 | 必須 |
+| Secret Manager | DB password、OP token等 | 必須 |
 | Cloud Run Jobs | cron処理 | 必須 |
 | Cloud Scheduler | Cloud Run Jobsの定期実行 | 必須 |
-| SendGrid | メール送信 | 必須 |
+| メールprovider | 現時点は未採用。`POSLA_MAIL_TRANSPORT=none` で無効化 | 任意 |
 | VPC / Serverless VPC Access | private IP Redis/DBを使う場合 | 構成次第 |
 | Domain / HTTPS | production domain | 必須 |
 
@@ -103,8 +103,6 @@ Secret Managerへ置く値の例です。実値はGitに書きません。
 | `posla-db-pass` | `POSLA_DB_PASS` | production DB password |
 | `posla-cron-secret` | `POSLA_CRON_SECRET` | cron endpoint secret |
 | `posla-ops-read-secret` | `POSLA_OPS_READ_SECRET` | OP snapshot read secret |
-| `posla-sendgrid-api-key` | `POSLA_SENDGRID_API_KEY` | SendGrid |
-| `posla-op-alert-token` | `POSLA_OP_ALERT_TOKEN` | OP alert ingest |
 | `posla-provisioner-trigger-secret` | `POSLA_PROVISIONER_TRIGGER_SECRET` | cell provisioner |
 
 Secretは環境変数として渡してもよいですが、rotation方針を決めておきます。Google CloudはCloud RunでSecret Manager secretをenvまたはvolumeとして使えます。envの場合はinstance起動時に解決されるため、version指定の方が運用上安全です。
@@ -225,7 +223,7 @@ POSLA_SESSION_REDIS_REQUIRED=1
 POSLA_RATE_LIMIT_STORE=redis
 POSLA_UPLOADS_DIR=/var/www/html/uploads
 POSLA_UPLOADS_PUBLIC_PREFIX=uploads
-POSLA_MAIL_TRANSPORT=sendgrid
+POSLA_MAIL_TRANSPORT=none
 ```
 
 DB:
@@ -259,8 +257,9 @@ OP連携:
 
 ```dotenv
 POSLA_OPS_READ_SECRET=<secret>
-POSLA_OP_ALERT_ENDPOINT=https://<op-domain>/api/ingest/posla-alert
-POSLA_OP_ALERT_TOKEN=<secret>
+POSLA_OP_CASE_ENDPOINT=https://<op-domain>/api/ingest/posla-case
+# POSLA_OP_CASE_TOKEN はUI保存を標準にする。envで固定する場合だけ設定する。
+POSLA_OP_CASE_TOKEN=
 ```
 
 ## 11. Cloud Run service deploy
@@ -437,7 +436,7 @@ snapshotで見る項目:
 | テイクアウト | 決済、注文反映、通知 |
 | 予約 | 予約作成、通知、リマインド |
 | シフト | 打刻、退勤、自動退勤 |
-| メール | SendGridで運用通知テスト |
+| メール | `POSLA_MAIL_TRANSPORT=none` なら送信失敗が正常。provider有効化後だけ運用通知テスト |
 
 ## 16. OP連携確認
 
@@ -449,7 +448,7 @@ OP側でproduction Sourceを作成または更新します。
 | base url | `https://<production-domain>` |
 | ping url | `https://<production-domain>/api/monitor/ping.php` |
 | snapshot url | `https://<production-domain>/api/monitor/cell-snapshot.php` |
-| auth type | `ops_read_secret` |
+| 認証方式 | `標準: POSLA_OPS_READ_SECRET` (`ops_read_secret`) |
 
 OPで実行:
 
@@ -527,7 +526,7 @@ rollback後もOPでproduction SourceとGoogle Chat通知を確認します。
 - 管理者ログインOK
 - 注文/KDS/レジ/テイクアウト/予約/シフトsmoke OK
 - uploads表示OK
-- SendGrid送信OK
+- メールprovider未採用なら `POSLA_MAIL_TRANSPORT=none` を確認。provider有効化後は送信OK
 - OP Source Healthが `source_ok`
 - Google Chat通知確認OK
 - rollback先revision/imageが記録されている

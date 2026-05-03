@@ -36,7 +36,7 @@ POSLA 側で影響を受ける現状:
 | `/tmp` file based rate limit | instance ごとに分断される | Redis か DB に寄せる |
 | env file / `.htaccess` に値を置く運用 | Cloud Run は env と Secret Manager が正 | Secret Manager + Cloud Run env に寄せる |
 
-2026-04-28 時点で、production image、Cloud SQL env 接続、Redis rate limit、uploads 保存先 env 差し替え、`/uploads` Alias、Cloud Run Jobs 用 cron runner、SendGrid API mail transport は実装済み。
+2026-04-28 時点で、production image、Cloud SQL env 接続、Redis rate limit、uploads 保存先 env 差し替え、`/uploads` Alias、Cloud Run Jobs 用 cron runner、POSLA本体メールの送信元/問い合わせ先UIは実装済み。SendGridは現行標準では使わない。
 
 ## 2. 目標構成
 
@@ -243,8 +243,7 @@ POSLA_CRON_SECRET=<secret>
 POSLA_UPLOADS_DIR=/var/www/html/uploads
 POSLA_UPLOADS_PUBLIC_PREFIX=uploads
 
-POSLA_MAIL_TRANSPORT=sendgrid
-POSLA_SENDGRID_API_KEY=<secret>
+POSLA_MAIL_TRANSPORT=none
 ```
 
 未確定の env はコードへ直書きしない。まず `docker/env/app.production.env.example` へ placeholder として追加する。
@@ -292,7 +291,7 @@ POSLA_SENDGRID_API_KEY=<secret>
 - `api/config/database.php.example` に Cloud SQL Unix socket 用 `socket` 設定例を追加
 - `api/lib/uploads.php` を追加し、uploads 保存先を `POSLA_UPLOADS_DIR` で差し替え可能にした
 - Apache に `/uploads` Alias を追加
-- `api/lib/mail.php` を追加し、SendGrid API transport を追加
+- `api/lib/mail.php` を追加し、POSLA本体メールの送信元/問い合わせ先をUI設定化した。SendGridは現行標準では使わない
 - POSLA管理画面の手動監視実行を Cloud Run `$PORT` 対応にした
 
 この対応後も、既存のローカル `docker-compose.yml` は従来通り `docker/php/Dockerfile` と `docker/php/apache-vhost.conf` を使う。

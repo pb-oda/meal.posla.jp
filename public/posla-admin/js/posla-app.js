@@ -178,12 +178,6 @@
     var copyEnvSecretBtn = document.getElementById('btn-copy-env-secret');
     if (copyEnvSecretBtn) copyEnvSecretBtn.addEventListener('click', copyEnvSecret);
 
-    var runMonitorBtn = document.getElementById('btn-run-monitor-health');
-    if (runMonitorBtn) runMonitorBtn.addEventListener('click', runMonitorHealth);
-
-    var sendMonitorTestBtn = document.getElementById('btn-send-monitor-test');
-    if (sendMonitorTestBtn) sendMonitorTestBtn.addEventListener('click', sendMonitorTestAlert);
-
     var sendOpsMailTestBtn = document.getElementById('btn-send-ops-mail-test');
     if (sendOpsMailTestBtn) sendOpsMailTestBtn.addEventListener('click', sendOpsMailTest);
 
@@ -871,7 +865,7 @@
       title: 'OPがPOSLAをread-only監視する共有secret',
       purpose: 'OPがPOSLAの cell-snapshot を読むために使います。',
       paste: 'POSLA側 env に POSLA_OPS_READ_SECRET=<この値> を設定し、OP側 Source の secret にも同じ値を保存します。',
-      note: 'OP側 Source の auth type は ops_read_secret を選びます。監視方向は OP -> POSLA です。'
+      note: 'OP側 Source の認証方式は「標準: POSLA_OPS_READ_SECRET」を選びます。監視方向は OP -> POSLA です。'
     },
     POSLA_OP_LAUNCH_SECRET: {
       label: 'POSLA_OP_LAUNCH_SECRET',
@@ -2950,8 +2944,6 @@
     var priceHq = document.getElementById('posla-stripe-price-hq').value.trim();
     var connectFeeEl = document.getElementById('posla-connect-fee');
     var connectFee = connectFeeEl ? connectFeeEl.value.trim() : '';
-    var googleChatWebhookEl = document.getElementById('posla-google-chat-webhook');
-    var googleChatWebhook = googleChatWebhookEl ? googleChatWebhookEl.value.trim() : '';
     var opsNotifyEmail = document.getElementById('posla-ops-notify-email').value.trim();
     var mailFromEmailEl = document.getElementById('posla-mail-from-email');
     var mailFromNameEl = document.getElementById('posla-mail-from-name');
@@ -2973,7 +2965,6 @@
     if (priceAdd) data.stripe_price_additional_store = priceAdd;
     if (priceHq) data.stripe_price_hq_broadcast = priceHq;
     if (connectFee !== '') data.connect_application_fee_percent = connectFee;
-    if (googleChatWebhook) data.google_chat_webhook_url = googleChatWebhook;
     if (opsNotifyEmail !== '') data.ops_notify_email = opsNotifyEmail;
     if (mailFromEmail !== '') data.mail_from_email = mailFromEmail;
     if (mailFromName !== '') data.mail_from_name = mailFromName;
@@ -3001,7 +2992,6 @@
       document.getElementById('posla-stripe-pub').value = '';
       document.getElementById('posla-stripe-webhook').value = '';
       document.getElementById('posla-stripe-webhook-signup').value = '';
-      if (googleChatWebhookEl) googleChatWebhookEl.value = '';
       if (releasePlanActionsTokenEl) releasePlanActionsTokenEl.value = '';
       var smSecEl = document.getElementById('posla-smaregi-client-secret');
       if (smSecEl) smSecEl.value = '';
@@ -3027,7 +3017,6 @@
       stripe_webhook_secret: null,
       stripe_webhook_secret_signup: null,
       smaregi_client_secret: null,
-      google_chat_webhook_url: null,
       release_plan_actions_token: null
     }).then(function() {
       document.getElementById('posla-ai-key').value = '';
@@ -3036,8 +3025,6 @@
       document.getElementById('posla-stripe-pub').value = '';
       document.getElementById('posla-stripe-webhook').value = '';
       document.getElementById('posla-stripe-webhook-signup').value = '';
-      var googleChatWebhookEl = document.getElementById('posla-google-chat-webhook');
-      if (googleChatWebhookEl) googleChatWebhookEl.value = '';
       var releasePlanActionsTokenEl = document.getElementById('posla-release-plan-actions-token');
       if (releasePlanActionsTokenEl) releasePlanActionsTokenEl.value = '';
       var smSecEl = document.getElementById('posla-smaregi-client-secret');
@@ -3046,53 +3033,6 @@
       loadApiStatus();
     }).catch(function(err) {
       showToast('削除に失敗しました: ' + err.message);
-    }).then(function() {
-      btn.disabled = false;
-    });
-  }
-
-  function runMonitorHealth() {
-    var btn = document.getElementById('btn-run-monitor-health');
-    if (!btn) return;
-    btn.disabled = true;
-
-    PoslaApi.runMonitorAction('run_health_check').then(function() {
-      showToast('monitor-health を実行しました');
-      loadApiStatus();
-    }).catch(function(err) {
-      showToast('監視再実行に失敗しました: ' + err.message);
-    }).then(function() {
-      btn.disabled = false;
-    });
-  }
-
-  function sendMonitorTestAlert() {
-    var btn = document.getElementById('btn-send-monitor-test');
-    if (!btn) return;
-
-    var payload = {};
-    var tenantEl = document.getElementById('posla-monitor-tenant');
-    var storeEl = document.getElementById('posla-monitor-store');
-    var messageEl = document.getElementById('posla-monitor-message');
-
-    if (tenantEl && tenantEl.value.trim()) payload.tenant_id = tenantEl.value.trim();
-    if (storeEl && storeEl.value.trim()) payload.store_id = storeEl.value.trim();
-    if (messageEl && messageEl.value.trim()) payload.message = messageEl.value.trim();
-
-    btn.disabled = true;
-    PoslaApi.runMonitorAction('send_test_alert', payload).then(function(data) {
-      var scope = data && data.scope ? data.scope : {};
-      _renderNotifyTestResult('Google Chat テスト通知を送信しました', [
-        'ルート: ' + (data.destination || 'google_chat'),
-        'tenant_id: ' + (scope.tenant_id || '-'),
-        'store_id: ' + (scope.store_id || '-'),
-        'error_no: ' + (scope.error_no || 'E1025')
-      ], 'ok');
-      showToast('Google Chat テスト通知を送信しました: ' + (scope.error_no || 'E1025'));
-      loadApiStatus();
-    }).catch(function(err) {
-      _renderNotifyTestResult('Google Chat テスト通知に失敗しました', [err.message || 'unknown'], 'danger');
-      showToast('テスト通知に失敗しました: ' + err.message);
     }).then(function() {
       btn.disabled = false;
     });

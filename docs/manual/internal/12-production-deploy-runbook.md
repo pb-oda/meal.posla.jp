@@ -274,8 +274,8 @@ docker compose exec -T db mysql \
 | Feature Flags | tenant / cell 単位の表示制御 |
 | API設定 | AI / Places / 通知 / 決済 provider / Smaregi |
 | PWA / Web Push | VAPID 公開鍵 / 秘密鍵 |
-| 監視・通知 | Google Chat、内部 heartbeat、monitor health、外部運用基盤側の外形監視 |
-| OP / runner連携 | alert endpoint、case endpoint、runner疎通、Google Chat通知 |
+| 設定センター | env Secret発行、メール送信元、OP起動・障害報告、Actions Release Plan |
+| OP接続 / Source | OPがPOSLAをread-onlyで読む監視Source。POSLA管理画面ではなくOP側で管理 |
 | 管理者ユーザー | 管理者アカウント、不要管理者の削除 |
 
 API設定で本番前に必ず入れる値:
@@ -283,13 +283,12 @@ API設定で本番前に必ず入れる値:
 | 設定 | 値 |
 |---|---|
 | 決済 provider | 本番 provider 確定後の live key / webhook secret / Price ID |
-| Google Chat / 運用通知 | 本番の通知先 |
-| 外部障害報告連携 Endpoint | `https://<ops-domain>/api/ingest/posla-case` |
-| 外部障害報告連携 Token | OP側 `POSLA_OPS_CASE_TOKEN` と同じ値 |
-| 外部監視アラート連携 Endpoint | `https://<ops-domain>/api/alerts.php` |
-| 外部監視アラート連携 Token | 接続先側の ingest token と同じ値 |
+| 運用通知メール | POSLA本体メールの宛先。Google Chatと監視通知はOP側 |
+| OP画面URL | `https://<op-domain>/` |
+| OP障害報告 Endpoint | `https://<op-domain>/api/ingest/posla-case` |
+| OP障害報告 Token | OP側 `Settings > POSLA接続` の障害報告受信Tokenと同じ値 |
 
-`POSLA_OP_CASE_ENDPOINT` / `POSLA_OP_CASE_TOKEN` / `POSLA_OP_ALERT_ENDPOINT` / `POSLA_OP_ALERT_TOKEN` を env で設定した場合は、env が POSLA管理画面の値より優先されます。
+`POSLA_OP_CASE_ENDPOINT` / `POSLA_OP_CASE_TOKEN` を env で設定した場合は、env が POSLA管理画面の値より優先されます。監視は OP -> POSLA の方向を正とし、`POSLA_OP_ALERT_*` は通常運用では使いません。
 
 ## 12.10 決済 provider 設定
 

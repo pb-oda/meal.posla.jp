@@ -1,6 +1,6 @@
-# POSLA Test Alert to OP E2E
+# POSLA Test Alert to OP E2E (legacy)
 
-POSLA本体テスト環境からPOSLA運用OPへ、実alertを1件投入して経路を確認する手順です。
+POSLA本体テスト環境からPOSLA運用OPへ、実alertを1件投入して経路を確認する旧手順です。現在の標準監視は **OP -> POSLA** のSource監視です。この手順はlegacy ingestの互換確認が必要な場合だけ使います。
 
 ## 前提
 

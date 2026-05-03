@@ -5,13 +5,13 @@
  * POST /api/posla/monitor-actions.php
  * Body:
  *   { "action": "run_health_check" }
- *   { "action": "send_test_alert", "tenant_id"?: "...", "store_id"?: "...", "message"?: "..." }
+ *   { "action": "send_test_alert", "tenant_id"?: "...", "store_id"?: "...", "message"?: "..." } // legacy
  *   { "action": "send_ops_mail_test", "message"?: "...", "dry_run"?: true }
  *
  * 方針:
  *   - 実際の監視処理は既存の /api/cron/monitor-health.php を内部 HTTP で呼び出す
- *   - POSLA 管理者 UI からは CLI を触らずに monitor-health を再実行できる
- *   - テスト通知は error_log に試験行を挿入し、既存の昇格ロジックをそのまま通す
+ *   - 監視の正系はOP -> POSLAのSource監視。monitor-health再実行とテスト通知はlegacy互換用に残す
+ *   - POSLA管理画面からの通常操作はメールテストのみ
  */
 
 require_once __DIR__ . '/auth-helper.php';
@@ -50,7 +50,7 @@ if ($action === 'send_test_alert') {
         $storeId = 'store-monitor-test-' . $nowSuffix;
     }
     if ($message === '') {
-        $message = 'POSLA管理画面から送信したGoogle Chat テスト通知';
+        $message = 'POSLA legacy monitor-health テスト通知';
     }
 
     _insert_test_error_log_rows($pdo, $tenantId, $storeId, $message, $admin);

@@ -19,7 +19,7 @@
 | Session / rate limit | Memorystore Redis / Valkey |
 | uploads | Cloud Storage bucket を `/var/www/html/uploads` に mount |
 | cron | Cloud Run Jobs + Cloud Scheduler |
-| mail | SendGrid API transport |
+| mail | 現状は `POSLA_MAIL_TRANSPORT=none`。実メール provider 決定後に別途実装・設定 |
 | secret | Secret Manager |
 
 Redisについて:
@@ -204,16 +204,15 @@ gcloud run jobs execute posla-cron-hourly --project=${PROJECT_ID} --region=${REG
 
 ## 7. Mail
 
-Cloud Run では `mail()` / `mb_send_mail()` に依存しない。
+Cloud Run では `mail()` / `mb_send_mail()` に依存しない。現時点ではSendGridを標準採用しないため、実メール送信は無効化して運用する。外部メールproviderを決めた時点で transport 実装とenvを追加する。
 
 ```dotenv
-POSLA_MAIL_TRANSPORT=sendgrid
-POSLA_SENDGRID_API_KEY=__REPLACE_SENDGRID_API_KEY__
+POSLA_MAIL_TRANSPORT=none
 POSLA_FROM_EMAIL=noreply@<production-domain>
 POSLA_MAIL_FROM_NAME=POSLA
 ```
 
-送信元ドメインは SPF / DKIM / DMARC を設定する。管理画面の運用通知メールテストで疎通を確認する。
+実メールproviderを有効化する場合は送信元ドメインの SPF / DKIM / DMARC を設定する。管理画面の運用通知メールテストは、transport が `none` の間は失敗するのが正常。
 
 ## 8. Smoke test
 

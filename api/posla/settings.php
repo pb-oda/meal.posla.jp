@@ -349,7 +349,7 @@ function _build_settings_checklist(array $settingsMap): array {
         ['POSLA_ALLOWED_ORIGINS', 'POSLA_ALLOWED_ORIGINS', 'CORSで許可するOriginです。scheme付きで、pathなし。例: https://meal.posla.jp,https://admin.meal.posla.jp'],
         ['POSLA_ALLOWED_HOSTS', 'POSLA_ALLOWED_HOSTS', 'CSRF/Host検証で許可するHostです。schemeなし、pathなし。例: meal.posla.jp,admin.meal.posla.jp'],
         ['POSLA_CRON_SECRET', 'POSLA_CRON_SECRET', 'POSLA内部cronやmonitor-actionsで使う共有secretです。設定センターのenv Secret発行ヘルパーで作成できます。OP監視は通常 POSLA_OPS_READ_SECRET を使います。'],
-        ['POSLA_OPS_READ_SECRET', 'POSLA_OPS_READ_SECRET', 'OPがPOSLAの cell-snapshot をread-only参照する共有secretです。設定センターのenv Secret発行ヘルパーで作成し、OP側Sourceのauth typeを ops_read_secret にして同じ値を設定します。'],
+        ['POSLA_OPS_READ_SECRET', 'POSLA_OPS_READ_SECRET', 'OPがPOSLAの cell-snapshot をread-only参照する共有secretです。設定センターのenv Secret発行ヘルパーで作成し、OP側Sourceの認証方式を「標準: POSLA_OPS_READ_SECRET」にして同じ値を設定します。'],
         ['POSLA_OP_LAUNCH_SECRET', 'POSLA_OP_LAUNCH_SECRET', 'POSLA管理画面からOPを開く時にOP sessionを発行する共有secretです。設定センターのenv Secret発行ヘルパーで作成し、POSLA側とOP側に同じ値を入れます。未設定だとOPを開くだけで、OP session guardは有効になりません。'],
     ];
 
@@ -641,8 +641,6 @@ function _count_rows_or_default(PDO $pdo, string $sql, array $params = [], $defa
 
 function _build_notification_center(PDO $pdo, array $settingsMap): array
 {
-    $googleChatSet = _setting_is_present($settingsMap, 'google_chat_webhook_url');
-    $slackSet = _setting_is_present($settingsMap, 'slack_webhook_url');
     $opsMail = _setting_value($settingsMap, 'ops_notify_email');
     $mailTransport = posla_mail_transport_label();
     $vapidReady = _setting_is_present($settingsMap, 'web_push_vapid_public') && _setting_is_present($settingsMap, 'web_push_vapid_private_pem');
@@ -666,10 +664,10 @@ function _build_notification_center(PDO $pdo, array $settingsMap): array
     );
 
     return [
-        'google_chat' => [
-            'route' => $googleChatSet ? 'google_chat' : ($slackSet ? 'slack_legacy' : 'none'),
-            'available' => $googleChatSet || $slackSet,
-            'detail' => $googleChatSet ? 'Google Chat webhook を正系で使用' : ($slackSet ? 'Slack fallback を使用' : '通知先未設定'),
+        'ops_monitor' => [
+            'route' => 'op_managed',
+            'available' => true,
+            'detail' => '監視、Google Chat通知、Alert再判定はOP側で管理します。',
         ],
         'ops_mail' => [
             'recipient' => $opsMail,
@@ -744,8 +742,9 @@ if ($method === 'GET') {
 if ($method === 'PATCH') {
     $input = get_json_body();
     // P1-35: α-1 化で stripe_price_standard/pro/enterprise → base/additional_store/hq_broadcast
-    // 旧キーは posla_settings の row として温存（rollback 用）。allowedKeys からは削除して UI 編集経路を閉じる
-    $allowedKeys = ['gemini_api_key', 'google_places_api_key', 'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret', 'stripe_webhook_secret_signup', 'stripe_price_base', 'stripe_price_additional_store', 'stripe_price_hq_broadcast', 'connect_application_fee_percent', 'smaregi_client_id', 'smaregi_client_secret', 'google_chat_webhook_url', 'ops_notify_email', 'mail_from_email', 'mail_from_name', 'mail_support_email', 'codex_ops_public_url', 'codex_ops_case_endpoint', 'codex_ops_case_token', RELEASE_PLAN_ACTIONS_TOKEN_KEY];
+    // 旧キーは posla_settings の row として温存（rollback 用）。allowedKeys からは削除して UI 編集経路を閉じる。
+    // google_chat_webhook_url / slack_webhook_url / codex_ops_alert_* はOP管理に一本化するため、POSLA管理画面からは更新しない。
+    $allowedKeys = ['gemini_api_key', 'google_places_api_key', 'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret', 'stripe_webhook_secret_signup', 'stripe_price_base', 'stripe_price_additional_store', 'stripe_price_hq_broadcast', 'connect_application_fee_percent', 'smaregi_client_id', 'smaregi_client_secret', 'ops_notify_email', 'mail_from_email', 'mail_from_name', 'mail_support_email', 'codex_ops_public_url', 'codex_ops_case_endpoint', 'codex_ops_case_token', RELEASE_PLAN_ACTIONS_TOKEN_KEY];
     $updated = 0;
     $updatedKeys = [];
     $currentSettings = _fetch_current_settings_map($pdo);
