@@ -42,11 +42,29 @@ if ($method === 'GET') {
 
 if ($method === 'PATCH') {
     $body = get_json_body();
-    $id = $body['id'] ?? '';
-    if (!$id) json_error('MISSING_ID', 'id が必要です', 400);
+    $id = trim((string)($body['id'] ?? ''));
+    $tenantId = trim((string)($body['tenant_id'] ?? ''));
     if (!empty($body['resolved'])) {
-        $pdo->prepare('UPDATE monitor_events SET resolved = 1, resolved_at = NOW(), resolved_by = ? WHERE id = ?')
-            ->execute([$admin['admin_id'], $id]);
+        if ($tenantId !== '') {
+            $stmt = $pdo->prepare(
+                'UPDATE monitor_events
+                 SET resolved = 1, resolved_at = NOW(), resolved_by = ?
+                 WHERE tenant_id = ?
+                   AND resolved = 0
+                   AND severity IN ("error", "critical")'
+            );
+            $stmt->execute([$admin['admin_id'], $tenantId]);
+            json_response(['ok' => true, 'updated' => $stmt->rowCount()]);
+        }
+
+        if ($id === '') {
+            json_error('MISSING_TARGET', 'id または tenant_id が必要です', 400);
+        }
+
+        $stmt = $pdo->prepare('UPDATE monitor_events SET resolved = 1, resolved_at = NOW(), resolved_by = ? WHERE id = ?');
+        $stmt->execute([$admin['admin_id'], $id]);
+        json_response(['ok' => true, 'updated' => $stmt->rowCount()]);
     }
-    json_response(['ok' => true]);
+
+    json_error('INVALID_PATCH', 'resolved=1 が必要です', 400);
 }

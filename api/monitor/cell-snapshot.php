@@ -41,7 +41,8 @@ $snapshot['onboarding'] = posla_fetch_onboarding_snapshot($pdo);
 $snapshot['deployments'] = fetch_recent_deployments($pdo, $cellId);
 $snapshot['migrations'] = fetch_migration_summary($pdo, $cellId);
 $snapshot['feature_flags'] = fetch_feature_flag_snapshot($pdo);
-$snapshot['tenant_insights'] = fetch_tenant_insight_snapshot($pdo, empty($snapshot['registry']['cell']));
+// Snapshot endpoint must not recursively fetch other cell snapshots.
+$snapshot['tenant_insights'] = fetch_tenant_insight_snapshot($pdo, false);
 $snapshot['errors'] = fetch_error_summary($pdo);
 $snapshot['monitor_events'] = fetch_monitor_event_summary($pdo);
 $snapshot['tier0'] = fetch_tier0_payment_cashier_snapshot($pdo);

@@ -1472,6 +1472,7 @@
           '<div class="release-readiness-check__label">' + escapeHtml(check.label || '-') + '</div>' +
           '<div class="release-readiness-check__value">' + escapeHtml(check.value || '-') + '</div>' +
           '<div class="release-readiness-check__detail">' + escapeHtml(check.detail || '-') + '</div>' +
+          buildReleaseReadinessItemsHtml(check) +
           buildReleaseReadinessActionsHtml(check) +
         '</div>';
       }
@@ -1481,9 +1482,51 @@
     root.innerHTML = html;
   }
 
+  function buildReleaseReadinessItemsHtml(check) {
+    var items = (check && check.items) || [];
+    var html = '';
+    var i;
+    var item;
+    var meta;
+
+    if (!items.length) return '';
+
+    html += '<div class="release-readiness-check__items">';
+    for (i = 0; i < items.length; i++) {
+      item = items[i] || {};
+      meta = [];
+      if (item.cell_id) meta.push('cell: ' + item.cell_id);
+      if (item.cell_app_base_url) meta.push('url: ' + item.cell_app_base_url);
+      if (item.cell_snapshot_status) meta.push('snapshot: ' + item.cell_snapshot_status);
+      if (item.cell_tier0_status) meta.push('tier0: ' + item.cell_tier0_status);
+      if (parseInt(item.open_incident_count || 0, 10) > 0) meta.push('未解決: ' + item.open_incident_count + '件');
+      if (parseInt(item.critical_open_count || 0, 10) > 0) meta.push('critical: ' + item.critical_open_count + '件');
+      if (item.recent_incident_label) meta.push(item.recent_incident_label);
+      if (item.last_incident_at) meta.push('最終: ' + formatTenantTimelineDate(item.last_incident_at));
+
+      html += '<div class="release-readiness-check__item">' +
+        '<strong>' + escapeHtml(item.tenant_name || item.tenant_slug || item.tenant_id || '-') + '</strong>' +
+        (meta.length ? ('<span>' + escapeHtml(meta.join(' / ')) + '</span>') : '') +
+      '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function getFirstReleaseReadinessTenantId(check) {
+    var items = (check && check.items) || [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i] && items[i].tenant_id) {
+        return String(items[i].tenant_id);
+      }
+    }
+    return '';
+  }
+
   function buildReleaseReadinessActionsHtml(check) {
     var key = check && check.key ? String(check.key) : '';
     var status = check && check.status ? String(check.status) : '';
+    var firstTenantId = getFirstReleaseReadinessTenantId(check);
     var actions = [];
 
     if (status === 'ok') return '';
@@ -1493,12 +1536,16 @@
       actions.push(['refresh', '再確認']);
     } else if (key === 'cell_registry' || key === 'cell_snapshot') {
       actions.push(['refresh', '再確認']);
+      if (firstTenantId) actions.push(['open-release-tenant', '対象テナントを開く', firstTenantId]);
       actions.push(['open-cell-provisioning', 'Cell配備を開く']);
     } else if (key === 'tier0' || key === 'health' || key === 'incidents') {
       actions.push(['refresh', '再確認']);
+      if (firstTenantId) actions.push(['open-release-tenant', '対象テナントを開く', firstTenantId]);
+      if (key === 'incidents' && firstTenantId) actions.push(['resolve-release-tenant-incidents', '未解決をまとめて解消', firstTenantId]);
       actions.push(['scroll-risky-tenants', '危険テナントを見る']);
     } else if (key === 'onboarding') {
       actions.push(['open-tenants', 'テナント管理を開く']);
+      if (firstTenantId) actions.push(['open-release-tenant', '対象テナントを開く', firstTenantId]);
       actions.push(['scroll-onboarding', '要フォローを見る']);
     } else {
       actions.push(['refresh', '再確認']);
@@ -1506,7 +1553,9 @@
 
     var html = '<div class="release-readiness-check__actions">';
     for (var i = 0; i < actions.length; i++) {
-      html += '<button class="btn btn-secondary btn-sm" type="button" data-release-action="' + escapeHtml(actions[i][0]) + '">' + escapeHtml(actions[i][1]) + '</button>';
+      html += '<button class="btn btn-secondary btn-sm" type="button" data-release-action="' + escapeHtml(actions[i][0]) + '"' +
+        (actions[i][2] ? (' data-release-tenant-id="' + escapeHtml(actions[i][2]) + '"') : '') +
+        '>' + escapeHtml(actions[i][1]) + '</button>';
     }
     html += '</div>';
     return html;
@@ -1514,6 +1563,7 @@
 
   function handleReleaseReadinessAction(btn) {
     var action = btn.getAttribute('data-release-action') || '';
+    var tenantId = btn.getAttribute('data-release-tenant-id') || '';
     if (action === 'refresh') {
       btn.disabled = true;
       showToast('リリース準備状況を再確認しています');
@@ -1535,6 +1585,14 @@
       activateTab('tenants');
       return;
     }
+    if (action === 'open-release-tenant') {
+      if (tenantId) openTenantModal(tenantId);
+      return;
+    }
+    if (action === 'resolve-release-tenant-incidents') {
+      resolveReleaseTenantIncidents(btn, tenantId);
+      return;
+    }
     if (action === 'scroll-risky-tenants') {
       scrollDashboardTarget('risky-tenants-card');
       return;
@@ -1552,6 +1610,24 @@
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 50);
+  }
+
+  function resolveReleaseTenantIncidents(btn, tenantId) {
+    if (!tenantId) return;
+    if (!window.confirm('対象テナントの未解決 error / critical 監視イベントをまとめて解消済みにします。原因確認後の復旧操作として続けますか？')) {
+      return;
+    }
+
+    btn.disabled = true;
+    PoslaApi.resolveTenantMonitorEvents(tenantId).then(function(data) {
+      showToast('未解決イベントを解消済みにしました: ' + String(data.updated || 0) + '件');
+      loadDashboard();
+      openTenantModal(tenantId);
+    }).catch(function(err) {
+      showToast('未解決イベントの一括解消に失敗しました: ' + err.message);
+    }).then(function() {
+      btn.disabled = false;
+    });
   }
 
   function renderTenantCreateResult(data) {
@@ -1722,6 +1798,34 @@
     listEl.innerHTML = html;
   }
 
+  function buildCellRegistryFieldHtml(index, field, label, value, type) {
+    return '<div class="cell-registry-field">' +
+      '<label for="cell-registry-' + index + '-' + field + '">' + Utils.escapeHtml(label) + '</label>' +
+      '<input class="form-input" type="' + Utils.escapeHtml(type || 'text') + '" id="cell-registry-' + index + '-' + field + '" data-cell-field-index="' + index + '" data-cell-field="' + Utils.escapeHtml(field) + '" value="' + Utils.escapeHtml(value || '') + '">' +
+    '</div>';
+  }
+
+  function buildCellRegistryEditFieldsHtml(item, index, target) {
+    var appBaseUrl = item.app_base_url || target.app_base_url || '';
+    var healthUrl = item.health_url || target.health_url || (appBaseUrl ? (String(appBaseUrl).replace(/\/+$/, '') + '/api/monitor/ping.php') : '');
+
+    return '<div class="cell-registry-fields">' +
+      buildCellRegistryFieldHtml(index, 'environment', 'Environment', item.registry_environment || target.environment || 'pseudo-prod', 'text') +
+      buildCellRegistryFieldHtml(index, 'app_base_url', 'App URL', appBaseUrl, 'url') +
+      buildCellRegistryFieldHtml(index, 'health_url', 'Health URL', healthUrl, 'url') +
+      buildCellRegistryFieldHtml(index, 'db_host', 'DB host', item.db_host || target.db_host || '', 'text') +
+      buildCellRegistryFieldHtml(index, 'db_name', 'DB name', item.db_name || target.db_name || '', 'text') +
+      buildCellRegistryFieldHtml(index, 'db_user', 'DB user', item.db_user || target.db_user || '', 'text') +
+      buildCellRegistryFieldHtml(index, 'uploads_path', 'Uploads path', item.uploads_path || target.uploads_path || '', 'text') +
+      buildCellRegistryFieldHtml(index, 'php_image', 'PHP image', item.php_image || target.php_image || '', 'text') +
+      buildCellRegistryFieldHtml(index, 'deploy_version', 'Deploy version', item.deploy_version || target.deploy_version || '', 'text') +
+      '<div class="cell-registry-field">' +
+        '<label>Cron</label>' +
+        '<label class="cell-registry-checkbox"><input type="checkbox" data-cell-field-index="' + index + '" data-cell-field="cron_enabled" ' + (parseInt(item.cron_enabled || 0, 10) ? 'checked' : '') + '> 監視対象</label>' +
+      '</div>' +
+    '</div>';
+  }
+
   function buildCellProvisioningItemHtml(item, index) {
     var registryTone = item.registry_status === 'active' ? 'ok' : (item.registry_status === 'failed' ? 'danger' : 'warn');
     var itemTone = item.status === 'active' ? 'active' : (item.status === 'failed' ? 'failed' : 'queue');
@@ -1780,6 +1884,7 @@
         buildMetricRow('App URL', '<code>' + Utils.escapeHtml(item.app_base_url || target.app_base_url || '-') + '</code>', 'health: ' + (item.health_url || target.health_url || '-')) +
         buildMetricRow('DB / uploads', '<code>' + Utils.escapeHtml(target.db_host || '-') + '</code>', target.db_name ? ('db: ' + target.db_name + ' / uploads: ' + target.uploads_path) : '') +
       '</div>' +
+      buildCellRegistryEditFieldsHtml(item, index, target) +
       '<div class="settings-inline-actions">' +
         actionHtml +
       '</div>' +
@@ -1819,32 +1924,61 @@
     showToast('このブラウザではコピーできません');
   }
 
+  function readCellProvisioningField(index, field, fallback) {
+    var el = document.querySelector('[data-cell-field-index="' + index + '"][data-cell-field="' + field + '"]');
+    if (!el) return fallback || '';
+    if (el.type === 'checkbox') {
+      return el.checked ? 1 : 0;
+    }
+    return String(el.value || '').trim();
+  }
+
+  function readCellProvisioningRegistryPayload(index, item, target) {
+    var appBaseUrl = readCellProvisioningField(index, 'app_base_url', item.app_base_url || target.app_base_url || '');
+    var healthFallback = item.health_url || target.health_url || (appBaseUrl ? (String(appBaseUrl).replace(/\/+$/, '') + '/api/monitor/ping.php') : '');
+
+    return {
+      environment: readCellProvisioningField(index, 'environment', item.registry_environment || target.environment || 'pseudo-prod'),
+      app_base_url: appBaseUrl,
+      health_url: readCellProvisioningField(index, 'health_url', healthFallback),
+      db_host: readCellProvisioningField(index, 'db_host', item.db_host || target.db_host || ''),
+      db_name: readCellProvisioningField(index, 'db_name', item.db_name || target.db_name || ''),
+      db_user: readCellProvisioningField(index, 'db_user', item.db_user || target.db_user || ''),
+      uploads_path: readCellProvisioningField(index, 'uploads_path', item.uploads_path || target.uploads_path || ''),
+      php_image: readCellProvisioningField(index, 'php_image', item.php_image || target.php_image || ''),
+      deploy_version: readCellProvisioningField(index, 'deploy_version', item.deploy_version || target.deploy_version || ''),
+      cron_enabled: readCellProvisioningField(index, 'cron_enabled', parseInt(item.cron_enabled || 0, 10) ? 1 : 0)
+    };
+  }
+
   function updateCellProvisioningFromButton(btn) {
     var action = btn.getAttribute('data-cell-status-action');
     var requestId = btn.getAttribute('data-cell-request-id') || '';
     var itemIndex = parseInt(btn.getAttribute('data-cell-index') || '-1', 10);
     var item = _cellProvisioningState.items[itemIndex] || {};
     var target = item.suggested_target || {};
+    var registryPayload;
     var payload;
 
     if (!requestId) return;
 
     if (action === 'sync_registry') {
+      registryPayload = readCellProvisioningRegistryPayload(itemIndex, item, target);
       payload = {
         action: 'sync_registry',
         request_id: requestId,
         cell_id: item.cell_id || target.cell_id || '',
         registry_status: 'active',
-        environment: target.environment || 'pseudo-prod',
-        app_base_url: target.app_base_url || '',
-        health_url: target.health_url || '',
-        db_host: target.db_host || '',
-        db_name: target.db_name || '',
-        db_user: target.db_user || '',
-        uploads_path: target.uploads_path || '',
-        php_image: target.php_image || '',
-        deploy_version: target.deploy_version || '',
-        cron_enabled: 1,
+        environment: registryPayload.environment || 'pseudo-prod',
+        app_base_url: registryPayload.app_base_url || '',
+        health_url: registryPayload.health_url || '',
+        db_host: registryPayload.db_host || '',
+        db_name: registryPayload.db_name || '',
+        db_user: registryPayload.db_user || '',
+        uploads_path: registryPayload.uploads_path || '',
+        php_image: registryPayload.php_image || '',
+        deploy_version: registryPayload.deploy_version || '',
+        cron_enabled: registryPayload.cron_enabled ? 1 : 0,
         notes: 'Marked active from POSLA Cell配備 UI after smoke.'
       };
     } else {

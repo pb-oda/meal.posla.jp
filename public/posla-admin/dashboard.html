@@ -706,6 +706,29 @@
       line-height: 1.5;
       margin-top: 0.32rem;
     }
+    .release-readiness-check__items {
+      border-top: 1px solid #e4e9f5;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      margin-top: 0.65rem;
+      padding-top: 0.55rem;
+    }
+    .release-readiness-check__item {
+      color: var(--text-primary);
+      font-size: 0.76rem;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .release-readiness-check__item strong {
+      display: block;
+      font-size: 0.78rem;
+      margin-bottom: 0.08rem;
+    }
+    .release-readiness-check__item span {
+      color: var(--text-secondary);
+      display: block;
+    }
     .release-readiness-check__actions,
     .tenant-timeline-item__actions {
       display: flex;
@@ -858,6 +881,37 @@
       font-size: 0.8rem;
       line-height: 1.55;
       margin-top: 0.2rem;
+    }
+    .cell-registry-fields {
+      border-top: 1px solid #edf1f7;
+      display: grid;
+      gap: 0.65rem;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      margin-top: 0.9rem;
+      padding-top: 0.9rem;
+    }
+    .cell-registry-field {
+      min-width: 0;
+    }
+    .cell-registry-field label {
+      color: var(--text-secondary);
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+    .cell-registry-field .form-input {
+      font-size: 0.82rem;
+      min-height: 38px;
+    }
+    .cell-registry-checkbox {
+      align-items: center;
+      color: var(--text-primary);
+      display: flex;
+      font-size: 0.82rem;
+      font-weight: 700;
+      gap: 0.45rem;
+      min-height: 38px;
     }
     .cell-command-list {
       display: flex;

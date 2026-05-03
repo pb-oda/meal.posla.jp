@@ -109,6 +109,9 @@ var PoslaApi = (function() {
     resolveMonitorEvent: function(id) {
       return request('PATCH', '/monitor-events.php', { id: id, resolved: 1 });
     },
+    resolveTenantMonitorEvents: function(tenantId) {
+      return request('PATCH', '/monitor-events.php', { tenant_id: tenantId, resolved: 1 });
+    },
     getAdminUsers: function() {
       return request('GET', '/admin-users.php');
     },

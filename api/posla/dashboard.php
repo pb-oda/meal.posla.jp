@@ -81,15 +81,21 @@ function build_onboarding_watchlist(array $tenants): array
     return array_slice($items, 0, 5);
 }
 
-function build_release_readiness_check(string $key, string $label, string $status, string $value, string $detail): array
+function build_release_readiness_check(string $key, string $label, string $status, string $value, string $detail, array $items = []): array
 {
-    return [
+    $check = [
         'key' => $key,
         'label' => $label,
         'status' => $status,
         'value' => $value,
         'detail' => $detail,
     ];
+
+    if (!empty($items)) {
+        $check['items'] = $items;
+    }
+
+    return $check;
 }
 
 function count_tenants_by_callback(array $tenants, callable $predicate): int
@@ -102,6 +108,47 @@ function count_tenants_by_callback(array $tenants, callable $predicate): int
     }
 
     return $count;
+}
+
+function sum_tenant_int_field(array $tenants, string $field): int
+{
+    $total = 0;
+    for ($i = 0; $i < count($tenants); $i++) {
+        $total += (int)($tenants[$i][$field] ?? 0);
+    }
+
+    return $total;
+}
+
+function build_release_readiness_items(array $tenants, callable $predicate, int $limit = 4): array
+{
+    $items = [];
+    for ($i = 0; $i < count($tenants); $i++) {
+        $tenant = $tenants[$i];
+        if (!$predicate($tenant)) {
+            continue;
+        }
+
+        $items[] = [
+            'tenant_id' => $tenant['id'] ?? null,
+            'tenant_slug' => $tenant['slug'] ?? null,
+            'tenant_name' => $tenant['name'] ?? null,
+            'cell_id' => $tenant['cell_id'] ?? null,
+            'cell_app_base_url' => $tenant['cell_app_base_url'] ?? null,
+            'cell_snapshot_status' => $tenant['cell_snapshot_status'] ?? null,
+            'cell_tier0_status' => $tenant['cell_tier0_status'] ?? null,
+            'open_incident_count' => (int)($tenant['open_incident_count'] ?? 0),
+            'critical_open_count' => (int)($tenant['critical_open_count'] ?? 0),
+            'last_incident_at' => $tenant['last_incident_at'] ?? null,
+            'recent_incident_label' => $tenant['recent_incident_label'] ?? null,
+        ];
+
+        if (count($items) >= $limit) {
+            break;
+        }
+    }
+
+    return $items;
 }
 
 function build_release_readiness(array $activeTenants, array $cellOnboarding): array
@@ -128,7 +175,21 @@ function build_release_readiness(array $activeTenants, array $cellOnboarding): a
     $healthWarn = count_tenants_by_callback($activeTenants, function ($tenant) {
         return ($tenant['health_status'] ?? '') !== 'ok';
     });
-    $openIncidents = count_tenants_by_callback($activeTenants, function ($tenant) {
+    $openIncidentTenants = count_tenants_by_callback($activeTenants, function ($tenant) {
+        return !empty($tenant['open_incident_count']) || !empty($tenant['critical_open_count']);
+    });
+    $openIncidentEvents = sum_tenant_int_field($activeTenants, 'open_incident_count');
+    $snapshotItems = build_release_readiness_items($activeTenants, function ($tenant) {
+        return !empty($tenant['cell_id']) && ($tenant['cell_snapshot_status'] ?? '') !== 'ok';
+    });
+    $tier0Items = build_release_readiness_items($activeTenants, function ($tenant) {
+        return !empty($tenant['cell_id'])
+            && (
+                ($tenant['cell_snapshot_status'] ?? '') !== 'ok'
+                || (($tenant['cell_snapshot_status'] ?? '') === 'ok' && ($tenant['cell_tier0_status'] ?? '') !== 'ok')
+            );
+    });
+    $incidentItems = build_release_readiness_items($activeTenants, function ($tenant) {
         return !empty($tenant['open_incident_count']) || !empty($tenant['critical_open_count']);
     });
 
@@ -159,7 +220,8 @@ function build_release_readiness(array $activeTenants, array $cellOnboarding): a
             'Cell snapshot',
             $snapshotBad === 0 ? 'ok' : 'warn',
             $snapshotBad === 0 ? 'OK' : (string)$snapshotBad,
-            $snapshotBad === 0 ? 'control から各cellの read-only snapshot を取得できています。' : 'snapshot が未取得の cell があります。再確認し、続く場合は Cell配備のURL/secretを確認してください。'
+            $snapshotBad === 0 ? 'control から各cellの read-only snapshot を取得できています。' : 'snapshot が未取得の cell があります。対象の Cell URL を確認してください。',
+            $snapshotItems
         ),
         build_release_readiness_check(
             'tier0',
@@ -168,7 +230,8 @@ function build_release_readiness(array $activeTenants, array $cellOnboarding): a
             $tier0Bad > 0 ? (string)$tier0Bad : ($tier0Unknown > 0 ? '未判定' : 'OK'),
             $tier0Bad > 0
                 ? '決済・レジ系に要確認の cell があります。'
-                : ($tier0Unknown > 0 ? 'snapshot 未取得のため Tier0 は未判定です。まず snapshot を再確認してください。' : '決済・レジ系の監視ステータスは正常です。')
+                : ($tier0Unknown > 0 ? 'snapshot 未取得のため Tier0 は未判定です。まず対象の Cell URL を確認してください。' : '決済・レジ系の監視ステータスは正常です。'),
+            $tier0Items
         ),
         build_release_readiness_check(
             'onboarding',
@@ -187,9 +250,10 @@ function build_release_readiness(array $activeTenants, array $cellOnboarding): a
         build_release_readiness_check(
             'incidents',
             '未解決異常',
-            $openIncidents === 0 ? 'ok' : 'fail',
-            $openIncidents === 0 ? '0' : (string)$openIncidents,
-            $openIncidents === 0 ? '未解決の重大監視イベントはありません。' : '未解決イベントを先に確認してください。'
+            $openIncidentTenants === 0 ? 'ok' : 'fail',
+            $openIncidentEvents === 0 ? '0' : ((string)$openIncidentEvents . '件'),
+            $openIncidentTenants === 0 ? '未解決の重大監視イベントはありません。' : '未解決イベントが残っています。原因確認後に解消済みにしてください。',
+            $incidentItems
         ),
     ];
 
