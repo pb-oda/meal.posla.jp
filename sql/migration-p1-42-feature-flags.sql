@@ -1,7 +1,8 @@
 -- P1-42: Feature flag control plane
 -- Purpose:
 --   Keep contract features (tenants.hq_menu_broadcast) separate from
---   operational rollout flags. Overrides are resolved by scope:
+--   customer-facing rollout flags. OP / runner / deploy permissions are
+--   managed outside this POSLA admin surface. Overrides are resolved by scope:
 --   tenant > cell > global > default.
 
 SET NAMES utf8mb4;
@@ -50,10 +51,10 @@ VALUES
   ),
   (
     'codex_ops_write',
-    'codex-ops write actions',
-    'codex-ops-platform からの write/deploy 系アクションを許可する前段の運用ゲート。',
+    'codex-ops write actions (OP managed)',
+    'Legacy marker. OP / runner / deploy 許可は POSLA管理画面のFeature Flagsでは扱わない。',
     0,
-    1
+    0
   ),
   (
     'tenant_preview_release',

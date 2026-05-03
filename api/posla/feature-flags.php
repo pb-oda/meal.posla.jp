@@ -91,10 +91,19 @@ function feature_flags_api_fetch_override(PDO $pdo, string $featureKey, string $
     return $row;
 }
 
+function feature_flags_api_visible_in_posla_admin(string $featureKey): bool
+{
+    return !in_array($featureKey, ['codex_ops_write'], true);
+}
+
 function feature_flags_api_require_feature(PDO $pdo, string $featureKey): array
 {
     if (!posla_feature_flag_valid_key($featureKey)) {
         json_error('INVALID_FEATURE_KEY', 'feature_key が不正です', 400);
+    }
+
+    if (!feature_flags_api_visible_in_posla_admin($featureKey)) {
+        json_error('FEATURE_FLAG_NOT_FOUND', 'Feature Flag が見つかりません', 404);
     }
 
     $stmt = $pdo->prepare(
@@ -113,9 +122,9 @@ function feature_flags_api_require_feature(PDO $pdo, string $featureKey): array
     return $feature;
 }
 
-function feature_flags_api_reason_required(string $featureKey, string $scopeType): bool
+function feature_flags_api_reason_required(string $scopeType): bool
 {
-    return $scopeType === 'global' || $featureKey === 'codex_ops_write';
+    return $scopeType === 'global';
 }
 
 if (!posla_feature_flags_available($pdo)) {
@@ -142,6 +151,13 @@ if ($method === 'GET') {
     }
 
     $flags = posla_feature_flag_resolve_all($pdo, $tenantId !== '' ? $tenantId : null);
+    $flags = array_filter(
+        $flags,
+        function ($_flag, $featureKey) {
+            return feature_flags_api_visible_in_posla_admin((string)$featureKey);
+        },
+        ARRAY_FILTER_USE_BOTH
+    );
 
     json_response([
         'available' => true,
@@ -168,8 +184,8 @@ if ($method === 'PATCH') {
     if (strlen($reason) > 255) {
         json_error('REASON_TOO_LONG', 'reason は255文字以内で入力してください', 400);
     }
-    if ($reason === '' && feature_flags_api_reason_required($featureKey, $scopeType)) {
-        json_error('REASON_REQUIRED', 'global scope または codex_ops_write の変更では reason が必須です', 400);
+    if ($reason === '' && feature_flags_api_reason_required($scopeType)) {
+        json_error('REASON_REQUIRED', 'global scope の変更では reason が必須です', 400);
     }
     $reasonValue = $reason !== '' ? $reason : null;
     $oldValue = feature_flags_api_fetch_override($pdo, $featureKey, $scopeType, $scopeId);

@@ -1565,7 +1565,59 @@
         </div>
       </div>
 
+      <div class="card card--accent" style="margin-bottom:1rem;">
+        <div class="card__body">
+          <div class="card__header" style="padding:0 0 0.9rem 0;border-bottom:0;">
+            <div>
+              <h3 class="section-title" style="margin-bottom:0;">次回デプロイ計画</h3>
+              <p class="card-intro">Actionsなどの自動化が参照する「どのcellへコードを反映するか」をPOSLA側で明示します。Feature Flagsはこの後の公開範囲だけを扱います。</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-release-plan" type="button">再読込</button>
+          </div>
+          <div id="release-plan-status" style="margin-bottom:1rem;"></div>
+          <div class="cell-registry-fields" style="border-top:0;margin-top:0;padding-top:0;">
+            <div class="cell-registry-field">
+              <label for="release-plan-target-scope">デプロイ対象範囲</label>
+              <select class="form-select" id="release-plan-target-scope">
+                <option value="single_cell">単一cellにデプロイ（先行確認）</option>
+                <option value="all_active_cells">全active cellにデプロイ（コード統一）</option>
+              </select>
+            </div>
+            <div class="cell-registry-field" id="release-plan-target-cell-group">
+              <label for="release-plan-target-cell">デプロイ対象cell</label>
+              <select class="form-select" id="release-plan-target-cell"></select>
+            </div>
+            <div class="cell-registry-field">
+              <label for="release-plan-automation-mode">Actionsの扱い</label>
+              <select class="form-select" id="release-plan-automation-mode">
+                <option value="manual_only">手動確認のみ（Actionsは実行しない）</option>
+                <option value="actions_allowed">Actionsはこの計画だけ対象にできる</option>
+              </select>
+            </div>
+            <div class="cell-registry-field">
+              <label for="release-plan-note">変更理由 / メモ</label>
+              <input class="form-input" type="text" id="release-plan-note" maxlength="255" placeholder="例: test-01で先行確認">
+            </div>
+          </div>
+          <div class="settings-inline-actions" style="margin-top:0.9rem;">
+            <button class="btn btn-primary" id="btn-save-release-plan" type="button">計画を保存</button>
+            <button class="btn btn-secondary" id="btn-open-feature-flags-from-release" type="button">Feature Flagsを確認</button>
+          </div>
+          <ul class="helper-list" style="margin-top:0.9rem;">
+            <li>先行確認は「単一cell」で `POSLA運用確認用 / test-01` を選びます。</li>
+            <li>コードを全体で統一する通常リリースは「全active cell」を選びます。これで全cellへ同じコードを反映する前提を明示します。</li>
+            <li>Feature Flagsはデプロイ後の公開範囲です。全active cellへデプロイしても、FlagがOFFなら顧客には表示しません。</li>
+            <li>未設定または手動確認のみの場合、Actionsは自動デプロイを停止扱いにします。</li>
+          </ul>
+        </div>
+      </div>
+
       <div class="settings-summary-grid" id="cell-provisioning-summary"></div>
+
+      <div class="op-route-note" style="margin-bottom:1rem;">
+        <strong>役割を分けます。</strong>
+        POSLA側でデプロイ対象cellを決め、OP側で監視・runner・実行承認・証跡を扱います。Feature Flagsは顧客向け機能を誰に見せるかだけを扱います。
+      </div>
 
       <div class="card table-card">
         <div class="card__header">
@@ -1585,11 +1637,42 @@
       <div class="panel-header">
         <div class="panel-header__eyebrow">Rollout Control</div>
         <h2 class="panel-header__title">Feature Flags</h2>
-        <p class="panel-header__lead">顧客に見せる機能の表示制御を扱います。AI運用、runner、deploy許可に関わる操作はOP側で管理します。</p>
+        <p class="panel-header__lead">顧客に見せる機能の段階公開だけを扱います。ここではデプロイ自体は行わず、デプロイ後に見せる機能を test-01 / 特定顧客 / 全体へ切り替えます。</p>
       </div>
       <div class="op-route-note" style="margin-bottom:1rem;">
-        <strong>運用系Feature FlagはOPへ移管します。</strong>
-        `codex_ops_write` などのAI運用・deploy許可系は、POSLA本体の機能表示とは分けてOPで確認します。
+        <strong>デプロイ先cellはPOSLA側、実行承認・runner・監視はOP側で管理します。</strong>
+        Feature Flagsはデプロイ先を決める場所ではなく、POSLA本体の顧客向け機能を「誰に見せるか」だけに限定します。
+      </div>
+      <div class="settings-summary-grid" aria-label="Feature Flags の使い分け">
+        <div class="settings-summary-card">
+          <div class="settings-summary-card__eyebrow">TEST CELL</div>
+          <div class="settings-summary-card__title">POSLA運用確認用 / test-01</div>
+          <div class="settings-summary-card__meta">テスト的なデプロイ後の先行確認はこのcellを基準にします。既存のお客様へは影響させません。</div>
+        </div>
+        <div class="settings-summary-card">
+          <div class="settings-summary-card__eyebrow">CUSTOMER ONLY</div>
+          <div class="settings-summary-card__title">特定顧客だけに適用</div>
+          <div class="settings-summary-card__meta">一部のお客様へ先行提供する場合は「選択tenant」を使います。対象顧客を選んでから保存します。</div>
+        </div>
+        <div class="settings-summary-card">
+          <div class="settings-summary-card__eyebrow">ALL CUSTOMERS</div>
+          <div class="settings-summary-card__title">全体公開は最後</div>
+          <div class="settings-summary-card__meta">globalは全顧客へ影響します。test-01または特定顧客で確認してから、理由を入れて使います。</div>
+        </div>
+      </div>
+      <div class="card card--accent" style="margin-bottom:1rem;">
+        <div class="card__body">
+          <h3 class="section-title">Feature Flagsの使い方</h3>
+          <ul class="helper-list">
+            <li>新しい顧客向け機能は、原則として初期値OFFでコードに入れます。デプロイされただけでは顧客に表示しません。</li>
+            <li>先行確認は `POSLA運用確認用 / test-01` のcellでONにします。ここで表示、権限、既存機能への影響を確認します。</li>
+            <li>コードを全体で統一する時は、Cell配備の「次回デプロイ計画」で全active cellを選びます。公開範囲はその後もFeature Flagsで分けます。</li>
+            <li>お客様1社だけへ先行提供する場合は、対象顧客を選んで「選択顧客のみ」でONにします。</li>
+            <li>全顧客へ公開する時だけ「全顧客」を使います。全顧客ONには変更理由が必須です。</li>
+            <li>Actionsなどでデプロイを自動化しても、対象cellはCell配備の「次回デプロイ計画」を使い、Feature Flagsのglobalを自動でONにしない運用にします。</li>
+            <li>問題が出た場合は、まず対象のcellまたは顧客の個別設定をOFF/解除します。コードrollbackより先にFlagで影響を止められるか確認します。</li>
+          </ul>
+        </div>
       </div>
 
       <div class="panel-grid panel-grid--two">
@@ -1597,16 +1680,17 @@
           <div class="card__header">
             <div>
               <h3 class="section-title" style="margin-bottom:0;">解決状態</h3>
-              <p class="card-intro">選択 tenant に対して default → global → cell → tenant の順で解決した結果です。</p>
+              <p class="card-intro">対象顧客に実際に効く状態です。解決順は default → global → cell → tenant で、右に行くほど優先されます。</p>
             </div>
             <button class="btn btn-secondary btn-sm" id="btn-refresh-feature-flags" type="button">再読込</button>
           </div>
           <div class="card__body">
             <div class="form-group">
-              <label class="form-label" for="ff-tenant-select">Tenant scope preview</label>
+              <label class="form-label" for="ff-tenant-select">対象顧客プレビュー</label>
               <select class="form-select" id="ff-tenant-select">
-                <option value="">tenant 未選択（global / cell のみ）</option>
+                <option value="">顧客未選択（global / cell のみ確認）</option>
               </select>
+              <span class="form-hint">顧客を選ぶと、その顧客に最終的に効くON/OFFを確認できます。</span>
             </div>
             <div id="feature-flags-list"></div>
           </div>
@@ -1614,35 +1698,40 @@
 
         <div class="card card--tint panel-shell panel-shell--narrow">
           <div class="card__body">
-            <h3 class="section-title">Override</h3>
+            <h3 class="section-title">適用設定</h3>
             <div class="form-group">
-              <label class="form-label" for="ff-feature-key">Feature</label>
+              <label class="form-label" for="ff-feature-key">機能</label>
               <select class="form-select" id="ff-feature-key"></select>
             </div>
             <div class="form-group">
-              <label class="form-label" for="ff-scope-type">Scope</label>
+              <label class="form-label" for="ff-scope-type">適用範囲</label>
               <select class="form-select" id="ff-scope-type">
-                <option value="cell">この cell</option>
-                <option value="tenant">選択 tenant</option>
-                <option value="global">global</option>
+                <option value="cell">選択cell</option>
+                <option value="tenant">選択顧客のみ</option>
+                <option value="global">全顧客</option>
               </select>
-              <span class="form-hint" id="ff-scope-hint">cell scope は現在の cell_id に保存します。</span>
+              <span class="form-hint" id="ff-scope-hint">cell scope は選択したcellに保存します。</span>
+            </div>
+            <div class="form-group" id="ff-cell-scope-group">
+              <label class="form-label" for="ff-cell-id">対象cell</label>
+              <select class="form-select" id="ff-cell-id"></select>
+              <span class="form-hint">通常の検証先は POSLA運用確認用 / test-01 です。</span>
             </div>
             <div class="form-group">
-              <label class="form-label" for="ff-enabled">Enabled</label>
+              <label class="form-label" for="ff-enabled">状態</label>
               <select class="form-select" id="ff-enabled">
                 <option value="0">OFF</option>
                 <option value="1">ON</option>
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label" for="ff-reason">Reason</label>
+              <label class="form-label" for="ff-reason">変更理由</label>
               <input class="form-input" type="text" id="ff-reason" maxlength="255" placeholder="変更理由">
-              <span class="form-hint">global scope または codex_ops_write の変更は理由必須です。</span>
+              <span class="form-hint">全顧客へ影響する変更では理由が必須です。顧客限定やcell検証でも理由を残すと後から追いやすくなります。</span>
             </div>
             <div class="panel-header__actions">
               <button class="btn btn-primary" id="btn-save-feature-flag" type="button">保存</button>
-              <button class="btn btn-secondary" id="btn-clear-feature-flag" type="button">Override解除</button>
+              <button class="btn btn-secondary" id="btn-clear-feature-flag" type="button">個別設定を解除</button>
             </div>
           </div>
         </div>

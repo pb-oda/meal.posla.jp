@@ -101,12 +101,29 @@
     if (createBtn) createBtn.addEventListener('click', createTenant);
 
     var refreshCellProvisioningBtn = document.getElementById('btn-refresh-cell-provisioning');
-    if (refreshCellProvisioningBtn) refreshCellProvisioningBtn.addEventListener('click', loadCellProvisioning);
+    if (refreshCellProvisioningBtn) refreshCellProvisioningBtn.addEventListener('click', function() {
+      loadCellProvisioning();
+      loadReleasePlan();
+    });
 
     var cellProvisioningList = document.getElementById('cell-provisioning-list');
     if (cellProvisioningList) {
       cellProvisioningList.addEventListener('click', handleCellProvisioningClick);
     }
+
+    var refreshReleasePlanBtn = document.getElementById('btn-refresh-release-plan');
+    if (refreshReleasePlanBtn) refreshReleasePlanBtn.addEventListener('click', loadReleasePlan);
+
+    var releasePlanTargetScope = document.getElementById('release-plan-target-scope');
+    if (releasePlanTargetScope) releasePlanTargetScope.addEventListener('change', updateReleasePlanTargetScopeUi);
+
+    var saveReleasePlanBtn = document.getElementById('btn-save-release-plan');
+    if (saveReleasePlanBtn) saveReleasePlanBtn.addEventListener('click', saveReleasePlan);
+
+    var openFeatureFlagsFromReleaseBtn = document.getElementById('btn-open-feature-flags-from-release');
+    if (openFeatureFlagsFromReleaseBtn) openFeatureFlagsFromReleaseBtn.addEventListener('click', function() {
+      activateTab('feature-flags');
+    });
 
     var refreshFeatureFlagsBtn = document.getElementById('btn-refresh-feature-flags');
     if (refreshFeatureFlagsBtn) refreshFeatureFlagsBtn.addEventListener('click', loadFeatureFlags);
@@ -227,7 +244,10 @@
     // データ読み込み
     if (tabId === 'overview') loadDashboard();
     if (tabId === 'tenants') loadTenants();
-    if (tabId === 'cell-provisioning') loadCellProvisioning();
+    if (tabId === 'cell-provisioning') {
+      loadCellProvisioning();
+      loadReleasePlan();
+    }
     if (tabId === 'feature-flags') loadFeatureFlags();
     if (tabId === 'api-settings') loadApiStatus();
     if (tabId === 'ops-source') loadOpsSource();
@@ -287,6 +307,7 @@
     flags: [],
     cellId: ''
   };
+  var FEATURE_FLAG_TEST_CELL_ID = 'test-01';
 
   function loadFeatureFlagTenants() {
     if (_featureFlagState.tenantsLoaded) {
@@ -306,7 +327,7 @@
     if (!select) return;
 
     var currentValue = select.value || '';
-    var html = '<option value="">tenant 未選択（global / cell のみ）</option>';
+    var html = '<option value="">顧客未選択（global / cell のみ確認）</option>';
     var i;
     for (i = 0; i < _featureFlagState.tenants.length; i++) {
       var tenant = _featureFlagState.tenants[i];
@@ -317,6 +338,79 @@
     }
     select.innerHTML = html;
     select.value = currentValue;
+  }
+
+  function buildFeatureFlagCellOptions() {
+    var map = {};
+    var items = [];
+    var i;
+
+    function addCell(cellId, label, sourceRank) {
+      if (!cellId || map[cellId]) return;
+      map[cellId] = {
+        id: cellId,
+        label: label || cellId,
+        rank: cellId === FEATURE_FLAG_TEST_CELL_ID ? 0 : sourceRank
+      };
+    }
+
+    for (i = 0; i < _featureFlagState.tenants.length; i++) {
+      var tenant = _featureFlagState.tenants[i];
+      var cellId = tenant.cell_id || '';
+      var tenantLabel = tenant.name || tenant.slug || tenant.id || cellId;
+      if (cellId) {
+        addCell(cellId, tenantLabel + ' / ' + cellId, 1);
+      }
+    }
+
+    if (_featureFlagState.cellId) {
+      addCell(_featureFlagState.cellId, '現在のcell / ' + _featureFlagState.cellId, 2);
+    }
+
+    Object.keys(map).forEach(function(cellId) {
+      items.push(map[cellId]);
+    });
+    items.sort(function(a, b) {
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      return a.label.localeCompare(b.label, 'ja');
+    });
+    return items;
+  }
+
+  function renderFeatureFlagCellOptions() {
+    var select = document.getElementById('ff-cell-id');
+    if (!select) return;
+
+    var currentValue = select.value || '';
+    var items = buildFeatureFlagCellOptions();
+    var html = '';
+    var preferredValue = '';
+    var hasCurrent = false;
+    var i;
+
+    if (items.length === 0) {
+      select.innerHTML = '<option value="">cell未検出</option>';
+      return;
+    }
+
+    for (i = 0; i < items.length; i++) {
+      if (items[i].id === currentValue) hasCurrent = true;
+      if (!preferredValue && items[i].id === FEATURE_FLAG_TEST_CELL_ID) {
+        preferredValue = items[i].id;
+      }
+      html += '<option value="' + Utils.escapeHtml(items[i].id) + '">' +
+        Utils.escapeHtml(items[i].label) +
+        '</option>';
+    }
+    select.innerHTML = html;
+
+    if (hasCurrent) {
+      select.value = currentValue;
+    } else if (preferredValue) {
+      select.value = preferredValue;
+    } else if (_featureFlagState.cellId) {
+      select.value = _featureFlagState.cellId;
+    }
   }
 
   function loadFeatureFlags() {
@@ -331,6 +425,7 @@
     }).then(function(data) {
       _featureFlagState.flags = data.flags || [];
       _featureFlagState.cellId = data.cell_id || '';
+      renderFeatureFlagCellOptions();
       renderFeatureFlags(data);
       updateFeatureFlagScopeHint();
     }).catch(function(err) {
@@ -395,17 +490,28 @@
     }
 
     return '<div class="feature-flag-summary">' +
-      '<div class="feature-flag-summary__item"><div class="feature-flag-summary__label">Total</div><div class="feature-flag-summary__value">' + Utils.escapeHtml(String(total)) + '</div></div>' +
-      '<div class="feature-flag-summary__item"><div class="feature-flag-summary__label">Resolved ON</div><div class="feature-flag-summary__value">' + Utils.escapeHtml(String(onCount)) + '</div></div>' +
-      '<div class="feature-flag-summary__item"><div class="feature-flag-summary__label">Resolved OFF</div><div class="feature-flag-summary__value">' + Utils.escapeHtml(String(total - onCount)) + '</div></div>' +
-      '<div class="feature-flag-summary__item"><div class="feature-flag-summary__label">Overrides</div><div class="feature-flag-summary__value">' + Utils.escapeHtml(String(overrideCount)) + '</div></div>' +
+      '<div class="feature-flag-summary__item"><div class="feature-flag-summary__label">機能数</div><div class="feature-flag-summary__value">' + Utils.escapeHtml(String(total)) + '</div></div>' +
+      '<div class="feature-flag-summary__item"><div class="feature-flag-summary__label">有効</div><div class="feature-flag-summary__value">' + Utils.escapeHtml(String(onCount)) + '</div></div>' +
+      '<div class="feature-flag-summary__item"><div class="feature-flag-summary__label">無効</div><div class="feature-flag-summary__value">' + Utils.escapeHtml(String(total - onCount)) + '</div></div>' +
+      '<div class="feature-flag-summary__item"><div class="feature-flag-summary__label">個別設定</div><div class="feature-flag-summary__value">' + Utils.escapeHtml(String(overrideCount)) + '</div></div>' +
       '</div>';
+  }
+
+  function featureFlagScopeLabel(scopeType) {
+    if (scopeType === 'global') return '全顧客';
+    if (scopeType === 'cell') return 'cell';
+    if (scopeType === 'tenant') return '顧客';
+    return '初期値';
   }
 
   function buildFeatureFlagCardHtml(flag) {
     var resolvedOn = parseInt(flag.resolved_enabled, 10) === 1;
     var resolvedTone = resolvedOn ? 'active' : 'inactive';
     var resolvedLabel = resolvedOn ? 'ON' : 'OFF';
+    var resolvedSource = featureFlagScopeLabel(flag.resolved_source || 'default');
+    if (flag.resolved_scope_id) {
+      resolvedSource += ' / ' + flag.resolved_scope_id;
+    }
     var desc = flag.description ? '<div class="feature-flag-card__desc">' + Utils.escapeHtml(flag.description) + '</div>' : '';
 
     return '<section class="feature-flag-card feature-flag-card--' + (resolvedOn ? 'on' : 'off') + '">' +
@@ -416,7 +522,7 @@
         '</div>' +
         '<div class="tenant-contract">' +
           '<span class="badge badge--' + resolvedTone + '">' + resolvedLabel + '</span>' +
-          '<span class="status-pill status-pill--info">' + Utils.escapeHtml(flag.resolved_source || 'default') + '</span>' +
+          '<span class="status-pill status-pill--info">' + Utils.escapeHtml(resolvedSource) + '</span>' +
         '</div>' +
       '</div>' +
       desc +
@@ -438,18 +544,18 @@
 
     if (scopeType === 'default') {
       value = buildFeatureFlagBadge(flag.default_enabled);
-      meta = 'base setting';
+      meta = '初期値';
     } else if (override) {
       value = buildFeatureFlagBadge(override.enabled);
       if (override.reason) meta += Utils.escapeHtml(override.reason);
       if (override.updated_at) meta += (meta ? '<br>' : '') + Utils.escapeHtml(override.updated_at);
     } else {
       value = '<span style="color:var(--text-muted);">未設定</span>';
-      meta = 'inherits previous scope';
+      meta = '前段の設定を継承';
     }
 
     return '<div class="feature-flag-scope' + (isResolved ? ' is-resolved' : '') + '">' +
-      '<div class="feature-flag-scope__label">' + Utils.escapeHtml(scopeType) + '</div>' +
+      '<div class="feature-flag-scope__label">' + Utils.escapeHtml(featureFlagScopeLabel(scopeType)) + '</div>' +
       value +
       '<div class="feature-flag-scope__meta">' + meta + '</div>' +
       '</div>';
@@ -465,8 +571,13 @@
     return select ? select.value : '';
   }
 
-  function isFeatureFlagReasonRequired(featureKey, scopeType) {
-    return scopeType === 'global' || featureKey === 'codex_ops_write';
+  function getSelectedFeatureFlagCellId() {
+    var select = document.getElementById('ff-cell-id');
+    return select ? select.value : '';
+  }
+
+  function isFeatureFlagReasonRequired(scopeType) {
+    return scopeType === 'global';
   }
 
   function buildFeatureFlagPayload(clear) {
@@ -477,6 +588,7 @@
     var featureKey = keyEl ? keyEl.value : '';
     var scopeType = scopeEl ? scopeEl.value : '';
     var tenantId = getSelectedFeatureFlagTenantId();
+    var cellId = getSelectedFeatureFlagCellId();
     var payload;
 
     if (!featureKey) {
@@ -484,11 +596,15 @@
       return null;
     }
     if (scopeType === 'tenant' && !tenantId) {
-      showToast('tenant scope では Tenant を選択してください');
+      showToast('選択顧客のみへ適用する場合は、対象顧客を選択してください');
       return null;
     }
-    if (isFeatureFlagReasonRequired(featureKey, scopeType) && (!reasonEl || !reasonEl.value.trim())) {
-      showToast('global scope または codex_ops_write の変更では Reason を入力してください');
+    if (scopeType === 'cell' && !cellId) {
+      showToast('cellへ適用する場合は、対象cellを選択してください');
+      return null;
+    }
+    if (isFeatureFlagReasonRequired(scopeType) && (!reasonEl || !reasonEl.value.trim())) {
+      showToast('全顧客へ影響する変更では理由を入力してください');
       if (reasonEl) reasonEl.focus();
       return null;
     }
@@ -496,7 +612,7 @@
     payload = {
       feature_key: featureKey,
       scope_type: scopeType,
-      scope_id: scopeType === 'tenant' ? tenantId : '',
+      scope_id: scopeType === 'tenant' ? tenantId : (scopeType === 'cell' ? cellId : ''),
       reason: reasonEl ? reasonEl.value.trim() : ''
     };
 
@@ -544,15 +660,20 @@
   function updateFeatureFlagScopeHint() {
     var scopeEl = document.getElementById('ff-scope-type');
     var hintEl = document.getElementById('ff-scope-hint');
+    var cellGroupEl = document.getElementById('ff-cell-scope-group');
     var scopeType = scopeEl ? scopeEl.value : '';
     if (!hintEl) return;
 
+    if (cellGroupEl) {
+      cellGroupEl.style.display = scopeType === 'cell' ? '' : 'none';
+    }
+
     if (scopeType === 'global') {
-      hintEl.textContent = 'global scope は全 cell の既定上書きです。MVPでは慎重に使います。';
+      hintEl.textContent = '全顧客に影響します。test-01 または特定顧客で確認してから最後に使います。';
     } else if (scopeType === 'tenant') {
-      hintEl.textContent = 'tenant scope は選択中の tenant にだけ適用します。';
+      hintEl.textContent = '選択した顧客だけに適用します。一部のお客様への先行提供に使います。';
     } else {
-      hintEl.textContent = 'cell scope は現在の cell_id (' + (_featureFlagState.cellId || 'unknown') + ') に保存します。';
+      hintEl.textContent = '選択したcellだけに適用します。通常の検証先は POSLA運用確認用 / test-01 です。';
     }
   }
 
@@ -1474,6 +1595,182 @@
 
     html += '</tbody></table></div>';
     root.innerHTML = html;
+  }
+
+  // ── Release Plan ──
+  var _releasePlanState = {
+    cells: [],
+    plan: null
+  };
+
+  function loadReleasePlan() {
+    var statusEl = document.getElementById('release-plan-status');
+    if (!statusEl || !PoslaApi || !PoslaApi.getReleasePlan) return;
+    statusEl.innerHTML = '<div style="padding:1rem;color:var(--text-muted);">読み込み中...</div>';
+
+    PoslaApi.getReleasePlan().then(function(data) {
+      _releasePlanState.cells = data.cells || [];
+      _releasePlanState.plan = data.plan || null;
+      renderReleasePlan(data);
+    }).catch(function(err) {
+      statusEl.innerHTML = '<div style="padding:1rem;color:#c62828;">Release Plan の読み込みに失敗しました: ' + Utils.escapeHtml(err.message) + '</div>';
+      showToast('Release Plan の読み込みに失敗しました: ' + err.message);
+    });
+  }
+
+  function releasePlanStatusTone(status) {
+    if (status === 'ready') return 'ok';
+    if (status === 'warning') return 'fail';
+    return 'warn';
+  }
+
+  function releasePlanStatusLabel(status) {
+    if (status === 'ready') return 'Actions許可';
+    if (status === 'manual') return '手動確認';
+    if (status === 'warning') return '要確認';
+    return '未設定';
+  }
+
+  function renderReleasePlan(data) {
+    var statusEl = document.getElementById('release-plan-status');
+    var scopeSelect = document.getElementById('release-plan-target-scope');
+    var cellSelect = document.getElementById('release-plan-target-cell');
+    var automationSelect = document.getElementById('release-plan-automation-mode');
+    var noteInput = document.getElementById('release-plan-note');
+    var cells = data.cells || [];
+    var plan = data.plan || {};
+    var targetScope = plan.target_scope === 'all_active_cells' ? 'all_active_cells' : 'single_cell';
+    var selectedCellId = plan.target_cell_id || plan.recommended_cell_id || '';
+    var optionHtml = '';
+    var i;
+    var cell;
+    var meta;
+
+    if (scopeSelect) {
+      scopeSelect.value = targetScope;
+    }
+    if (cellSelect) {
+      if (!cells.length) {
+        optionHtml = '<option value="">cellがありません</option>';
+      } else {
+        for (i = 0; i < cells.length; i++) {
+          cell = cells[i];
+          meta = [];
+          if (cell.status) meta.push(cell.status);
+          if (cell.environment) meta.push(cell.environment);
+          optionHtml += '<option value="' + Utils.escapeHtml(cell.cell_id || '') + '">' +
+            Utils.escapeHtml(cell.label || cell.cell_id || '-') +
+            (meta.length ? (' (' + Utils.escapeHtml(meta.join(' / ')) + ')') : '') +
+            '</option>';
+        }
+      }
+      cellSelect.innerHTML = optionHtml;
+      if (selectedCellId) cellSelect.value = selectedCellId;
+    }
+    if (automationSelect) {
+      automationSelect.value = plan.automation_mode || 'manual_only';
+    }
+    if (noteInput) {
+      noteInput.value = plan.note || '';
+    }
+    updateReleasePlanTargetScopeUi();
+    if (statusEl) {
+      statusEl.innerHTML = buildReleasePlanStatusHtml(plan, data.cells_available);
+    }
+  }
+
+  function releasePlanTargetScopeValue() {
+    var scopeSelect = document.getElementById('release-plan-target-scope');
+    return scopeSelect && scopeSelect.value === 'all_active_cells' ? 'all_active_cells' : 'single_cell';
+  }
+
+  function updateReleasePlanTargetScopeUi() {
+    var scope = releasePlanTargetScopeValue();
+    var targetCellGroup = document.getElementById('release-plan-target-cell-group');
+    var cellSelect = document.getElementById('release-plan-target-cell');
+
+    if (targetCellGroup) {
+      targetCellGroup.style.display = scope === 'all_active_cells' ? 'none' : '';
+    }
+    if (cellSelect) {
+      cellSelect.disabled = scope === 'all_active_cells';
+    }
+  }
+
+  function buildReleasePlanStatusHtml(plan, cellsAvailable) {
+    plan = plan || {};
+    var tone = releasePlanStatusTone(plan.status || 'missing');
+    var targetScope = plan.target_scope === 'all_active_cells' ? 'all_active_cells' : 'single_cell';
+    var target = targetScope === 'all_active_cells'
+      ? ('全active cell' + (plan.target_count ? ' (' + plan.target_count + '件)' : ''))
+      : (plan.target_cell_id || '未設定');
+    var updated = plan.updated_at ? ('最終更新: ' + plan.updated_at) : '未保存';
+    var actionsText = plan.actions_can_run ? 'この計画だけ対象にできます' : '自動実行しません';
+    var targetMeta = plan.target_cell && plan.target_cell.app_base_url ? ('app: ' + plan.target_cell.app_base_url) : '';
+    var registryText = cellsAvailable ? 'cell registryから選択します' : 'cell registry未検出のため推奨値を表示しています';
+    var targetCellsText = '';
+    var targetCells = Array.isArray(plan.target_cells) ? plan.target_cells : [];
+    var targetCellIds = [];
+    var i;
+
+    if (targetScope === 'all_active_cells' && targetCells.length) {
+      for (i = 0; i < targetCells.length && i < 5; i++) {
+        targetCellIds.push(targetCells[i].cell_id || '-');
+      }
+      targetCellsText = '対象cell: ' + targetCellIds.join(', ');
+      if (targetCells.length > 5) {
+        targetCellsText += ' ほか' + (targetCells.length - 5) + '件';
+      }
+    }
+
+    return '<div class="release-readiness-check release-readiness-check--' + tone + '">' +
+      '<div class="release-readiness-check__label">次回デプロイ計画</div>' +
+      '<div class="release-readiness-check__value">' + Utils.escapeHtml(releasePlanStatusLabel(plan.status || 'missing')) + '</div>' +
+      '<div class="release-readiness-check__detail">' +
+        '対象範囲: <code>' + Utils.escapeHtml(target) + '</code><br>' +
+        (targetCellsText ? (Utils.escapeHtml(targetCellsText) + '<br>') : '') +
+        'Actions: ' + Utils.escapeHtml(actionsText) + '<br>' +
+        Utils.escapeHtml(plan.summary || '') +
+        (targetMeta ? ('<br>' + Utils.escapeHtml(targetMeta)) : '') +
+        '<br>' + Utils.escapeHtml(registryText) +
+        '<br>' + Utils.escapeHtml(updated) +
+      '</div>' +
+    '</div>';
+  }
+
+  function saveReleasePlan() {
+    var btn = document.getElementById('btn-save-release-plan');
+    var cellSelect = document.getElementById('release-plan-target-cell');
+    var automationSelect = document.getElementById('release-plan-automation-mode');
+    var noteInput = document.getElementById('release-plan-note');
+    var payload = {
+      target_scope: releasePlanTargetScopeValue(),
+      target_cell_id: cellSelect ? cellSelect.value : '',
+      automation_mode: automationSelect ? automationSelect.value : 'manual_only',
+      note: noteInput ? noteInput.value.trim() : ''
+    };
+
+    if (payload.target_scope === 'single_cell' && !payload.target_cell_id) {
+      showToast('デプロイ対象cellを選択してください');
+      return;
+    }
+    if (payload.automation_mode === 'actions_allowed' && !payload.note) {
+      showToast('Actionsに許可する場合は変更理由を入力してください');
+      if (noteInput) noteInput.focus();
+      return;
+    }
+
+    if (btn) btn.disabled = true;
+    PoslaApi.updateReleasePlan(payload).then(function(data) {
+      _releasePlanState.cells = data.cells || [];
+      _releasePlanState.plan = data.plan || null;
+      renderReleasePlan(data);
+      showToast('Release Plan を保存しました');
+    }).catch(function(err) {
+      showToast('Release Plan の保存に失敗しました: ' + err.message);
+    }).then(function() {
+      if (btn) btn.disabled = false;
+    });
   }
 
   // ── Cell Provisioning ──
