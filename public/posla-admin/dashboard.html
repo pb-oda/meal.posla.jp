@@ -1606,6 +1606,7 @@
           <ul class="helper-list" style="margin-top:0.9rem;">
             <li>先行確認は「単一cell」で `POSLA運用確認用 / test-01` を選びます。</li>
             <li>コードを全体で統一する通常リリースは「全active cell」を選びます。これで全cellへ同じコードを反映する前提を明示します。</li>
+            <li>複数cellだけにコードを先行反映したい場合は、将来の「選択cell」計画を追加してから使います。現時点では手入力で複数cellを指定せず、最後は必ず全active cellでコードを揃えます。</li>
             <li>Feature Flagsはデプロイ後の公開範囲です。全active cellへデプロイしても、FlagがOFFなら顧客には表示しません。</li>
             <li>GitHub Actionsは `/api/deploy/release-plan.php` を読み、ここで保存した設定と合う場合だけ実行対象にします。</li>
             <li>未設定または手動確認のみの場合、Actionsは自動デプロイを停止扱いにします。</li>
@@ -1668,6 +1669,7 @@
             <li>新しい顧客向け機能は、原則として初期値OFFでコードに入れます。デプロイされただけでは顧客に表示しません。</li>
             <li>先行確認は `POSLA運用確認用 / test-01` のcellでONにします。ここで表示、権限、既存機能への影響を確認します。</li>
             <li>コードを全体で統一する時は、Cell配備の「次回デプロイ計画」で全active cellを選びます。公開範囲はその後もFeature Flagsで分けます。</li>
+            <li>複数のお客様だけに見せたい場合は、コードの複数cellデプロイではなく、対象顧客のtenant設定を使います。</li>
             <li>お客様1社だけへ先行提供する場合は、対象顧客を選んで「選択顧客のみ」でONにします。</li>
             <li>全顧客へ公開する時だけ「全顧客」を使います。全顧客ONには変更理由が必須です。</li>
             <li>Actionsなどでデプロイを自動化しても、対象cellはCell配備の「次回デプロイ計画」を使い、Feature Flagsのglobalを自動でONにしない運用にします。</li>
